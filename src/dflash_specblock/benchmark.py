@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 import torch
+from tqdm import tqdm
 
 from .cli import create_engine
 from .config import ExperimentConfig
@@ -99,7 +100,8 @@ def main() -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     rows: list[dict] = []
     with output_path.open("w", encoding="utf-8") as stream:
-        for index, prompt in enumerate(prompts):
+        progress = tqdm(prompts, desc="benchmark", unit="prompt")
+        for index, prompt in enumerate(progress):
             input_ids = render_prompt(tokenizer, prompt, config.enable_thinking).to(device)
             baseline_ids, baseline_ms = baseline_greedy(
                 engine.target, input_ids, max_new_tokens, stop_ids, device
@@ -130,6 +132,14 @@ def main() -> None:
             stream.write(json.dumps(row, ensure_ascii=False) + "\n")
             stream.flush()
             rows.append(row)
+            progress.set_postfix(
+                speedup=(
+                    f"{row['wall_clock_speedup']:.2f}x"
+                    if row["wall_clock_speedup"] is not None
+                    else "n/a"
+                ),
+                match=row["greedy_exact_match"],
+            )
             print(json.dumps(row, ensure_ascii=False))
             if not exact_match:
                 raise RuntimeError(

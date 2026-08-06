@@ -58,16 +58,20 @@ DFlash 官方权重不包含 SpecBlock rank head，因此配置提供两种模�
 ```text
 configs/                         A2 严格配置与单独的 smoke 配置
 data/                            rank-head 数据格式示例
+datasets/                        下载后的 benchmark prompt 与生成训练集（默认忽略提交）
 docs/METHOD.md                   论文逐项对应与组合边界
 docs/TRACEABILITY.md             论文/官方代码/本地实现追踪矩阵
 docs/ASCEND_910B_A2.md           CANN / torch_npu 环境说明
 examples/prompts.jsonl           小型评测提示集
 scripts/download_models.py       下载目标与 DFlash 权重
+scripts/run_full_pipeline.sh     下载数据、生成训练集、训练、benchmark 一键流程
 scripts/check_ascend_env.py      NPU 环境和 BF16 matmul 自检
 scripts/run_demo.sh              单提示词演示
 scripts/run_benchmark.sh         baseline 对照实验
 src/dflash_specblock/
+  dataset_pipeline.py            SpecBlock benchmark 下载与 prompt 统一
   dflash_adapter.py              DFlash block 接口与跨块 hidden KV 注入
+  generate_rank_data.py          用 target 模型离线生成 rank-head 训练文本
   rank_head.py                   15 维摘要、rank bucket、valid-prefix
   tree.py                        SpecBlock block-iterative 动态树
   verification.py                树注意力、最长路径、KV cache 压缩
@@ -114,20 +118,74 @@ block size；任何一项不匹配都会终止。
 如果 Hugging Face 仓库要求身份认证，使用环境变量 `HF_TOKEN` 或脚本 `--token`；不要把
 token 写进配置或提交到版本库。`models/` 已加入 `.gitignore`。
 
-## 3. 训练正式 rank head
+## 3. 下载 SpecBlock benchmark 数据集
 
-正式配置不会自动降级到 heuristic。首次运行前先按第 5 节的数据格式训练：
+本仓库新增了对 SpecBlock 论文 benchmark 口径的公开 prompt 下载与统一格式转换。当前默认
+suite 包含：
+
+- `MT-Bench`
+- `HumanEval`
+- `MATH-500`
+- `Alpaca`
+- `Natural Questions (NQ-Open)`
+- `translation`，默认使用 `wmt14 de-en`，并允许按参数覆盖
+
+下载并生成项目可直接使用的 JSONL：
+
+```bash
+python -m dflash_specblock.dataset_pipeline \
+  --output-dir datasets/processed/specblock_official
+```
+
+生成后会得到：
+
+- `datasets/processed/specblock_official/manifest.json`
+- `datasets/processed/specblock_official/prompts_all.jsonl`
+- 各 benchmark 的独立 JSONL 文件
+
+如需只做小规模联调，可限制每个 benchmark 的样本数：
+
+```bash
+python -m dflash_specblock.dataset_pipeline \
+  --output-dir datasets/processed/specblock_official \
+  --max-samples-per-dataset 32
+```
+
+## 4. 生成 rank-head 训练集
+
+正式配置不会自动降级到 heuristic。推荐先用目标模型自身 greedy 输出离线生成训练文本，以保
+持 target alignment：
+
+```bash
+python -m dflash_specblock.generate_rank_data \
+  --config configs/qwen3_4b_a2.json \
+  --prompts datasets/processed/specblock_official/prompts_all.jsonl \
+  --output datasets/generated/rank_train.jsonl \
+  --max-new-tokens 128
+```
+
+输出 JSONL 每行至少包含：
+
+```json
+{"text": "完整的目标模型生成文本，包含上下文与回复"}
+```
+
+同时会保留源 prompt、源 benchmark 和生成耗时，便于追踪训练样本来源。
+
+## 5. 训练正式 rank head
+
+准备好第 4 节生成的训练文件后，直接训练：
 
 ```bash
 python -m dflash_specblock.train_rank_head \
   --config configs/qwen3_4b_a2.json \
-  --train-data /path/to/qwen3_4b_target_generated.jsonl \
+  --train-data datasets/generated/rank_train.jsonl \
   --output checkpoints/rank_head.pt \
   --epochs 3 \
   --learning-rate 2e-4
 ```
 
-## 4. 运行演示
+## 6. 运行演示
 
 ```bash
 bash scripts/run_demo.sh
@@ -154,7 +212,7 @@ python -m dflash_specblock.cli \
   --max-new-tokens 8
 ```
 
-## 5. rank-head 数据要求
+## 7. rank-head 数据要求
 
 JSONL 每行格式：
 
@@ -173,7 +231,7 @@ greedy 错误之后的所有位置都被 valid-prefix mask 屏蔽。每条样本
 保存的 checkpoint 会记录 target/draft 模型 ID、两端 commit SHA、K、hidden size、head
 结构与有效更新数。正式加载时逐项核对，旧模型或不同 K 的 rank head 不会被静默复用。
 
-## 6. baseline 对照实验
+## 8. baseline 对照实验
 
 ```bash
 bash scripts/run_benchmark.sh
@@ -198,7 +256,76 @@ bash scripts/run_benchmark.sh
 5. 重复至少三次并报告均值/标准差；
 6. 确认 `npu-smi info` 中没有其他任务竞争设备。
 
-## 7. 配置说明
+## 9. 一键全流程
+
+如果你想把“下载模型 -> 下载 benchmark -> 生成训练集 -> 训练 rank head -> 跑 benchmark”
+-> 官方任务评测”一次串完，可以直接使用：
+
+```bash
+bash scripts/run_full_pipeline.sh
+```
+
+该脚本支持通过环境变量覆盖关键路径与超参，例如：
+
+```bash
+CONFIG=configs/qwen3_4b_a2.json \
+MAX_SAMPLES_PER_DATASET=64 \
+MAX_PROMPTS=128 \
+MAX_NEW_TOKENS=128 \
+RANK_EPOCHS=1 \
+bash scripts/run_full_pipeline.sh
+```
+
+默认会额外运行：
+
+```bash
+python -m dflash_specblock.official_eval \
+  --config configs/qwen3_4b_a2.json \
+  --prompts datasets/processed/specblock_official/prompts_all.jsonl \
+  --output-dir outputs/official_eval \
+  --mode hybrid
+```
+
+如果你配置了 judge 模型，还会对 `MT-Bench` 和 `Alpaca` 进行 LLM judge：
+
+```bash
+export OPENAI_API_KEY=...
+export OPENAI_BASE_URL=https://api.openai.com/v1
+export OPENAI_MODEL=gpt-4o-mini
+```
+
+也可以用兼容 OpenAI Chat Completions 的自部署 judge 服务；环境变量 `JUDGE_API_KEY`、
+`JUDGE_BASE_URL`、`JUDGE_MODEL` 同样可用。
+
+## 10. 官方任务评测
+
+统一评测入口：
+
+```bash
+python -m dflash_specblock.official_eval \
+  --config configs/qwen3_4b_a2.json \
+  --prompts datasets/processed/specblock_official/prompts_all.jsonl \
+  --output-dir outputs/official_eval \
+  --mode hybrid
+```
+
+输出文件：
+
+- `outputs/official_eval/results.jsonl`
+- `outputs/official_eval/summary.json`
+
+当前已实现的 scorer：
+
+- `HumanEval`: `pass@1`
+- `MATH-500`: `accuracy`
+- `NQ-Open`: `exact_match` 和 `f1`
+- `translation`: `BLEU`
+- `MT-Bench`: judge `score`
+- `Alpaca`: judge `win_rate`
+
+如果没有配置 judge，`MT-Bench` 和 `Alpaca` 会保留生成结果，但汇总分数为空。
+
+## 11. 配置说明
 
 默认实验参数采用 SpecBlock 的 reference 设置：`K=4`、`M=2`、tree budget 60、
 bucket mapping `[2,4,10,0]`。
@@ -210,7 +337,7 @@ DFlash checkpoint 的原始 block 为 16（1 个干净 anchor + 15 个未来 tok
 只取 K=4，以匹配 SpecBlock 的块宽并控制树验证预算。可以提高 K，但必须同时重新训练 rank
 head，并重新评估 tree budget 与 NPU 内存。
 
-## 8. 测试
+## 12. 测试
 
 CPU 上可以验证不依赖权重的数学与拓扑：
 

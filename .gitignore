@@ -11,7 +11,7 @@ dist/
 models/
 checkpoints/
 outputs/
+datasets/
 data/*.jsonl
 !data/example_rank_train.jsonl
 .workbuddy/
-

@@ -12,7 +12,9 @@ license = {text = "MIT"}
 dependencies = [
     "transformers==4.57.1",
     "accelerate>=1.0,<2.0",
+    "datasets>=2.20,<4.0",
     "huggingface-hub>=0.34,<1.0",
+    "sacrebleu>=2.4,<3.0",
     "safetensors>=0.4",
     "numpy>=1.24",
     "tqdm>=4.66",
@@ -26,6 +28,9 @@ test = ["pytest>=7.4", "ruff>=0.6"]
 dflash-specblock = "dflash_specblock.cli:main"
 dflash-specblock-train-rank = "dflash_specblock.train_rank_head:main"
 dflash-specblock-benchmark = "dflash_specblock.benchmark:main"
+dflash-specblock-download-datasets = "dflash_specblock.dataset_pipeline:download_main"
+dflash-specblock-generate-rank-data = "dflash_specblock.generate_rank_data:main"
+dflash-specblock-official-eval = "dflash_specblock.official_eval:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
