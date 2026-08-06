@@ -1,0 +1,20 @@
+{
+  "target_model_id": "Qwen/Qwen3-4B",
+  "draft_model_id": "z-lab/Qwen3-4B-DFlash-b16",
+  "target_revision": "1cfa9a7208912126459214e8b04321603b3df60c",
+  "draft_revision": "b74e3a329c4d963783143b1e970d95b002be72bd",
+  "target_local_dir": "models/Qwen3-4B",
+  "draft_local_dir": "models/Qwen3-4B-DFlash-b16",
+  "device": "auto",
+  "dtype": "bfloat16",
+  "block_size": 4,
+  "max_blocks": 2,
+  "tree_budget": 60,
+  "beam_width": 10,
+  "branch_factors": [2, 4, 10, 0],
+  "rank_mode": "heuristic",
+  "rank_checkpoint": null,
+  "max_new_tokens": 128,
+  "enable_thinking": false,
+  "seed": 42
+}

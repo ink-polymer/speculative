@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dflash-specblock"
+version = "0.1.0"
+description = "DFlash diffusion drafting plus SpecBlock tree verification on Ascend NPU"
+readme = "README.md"
+requires-python = ">=3.10,<3.12"
+license = {text = "MIT"}
+dependencies = [
+    "transformers==4.57.1",
+    "accelerate>=1.0,<2.0",
+    "huggingface-hub>=0.34,<1.0",
+    "safetensors>=0.4",
+    "numpy>=1.24",
+    "tqdm>=4.66",
+    "typing-extensions>=4.10",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7.4", "ruff>=0.6"]
+
+[project.scripts]
+dflash-specblock = "dflash_specblock.cli:main"
+dflash-specblock-train-rank = "dflash_specblock.train_rank_head:main"
+dflash-specblock-benchmark = "dflash_specblock.benchmark:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

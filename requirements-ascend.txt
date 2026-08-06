@@ -1,0 +1,10 @@
+# 注意：不要在这里固定 torch/torch_npu。二者必须与服务器已经安装的 CANN 版本严格配套，
+# 具体版本关系见 docs/ASCEND_910B_A2.md。先安装平台配套 wheel，再安装本文件依赖。
+transformers==4.57.1
+accelerate>=1.0,<2.0
+huggingface-hub>=0.34,<1.0
+safetensors>=0.4
+numpy>=1.24
+tqdm>=4.66
+typing-extensions>=4.10
+pytest>=7.4
