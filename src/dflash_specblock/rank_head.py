@@ -62,7 +62,7 @@ def valid_prefix_mask(logits: torch.Tensor, target_ids: torch.Tensor) -> torch.T
     correct = logits.argmax(dim=-1).eq(target_ids)
     prefix_before = torch.ones_like(correct, dtype=torch.bool)
     if correct.shape[-1] > 1:
-        prefix_before[..., 1:] = correct[..., :-1].cumprod(dim=-1).bool()
+        prefix_before[..., 1:] = correct[..., :-1].int().cumprod(dim=-1).bool()
     return prefix_before
 
 

@@ -20,6 +20,10 @@ class IterationStats:
     tree_nodes: int
     accepted_draft_tokens: int
     committed_tokens: int
+    # 分项计时（sub-components of draft_ms / verify_ms），用于定位实现开销：
+    # tree_build_ms ⊂ draft_ms，cache_compact_ms ⊂ verify_ms。
+    tree_build_ms: float = 0.0
+    cache_compact_ms: float = 0.0
 
 
 @dataclass(slots=True)
@@ -103,6 +107,7 @@ class DFlashSpecBlockEngine:
                     draft_cache=draft_cache,
                     cache_prefix_length=int(cache.get_seq_length()),
                 )
+            with DeviceTimer(self.device) as tree_timer:
                 tree = self.tree_builder.build(first, self.adapter.propose_continuation)
 
             with DeviceTimer(self.device) as verify_timer:
@@ -125,11 +130,13 @@ class DFlashSpecBlockEngine:
             generated.extend(committed)
             stats.append(
                 IterationStats(
-                    draft_ms=draft_timer.elapsed_ms,
+                    draft_ms=draft_timer.elapsed_ms + tree_timer.elapsed_ms,
                     verify_ms=verify_timer.elapsed_ms,
                     tree_nodes=len(tree),
                     accepted_draft_tokens=len(verified.path.token_ids),
                     committed_tokens=len(committed),
+                    tree_build_ms=tree_timer.elapsed_ms,
+                    cache_compact_ms=verified.cache_compact_ms,
                 )
             )
             cache = verified.cache

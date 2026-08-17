@@ -116,3 +116,123 @@ def test_installed_transformers_dynamic_cache_can_be_compacted() -> None:
     else:
         actual = compacted.key_cache[0]
     assert actual[0, 0, :, 0].tolist() == [0, 4, 10]
+
+
+# ---------------------------------------------------------------------------
+# 方向 B1：_compact_cache prefix_length 优化路径测试
+# ---------------------------------------------------------------------------
+
+
+def _crop_cache_factory(keys: torch.Tensor) -> type:
+    """构建带 crop 的 layers 风格 cache 测试替身。"""
+
+    class Layer:
+        def __init__(self) -> None:
+            self.keys = keys.clone()
+            self.values = self.keys + 100
+
+    class Cache:
+        def __init__(self) -> None:
+            self.layers = [Layer()]
+
+        def crop(self, length: int) -> None:
+            for layer in self.layers:
+                layer.keys = layer.keys[..., :length, :]
+                layer.values = layer.values[..., :length, :]
+
+    return Cache
+
+
+def test_compact_cache_with_prefix_length_skips_identity_prefix() -> None:
+    """prefix_length > 0 时只搬尾部行，前缀原位不动。"""
+    keys = torch.arange(16).reshape(1, 1, 8, 2)  # col 0 = [0,2,4,6,8,10,12,14]
+    Cache = _crop_cache_factory(keys)
+    # past_length=5, accepted tail = positions [5,7] -> values [10,14]
+    cache = _compact_cache(
+        Cache(),
+        torch.tensor([5, 7], dtype=torch.long),
+        prefix_length=5,
+    )
+    assert cache.layers[0].keys.shape[-2] == 7
+    assert cache.layers[0].keys[0, 0, :, 0].tolist() == [0, 2, 4, 6, 8, 10, 14]
+
+
+def test_compact_cache_prefix_length_matches_full_keep() -> None:
+    """prefix_length 优化路径与全量 keep 结果完全一致。"""
+    keys = torch.arange(16).reshape(1, 1, 8, 2)
+    FullCache = _crop_cache_factory(keys)
+    OptCache = _crop_cache_factory(keys)
+
+    full_result = _compact_cache(
+        FullCache(),
+        torch.tensor([0, 1, 2, 3, 4, 5, 7], dtype=torch.long),
+    )
+    opt_result = _compact_cache(
+        OptCache(),
+        torch.tensor([5, 7], dtype=torch.long),
+        prefix_length=5,
+    )
+    assert torch.equal(full_result.layers[0].keys, opt_result.layers[0].keys)
+    assert torch.equal(full_result.layers[0].values, opt_result.layers[0].values)
+
+
+def test_compact_cache_prefix_length_zero_matches_original_behavior() -> None:
+    """prefix_length=0 (默认) 时行为与原始完全一致。"""
+    keys = torch.arange(10).reshape(1, 1, 5, 2)
+    Cache = _crop_cache_factory(keys)
+    cache = _compact_cache(Cache(), torch.tensor([0, 2, 4]))
+    assert cache.layers[0].keys.shape[-2] == 3
+    assert cache.layers[0].keys[0, 0, :, 0].tolist() == [0, 4, 8]
+
+
+def test_compact_cache_prefix_length_with_dynamic_cache() -> None:
+    """DynamicCache + prefix_length 优化路径。"""
+    from transformers import DynamicCache
+
+    cache = DynamicCache()
+    keys = torch.arange(16, dtype=torch.float32).reshape(1, 1, 8, 2)
+    values = keys + 100
+    cache.update(keys, values, layer_idx=0)
+    compacted = _compact_cache(
+        cache,
+        torch.tensor([5, 7], dtype=torch.long),
+        prefix_length=5,
+    )
+    assert compacted.get_seq_length() == 7
+    if hasattr(compacted, "layers"):
+        actual = compacted.layers[0].keys
+    else:
+        actual = compacted.key_cache[0]
+    assert actual[0, 0, :, 0].tolist() == [0, 2, 4, 6, 8, 10, 14]
+
+
+def test_compact_cache_prefix_length_without_crop_concatenates() -> None:
+    """无 crop 的 cache 替身在 prefix_length > 0 时通过 cat 重建。"""
+
+    class Layer:
+        keys = torch.arange(16).reshape(1, 1, 8, 2)
+        values = keys + 100
+
+    class Cache:
+        layers = [Layer()]
+
+    cache = _compact_cache(
+        Cache(),
+        torch.tensor([5, 7], dtype=torch.long),
+        prefix_length=5,
+    )
+    assert cache.layers[0].keys.shape[-2] == 7
+    assert cache.layers[0].keys[0, 0, :, 0].tolist() == [0, 2, 4, 6, 8, 10, 14]
+
+
+def test_compact_cache_empty_tail_with_prefix_only_crops() -> None:
+    """tail 为空时只做 crop，不触发 index_select。"""
+    keys = torch.arange(16).reshape(1, 1, 8, 2)
+    Cache = _crop_cache_factory(keys)
+    cache = _compact_cache(
+        Cache(),
+        torch.tensor([], dtype=torch.long),
+        prefix_length=5,
+    )
+    assert cache.layers[0].keys.shape[-2] == 5
+    assert cache.layers[0].keys[0, 0, :, 0].tolist() == [0, 2, 4, 6, 8]

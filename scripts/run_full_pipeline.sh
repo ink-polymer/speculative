@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-source /usr/local/Ascend/ascend-toolkit/set_env.sh
+source /opt/home/developer/Ascend/ascend-toolkit/set_env.sh
 export ASCEND_RT_VISIBLE_DEVICES="${ASCEND_RT_VISIBLE_DEVICES:-0}"
 
 CONFIG="${CONFIG:-configs/qwen3_4b_a2.json}"

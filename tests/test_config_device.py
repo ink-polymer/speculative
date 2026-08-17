@@ -44,7 +44,10 @@ def test_formal_a2_config_is_fail_closed_and_uses_paper_defaults() -> None:
     config = ExperimentConfig.from_json(project_root / "configs" / "qwen3_4b_a2.json")
     assert config.device == "npu:0"
     assert config.rank_mode == "learned"
-    assert config.rank_checkpoint == "checkpoints/rank_head.pt"
+    assert config.rank_checkpoint == "checkpoints/rank_head_tree15.pt"
+    assert config.block_size == 15
+    assert config.max_blocks == 1
+    assert config.beam_width == 4
     assert config.branch_factors == (2, 4, 10, 0)
     assert config.target_model_id == "Qwen/Qwen3-4B"
     assert config.draft_model_id == "z-lab/Qwen3-4B-DFlash-b16"

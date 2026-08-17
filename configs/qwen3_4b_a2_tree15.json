@@ -12,8 +12,8 @@
   "tree_budget": 60,
   "beam_width": 4,
   "branch_factors": [2, 4, 10, 0],
-  "rank_mode": "learned",
-  "rank_checkpoint": "checkpoints/rank_head_tree15.pt",
+  "rank_mode": "heuristic",
+  "rank_checkpoint": null,
   "max_new_tokens": 128,
   "enable_thinking": false,
   "seed": 42
