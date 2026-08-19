@@ -1,0 +1,46 @@
+{
+  "mode": "hybrid",
+  "prompts": 2000,
+  "judge_enabled": false,
+  "datasets": {
+    "alpaca": {
+      "count": 1775,
+      "metrics": {
+        "win_rate": null
+      }
+    },
+    "nq_open": {
+      "count": 102,
+      "metrics": {
+        "exact_match": 0.0,
+        "f1": 0.031020303370445434
+      }
+    },
+    "translation": {
+      "count": 98,
+      "metrics": {
+        "bleu": 26.910021951415292,
+        "metric": "sacrebleu"
+      }
+    },
+    "humaneval": {
+      "count": 4,
+      "metrics": {
+        "pass_at_1": 0.0
+      }
+    },
+    "math_500": {
+      "count": 18,
+      "metrics": {
+        "accuracy": 0.0
+      }
+    },
+    "mt_bench": {
+      "count": 3,
+      "metrics": {
+        "judge_score": null
+      }
+    }
+  },
+  "results": "/mnt/workspace/gitCode/speculative/outputs/official_eval_overnight/results.jsonl"
+}

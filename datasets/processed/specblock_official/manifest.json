@@ -1,0 +1,20 @@
+{
+  "suite": "specblock_official",
+  "files": {
+    "mt_bench": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/mt_bench.jsonl",
+    "humaneval": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/humaneval.jsonl",
+    "math_500": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/math_500.jsonl",
+    "alpaca": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/alpaca.jsonl",
+    "nq_open": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/nq_open.jsonl",
+    "translation": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/translation.jsonl",
+    "all": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/prompts_all.jsonl"
+  },
+  "counts": {
+    "mt_bench": 80,
+    "humaneval": 164,
+    "math_500": 500,
+    "alpaca": 52002,
+    "nq_open": 3610,
+    "translation": 3003
+  }
+}
