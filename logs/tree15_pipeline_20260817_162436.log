@@ -1,0 +1,24 @@
+[2026-08-17 16:24:36] ============================================================
+[2026-08-17 16:24:36]   DFlash-SpecBlock 树模式训练流水线 (block_size=15)
+[2026-08-17 16:24:36]   block_size=15, beam_width=4, max_blocks=1, tree_budget=60
+[2026-08-17 16:24:36]   P0: prune 保护 greedy 主链 (is_main_chain)
+[2026-08-17 16:24:36]   rank 采样: 100/数据集, benchmark: 200 条
+[2026-08-17 16:24:36] ============================================================
+
+============================================================
+[2026-08-17 16:24:36] [步骤 3] 生成 rank 训练集 (每数据集上限 100)
+============================================================
+  mt_bench: 80 / 80
+  humaneval: 100 / 164
+  math_500: 100 / 500
+  alpaca: 100 / 52002
+  nq_open: 100 / 3610
+  translation: 100 / 3003
+分层采样总计: 580 条 -> datasets/processed/specblock_official/prompts_rank_train_tree15.jsonl
+[2026-08-17 16:24:37] rank 训练集: 580 条, 预计 ~1h 56m 0s
+[W817 16:24:39.191748956 FunctionLoader.cpp:48] Warning: LD_PRELOAD detected, FunctionLoader prefers RTLD_DEFAULT for symbol resolution. (function operator())
+/home/developer/.local/lib/python3.11/site-packages/requests/__init__.py:113: RequestsDependencyWarning: urllib3 (2.7.0) or chardet (7.4.3)/charset_normalizer (3.4.7) doesn't match a supported version!
+  warnings.warn(
+Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:00<00:00, 14.56it/s]Loading checkpoint shards: 100%|██████████| 3/3 [00:00<00:00, 21.44it/s]
+[W817 16:24:52.450188753 NPUCachingAllocator.cpp:199] Warning: The current CANN and Soc versions require processing for 32 padding size, with memory allocation. (function operator())
+generate rank train data:   0%|          | 0/580 [00:00<?, ?it/s]generate rank train data:   0%|          | 0/580 [00:16<?, ?it/s, rows=1, tokens=128]generate rank train data:   0%|          | 1/580 [00:16<2:39:07, 16.49s/it, rows=1, tokens=128]generate rank train data:   0%|          | 1/580 [00:34<2:39:07, 16.49s/it, rows=2, tokens=128]generate rank train data:   0%|          | 2/580 [00:34<2:46:34, 17.29s/it, rows=2, tokens=128]generate rank train data:   0%|          | 2/580 [00:45<2:46:34, 17.29s/it, rows=3, tokens=92] generate rank train data:   1%|          | 3/580 [00:45<2:20:02, 14.56s/it, rows=3, tokens=92]generate rank train data:   1%|          | 3/580 [01:01<2:20:02, 14.56s/it, rows=4, tokens=128]generate rank train data:   1%|          | 4/580 [01:01<2:22:52, 14.88s/it, rows=4, tokens=128]generate rank train data:   1%|          | 4/580 [01:16<2:22:52, 14.88s/it, rows=5, tokens=128]generate rank train data:   1%|          | 5/580 [01:16<2:25:19, 15.17s/it, rows=5, tokens=128]generate rank train data:   1%|          | 5/580 [01:31<2:25:19, 15.17s/it, rows=6, tokens=128]generate rank train data:   1%|          | 6/580 [01:31<2:24:43, 15.13s/it, rows=6, tokens=128]generate rank train data:   1%|          | 6/580 [01:46<2:24:43, 15.13s/it, rows=7, tokens=128]generate rank train data:   1%|          | 7/580 [01:46<2:24:41, 15.15s/it, rows=7, tokens=128]generate rank train data:   1%|          | 7/580 [01:50<2:24:41, 15.15s/it, rows=8, tokens=26] generate rank train data:   1%|▏         | 8/580 [01:50<1:47:56, 11.32s/it, rows=8, tokens=26]generate rank train data:   1%|▏         | 8/580 [01:53<1:47:56, 11.32s/it, rows=9, tokens=29]generate rank train data:   2%|▏         | 9/580 [01:53<1:24:25,  8.87s/it, rows=9, tokens=29]generate rank train data:   2%|▏         | 9/580 [02:08<1:24:25,  8.87s/it, rows=10, tokens=128]generate rank train data:   2%|▏         | 10/580 [02:08<1:43:28, 10.89s/it, rows=10, tokens=128]generate rank train data:   2%|▏         | 10/580 [02:11<1:43:28, 10.89s/it, rows=11, tokens=22] generate rank train data:   2%|▏         | 11/580 [02:11<1:19:24,  8.37s/it, rows=11, tokens=22]generate rank train data:   2%|▏         | 11/580 [02:27<1:19:24,  8.37s/it, rows=12, tokens=128]generate rank train data:   2%|▏         | 12/580 [02:27<1:39:56, 10.56s/it, rows=12, tokens=128]generate rank train data:   2%|▏         | 12/580 [02:28<1:39:56, 10.56s/it, rows=13, tokens=8]  generate rank train data:   2%|▏         | 13/580 [02:28<1:12:18,  7.65s/it, rows=13, tokens=8]generate rank train data:   2%|▏         | 13/580 [02:43<1:12:18,  7.65s/it, rows=14, tokens=128]generate rank train data:   2%|▏         | 14/580 [02:43<1:34:30, 10.02s/it, rows=14, tokens=128]generate rank train data:   2%|▏         | 14/580 [02:46<1:34:30, 10.02s/it, rows=15, tokens=25] generate rank train data:   3%|▎         | 15/580 [02:46<1:14:44,  7.94s/it, rows=15, tokens=25]generate rank train data:   3%|▎         | 15/580 [03:02<1:14:44,  7.94s/it, rows=16, tokens=128]generate rank train data:   3%|▎         | 16/580 [03:02<1:36:08, 10.23s/it, rows=16, tokens=128]

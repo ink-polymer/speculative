@@ -14,7 +14,10 @@ import torch
 from torch import nn
 
 
-def distribution_summary(logits: torch.Tensor) -> torch.Tensor:
+def distribution_summary(
+    logits: torch.Tensor,
+    top20_values: torch.Tensor | None = None,
+) -> torch.Tensor:
     """返回 SpecBlock 官方 rank head 使用的 15 维分布摘要。
 
     与官方 ``_llama3_specblock_base`` 完全一致地采用 top-20 快速路径：归一化常数用 top-20
@@ -24,11 +27,16 @@ def distribution_summary(logits: torch.Tensor) -> torch.Tensor:
 
     15 维构成：top-10 log-prob (10) + top1相对 rank2/3/5 的 logit gap (3)
     + top1 probability (1) + entropy (1)。
+
+    当 ``top20_values`` 已由调用方预算好时直接复用，避免在 151K 词表上重复 topk。
     """
     if logits.shape[-1] < 20:
         raise ValueError("词表至少需要 20 个 token 才能计算官方 top-20 摘要")
     work = logits.float()
-    top20_values = torch.topk(work, k=20, dim=-1).values
+    if top20_values is not None:
+        top20_values = top20_values.float()
+    else:
+        top20_values = torch.topk(work, k=20, dim=-1).values
     log_z = torch.logsumexp(top20_values, dim=-1, keepdim=True)
 
     top10_values = top20_values[..., :10]
@@ -84,7 +92,12 @@ class DFlashRankHead(nn.Module):
             nn.Linear(projection_size, 4, bias=False),
         )
 
-    def forward(self, hidden: torch.Tensor, logits: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        hidden: torch.Tensor,
+        logits: torch.Tensor,
+        top20_values: torch.Tensor | None = None,
+    ) -> torch.Tensor:
         # rank loss 不得反向改变 DFlash trunk 或 LM head；论文中的 sg(.) 在此显式实现。
         # adapter 的 raw forward 由 inference_mode 保护。训练 rank head 时，inference tensor
         # 不能被 autograd 保存，因此只在已经退出 inference_mode 后复制成普通 tensor；正式
@@ -97,7 +110,7 @@ class DFlashRankHead(nn.Module):
             if detached_logits.is_inference():
                 detached_logits = detached_logits.clone()
         rank_input = torch.cat(
-            [detached_hidden.float(), distribution_summary(detached_logits)], dim=-1
+            [detached_hidden.float(), distribution_summary(detached_logits, top20_values)], dim=-1
         )
         parameter_dtype = self.classifier[0].weight.dtype
         return self.classifier(rank_input.to(parameter_dtype))
@@ -106,7 +119,7 @@ class DFlashRankHead(nn.Module):
 class HeuristicRanker(nn.Module):
     """仅用于工程连通性测试的无参数近似器，不等价于论文训练后的 rank head。"""
 
-    def forward(self, hidden: torch.Tensor, logits: torch.Tensor) -> torch.Tensor:
+    def forward(self, hidden: torch.Tensor, logits: torch.Tensor, **kwargs) -> torch.Tensor:
         del hidden
         top = torch.topk(logits.float(), k=2, dim=-1).values
         margin = top[..., 0] - top[..., 1]
@@ -137,11 +150,16 @@ def load_rank_head(
         raise ValueError("rank checkpoint projection_size 必须为正整数")
     if int(metadata["updates"]) < 1:
         raise ValueError("rank checkpoint 没有有效训练更新，不能用于正式实验")
+    # P2 修复：max_blocks 绑定校验。旧 checkpoint 可能没有 max_blocks 字段，
+    # 此时跳过校验（向后兼容）；新 checkpoint 必须与推理配置一致。
+    checkpoint_max_blocks = metadata.get("max_blocks")
     required_metadata: dict[str, Any] = {
         "architecture": "specblock_h15_mlp_v1",
         "hidden_size": hidden_size,
     }
     required_metadata.update(dict(expected_metadata or {}))
+    if checkpoint_max_blocks is not None and "max_blocks" in (expected_metadata or {}):
+        required_metadata["max_blocks"] = expected_metadata["max_blocks"]
     missing = sorted(key for key in required_metadata if key not in metadata)
     if missing:
         raise ValueError(f"rank checkpoint 缺少严格复现实验元数据: {missing}")

@@ -110,21 +110,29 @@ def main() -> None:
 
                 # SpecBlock §3.3：均匀采样 cut∈{1,...,K}，用第一块 cached h(L)
                 # 绕过 target projection 作为下一块条件，并将监督序列平移 cut 个位置。
-                cut = random.randint(1, config.block_size)
-                continuation_anchor = labels[:, cut - 1]
-                continuation_labels = ids[
-                    anchor_index + cut + 1 : anchor_index + cut + 1 + config.block_size
-                ].unsqueeze(0).to(device)
-                continuation_logits, continuation_hidden = adapter.draft_continuation_raw(
-                    draft_context=draft_hidden[:, cut - 1, :],
-                    anchor_ids=continuation_anchor,
-                )
-                continuation_buckets = target_rank_buckets(
-                    continuation_logits, continuation_labels
-                )
-                continuation_valid = valid_prefix_mask(
-                    continuation_logits, continuation_labels
-                )
+                # 训练/推理一致性：max_blocks=1 时推理不会触发 continuation，训练也不做。
+                do_continuation = config.max_blocks >= 2
+                cut = random.randint(1, config.block_size) if do_continuation else 0
+                if do_continuation:
+                    continuation_anchor = labels[:, cut - 1]
+                    continuation_labels = ids[
+                        anchor_index + cut + 1 : anchor_index + cut + 1 + config.block_size
+                    ].unsqueeze(0).to(device)
+                    continuation_logits, continuation_hidden = adapter.draft_continuation_raw(
+                        draft_context=draft_hidden[:, cut - 1, :],
+                        anchor_ids=continuation_anchor,
+                    )
+                    continuation_buckets = target_rank_buckets(
+                        continuation_logits, continuation_labels
+                    )
+                    continuation_valid = valid_prefix_mask(
+                        continuation_logits, continuation_labels
+                    )
+                else:
+                    continuation_logits = None
+                    continuation_hidden = None
+                    continuation_buckets = None
+                    continuation_valid = None
                 # SpecBlock 官方明确「Block 间不做 filter」：推理触发下一块时，起点位置的
                 # top-1 恰好可能是错的，用「前 cut 位全对」过滤掉的正是推理真实分布中的
                 # 核心场景。这里只保留块内 valid-prefix mask，不再叠加跨块前缀正确性条件。
@@ -134,15 +142,16 @@ def main() -> None:
             # inference_mode 后 clone 一次，前向仍然完全在 inference_mode 中完成。
             buckets = buckets.clone()
             valid = valid.clone()
-            continuation_buckets = continuation_buckets.clone()
-            continuation_valid = continuation_valid.clone()
+            if continuation_buckets is not None:
+                continuation_buckets = continuation_buckets.clone()
+                continuation_valid = continuation_valid.clone()
 
             class_logits = rank_head(draft_hidden, draft_logits)
-            continuation_class_logits = rank_head(continuation_hidden, continuation_logits)
             losses: list[torch.Tensor] = []
             if valid.any():
                 losses.append(F.cross_entropy(class_logits[valid], buckets[valid]))
-            if continuation_valid.any():
+            if continuation_logits is not None and continuation_valid.any():
+                continuation_class_logits = rank_head(continuation_hidden, continuation_logits)
                 losses.append(
                     F.cross_entropy(
                         continuation_class_logits[continuation_valid],
@@ -159,7 +168,7 @@ def main() -> None:
             total_updates += 1
             progress.set_postfix(
                 loss=f"{loss.item():.4f}",
-                valid=int(valid.sum().item() + continuation_valid.sum().item()),
+                valid=int(valid.sum().item() + (continuation_valid.sum().item() if continuation_valid is not None else 0)),
             )
 
     if total_updates == 0:
@@ -179,6 +188,7 @@ def main() -> None:
                 "projection_size": rank_head.projection_size,
                 "architecture": "specblock_h15_mlp_v1",
                 "block_size": config.block_size,
+                "max_blocks": config.max_blocks,
                 "updates": total_updates,
                 "target_model_id": config.target_model_id,
                 "target_revision": config.target_revision,

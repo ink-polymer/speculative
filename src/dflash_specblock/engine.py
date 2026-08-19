@@ -73,7 +73,6 @@ class DFlashSpecBlockEngine:
                 return_dict=True,
             )
         anchor = int(output.logits[0, -1].argmax(dim=-1).item())
-        # 首轮把完整 prompt hidden 作为 DFlash 增量；后续轮只传刚验证的新 token hidden。
         target_update = self.adapter.extract_target_context(output.hidden_states)
         return anchor, output.past_key_values, target_update, timer.elapsed_ms
 
@@ -99,16 +98,31 @@ class DFlashSpecBlockEngine:
         generated: list[int] = [anchor]
         stats: list[IterationStats] = []
 
+        # 自适应 tree_budget：根据上一轮接受长度缩放预算，减少低接受时的 verify token 数。
+        # 首轮乐观使用满预算；后续按 ratio = accepted / block_size 在 [block_size*2, tree_budget] 间插值。
+        prev_accepted = self.tree_builder.block_size
+        K = self.tree_builder.block_size
+        max_budget = self.tree_builder.tree_budget
+        min_budget = K * 2
+
         while len(generated) < max_new_tokens and anchor not in stop_token_ids:
+            ratio = prev_accepted / K
+            adaptive_budget = int(min_budget + ratio * (max_budget - min_budget))
+            adaptive_budget = max(min_budget, min(max_budget, adaptive_budget))
+
+            cache_prefix = int(cache.get_seq_length())
+
             with DeviceTimer(self.device) as draft_timer:
                 first = self.adapter.propose_first(
                     target_context=target_update,
                     anchor_ids=torch.tensor([anchor], dtype=torch.long, device=self.device),
                     draft_cache=draft_cache,
-                    cache_prefix_length=int(cache.get_seq_length()),
+                    cache_prefix_length=cache_prefix,
                 )
             with DeviceTimer(self.device) as tree_timer:
-                tree = self.tree_builder.build(first, self.adapter.propose_continuation)
+                tree = self.tree_builder.build(
+                    first, self.adapter.propose_continuation, budget=adaptive_budget
+                )
 
             with DeviceTimer(self.device) as verify_timer:
                 verified = self.verifier.verify(
@@ -142,6 +156,7 @@ class DFlashSpecBlockEngine:
             cache = verified.cache
             target_update = verified.target_context
             anchor = verified.path.bonus_token_id
+            prev_accepted = len(verified.path.token_ids)
 
             if stop_reached:
                 break

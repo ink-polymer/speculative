@@ -1,0 +1,74 @@
+[W817 08:57:15.150426272 FunctionLoader.cpp:48] Warning: LD_PRELOAD detected, FunctionLoader prefers RTLD_DEFAULT for symbol resolution. (function operator())
+[1m============================= test session starts ==============================[0m
+platform linux -- Python 3.11.4, pytest-8.3.2, pluggy-1.6.0
+rootdir: /mnt/workspace/gitCode/speculative
+configfile: pyproject.toml
+plugins: hydra-core-1.3.4, anyio-4.14.2, xdist-3.6.1, typeguard-4.6.0, forked-1.6.0
+collected 5 items
+
+tests/test_integration_speedup.py [W817 08:57:24.958686634 NPUCachingAllocator.cpp:199] Warning: The current CANN and Soc versions require processing for 32 padding size, with memory allocation. (function operator())
+[32m.[0m[32m.[0m
+[加速比测试]
+{
+  "max_new_tokens": 40,
+  "baseline_ms": 33.62,
+  "hybrid_ms": 269.95,
+  "speedup": "0.12x",
+  "iterations": 10,
+  "total_accepted_draft": 30,
+  "total_committed": 39,
+  "average_accepted_length": 3.9,
+  "tree_nodes_per_iter": [
+    60,
+    60,
+    60,
+    60,
+    60,
+    60,
+    60,
+    60,
+    60,
+    60
+  ],
+  "tree_build_ms_per_iter": [
+    7.15,
+    7.2,
+    7.12,
+    7.11,
+    7.03,
+    7.04,
+    7.06,
+    7.04,
+    7.0,
+    7.06
+  ],
+  "cache_compact_ms_per_iter": [
+    0.66,
+    0.65,
+    0.66,
+    0.68,
+    0.67,
+    0.65,
+    0.67,
+    0.66,
+    0.65,
+    0.66
+  ]
+}
+[32m.[0m[32m.[0m[32m.[0m
+
+[33m=============================== warnings summary ===============================[0m
+../../../../home/developer/.local/lib/python3.11/site-packages/torch/jit/_script.py:365: 14 warnings
+  /home/developer/.local/lib/python3.11/site-packages/torch/jit/_script.py:365: DeprecationWarning: `torch.jit.script_method` is deprecated. Please switch to `torch.compile` or `torch.export`.
+    warnings.warn(
+
+../../../../home/developer/.local/lib/python3.11/site-packages/requests/__init__.py:113
+  /home/developer/.local/lib/python3.11/site-packages/requests/__init__.py:113: RequestsDependencyWarning: urllib3 (2.7.0) or chardet (7.4.3)/charset_normalizer (3.4.7) doesn't match a supported version!
+    warnings.warn(
+
+tests/test_integration_speedup.py::test_tree_framework_produces_multi_node_tree
+  /mnt/workspace/gitCode/speculative/src/dflash_specblock/rank_head.py:117: UserWarning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (Triggered internally at ../torch_npu/csrc/aten/common/TensorFactories.cpp:348.)
+    return torch.nn.functional.one_hot(buckets, num_classes=4).float() * 20.0
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+[33m======================= [32m5 passed[0m, [33m[1m16 warnings[0m[33m in 13.91s[0m[33m ========================[0m

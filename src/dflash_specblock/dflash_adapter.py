@@ -163,7 +163,15 @@ class DFlashBlockAdapter:
             draft_cache=draft_cache,
             cache_prefix_length=cache_prefix_length,
         )
-        return BlockProposal(logits=logits, hidden=hidden, rank_logits=self.ranker(hidden, logits))
+        top20_values, top20_ids = torch.topk(logits.float(), k=20, dim=-1)
+        rank_logits = self.ranker(hidden, logits, top20_values=top20_values)
+        return BlockProposal(
+            logits=logits,
+            hidden=hidden,
+            rank_logits=rank_logits,
+            top20_values=top20_values,
+            top20_ids=top20_ids,
+        )
 
     @torch.inference_mode()
     def draft_continuation_raw(
@@ -214,4 +222,12 @@ class DFlashBlockAdapter:
     ) -> BlockProposal:
         """批量扩展 pending 节点；draft_context 是各起点缓存的 h(L)。"""
         logits, hidden = self.draft_continuation_raw(draft_context, anchor_ids)
-        return BlockProposal(logits=logits, hidden=hidden, rank_logits=self.ranker(hidden, logits))
+        top20_values, top20_ids = torch.topk(logits.float(), k=20, dim=-1)
+        rank_logits = self.ranker(hidden, logits, top20_values=top20_values)
+        return BlockProposal(
+            logits=logits,
+            hidden=hidden,
+            rank_logits=rank_logits,
+            top20_values=top20_values,
+            top20_ids=top20_ids,
+        )

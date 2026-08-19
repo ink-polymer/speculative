@@ -1,0 +1,53 @@
+[2026-08-08 12:41:45] ============================================================
+[2026-08-08 12:41:45]   DFlash-SpecBlock 全量过夜流水线（~2 天版）
+[2026-08-08 12:41:45] ============================================================
+[2026-08-08 12:41:45] 全量下载 (MAX_SAMPLES=0), rank 训练采样 500/数据集
+[2026-08-08 12:41:45] benchmark/eval 上限: 2000 条
+[2026-08-08 12:41:45] MAX_NEW_TOKENS=128, RANK_EPOCHS=3
+[2026-08-08 12:41:45] ============================================================
+
+============================================================
+[2026-08-08 12:41:45] [步骤 1/6] 模型校验
+============================================================
+[2026-08-08 12:41:45] 步骤1已完成，跳过
+
+============================================================
+[2026-08-08 12:41:45] [步骤 2/6] 全量下载 benchmark 数据集（无上限）
+============================================================
+[2026-08-08 12:41:45] 步骤2已完成，跳过
+
+============================================================
+[2026-08-08 12:41:45] [步骤 3/6] 生成 rank 训练集 (分层采样, 每数据集上限 500)
+============================================================
+[2026-08-08 12:41:45] 步骤3已完成，跳过
+
+============================================================
+[2026-08-08 12:41:45] [步骤 4/6] 训练 rank head (3 epochs, lr=2e-4)
+============================================================
+[2026-08-08 12:41:45] 步骤4已完成，跳过
+[2026-08-08 12:41:45] benchmark prompts 文件已存在，跳过生成
+
+============================================================
+[2026-08-08 12:41:45] [步骤 5/6] 运行 benchmark (2000 条, baseline+hybrid)
+============================================================
+[2026-08-08 12:41:45] 预计 benchmark 耗时: ~20h 0m 0s
+[W808 12:41:48.826939359 FunctionLoader.cpp:48] Warning: LD_PRELOAD detected, FunctionLoader prefers RTLD_DEFAULT for symbol resolution. (function operator())
+/home/developer/.local/lib/python3.11/site-packages/requests/__init__.py:113: RequestsDependencyWarning: urllib3 (2.7.0) or chardet (7.4.3)/charset_normalizer (3.4.7) doesn't match a supported version!
+  warnings.warn(
+Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:00<00:00, 13.94it/s]Loading checkpoint shards: 100%|██████████| 3/3 [00:00<00:00, 20.54it/s]
+[W808 12:42:01.257923831 NPUCachingAllocator.cpp:199] Warning: The current CANN and Soc versions require processing for 32 padding size, with memory allocation. (function operator())
+benchmark:   0%|          | 0/2000 [00:00<?, ?prompt/s]benchmark:   0%|          | 0/2000 [00:03<?, ?prompt/s, match=1, speedup=1.75x]benchmark:   0%|          | 1/2000 [00:03<1:40:09,  3.01s/prompt, match=1, speedup=1.75x]benchmark:   0%|          | 1/2000 [00:31<1:40:09,  3.01s/prompt, match=1, speedup=1.30x]benchmark:   0%|          | 2/2000 [00:31<10:00:25, 18.03s/prompt, match=1, speedup=1.30x]benchmark:   0%|          | 2/2000 [00:47<10:00:25, 18.03s/prompt, match=1, speedup=1.40x]benchmark:   0%|          | 3/2000 [00:47<9:27:15, 17.04s/prompt, match=1, speedup=1.40x] benchmark:   0%|          | 3/2000 [01:15<9:27:15, 17.04s/prompt, match=0, speedup=1.39x]benchmark:   0%|          | 3/2000 [01:15<14:01:37, 25.29s/prompt, match=0, speedup=1.39x]
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/mnt/workspace/gitCode/speculative/src/dflash_specblock/benchmark.py", line 171, in <module>
+    main()
+  File "/mnt/workspace/gitCode/speculative/src/dflash_specblock/benchmark.py", line 145, in main
+    raise RuntimeError(
+RuntimeError: 提示词 3 的 hybrid 输出与 target greedy baseline 在 token 48 处不一致；已停止，禁止报告该实验结果。
+{"index": 0, "prompt": "Rewrite the following sentence using more formal language.\n\nInput:\nHe walks to the store to buy bread.", "baseline_tokens": 10, "baseline_ms": 1877.2148279822432, "hybrid_tokens": 10, "hybrid_ms": 1075.6717250333168, "wall_clock_speedup": 1.74515587264702, "average_committed_per_verify": 3.0, "verify_iterations": 3, "greedy_exact_match": true, "first_mismatch_index": null}
+{"index": 1, "prompt": "What features should a refrigerator have?", "baseline_tokens": 128, "baseline_ms": 16112.972785020247, "hybrid_tokens": 128, "hybrid_ms": 12423.716384801082, "wall_clock_speedup": 1.2969527221928958, "average_committed_per_verify": 2.54, "verify_iterations": 50, "greedy_exact_match": true, "first_mismatch_index": null}
+{"index": 2, "prompt": "Determine if the following statement is true or false. Output 1 for true and 0 for false.\n\nInput:\nSmiles are contagious.", "baseline_tokens": 71, "baseline_ms": 9240.501729014795, "hybrid_tokens": 71, "hybrid_ms": 6620.322923758067, "wall_clock_speedup": 1.3957780965417572, "average_committed_per_verify": 2.8, "verify_iterations": 25, "greedy_exact_match": true, "first_mismatch_index": null}
+{"index": 3, "prompt": "Suggest a name for given concept.\n\nInput:\nConcept: A social media platform for artists", "baseline_tokens": 128, "baseline_ms": 16518.484428990632, "hybrid_tokens": 128, "hybrid_ms": 11908.454566902947, "wall_clock_speedup": 1.3871224293788966, "average_committed_per_verify": 2.760869565217391, "verify_iterations": 46, "greedy_exact_match": false, "first_mismatch_index": 48}
+[ERROR] 2026-08-08-12:43:19 (PID:441033, Device:0, RankID:-1) ERR99999 UNKNOWN applicaiton exception
+[2026-08-08 12:43:24] *** 错误 *** Benchmark 运行失败

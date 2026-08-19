@@ -26,7 +26,8 @@
 3. 后续块从 pending 起点缓存的 DFlash `h(L)` 批量继续扩散，严格绕过第一块 `fc`；
 4. SpecBlock 四 bucket 动态 branching、block-1 slot-0 beam、greedy 主链、兄弟候选、
    give-up、hitchhike 与 adaptive beam；
-5. 按累计 log probability 且保留祖先的 tree-budget 剪枝；
+5. 按累计 log probability 且保留祖先的 tree-budget 剪枝（P0 修复：greedy 主链
+   无条件保留，不参与竞争性剪枝——主链是接受长度的唯一来源且不额外占 draft 成本）；
 6. 目标模型 ancestor-only 4D attention mask、单次并行树验证、逐叶枚举的最长 greedy
    接受路径；
 7. DynamicCache 非连续接受路径压缩；
@@ -43,6 +44,12 @@ speculative rejection sampling，不能用 greedy 路径逻辑冒充。
 - `rank_mode="learned"`：没有 rank checkpoint 时在加载大模型前直接失败；
 - `branch_factors=[2,4,10,0]`：官方 `RANK_SLOT_TOPK` 常量的 reference mapping；
 - 固定 Qwen/DFlash Hugging Face commit SHA，保证权重和 remote code 可复现。
+
+> **P1 说明（max_blocks=1）**：所有正式 NPU 配置当前使用 `max_blocks=1`，即只构建
+> 单块内 slot 兄弟树，不触发跨块 `propose_continuation` 扩展。这意味着 README 第 3 条
+> 描述的跨块扩展在当前生产路径上是**未启用**的。代码已实现且通过测试，但 M>=2 的价值
+> 尚未经 A2 消融实验确认。若据此写论文，需明确标注实验结果来自 M=1 配置，或先恢复
+> M>=2 做判定实验。
 
 ## heuristic 只用于 smoke test
 
@@ -356,7 +363,9 @@ Transformers DynamicCache 裁剪和 4D tree mask。真机测试按用户要求�
   官方 CUDA/Triton 性能 kernel，但树的语义和验证结果不因此改变。
 - 仅 batch=1、greedy decoding；benchmark 支持多提示词但逐条运行。
 - 唯一的方法创新是：用 DFlash diffusion block 替换 SpecBlock 原 AR/shift block，并把 cached
-  DFlash `h(L)` 作为后续块逐层 KV 条件。该接口的收益仍需 A2 消融实验确认。
+  DFlash `h(L)` 作为后续块逐层 KV 条件。该接口已在代码中实现并通过单元测试，但当前所有
+  正式配置使用 `max_blocks=1`，跨块扩展路径未在生产中启用。其收益仍需 M>=2 的 A2 消融
+  实验确认。
 - 不包含模型权重和训练数据。
 - `heuristic` 的分支质量不可用于得出“优于 DFlash/SpecBlock”的结论。
 

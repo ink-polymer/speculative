@@ -398,3 +398,107 @@ def test_engine_produces_correct_sequence() -> None:
         f"got:      {tokens}\n"
         f"expected: {expected}"
     )
+
+
+# ---------------------------------------------------------------------------
+# P2 修复：生产配置端到端覆盖
+# ---------------------------------------------------------------------------
+
+PROD_BLOCK_SIZE = 15
+PROD_MAX_BLOCKS = 1
+PROD_TREE_BUDGET = 60
+PROD_BEAM_WIDTH = 4
+PROD_BRANCH_FACTORS = (2, 4, 10, 0)
+
+
+def _create_prod_engine(device: torch.device) -> tuple[DFlashSpecBlockEngine, _MockTarget]:
+    """用生产配置（K=15, M=1, budget=60）创建 engine。"""
+    embedding = _make_embedding()
+    lm_head = _make_lm_head()
+    target = _MockTarget(embedding, lm_head).to(device).eval()
+    draft = _MockDraft(embedding, lm_head).to(device).eval()
+    ranker = HeuristicRanker().to(device).eval()
+    adapter = DFlashBlockAdapter(
+        target=target,
+        draft=draft,
+        ranker=ranker,
+        block_size=PROD_BLOCK_SIZE,
+        mask_token_id=MASK_TOKEN_ID,
+    )
+    tree_builder = SpecBlockTreeBuilder(
+        block_size=PROD_BLOCK_SIZE,
+        max_blocks=PROD_MAX_BLOCKS,
+        tree_budget=PROD_TREE_BUDGET,
+        beam_width=PROD_BEAM_WIDTH,
+        branch_factors=PROD_BRANCH_FACTORS,
+    )
+    verifier = TargetTreeVerifier(
+        target=target,
+        target_layer_ids=TARGET_LAYER_IDS,
+        device=device,
+        dtype=torch.float32,
+    )
+    engine = DFlashSpecBlockEngine(
+        target=target,
+        adapter=adapter,
+        tree_builder=tree_builder,
+        verifier=verifier,
+        device=device,
+    )
+    return engine, target
+
+
+def test_prod_config_lossless() -> None:
+    """生产配置 K=15/M=1/budget=60 的无损保证。"""
+    device = resolve_device("auto")
+    engine, target = _create_prod_engine(device)
+    input_ids = torch.tensor([[5]], dtype=torch.long, device=device)
+    max_new_tokens = 30
+
+    baseline_ids, _ = _baseline_greedy(target, input_ids, max_new_tokens, device)
+    hybrid_result = engine.generate(input_ids, max_new_tokens=max_new_tokens)
+    hybrid_ids = hybrid_result.generated_ids[0].tolist()
+
+    assert hybrid_ids == baseline_ids, (
+        f"生产配置 hybrid 输出与 baseline 不一致！\n"
+        f"hybrid:   {hybrid_ids[:10]}...\n"
+        f"baseline: {baseline_ids[:10]}..."
+    )
+
+
+def test_prod_config_main_chain_survives_prune() -> None:
+    """P0 验证：生产配置下 greedy 主链在 prune 后完整保留。
+
+    K=15, budget=60, beam=4 → 主链 15 个节点 + 兄弟。
+    如果 prune 保护生效，主链 15 层全部保留。
+    """
+    device = resolve_device("auto")
+    engine, _ = _create_prod_engine(device)
+    input_ids = torch.tensor([[5]], dtype=torch.long, device=device)
+    result = engine.generate(input_ids, max_new_tokens=20)
+
+    assert len(result.iterations) > 0
+    # 每轮的主链深度应接近 K=15（完美 draft 下应等于 15）
+    for stats in result.iterations:
+        # accepted_draft_tokens 是主链被接受的数量
+        # 完美 draft 下应接受全部 K-1=14 个 draft token + 1 bonus = 15
+        assert stats.accepted_draft_tokens > 0, "主链未接受任何 token"
+        # tree_nodes 应 >= K（主链至少 15 个节点）
+        assert stats.tree_nodes >= PROD_BLOCK_SIZE, (
+            f"树节点 {stats.tree_nodes} < K={PROD_BLOCK_SIZE}，主链可能被 prune 截断"
+        )
+
+
+def test_prod_config_tree_is_multi_node() -> None:
+    """生产配置下树是多节点（不只是线性链）。"""
+    device = resolve_device("auto")
+    engine, _ = _create_prod_engine(device)
+    input_ids = torch.tensor([[5]], dtype=torch.long, device=device)
+    result = engine.generate(input_ids, max_new_tokens=20)
+
+    for stats in result.iterations:
+        # beam_width=4 → slot 0 至少 4 个根子节点
+        assert stats.tree_nodes >= PROD_BEAM_WIDTH + PROD_BLOCK_SIZE, (
+            f"树节点 {stats.tree_nodes} < beam+K={PROD_BEAM_WIDTH + PROD_BLOCK_SIZE}，"
+            "树退化为纯线性"
+        )

@@ -34,6 +34,8 @@ class ExperimentConfig:
     max_new_tokens: int = 128
     enable_thinking: bool = False
     seed: int = 42
+    use_graph_verify: bool = False
+    graph_max_cache_len: int = 2048
     project_root: Path = Path(".")
 
     @classmethod

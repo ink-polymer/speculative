@@ -1,0 +1,20 @@
+[1m============================= test session starts ==============================[0m
+platform linux -- Python 3.11.4, pytest-8.3.2, pluggy-1.6.0
+rootdir: /mnt/workspace/gitCode/speculative
+configfile: pyproject.toml
+plugins: hydra-core-1.3.4, anyio-4.14.2, xdist-3.6.1, typeguard-4.6.0, forked-1.6.0
+collected 5 items
+
+tests/test_integration_speedup.py [32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[33m                                  [100%][0m
+
+[33m=============================== warnings summary ===============================[0m
+../../../../home/developer/.local/lib/python3.11/site-packages/torch/jit/_script.py:365: 14 warnings
+  /home/developer/.local/lib/python3.11/site-packages/torch/jit/_script.py:365: DeprecationWarning: `torch.jit.script_method` is deprecated. Please switch to `torch.compile` or `torch.export`.
+    warnings.warn(
+
+../../../../home/developer/.local/lib/python3.11/site-packages/requests/__init__.py:113
+  /home/developer/.local/lib/python3.11/site-packages/requests/__init__.py:113: RequestsDependencyWarning: urllib3 (2.7.0) or chardet (7.4.3)/charset_normalizer (3.4.7) doesn't match a supported version!
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+[33m======================= [32m5 passed[0m, [33m[1m15 warnings[0m[33m in 12.75s[0m[33m ========================[0m

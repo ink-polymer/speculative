@@ -15,7 +15,7 @@ from .engine import DFlashSpecBlockEngine
 from .models import load_models, render_prompt
 from .rank_head import HeuristicRanker, load_rank_head
 from .tree import SpecBlockTreeBuilder
-from .verification import TargetTreeVerifier
+from .verification import GraphedTargetTreeVerifier, TargetTreeVerifier
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -70,12 +70,23 @@ def create_engine(config: ExperimentConfig, device: torch.device):
         beam_width=config.beam_width,
         branch_factors=config.branch_factors,
     )
-    verifier = TargetTreeVerifier(
-        target=bundle.target,
-        target_layer_ids=adapter.target_layer_ids,
-        device=device,
-        dtype=dtype_from_name(config.dtype),
-    )
+    verifier_cls = GraphedTargetTreeVerifier if config.use_graph_verify else TargetTreeVerifier
+    if config.use_graph_verify:
+        verifier = GraphedTargetTreeVerifier(
+            target=bundle.target,
+            target_layer_ids=adapter.target_layer_ids,
+            device=device,
+            dtype=dtype_from_name(config.dtype),
+            max_tree_budget=config.tree_budget,
+            max_cache_len=config.graph_max_cache_len,
+        )
+    else:
+        verifier = TargetTreeVerifier(
+            target=bundle.target,
+            target_layer_ids=adapter.target_layer_ids,
+            device=device,
+            dtype=dtype_from_name(config.dtype),
+        )
     engine = DFlashSpecBlockEngine(
         target=bundle.target,
         adapter=adapter,

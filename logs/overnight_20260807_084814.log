@@ -1,0 +1,94 @@
+[2026-08-07 08:48:14] ============================================================
+[2026-08-07 08:48:14]   DFlash-SpecBlock 全量过夜流水线
+[2026-08-07 08:48:14] ============================================================
+[2026-08-07 08:48:14] 项目目录:            /mnt/workspace/gitCode/speculative
+[2026-08-07 08:48:14] 配置:                configs/qwen3_4b_a2.json
+[2026-08-07 08:48:14] MAX_SAMPLES/DATASET: 500
+[2026-08-07 08:48:14] MAX_TRAIN/DATASET:   500
+[2026-08-07 08:48:14] MAX_NEW_TOKENS:      128
+[2026-08-07 08:48:14] RANK_EPOCHS:         3
+[2026-08-07 08:48:14] SKIP_BENCHMARK:      0
+[2026-08-07 08:48:14] SKIP_OFFICIAL_EVAL:  0
+[2026-08-07 08:48:14] ============================================================
+
+============================================================
+[2026-08-07 08:48:14] [步骤 1/6] 模型校验
+============================================================
+[2026-08-07 08:48:14] 模型已存在，跳过下载
+[2026-08-07 08:48:14] 模型校验完成 (耗时: 0h 0m 0s)
+
+============================================================
+[2026-08-07 08:48:14] [步骤 2/6] 下载并转换 benchmark 数据集 (每数据集上限 500)
+============================================================
+[W807 08:48:17.758023527 FunctionLoader.cpp:48] Warning: LD_PRELOAD detected, FunctionLoader prefers RTLD_DEFAULT for symbol resolution. (function operator())
+datasets:   0%|          | 0/6 [00:00<?, ?dataset/s]
+download mt_bench:   0%|          | 0/80 [00:00<?, ?sample/s][Adownload mt_bench: 100%|██████████| 80/80 [00:00<00:00, 35469.80sample/s]
+datasets:  17%|█▋        | 1/6 [07:17<36:25, 437.13s/dataset]/home/developer/.local/lib/python3.11/site-packages/requests/__init__.py:113: RequestsDependencyWarning: urllib3 (2.7.0) or chardet (7.4.3)/charset_normalizer (3.4.7) doesn't match a supported version!
+  warnings.warn(
+
+download humaneval:   0%|          | 0/164 [00:00<?, ?sample/s][Adownload humaneval: 100%|██████████| 164/164 [00:00<00:00, 8849.99sample/s]
+datasets:  33%|███▎      | 2/6 [07:28<12:26, 186.74s/dataset]
+download math_500:   0%|          | 0/500 [00:00<?, ?sample/s][Adownload math_500: 100%|██████████| 500/500 [00:00<00:00, 7001.71sample/s]
+datasets:  50%|█████     | 3/6 [07:36<05:15, 105.12s/dataset]
+download alpaca:   0%|          | 0/500 [00:00<?, ?sample/s][Adownload alpaca: 100%|██████████| 500/500 [00:00<00:00, 9954.77sample/s]
+datasets:  67%|██████▋   | 4/6 [07:41<02:10, 65.38s/dataset] 
+download nq_open:   0%|          | 0/500 [00:00<?, ?sample/s][Adownload nq_open: 100%|██████████| 500/500 [00:00<00:00, 13554.76sample/s]
+datasets:  83%|████████▎ | 5/6 [07:49<00:44, 44.77s/dataset]
+download translation:   0%|          | 0/500 [00:00<?, ?sample/s][Adownload translation: 100%|██████████| 500/500 [00:00<00:00, 14477.10sample/s]
+datasets: 100%|██████████| 6/6 [08:02<00:00, 34.02s/dataset]datasets: 100%|██████████| 6/6 [08:02<00:00, 80.41s/dataset]
+write jsonl:   0%|          | 0/6 [00:00<?, ?dataset/s]write jsonl: 100%|██████████| 6/6 [00:00<00:00, 132.54dataset/s]
+{
+  "output_dir": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official",
+  "files": {
+    "mt_bench": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/mt_bench.jsonl",
+    "humaneval": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/humaneval.jsonl",
+    "math_500": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/math_500.jsonl",
+    "alpaca": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/alpaca.jsonl",
+    "nq_open": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/nq_open.jsonl",
+    "translation": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/translation.jsonl",
+    "all": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/prompts_all.jsonl",
+    "manifest": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/manifest.json"
+  },
+  "counts": {
+    "mt_bench": 80,
+    "humaneval": 164,
+    "math_500": 500,
+    "alpaca": 500,
+    "nq_open": 500,
+    "translation": 500
+  },
+  "translation_dataset": {
+    "path": "wmt14",
+    "config": "de-en",
+    "split": "test",
+    "source_lang": "de",
+    "target_lang": "en"
+  }
+}
+[2026-08-07 08:56:28] 数据集下载完成: 2244 条 prompts (耗时: 0h 8m 14s)
+[2026-08-07 08:56:28] 各数据集样本数:
+  mt_bench: 80
+  humaneval: 164
+  math_500: 500
+  alpaca: 500
+  nq_open: 500
+  translation: 500
+
+============================================================
+[2026-08-07 08:56:28] [步骤 3/6] 生成 rank 训练集 (分层采样, 每数据集上限 500)
+============================================================
+  mt_bench: 80 / 80
+  humaneval: 164 / 164
+  math_500: 500 / 500
+  alpaca: 500 / 500
+  nq_open: 500 / 500
+  translation: 500 / 500
+分层采样总计: 2244 条 -> datasets/processed/specblock_official/prompts_rank_train.jsonl
+[2026-08-07 08:56:28] 分层采样完成
+[2026-08-07 08:56:28] 预计 rank 训练集生成耗时: ~9h 58m 24s (2244 条 × ~16s)
+[W807 08:56:31.026363851 FunctionLoader.cpp:48] Warning: LD_PRELOAD detected, FunctionLoader prefers RTLD_DEFAULT for symbol resolution. (function operator())
+/home/developer/.local/lib/python3.11/site-packages/requests/__init__.py:113: RequestsDependencyWarning: urllib3 (2.7.0) or chardet (7.4.3)/charset_normalizer (3.4.7) doesn't match a supported version!
+  warnings.warn(
+Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:00<00:00, 13.96it/s]Loading checkpoint shards: 100%|██████████| 3/3 [00:00<00:00, 20.56it/s]
+[W807 08:56:44.679912683 NPUCachingAllocator.cpp:199] Warning: The current CANN and Soc versions require processing for 32 padding size, with memory allocation. (function operator())
+generate rank train data:   0%|          | 0/2244 [00:00<?, ?it/s]generate rank train data:   0%|          | 0/2244 [00:03<?, ?it/s, rows=1, tokens=22]generate rank train data:   0%|          | 1/2244 [00:03<2:08:45,  3.44s/it, rows=1, tokens=22]generate rank train data:   0%|          | 1/2244 [00:20<2:08:45,  3.44s/it, rows=2, tokens=128]generate rank train data:   0%|          | 2/2244 [00:20<6:59:58, 11.24s/it, rows=2, tokens=128]

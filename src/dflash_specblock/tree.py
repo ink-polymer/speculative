@@ -21,6 +21,8 @@ class BlockProposal:
     logits: torch.Tensor  # [B, K, V]
     hidden: torch.Tensor  # [B, K, H]
     rank_logits: torch.Tensor  # [B, K, 4]
+    top20_values: torch.Tensor | None = None  # [B, K, 20] float32, 预算好的 top-20 logit 值
+    top20_ids: torch.Tensor | None = None  # [B, K, 20] int64, 预算好的 top-20 token id
 
     def validate(self) -> None:
         if self.logits.ndim != 3 or self.hidden.ndim != 3 or self.rank_logits.ndim != 3:
@@ -42,6 +44,10 @@ class TreeNode:
     block_index: int
     slot_index: int
     rank_bucket: int
+    # P0 修复：greedy 主链节点标记为 True，prune 时无条件保留。
+    # 主链是接受长度的唯一来源，且不额外占 draft 成本（top-1 已在 block
+    # forward 中算出），不应参与竞争性剪枝。
+    is_main_chain: bool = False
 
 
 @dataclass(slots=True)
@@ -82,6 +88,7 @@ class DraftTree:
         block_index: int,
         slot_index: int,
         rank_bucket: int,
+        is_main_chain: bool = False,
     ) -> int:
         if parent >= len(self.nodes):
             raise ValueError("父节点必须先于子节点加入")
@@ -95,6 +102,7 @@ class DraftTree:
                 block_index=int(block_index),
                 slot_index=int(slot_index),
                 rank_bucket=int(rank_bucket),
+                is_main_chain=bool(is_main_chain),
             )
         )
         self._invalidate_caches()
@@ -175,25 +183,52 @@ class DraftTree:
         return torch.as_tensor(self._tokens_cache, dtype=torch.long, device=device)
 
     def prune(self, budget: int) -> None:
-        """按累计 log-prob 选择节点，同时保证任何保留节点的整条祖先链存在。"""
+        """按累计 log-prob 选择节点，同时保证任何保留节点的整条祖先链存在。
+
+        P0 修复：greedy 主链节点（is_main_chain=True）无条件保留，不参与竞争性
+        剪枝。主链是接受长度的唯一来源，且不额外占 draft 成本（top-1 已在 block
+        forward 中算出）。浅层兄弟的 cum_lp 天然高于深层主链节点，若主链参与
+        竞争会被挤掉，最坏损失 18.6% 的 τ，而那 60 个节点的 verify 成本一分没省。
+        """
         if len(self.nodes) <= budget:
             return
-        order = sorted(
-            range(len(self.nodes)),
-            key=lambda index: self.nodes[index].cumulative_log_probability,
-            reverse=True,
-        )
+
+        # Step 1: 无条件保留全部主链节点及其祖先链。跨块主链的父节点可能是
+        # 上一块的兄弟节点（非主链），必须一并保留，否则 compaction 后 parent
+        # 变成 -1 但 depth 不变，validate 会报拓扑不一致。
+        main_chain = [
+            i for i, node in enumerate(self.nodes) if node.is_main_chain
+        ]
         kept: set[int] = set()
-        for candidate in order:
-            chain: list[int] = []
-            current = candidate
+        for idx in main_chain:
+            current = idx
             while current >= 0 and current not in kept:
-                chain.append(current)
+                kept.add(current)
                 current = self.nodes[current].parent
-            if len(kept) + len(chain) <= budget:
-                kept.update(chain)
-            if len(kept) >= budget:
-                break
+
+        # 主链 + 祖先超出预算时只保留浅层部分（节点按索引拓扑序排列）。
+        if len(kept) > budget:
+            kept = set(sorted(kept)[:budget])
+        # Step 2: 剩余预算竞争性分配给非主链节点。
+        elif len(kept) < budget:
+            non_main = [
+                i for i in range(len(self.nodes)) if i not in main_chain
+            ]
+            order = sorted(
+                non_main,
+                key=lambda index: self.nodes[index].cumulative_log_probability,
+                reverse=True,
+            )
+            for candidate in order:
+                if len(kept) >= budget:
+                    break
+                chain: list[int] = []
+                current = candidate
+                while current >= 0 and current not in kept:
+                    chain.append(current)
+                    current = self.nodes[current].parent
+                if len(kept) + len(chain) <= budget:
+                    kept.update(chain)
 
         kept_ordered = sorted(kept)
         remap = {old: new for new, old in enumerate(kept_ordered)}
@@ -209,6 +244,7 @@ class DraftTree:
                     block_index=node.block_index,
                     slot_index=node.slot_index,
                     rank_bucket=node.rank_bucket,
+                    is_main_chain=node.is_main_chain,
                 )
             )
         self.nodes = compacted
@@ -279,11 +315,16 @@ class SpecBlockTreeBuilder:
         requested_topk = max(max(self.branch_factors), self.beam_width if block_index == 0 else 1)
         max_branch = min(max(requested_topk, 1), vocab)
 
-        # 批量化：一次 topk / logsumexp 处理整个 [B, K, V]，
-        # 代替原逐 row 循环；在 NPU 上把 B 次 kernel 合并为 1 次。
         log_z = torch.logsumexp(proposal.logits.float(), dim=-1)  # [B, K]
-        top_values, top_ids = torch.topk(proposal.logits, k=max_branch, dim=-1)  # [B, K, max_branch]
-        top_log_probs = top_values.float() - log_z.unsqueeze(-1)  # [B, K, max_branch]
+
+        if proposal.top20_values is not None and proposal.top20_ids is not None:
+            top_values = proposal.top20_values[:, :, :max_branch]
+            top_ids = proposal.top20_ids[:, :, :max_branch]
+        else:
+            top_values, top_ids = torch.topk(proposal.logits, k=max_branch, dim=-1)
+            top_values = top_values.float()
+
+        top_log_probs = top_values - log_z.unsqueeze(-1)  # [B, K, max_branch]
         rank_buckets = proposal.rank_logits.argmax(dim=-1)  # [B, K]
 
         # 一次性 host<-device 取回（NPU 上 3 次同步代替原来每个 slot 多次 .item()）。
@@ -338,6 +379,7 @@ class SpecBlockTreeBuilder:
                     block_index=block_index,
                     slot_index=slot,
                     rank_bucket=bucket,
+                    is_main_chain=True,
                 )
                 greedy_nodes.append(node_index)
                 previous = node_index
@@ -405,11 +447,23 @@ class SpecBlockTreeBuilder:
         limit = pending_limit if pending_limit is not None else len(all_next)
         return self._deduplicate_and_limit(all_next, limit)
 
-    def build(self, first_block: BlockProposal, expand: ExpandCallback) -> DraftTree:
-        """构建最多 M 个 diffusion block 的草稿树。"""
+    def build(
+        self,
+        first_block: BlockProposal,
+        expand: ExpandCallback,
+        budget: int | None = None,
+    ) -> DraftTree:
+        """构建最多 M 个 diffusion block 的草稿树。
+
+        ``budget`` 为 None 时使用 ``self.tree_budget``；否则用指定值（自适应预算）。
+        """
         first_block.validate()
         if first_block.logits.shape[0] != 1:
             raise ValueError("第一块必须只有一个当前已验证 anchor")
+
+        effective_budget = budget if budget is not None else self.tree_budget
+        if effective_budget < self.block_size:
+            raise ValueError(f"budget={effective_budget} 不能小于 block_size={self.block_size}")
 
         tree = DraftTree()
         hidden_size = first_block.hidden.shape[-1]
@@ -419,8 +473,6 @@ class SpecBlockTreeBuilder:
             cumulative_log_probability=0.0,
             hidden=torch.empty(hidden_size, device=first_block.hidden.device),
         )
-        # 官方在每个 block 结束后立刻用 adaptive_beam裁剪 pending，再对剩余起点做下一次
-        # forward；先forward 再裁剪会白算被丢弃的行，也会放大 batch。
         pending = self._expand_rows(
             tree,
             first_block,
@@ -449,6 +501,6 @@ class SpecBlockTreeBuilder:
                 pending_limit=self._adaptive_beam(len(tree)),
             )
 
-        tree.prune(self.tree_budget)
-        tree.validate(self.tree_budget)
+        tree.prune(effective_budget)
+        tree.validate(effective_budget)
         return tree

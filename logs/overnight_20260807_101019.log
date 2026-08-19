@@ -1,0 +1,204 @@
+[2026-08-07 10:10:19] ============================================================
+[2026-08-07 10:10:19]   DFlash-SpecBlock 全量过夜流水线（~2 天版）
+[2026-08-07 10:10:19] ============================================================
+[2026-08-07 10:10:19] 全量下载 (MAX_SAMPLES=0), rank 训练采样 500/数据集
+[2026-08-07 10:10:19] benchmark/eval 上限: 2000 条
+[2026-08-07 10:10:19] MAX_NEW_TOKENS=128, RANK_EPOCHS=3
+[2026-08-07 10:10:19] ============================================================
+
+============================================================
+[2026-08-07 10:10:19] [步骤 1/6] 模型校验
+============================================================
+[2026-08-07 10:10:19] 模型已存在，跳过下载
+[2026-08-07 10:10:19] 模型校验完成 (耗时: 0h 0m 0s)
+
+============================================================
+[2026-08-07 10:10:19] [步骤 2/6] 全量下载 benchmark 数据集（无上限）
+============================================================
+[W807 10:10:22.478239218 FunctionLoader.cpp:48] Warning: LD_PRELOAD detected, FunctionLoader prefers RTLD_DEFAULT for symbol resolution. (function operator())
+datasets:   0%|          | 0/6 [00:00<?, ?dataset/s]
+download mt_bench:   0%|          | 0/80 [00:00<?, ?sample/s][Adownload mt_bench: 100%|██████████| 80/80 [00:00<00:00, 53824.88sample/s]
+datasets:  17%|█▋        | 1/6 [00:00<00:03,  1.32dataset/s]/home/developer/.local/lib/python3.11/site-packages/requests/__init__.py:113: RequestsDependencyWarning: urllib3 (2.7.0) or chardet (7.4.3)/charset_normalizer (3.4.7) doesn't match a supported version!
+  warnings.warn(
+
+Generating test split:   0%|          | 0/164 [00:00<?, ? examples/s][AGenerating test split: 100%|██████████| 164/164 [00:00<00:00, 26615.05 examples/s]
+
+download humaneval:   0%|          | 0/164 [00:00<?, ?sample/s][Adownload humaneval: 100%|██████████| 164/164 [00:00<00:00, 9091.90sample/s]
+datasets:  33%|███▎      | 2/6 [00:18<00:43, 10.90s/dataset]
+Generating test split: 0 examples [00:00, ? examples/s][AGenerating test split: 500 examples [00:00, 50238.41 examples/s]
+
+download math_500:   0%|          | 0/500 [00:00<?, ?sample/s][Adownload math_500: 100%|██████████| 500/500 [00:00<00:00, 7553.09sample/s]
+datasets:  50%|█████     | 3/6 [00:27<00:29,  9.86s/dataset]
+Generating train split: 0 examples [00:00, ? examples/s][A
+Generating train split: 51000 examples [00:00, 501855.78 examples/s][AGenerating train split: 52002 examples [00:00, 495001.91 examples/s]
+
+download alpaca:   0%|          | 0/52002 [00:00<?, ?sample/s][A
+download alpaca:   2%|▏         | 1081/52002 [00:00<00:04, 10807.85sample/s][A
+download alpaca:   4%|▍         | 2162/52002 [00:00<00:04, 10740.53sample/s][A
+download alpaca:   6%|▌         | 3246/52002 [00:00<00:04, 10784.89sample/s][A
+download alpaca:   8%|▊         | 4327/52002 [00:00<00:04, 10791.12sample/s][A
+download alpaca:  10%|█         | 5417/52002 [00:00<00:04, 10826.61sample/s][A
+download alpaca:  13%|█▎        | 6502/52002 [00:00<00:04, 10833.45sample/s][A
+download alpaca:  15%|█▍        | 7586/52002 [00:00<00:04, 10828.73sample/s][A
+download alpaca:  17%|█▋        | 8670/52002 [00:00<00:04, 10830.11sample/s][A
+download alpaca:  19%|█▉        | 9756/52002 [00:00<00:03, 10838.68sample/s][A
+download alpaca:  21%|██        | 10840/52002 [00:01<00:03, 10788.95sample/s][A
+download alpaca:  23%|██▎       | 11924/52002 [00:01<00:03, 10802.91sample/s][A
+download alpaca:  25%|██▌       | 13005/52002 [00:01<00:03, 10765.04sample/s][A
+download alpaca:  27%|██▋       | 14096/52002 [00:01<00:03, 10808.52sample/s][A
+download alpaca:  29%|██▉       | 15187/52002 [00:01<00:03, 10838.85sample/s][A
+download alpaca:  31%|███▏      | 16273/52002 [00:01<00:03, 10843.34sample/s][A
+download alpaca:  33%|███▎      | 17366/52002 [00:01<00:03, 10868.97sample/s][A
+download alpaca:  35%|███▌      | 18456/52002 [00:01<00:03, 10875.49sample/s][A
+download alpaca:  38%|███▊      | 19544/52002 [00:01<00:02, 10848.13sample/s][A
+download alpaca:  40%|███▉      | 20633/52002 [00:01<00:02, 10859.06sample/s][A
+download alpaca:  42%|████▏     | 21736/52002 [00:02<00:02, 10908.10sample/s][A
+download alpaca:  44%|████▍     | 22827/52002 [00:02<00:02, 10880.23sample/s][A
+download alpaca:  46%|████▌     | 23923/52002 [00:02<00:02, 10903.86sample/s][A
+download alpaca:  48%|████▊     | 25019/52002 [00:02<00:02, 10917.82sample/s][A
+download alpaca:  50%|█████     | 26111/52002 [00:02<00:02, 10897.34sample/s][A
+download alpaca:  52%|█████▏    | 27202/52002 [00:02<00:02, 10900.73sample/s][A
+download alpaca:  54%|█████▍    | 28293/52002 [00:02<00:02, 10902.89sample/s][A
+download alpaca:  57%|█████▋    | 29389/52002 [00:02<00:02, 10918.15sample/s][A
+download alpaca:  59%|█████▊    | 30481/52002 [00:02<00:01, 10877.17sample/s][A
+download alpaca:  61%|██████    | 31571/52002 [00:02<00:01, 10883.84sample/s][A
+download alpaca:  63%|██████▎   | 32667/52002 [00:03<00:01, 10906.27sample/s][A
+download alpaca:  65%|██████▍   | 33758/52002 [00:03<00:01, 10901.57sample/s][A
+download alpaca:  67%|██████▋   | 34852/52002 [00:03<00:01, 10912.05sample/s][A
+download alpaca:  69%|██████▉   | 35944/52002 [00:03<00:01, 10913.99sample/s][A
+download alpaca:  71%|███████   | 37037/52002 [00:03<00:01, 10918.03sample/s][A
+download alpaca:  73%|███████▎  | 38132/52002 [00:03<00:01, 10926.18sample/s][A
+download alpaca:  75%|███████▌  | 39231/52002 [00:03<00:01, 10941.64sample/s][A
+download alpaca:  78%|███████▊  | 40326/52002 [00:03<00:01, 10933.52sample/s][A
+download alpaca:  80%|███████▉  | 41420/52002 [00:03<00:00, 10886.23sample/s][A
+download alpaca:  82%|████████▏ | 42515/52002 [00:03<00:00, 10904.66sample/s][A
+download alpaca:  84%|████████▍ | 43608/52002 [00:04<00:00, 10911.00sample/s][A
+download alpaca:  86%|████████▌ | 44700/52002 [00:04<00:00, 10893.30sample/s][A
+download alpaca:  88%|████████▊ | 45794/52002 [00:04<00:00, 10905.36sample/s][A
+download alpaca:  90%|█████████ | 46885/52002 [00:04<00:00, 10856.13sample/s][A
+download alpaca:  92%|█████████▏| 47971/52002 [00:04<00:00, 10843.63sample/s][A
+download alpaca:  94%|█████████▍| 49062/52002 [00:04<00:00, 10861.32sample/s][A
+download alpaca:  96%|█████████▋| 50161/52002 [00:04<00:00, 10898.17sample/s][A
+download alpaca:  99%|█████████▊| 51251/52002 [00:04<00:00, 10896.01sample/s][Adownload alpaca: 100%|██████████| 52002/52002 [00:04<00:00, 10872.03sample/s]
+datasets:  67%|██████▋   | 4/6 [00:38<00:20, 10.28s/dataset]
+Generating train split:   0%|          | 0/87925 [00:00<?, ? examples/s][AGenerating train split: 100%|██████████| 87925/87925 [00:00<00:00, 1552683.96 examples/s]
+
+Generating validation split:   0%|          | 0/3610 [00:00<?, ? examples/s][AGenerating validation split: 100%|██████████| 3610/3610 [00:00<00:00, 546109.70 examples/s]
+
+download nq_open:   0%|          | 0/3610 [00:00<?, ?sample/s][A
+download nq_open:  22%|██▏       | 787/3610 [00:00<00:01, 2204.69sample/s][A
+download nq_open:  61%|██████    | 2205/3610 [00:00<00:00, 5626.63sample/s][Adownload nq_open: 100%|██████████| 3610/3610 [00:00<00:00, 6498.09sample/s]
+datasets:  83%|████████▎ | 5/6 [00:48<00:10, 10.28s/dataset]
+Generating train split:   0%|          | 0/4508785 [00:00<?, ? examples/s][A
+Generating train split:   1%|          | 46000/4508785 [00:00<00:09, 454779.63 examples/s][A
+Generating train split:   3%|▎         | 124000/4508785 [00:00<00:06, 637629.63 examples/s][A
+Generating train split:   4%|▍         | 195000/4508785 [00:00<00:06, 664443.27 examples/s][A
+Generating train split:   6%|▌         | 272000/4508785 [00:00<00:06, 700065.37 examples/s][A
+Generating train split:   8%|▊         | 348000/4508785 [00:00<00:05, 717046.31 examples/s][A
+Generating train split:  10%|█         | 455000/4508785 [00:00<00:05, 712119.60 examples/s][A
+Generating train split:  12%|█▏        | 531000/4508785 [00:00<00:05, 697965.99 examples/s][A
+Generating train split:  14%|█▎        | 609000/4508785 [00:00<00:05, 718858.90 examples/s][A
+Generating train split:  15%|█▌        | 688000/4508785 [00:00<00:05, 735162.66 examples/s][A
+Generating train split:  18%|█▊        | 794000/4508785 [00:01<00:05, 722307.98 examples/s][A
+Generating train split:  19%|█▉        | 872000/4508785 [00:01<00:04, 737222.48 examples/s][A
+Generating train split:  22%|██▏       | 982000/4508785 [00:01<00:04, 734334.75 examples/s][A
+Generating train split:  24%|██▎       | 1060000/4508785 [00:01<00:04, 745035.02 examples/s][A
+Generating train split:  26%|██▌       | 1170000/4508785 [00:01<00:04, 738386.72 examples/s][A
+Generating train split:  28%|██▊       | 1251000/4508785 [00:01<00:04, 753309.81 examples/s][A
+Generating train split:  30%|███       | 1360000/4508785 [00:01<00:04, 738576.40 examples/s][A
+Generating train split:  32%|███▏      | 1439000/4508785 [00:01<00:04, 750381.47 examples/s][A
+Generating train split:  34%|███▍      | 1540929/4508785 [00:02<00:04, 680231.91 examples/s][A
+Generating train split:  36%|███▌      | 1617929/4508785 [00:02<00:04, 699811.35 examples/s][A
+Generating train split:  38%|███▊      | 1726929/4508785 [00:02<00:03, 704881.35 examples/s][A
+Generating train split:  40%|████      | 1803929/4508785 [00:02<00:03, 718934.40 examples/s][A
+Generating train split:  42%|████▏     | 1909929/4508785 [00:02<00:03, 712532.60 examples/s][A
+Generating train split:  44%|████▍     | 1995929/4508785 [00:02<00:03, 745954.01 examples/s][A
+Generating train split:  47%|████▋     | 2113929/4508785 [00:02<00:03, 756368.94 examples/s][A
+Generating train split:  49%|████▉     | 2199929/4508785 [00:03<00:02, 779217.48 examples/s][A
+Generating train split:  51%|█████▏    | 2314929/4508785 [00:03<00:02, 772000.61 examples/s][A
+Generating train split:  53%|█████▎    | 2398929/4508785 [00:03<00:02, 787044.42 examples/s][A
+Generating train split:  56%|█████▌    | 2515929/4508785 [00:03<00:02, 779457.39 examples/s][A
+Generating train split:  58%|█████▊    | 2596929/4508785 [00:03<00:02, 783535.91 examples/s][A
+Generating train split:  60%|██████    | 2713929/4508785 [00:03<00:02, 778926.72 examples/s][A
+Generating train split:  62%|██████▏   | 2798929/4508785 [00:03<00:02, 792427.80 examples/s][A
+Generating train split:  65%|██████▍   | 2912929/4508785 [00:03<00:02, 777839.70 examples/s][A
+Generating train split:  66%|██████▋   | 2995929/4508785 [00:04<00:01, 786672.97 examples/s][A
+Generating train split:  68%|██████▊   | 3087857/4508785 [00:04<00:01, 720415.08 examples/s][A
+Generating train split:  70%|███████   | 3171857/4508785 [00:04<00:01, 747587.50 examples/s][A
+Generating train split:  73%|███████▎  | 3283857/4508785 [00:04<00:01, 744944.78 examples/s][A
+Generating train split:  75%|███████▍  | 3366857/4508785 [00:04<00:01, 765584.57 examples/s][A
+Generating train split:  77%|███████▋  | 3483857/4508785 [00:04<00:01, 766434.26 examples/s][A
+Generating train split:  79%|███████▉  | 3564857/4508785 [00:04<00:01, 758018.40 examples/s][A
+Generating train split:  81%|████████  | 3648857/4508785 [00:04<00:01, 777433.18 examples/s][A
+Generating train split:  83%|████████▎ | 3732857/4508785 [00:05<00:00, 793014.44 examples/s][A
+Generating train split:  85%|████████▌ | 3842857/4508785 [00:05<00:00, 767721.37 examples/s][A
+Generating train split:  87%|████████▋ | 3927857/4508785 [00:05<00:00, 785844.33 examples/s][A
+Generating train split:  90%|████████▉ | 4040857/4508785 [00:05<00:00, 771413.00 examples/s][A
+Generating train split:  92%|█████████▏| 4125857/4508785 [00:05<00:00, 788182.06 examples/s][A
+Generating train split:  94%|█████████▍| 4238857/4508785 [00:05<00:00, 774546.27 examples/s][A
+Generating train split:  97%|█████████▋| 4354857/4508785 [00:05<00:00, 759269.94 examples/s][A
+Generating train split:  98%|█████████▊| 4432857/4508785 [00:05<00:00, 761017.93 examples/s][AGenerating train split: 100%|██████████| 4508785/4508785 [00:06<00:00, 746326.32 examples/s]
+
+Generating validation split:   0%|          | 0/3000 [00:00<?, ? examples/s][AGenerating validation split: 100%|██████████| 3000/3000 [00:00<00:00, 388601.36 examples/s]
+
+Generating test split:   0%|          | 0/3003 [00:00<?, ? examples/s][AGenerating test split: 100%|██████████| 3003/3003 [00:00<00:00, 419709.93 examples/s]
+
+download translation:   0%|          | 0/3003 [00:00<?, ?sample/s][A
+download translation:  46%|████▋     | 1390/3003 [00:00<00:00, 13897.53sample/s][A
+download translation:  93%|█████████▎| 2803/3003 [00:00<00:00, 14027.59sample/s][Adownload translation: 100%|██████████| 3003/3003 [00:00<00:00, 13937.68sample/s]
+datasets: 100%|██████████| 6/6 [01:11<00:00, 14.41s/dataset]datasets: 100%|██████████| 6/6 [01:11<00:00, 11.84s/dataset]
+write jsonl:   0%|          | 0/6 [00:00<?, ?dataset/s]write jsonl:  67%|██████▋   | 4/6 [00:00<00:00,  4.27dataset/s]write jsonl: 100%|██████████| 6/6 [00:01<00:00,  5.80dataset/s]
+{
+  "output_dir": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official",
+  "files": {
+    "mt_bench": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/mt_bench.jsonl",
+    "humaneval": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/humaneval.jsonl",
+    "math_500": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/math_500.jsonl",
+    "alpaca": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/alpaca.jsonl",
+    "nq_open": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/nq_open.jsonl",
+    "translation": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/translation.jsonl",
+    "all": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/prompts_all.jsonl",
+    "manifest": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/manifest.json"
+  },
+  "counts": {
+    "mt_bench": 80,
+    "humaneval": 164,
+    "math_500": 500,
+    "alpaca": 52002,
+    "nq_open": 3610,
+    "translation": 3003
+  },
+  "translation_dataset": {
+    "path": "wmt14",
+    "config": "de-en",
+    "split": "test",
+    "source_lang": "de",
+    "target_lang": "en"
+  }
+}
+[2026-08-07 10:11:43] 全量数据集下载完成: 59359 条 (耗时: 0h 1m 24s)
+[2026-08-07 10:11:43] 各数据集样本数:
+  mt_bench: 80
+  humaneval: 164
+  math_500: 500
+  alpaca: 52002
+  nq_open: 3610
+  translation: 3003
+
+============================================================
+[2026-08-07 10:11:43] [步骤 3/6] 生成 rank 训练集 (分层采样, 每数据集上限 500)
+============================================================
+  mt_bench: 80 / 80
+  humaneval: 164 / 164
+  math_500: 500 / 500
+  alpaca: 500 / 52002
+  nq_open: 500 / 3610
+  translation: 500 / 3003
+分层采样总计: 2244 条 -> datasets/processed/specblock_official/prompts_rank_train.jsonl
+[2026-08-07 10:11:44] rank 训练集: 2244 条, 预计 ~7h 28m 48s
+[W807 10:11:47.834775455 FunctionLoader.cpp:48] Warning: LD_PRELOAD detected, FunctionLoader prefers RTLD_DEFAULT for symbol resolution. (function operator())
+/home/developer/.local/lib/python3.11/site-packages/requests/__init__.py:113: RequestsDependencyWarning: urllib3 (2.7.0) or chardet (7.4.3)/charset_normalizer (3.4.7) doesn't match a supported version!
+  warnings.warn(
+Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:00<00:00, 13.04it/s]Loading checkpoint shards: 100%|██████████| 3/3 [00:00<00:00, 19.23it/s]
+[W807 10:11:59.021379881 NPUCachingAllocator.cpp:199] Warning: The current CANN and Soc versions require processing for 32 padding size, with memory allocation. (function operator())
+generate rank train data:   0%|          | 0/2244 [00:00<?, ?it/s]generate rank train data:   0%|          | 0/2244 [00:01<?, ?it/s, rows=1, tokens=8]generate rank train data:   0%|          | 1/2244 [00:01<1:04:17,  1.72s/it, rows=1, tokens=8]generate rank train data:   0%|          | 1/2244 [00:19<1:04:17,  1.72s/it, rows=2, tokens=128]generate rank train data:   0%|          | 2/2244 [00:19<6:52:44, 11.05s/it, rows=2, tokens=128]generate rank train data:   0%|          | 2/2244 [00:36<6:52:44, 11.05s/it, rows=3, tokens=128]generate rank train data:   0%|          | 3/2244 [00:36<8:29:21, 13.64s/it, rows=3, tokens=128]generate rank train data:   0%|          | 3/2244 [00:39<8:29:21, 13.64s/it, rows=4, tokens=31] generate rank train data:   0%|          | 4/2244 [00:39<6:06:09,  9.81s/it, rows=4, tokens=31]generate rank train data:   0%|          | 4/2244 [00:43<6:06:09,  9.81s/it, rows=5, tokens=25]generate rank train data:   0%|          | 5/2244 [00:43<4:38:26,  7.46s/it, rows=5, tokens=25]generate rank train data:   0%|          | 5/2244 [01:00<4:38:26,  7.46s/it, rows=6, tokens=128]generate rank train data:   0%|          | 6/2244 [01:00<6:39:04, 10.70s/it, rows=6, tokens=128]generate rank train data:   0%|          | 6/2244 [01:16<6:39:04, 10.70s/it, rows=7, tokens=128]generate rank train data:   0%|          | 7/2244 [01:16<7:45:00, 12.47s/it, rows=7, tokens=128]generate rank train data:   0%|          | 7/2244 [01:24<7:45:00, 12.47s/it, rows=8, tokens=67] generate rank train data:   0%|          | 8/2244 [01:24<6:55:43, 11.16s/it, rows=8, tokens=67]generate rank train data:   0%|          | 8/2244 [01:41<6:55:43, 11.16s/it, rows=9, tokens=128]generate rank train data:   0%|          | 9/2244 [01:41<7:56:59, 12.81s/it, rows=9, tokens=128]generate rank train data:   0%|          | 9/2244 [01:57<7:56:59, 12.81s/it, rows=10, tokens=128]generate rank train data:   0%|          | 10/2244 [01:57<8:34:11, 13.81s/it, rows=10, tokens=128]generate rank train data:   0%|          | 10/2244 [02:02<8:34:11, 13.81s/it, rows=11, tokens=43] generate rank train data:   0%|          | 11/2244 [02:02<6:58:02, 11.23s/it, rows=11, tokens=43]generate rank train data:   0%|          | 11/2244 [02:18<6:58:02, 11.23s/it, rows=12, tokens=128]generate rank train data:   1%|          | 12/2244 [02:18<7:53:38, 12.73s/it, rows=12, tokens=128]generate rank train data:   1%|          | 12/2244 [02:20<7:53:38, 12.73s/it, rows=13, tokens=11] generate rank train data:   1%|          | 13/2244 [02:20<5:46:22,  9.32s/it, rows=13, tokens=11]generate rank train data:   1%|          | 13/2244 [02:37<5:46:22,  9.32s/it, rows=14, tokens=128]generate rank train data:   1%|          | 14/2244 [02:37<7:10:52, 11.59s/it, rows=14, tokens=128]generate rank train data:   1%|          | 14/2244 [02:40<7:10:52, 11.59s/it, rows=15, tokens=24] generate rank train data:   1%|          | 15/2244 [02:40<5:36:01,  9.04s/it, rows=15, tokens=24]generate rank train data:   1%|          | 15/2244 [02:44<5:36:01,  9.04s/it, rows=16, tokens=32]generate rank train data:   1%|          | 16/2244 [02:44<4:41:09,  7.57s/it, rows=16, tokens=32]generate rank train data:   1%|          | 16/2244 [03:00<4:41:09,  7.57s/it, rows=17, tokens=128]generate rank train data:   1%|          | 17/2244 [03:00<6:22:06, 10.29s/it, rows=17, tokens=128]generate rank train data:   1%|          | 17/2244 [03:07<6:22:06, 10.29s/it, rows=18, tokens=46] generate rank train data:   1%|          | 18/2244 [03:07<5:37:35,  9.10s/it, rows=18, tokens=46]generate rank train data:   1%|          | 18/2244 [03:13<5:37:35,  9.10s/it, rows=19, tokens=49]generate rank train data:   1%|          | 19/2244 [03:13<5:06:20,  8.26s/it, rows=19, tokens=49]generate rank train data:   1%|          | 19/2244 [03:30<5:06:20,  8.26s/it, rows=20, tokens=128]generate rank train data:   1%|          | 20/2244 [03:30<6:41:50, 10.84s/it, rows=20, tokens=128]generate rank train data:   1%|          | 20/2244 [03:44<6:41:50, 10.84s/it, rows=21, tokens=113]generate rank train data:   1%|          | 21/2244 [03:44<7:19:49, 11.87s/it, rows=21, tokens=113]

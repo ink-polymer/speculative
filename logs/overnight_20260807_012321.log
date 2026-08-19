@@ -1,0 +1,126 @@
+[2026-08-07 01:23:21] ========== 全量过夜流水线开始 ==========
+[2026-08-07 01:23:21] 项目目录: /mnt/workspace/gitCode/speculative
+[2026-08-07 01:23:21] 配置文件: configs/qwen3_4b_a2.json
+[2026-08-07 01:23:21] max_new_tokens: 128
+[2026-08-07 01:23:21] rank epochs: 3, lr: 2e-4
+
+============================================================
+[2026-08-07 01:23:21] [步骤 1/6] 模型校验（已下载则跳过下载）
+============================================================
+[2026-08-07 01:23:21] 检查 models/ 目录...
+[2026-08-07 01:23:21] 模型已存在，跳过下载
+[2026-08-07 01:23:21] 模型校验完成
+
+============================================================
+[2026-08-07 01:23:21] [步骤 2/6] 下载并转换全量 benchmark 数据集
+============================================================
+[2026-08-07 01:23:21] 全量下载（无样本限制）...
+[W807 01:23:24.004487768 FunctionLoader.cpp:48] Warning: LD_PRELOAD detected, FunctionLoader prefers RTLD_DEFAULT for symbol resolution. (function operator())
+datasets:   0%|          | 0/6 [00:00<?, ?dataset/s]
+download mt_bench:   0%|          | 0/80 [00:00<?, ?sample/s][Adownload mt_bench: 100%|██████████| 80/80 [00:00<00:00, 54032.90sample/s]
+datasets:  17%|█▋        | 1/6 [00:16<01:24, 17.00s/dataset]/home/developer/.local/lib/python3.11/site-packages/requests/__init__.py:113: RequestsDependencyWarning: urllib3 (2.7.0) or chardet (7.4.3)/charset_normalizer (3.4.7) doesn't match a supported version!
+  warnings.warn(
+
+download humaneval:   0%|          | 0/164 [00:00<?, ?sample/s][Adownload humaneval: 100%|██████████| 164/164 [00:00<00:00, 9035.41sample/s]
+datasets:  33%|███▎      | 2/6 [00:27<00:51, 12.99s/dataset]
+download math_500:   0%|          | 0/500 [00:00<?, ?sample/s][Adownload math_500: 100%|██████████| 500/500 [00:00<00:00, 7413.78sample/s]
+datasets:  50%|█████     | 3/6 [00:31<00:27,  9.12s/dataset]
+download alpaca:   0%|          | 0/52002 [00:00<?, ?sample/s][A
+download alpaca:   2%|▏         | 1038/52002 [00:00<00:04, 10372.12sample/s][A
+download alpaca:   4%|▍         | 2142/52002 [00:00<00:04, 10763.40sample/s][A
+download alpaca:   6%|▋         | 3262/52002 [00:00<00:04, 10960.70sample/s][A
+download alpaca:   8%|▊         | 4370/52002 [00:00<00:04, 11007.02sample/s][A
+download alpaca:  11%|█         | 5482/52002 [00:00<00:04, 11047.03sample/s][A
+download alpaca:  13%|█▎        | 6587/52002 [00:00<00:04, 10999.97sample/s][A
+download alpaca:  15%|█▍        | 7694/52002 [00:00<00:04, 11021.77sample/s][A
+download alpaca:  17%|█▋        | 8807/52002 [00:00<00:03, 11055.03sample/s][A
+download alpaca:  19%|█▉        | 9913/52002 [00:00<00:03, 11041.02sample/s][A
+download alpaca:  21%|██        | 11031/52002 [00:01<00:03, 11079.96sample/s][A
+download alpaca:  23%|██▎       | 12145/52002 [00:01<00:03, 11095.46sample/s][A
+download alpaca:  25%|██▌       | 13255/52002 [00:01<00:03, 11080.99sample/s][A
+download alpaca:  28%|██▊       | 14372/52002 [00:01<00:03, 11107.77sample/s][A
+download alpaca:  30%|██▉       | 15492/52002 [00:01<00:03, 11132.98sample/s][A
+download alpaca:  32%|███▏      | 16606/52002 [00:01<00:03, 11115.61sample/s][A
+download alpaca:  34%|███▍      | 17724/52002 [00:01<00:03, 11132.56sample/s][A
+download alpaca:  36%|███▌      | 18838/52002 [00:01<00:02, 11129.89sample/s][A
+download alpaca:  38%|███▊      | 19951/52002 [00:01<00:02, 11094.66sample/s][A
+download alpaca:  41%|████      | 21070/52002 [00:01<00:02, 11120.60sample/s][A
+download alpaca:  43%|████▎     | 22191/52002 [00:02<00:02, 11145.59sample/s][A
+download alpaca:  45%|████▍     | 23306/52002 [00:02<00:02, 11142.42sample/s][A
+download alpaca:  47%|████▋     | 24421/52002 [00:02<00:02, 11120.41sample/s][A
+download alpaca:  49%|████▉     | 25538/52002 [00:02<00:02, 11133.90sample/s][A
+download alpaca:  51%|█████▏    | 26657/52002 [00:02<00:02, 11148.03sample/s][A
+download alpaca:  53%|█████▎    | 27773/52002 [00:02<00:02, 11150.63sample/s][A
+download alpaca:  56%|█████▌    | 28889/52002 [00:02<00:02, 11103.28sample/s][A
+download alpaca:  58%|█████▊    | 30000/52002 [00:02<00:01, 11098.08sample/s][A
+download alpaca:  60%|█████▉    | 31110/52002 [00:02<00:01, 11068.13sample/s][A
+download alpaca:  62%|██████▏   | 32221/52002 [00:02<00:01, 11079.97sample/s][A
+download alpaca:  64%|██████▍   | 33330/52002 [00:03<00:01, 11062.12sample/s][A
+download alpaca:  66%|██████▌   | 34450/52002 [00:03<00:01, 11101.26sample/s][A
+download alpaca:  68%|██████▊   | 35561/52002 [00:03<00:01, 11091.63sample/s][A
+download alpaca:  71%|███████   | 36671/52002 [00:03<00:01, 11054.53sample/s][A
+download alpaca:  73%|███████▎  | 37777/52002 [00:03<00:01, 11051.46sample/s][A
+download alpaca:  75%|███████▍  | 38883/52002 [00:03<00:01, 11049.33sample/s][A
+download alpaca:  77%|███████▋  | 39992/52002 [00:03<00:01, 11061.16sample/s][A
+download alpaca:  79%|███████▉  | 41099/52002 [00:03<00:00, 11049.82sample/s][A
+download alpaca:  81%|████████  | 42204/52002 [00:03<00:00, 11047.39sample/s][A
+download alpaca:  83%|████████▎ | 43314/52002 [00:03<00:00, 11060.39sample/s][A
+download alpaca:  85%|████████▌ | 44427/52002 [00:04<00:00, 11079.24sample/s][A
+download alpaca:  88%|████████▊ | 45535/52002 [00:04<00:00, 11006.25sample/s][A
+download alpaca:  90%|████████▉ | 46638/52002 [00:04<00:00, 11012.86sample/s][A
+download alpaca:  92%|█████████▏| 47748/52002 [00:04<00:00, 11038.08sample/s][A
+download alpaca:  94%|█████████▍| 48858/52002 [00:04<00:00, 11055.85sample/s][A
+download alpaca:  96%|█████████▌| 49973/52002 [00:04<00:00, 11081.84sample/s][A
+download alpaca:  98%|█████████▊| 51084/52002 [00:04<00:00, 11088.05sample/s][Adownload alpaca: 100%|██████████| 52002/52002 [00:04<00:00, 11067.71sample/s]
+datasets:  67%|██████▋   | 4/6 [00:42<00:19,  9.88s/dataset]
+download nq_open:   0%|          | 0/3610 [00:00<?, ?sample/s][A
+download nq_open:  39%|███▉      | 1420/3610 [00:00<00:00, 14191.86sample/s][A
+download nq_open:  79%|███████▊  | 2840/3610 [00:00<00:00, 5221.97sample/s] [Adownload nq_open: 100%|██████████| 3610/3610 [00:00<00:00, 6594.63sample/s]
+datasets:  83%|████████▎ | 5/6 [00:51<00:09,  9.38s/dataset]
+download translation:   0%|          | 0/3003 [00:00<?, ?sample/s][A
+download translation:  49%|████▊     | 1459/3003 [00:00<00:00, 14585.25sample/s][A
+download translation:  98%|█████████▊| 2949/3003 [00:00<00:00, 14766.18sample/s][Adownload translation: 100%|██████████| 3003/3003 [00:00<00:00, 14697.57sample/s]
+datasets: 100%|██████████| 6/6 [01:00<00:00,  9.31s/dataset]datasets: 100%|██████████| 6/6 [01:00<00:00, 10.07s/dataset]
+write jsonl:   0%|          | 0/6 [00:00<?, ?dataset/s]write jsonl:  67%|██████▋   | 4/6 [00:00<00:00,  4.18dataset/s]write jsonl: 100%|██████████| 6/6 [00:01<00:00,  5.68dataset/s]
+{
+  "output_dir": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official",
+  "files": {
+    "mt_bench": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/mt_bench.jsonl",
+    "humaneval": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/humaneval.jsonl",
+    "math_500": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/math_500.jsonl",
+    "alpaca": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/alpaca.jsonl",
+    "nq_open": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/nq_open.jsonl",
+    "translation": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/translation.jsonl",
+    "all": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/prompts_all.jsonl",
+    "manifest": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/manifest.json"
+  },
+  "counts": {
+    "mt_bench": 80,
+    "humaneval": 164,
+    "math_500": 500,
+    "alpaca": 52002,
+    "nq_open": 3610,
+    "translation": 3003
+  },
+  "translation_dataset": {
+    "path": "wmt14",
+    "config": "de-en",
+    "split": "test",
+    "source_lang": "de",
+    "target_lang": "en"
+  }
+}
+[2026-08-07 01:24:35] 数据集下载完成，共 59359 条 prompts
+
+============================================================
+[2026-08-07 01:24:35] [步骤 3/6] 生成 rank 训练集（全量 prompts，目标模型 greedy 输出）
+============================================================
+[2026-08-07 01:24:35] 输入: datasets/processed/specblock_official/prompts_all.jsonl (59359 条)
+[2026-08-07 01:24:35] 输出: datasets/generated/rank_train_full.jsonl
+[2026-08-07 01:24:35] 这一步会用目标模型逐条生成 128 tokens，预计耗时较长...
+[W807 01:24:38.932632958 FunctionLoader.cpp:48] Warning: LD_PRELOAD detected, FunctionLoader prefers RTLD_DEFAULT for symbol resolution. (function operator())
+/home/developer/.local/lib/python3.11/site-packages/requests/__init__.py:113: RequestsDependencyWarning: urllib3 (2.7.0) or chardet (7.4.3)/charset_normalizer (3.4.7) doesn't match a supported version!
+  warnings.warn(
+Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:00<00:00, 14.65it/s]Loading checkpoint shards: 100%|██████████| 3/3 [00:00<00:00, 21.58it/s]
+[W807 01:24:51.961140466 NPUCachingAllocator.cpp:199] Warning: The current CANN and Soc versions require processing for 32 padding size, with memory allocation. (function operator())
+generate rank train data:   0%|          | 0/59359 [00:00<?, ?it/s]generate rank train data:   0%|          | 0/59359 [00:17<?, ?it/s, rows=1, tokens=128]generate rank train data:   0%|          | 1/59359 [00:17<282:54:57, 17.16s/it, rows=1, tokens=128]generate rank train data:   0%|          | 1/59359 [00:34<282:54:57, 17.16s/it, rows=2, tokens=128]generate rank train data:   0%|          | 2/59359 [00:34<280:49:14, 17.03s/it, rows=2, tokens=128]generate rank train data:   0%|          | 2/59359 [00:50<280:49:14, 17.03s/it, rows=3, tokens=128]generate rank train data:   0%|          | 3/59359 [00:50<274:58:08, 16.68s/it, rows=3, tokens=128]generate rank train data:   0%|          | 3/59359 [01:06<274:58:08, 16.68s/it, rows=4, tokens=128]generate rank train data:   0%|          | 4/59359 [01:06<271:24:36, 16.46s/it, rows=4, tokens=128]generate rank train data:   0%|          | 4/59359 [01:22<271:24:36, 16.46s/it, rows=5, tokens=128]generate rank train data:   0%|          | 5/59359 [01:22<268:39:25, 16.29s/it, rows=5, tokens=128]generate rank train data:   0%|          | 5/59359 [01:38<268:39:25, 16.29s/it, rows=6, tokens=128]generate rank train data:   0%|          | 6/59359 [01:38<266:14:55, 16.15s/it, rows=6, tokens=128]generate rank train data:   0%|          | 6/59359 [01:54<266:14:55, 16.15s/it, rows=7, tokens=128]generate rank train data:   0%|          | 7/59359 [01:54<268:34:45, 16.29s/it, rows=7, tokens=128]

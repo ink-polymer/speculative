@@ -3,6 +3,7 @@
 # DFlash-SpecBlock 树模式训练流水线（block_size=15, ~3h 版）
 #
 # 配置: block_size=15 (官方一致), max_blocks=1, beam_width=4, tree_budget=60
+# P0 修复: prune 保护 greedy 主链(is_main_chain)，主链不再被浅层兄弟挤掉
 # 时间预估:
 #   步骤 3 rank 训练集:  ~1.5 小时 (每数据集采样 100, 共 ~450 条 × ~12s)
 #   步骤 4 rank 训练:    ~10 分钟 (3 epochs)
@@ -57,6 +58,7 @@ OVERALL_START=$(date +%s)
 log "============================================================"
 log "  DFlash-SpecBlock 树模式训练流水线 (block_size=15)"
 log "  block_size=15, beam_width=4, max_blocks=1, tree_budget=60"
+log "  P0: prune 保护 greedy 主链 (is_main_chain)"
 log "  rank 采样: ${MAX_TRAIN_PER_DATASET}/数据集, benchmark: ${MAX_BENCHMARK_PROMPTS} 条"
 log "============================================================"
 

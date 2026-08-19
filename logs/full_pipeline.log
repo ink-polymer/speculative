@@ -1,0 +1,64 @@
+
+[1/6] 下载模型
+/home/developer/.local/lib/python3.11/site-packages/requests/__init__.py:113: RequestsDependencyWarning: urllib3 (2.7.0) or chardet (7.4.3)/charset_normalizer (3.4.7) doesn't match a supported version!
+  warnings.warn(
+正在下载 Qwen/Qwen3-4B@1cfa9a7208912126459214e8b04321603b3df60c -> /mnt/workspace/gitCode/speculative/models/Qwen3-4B
+Fetching 13 files:   0%|          | 0/13 [00:00<?, ?it/s]Fetching 13 files: 100%|██████████| 13/13 [00:00<00:00, 952.87it/s]
+正在下载 z-lab/Qwen3-4B-DFlash-b16@b74e3a329c4d963783143b1e970d95b002be72bd -> /mnt/workspace/gitCode/speculative/models/Qwen3-4B-DFlash-b16
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]Fetching 9 files: 100%|██████████| 9/9 [00:00<00:00, 784.62it/s]
+模型下载完成。
+
+[2/6] 下载并转换 benchmark 数据集
+[W807 01:15:22.975730516 FunctionLoader.cpp:48] Warning: LD_PRELOAD detected, FunctionLoader prefers RTLD_DEFAULT for symbol resolution. (function operator())
+datasets:   0%|          | 0/6 [00:00<?, ?dataset/s]
+download mt_bench:   0%|          | 0/8 [00:00<?, ?sample/s][Adownload mt_bench: 100%|██████████| 8/8 [00:00<00:00, 17287.19sample/s]
+datasets:  17%|█▋        | 1/6 [00:00<00:03,  1.44dataset/s]/home/developer/.local/lib/python3.11/site-packages/requests/__init__.py:113: RequestsDependencyWarning: urllib3 (2.7.0) or chardet (7.4.3)/charset_normalizer (3.4.7) doesn't match a supported version!
+  warnings.warn(
+
+download humaneval:   0%|          | 0/8 [00:00<?, ?sample/s][Adownload humaneval: 100%|██████████| 8/8 [00:00<00:00, 851.81sample/s]
+datasets:  33%|███▎      | 2/6 [00:11<00:26,  6.58s/dataset]
+download math_500:   0%|          | 0/8 [00:00<?, ?sample/s][Adownload math_500: 100%|██████████| 8/8 [00:00<00:00, 6238.04sample/s]
+datasets:  50%|█████     | 3/6 [00:19<00:22,  7.35s/dataset]
+download alpaca:   0%|          | 0/8 [00:00<?, ?sample/s][Adownload alpaca: 100%|██████████| 8/8 [00:00<00:00, 8338.58sample/s]
+datasets:  67%|██████▋   | 4/6 [00:24<00:12,  6.47s/dataset]
+download nq_open:   0%|          | 0/8 [00:00<?, ?sample/s][Adownload nq_open: 100%|██████████| 8/8 [00:00<00:00, 10013.26sample/s]
+datasets:  83%|████████▎ | 5/6 [00:32<00:06,  6.79s/dataset]
+download translation:   0%|          | 0/8 [00:00<?, ?sample/s][Adownload translation: 100%|██████████| 8/8 [00:00<00:00, 9695.01sample/s]
+datasets: 100%|██████████| 6/6 [00:43<00:00,  8.38s/dataset]datasets: 100%|██████████| 6/6 [00:43<00:00,  7.27s/dataset]
+write jsonl:   0%|          | 0/6 [00:00<?, ?dataset/s]write jsonl: 100%|██████████| 6/6 [00:00<00:00, 1390.91dataset/s]
+{
+  "output_dir": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official",
+  "files": {
+    "mt_bench": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/mt_bench.jsonl",
+    "humaneval": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/humaneval.jsonl",
+    "math_500": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/math_500.jsonl",
+    "alpaca": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/alpaca.jsonl",
+    "nq_open": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/nq_open.jsonl",
+    "translation": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/translation.jsonl",
+    "all": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/prompts_all.jsonl",
+    "manifest": "/mnt/workspace/gitCode/speculative/datasets/processed/specblock_official/manifest.json"
+  },
+  "counts": {
+    "mt_bench": 8,
+    "humaneval": 8,
+    "math_500": 8,
+    "alpaca": 8,
+    "nq_open": 8,
+    "translation": 8
+  },
+  "translation_dataset": {
+    "path": "wmt14",
+    "config": "de-en",
+    "split": "test",
+    "source_lang": "de",
+    "target_lang": "en"
+  }
+}
+
+[3/6] 生成 rank 训练集
+[W807 01:16:17.665467361 FunctionLoader.cpp:48] Warning: LD_PRELOAD detected, FunctionLoader prefers RTLD_DEFAULT for symbol resolution. (function operator())
+/home/developer/.local/lib/python3.11/site-packages/requests/__init__.py:113: RequestsDependencyWarning: urllib3 (2.7.0) or chardet (7.4.3)/charset_normalizer (3.4.7) doesn't match a supported version!
+  warnings.warn(
+Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:00<00:00, 13.99it/s]Loading checkpoint shards: 100%|██████████| 3/3 [00:00<00:00, 20.61it/s]
+[W807 01:16:29.069883348 NPUCachingAllocator.cpp:199] Warning: The current CANN and Soc versions require processing for 32 padding size, with memory allocation. (function operator())
+generate rank train data:   0%|          | 0/16 [00:00<?, ?it/s]generate rank train data:   0%|          | 0/16 [00:08<?, ?it/s, rows=1, tokens=64]generate rank train data:   6%|▋         | 1/16 [00:08<02:07,  8.50s/it, rows=1, tokens=64]generate rank train data:   6%|▋         | 1/16 [00:16<02:07,  8.50s/it, rows=2, tokens=64]generate rank train data:  12%|█▎        | 2/16 [00:16<01:52,  8.05s/it, rows=2, tokens=64]generate rank train data:  12%|█▎        | 2/16 [00:23<01:52,  8.05s/it, rows=3, tokens=64]generate rank train data:  19%|█▉        | 3/16 [00:23<01:42,  7.86s/it, rows=3, tokens=64]generate rank train data:  19%|█▉        | 3/16 [00:31<01:42,  7.86s/it, rows=4, tokens=64]generate rank train data:  25%|██▌       | 4/16 [00:31<01:33,  7.83s/it, rows=4, tokens=64]generate rank train data:  25%|██▌       | 4/16 [00:39<01:33,  7.83s/it, rows=5, tokens=64]generate rank train data:  31%|███▏      | 5/16 [00:39<01:26,  7.84s/it, rows=5, tokens=64]generate rank train data:  31%|███▏      | 5/16 [00:47<01:26,  7.84s/it, rows=6, tokens=64]generate rank train data:  38%|███▊      | 6/16 [00:47<01:18,  7.85s/it, rows=6, tokens=64]generate rank train data:  38%|███▊      | 6/16 [00:55<01:18,  7.85s/it, rows=7, tokens=64]generate rank train data:  44%|████▍     | 7/16 [00:55<01:11,  7.98s/it, rows=7, tokens=64]generate rank train data:  44%|████▍     | 7/16 [01:03<01:11,  7.98s/it, rows=8, tokens=64]generate rank train data:  50%|█████     | 8/16 [01:03<01:03,  7.94s/it, rows=8, tokens=64]generate rank train data:  50%|█████     | 8/16 [01:11<01:03,  7.94s/it, rows=9, tokens=64]generate rank train data:  56%|█████▋    | 9/16 [01:11<00:55,  7.98s/it, rows=9, tokens=64]generate rank train data:  56%|█████▋    | 9/16 [01:19<00:55,  7.98s/it, rows=10, tokens=64]generate rank train data:  62%|██████▎   | 10/16 [01:19<00:48,  8.05s/it, rows=10, tokens=64]generate rank train data:  62%|██████▎   | 10/16 [01:27<00:48,  8.05s/it, rows=11, tokens=64]generate rank train data:  69%|██████▉   | 11/16 [01:27<00:40,  8.02s/it, rows=11, tokens=64]generate rank train data:  69%|██████▉   | 11/16 [01:35<00:40,  8.02s/it, rows=12, tokens=64]generate rank train data:  75%|███████▌  | 12/16 [01:35<00:31,  7.99s/it, rows=12, tokens=64]generate rank train data:  75%|███████▌  | 12/16 [01:43<00:31,  7.99s/it, rows=13, tokens=64]generate rank train data:  81%|████████▏ | 13/16 [01:43<00:24,  8.02s/it, rows=13, tokens=64]generate rank train data:  81%|████████▏ | 13/16 [01:51<00:24,  8.02s/it, rows=14, tokens=64]generate rank train data:  88%|████████▊ | 14/16 [01:51<00:15,  8.00s/it, rows=14, tokens=64]generate rank train data:  88%|████████▊ | 14/16 [01:59<00:15,  8.00s/it, rows=15, tokens=64]generate rank train data:  94%|█████████▍| 15/16 [01:59<00:07,  7.99s/it, rows=15, tokens=64]

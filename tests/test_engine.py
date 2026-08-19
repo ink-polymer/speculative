@@ -21,7 +21,10 @@ class _Adapter:
 
 
 class _TreeBuilder:
-    def build(self, *_: object) -> DraftTree:
+    block_size = 4
+    tree_budget = 16
+
+    def build(self, *args: object, **kwargs: object) -> DraftTree:
         return DraftTree()
 
 
