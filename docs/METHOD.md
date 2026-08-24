@@ -52,7 +52,7 @@
 
 DFlash 官方 checkpoint 不含 SpecBlock rank head，因此存在两种模式：
 
-- `heuristic`：仅用于权重下载后验证工程、NPU 算子和树验证是否连通，不属于论文严格结果；
+- `heuristic`：仅用于权重下载后验证工程、CUDA 算子和树验证是否连通，不属于论文严格结果；
 - `learned`：先运行 `train_rank_head.py` 训练 rank head，才用于正式 acceptance/speed 实验。
 
 当前实验协议支持 greedy lossless verification。随机采样下的树 speculative sampling 需要保存每个

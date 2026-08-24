@@ -11,8 +11,8 @@
 ###############################################################################
 set -uo pipefail
 
-source /opt/home/developer/Ascend/ascend-toolkit/set_env.sh
-export ASCEND_RT_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
+export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
 export HF_ENDPOINT="${HF_ENDPOINT:-https://hf-mirror.com}"
 export HF_DATASETS_ENDPOINT="${HF_DATASETS_ENDPOINT:-https://hf-mirror.com}"
 
@@ -20,7 +20,7 @@ PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "${PROJECT_ROOT}"
 mkdir -p logs outputs
 
-CONFIG="configs/qwen3_4b_a2_tree15.json"
+CONFIG="configs/qwen3_4b_cuda_tree15.json"
 PROMPTS_FILE="datasets/processed/specblock_official/prompts_benchmark_tree15.jsonl"
 OUTPUT_FILE="outputs/benchmark_vanilla_dflash.jsonl"
 MAX_NEW_TOKENS=128
@@ -51,7 +51,7 @@ python -m dflash_specblock.benchmark_vanilla \
   --output "${OUTPUT_FILE}" \
   --max-prompts 0 \
   --max-new-tokens "${MAX_NEW_TOKENS}" \
-  --device npu:0 \
+  --device cuda:0 \
   || die "Benchmark 运行失败"
 
 ELAPSED=$(( $(date +%s) - START ))

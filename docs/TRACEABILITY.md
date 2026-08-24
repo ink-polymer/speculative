@@ -1,6 +1,6 @@
 # 方法与代码追踪矩阵
 
-本文件用于区分“原方法”“NPU 等价移植”和“本项目唯一创新”，防止把工程替换误写成论文原文。
+本文件用于区分“原方法”“NVIDIA GPU 性能实现”和“本项目唯一创新”，防止把工程优化误写成论文原文。
 
 ## 固定参考版本
 
@@ -49,5 +49,5 @@ SpecBlock 原来的 AR/shift drafter 被 DFlash diffusion drafter 替换。第�
 下一 diffusion block。除此之外，rank bucket、树拓扑、budget、ancestor-only验证、最长路径
 接受和 bonus token 均按 SpecBlock 执行。
 
-CUDA/Triton kernel 只属于性能实现。为适配昇腾，本工程用纯 PyTorch/NPU 等价张量操作替代，
-不得改变上述拓扑或验证不变量。
+SDPA、CUDA Graph、`torch.compile` 与可选的 CUDA/Triton kernel 只属于性能实现；它们不得
+改变上述拓扑、mask 语义、cache 更新规则或 greedy lossless 验证不变量。

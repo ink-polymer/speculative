@@ -12,8 +12,8 @@
 ###############################################################################
 set -uo pipefail
 
-source /opt/home/developer/Ascend/ascend-toolkit/set_env.sh
-export ASCEND_RT_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
+export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
 export HF_ENDPOINT="${HF_ENDPOINT:-https://hf-mirror.com}"
 export HF_DATASETS_ENDPOINT="${HF_DATASETS_ENDPOINT:-https://hf-mirror.com}"
 
@@ -27,7 +27,7 @@ MAX_NEW_TOKENS=128
 RANK_EPOCHS=3
 RANK_LR=2e-4
 
-CONFIG="configs/qwen3_4b_a2.json"
+CONFIG="configs/qwen3_4b_cuda.json"
 DATASET_DIR="datasets/processed/specblock_official"
 PROMPTS_FILE="${DATASET_DIR}/prompts_all.jsonl"
 RANK_TRAIN_DATA="datasets/generated/rank_train_tree15.jsonl"
@@ -166,7 +166,7 @@ else
     --output "${BENCHMARK_OUTPUT}" \
     --max-prompts 0 \
     --max-new-tokens "${MAX_NEW_TOKENS}" \
-    --device npu:0 \
+    --device cuda:0 \
     || die "Benchmark 运行失败"
   log "Benchmark 完成 (耗时: $(fmt_duration $(step_timer_elapsed)))"
   touch "${CKPT_DIR}/05_benchmark"

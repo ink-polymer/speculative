@@ -20,6 +20,33 @@ def test_distribution_summary_has_paper_dimension() -> None:
     assert torch.isfinite(summary).all()
 
 
+def test_distribution_summary_reuses_top20_without_touching_full_logits() -> None:
+    class ShapeOnlyLogits:
+        shape = (2, 4, 32)
+
+        def float(self) -> torch.Tensor:
+            raise AssertionError("完整词表 logits 不应在 top20 fast path 上转成 FP32")
+
+    top20 = torch.randn(2, 4, 20)
+    summary = distribution_summary(ShapeOnlyLogits(), top20)  # type: ignore[arg-type]
+    assert summary.shape == (2, 4, 15)
+
+
+def test_native_dtype_topk_matches_full_fp32_cast_for_bfloat16_logits() -> None:
+    # Values are unique and exactly representable in BF16, avoiding ambiguous
+    # tie ordering while checking the allocation-free top-k transformation.
+    logits = torch.arange(64, dtype=torch.bfloat16).reshape(2, 1, 32).flip(-1)
+    old_values, old_ids = torch.topk(logits.float(), k=20, dim=-1)
+    new_values, new_ids = torch.topk(logits, k=20, dim=-1)
+
+    assert torch.equal(new_ids, old_ids)
+    assert torch.equal(new_values.float(), old_values)
+    assert torch.equal(
+        distribution_summary(logits, new_values.float()),
+        distribution_summary(logits.float(), old_values),
+    )
+
+
 def test_target_rank_bucket_boundaries() -> None:
     logits = torch.arange(20, dtype=torch.float32).repeat(4, 1)
     targets = torch.tensor([19, 17, 12, 0])  # ranks 1, 3, 8, 20

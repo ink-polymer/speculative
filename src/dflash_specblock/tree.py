@@ -1,8 +1,8 @@
 """SpecBlock 风格的 block-iterative 动态草稿树。
 
 实现遵循论文和官方代码的关键拓扑：一个 block 先形成 greedy 主链，各位置的 top-b 其余
-token 作为该位置的兄弟节点；rank-guided pending 节点被批量送进下一 block。这里故意使用
-纯 PyTorch/Python 数据结构，不依赖 Triton，从而能在 Ascend 910B A2 上执行。
+token 作为该位置的兄弟节点；rank-guided pending 节点被批量送进下一 block。树拓扑
+保留为轻量 Python host 控制流，大张量计算和验证则留在 NVIDIA GPU。
 """
 
 from __future__ import annotations
@@ -69,11 +69,15 @@ class DraftTree:
         self._parents_cache: list[int] | None = None
         self._tokens_cache: list[int] | None = None
         self._children_cache: dict[int, list[int]] | None = None
+        self._retrieve_paths_cache: list[list[int]] | None = None
+        self._ancestor_mask_cache: torch.Tensor | None = None
 
     def _invalidate_caches(self) -> None:
         self._parents_cache = None
         self._tokens_cache = None
         self._children_cache = None
+        self._retrieve_paths_cache = None
+        self._ancestor_mask_cache = None
 
     def _parents(self) -> list[int]:
         if self._parents_cache is None:
@@ -138,44 +142,57 @@ class DraftTree:
     def ancestor_mask(self, device: torch.device | None = None) -> torch.Tensor:
         """mask[i,j]=True 表示候选 i 可关注候选祖先 j（含自身）。
 
-        向量化对数并行祖先传播：每次迭代 mask[i] |= mask[parent[i]]，
-        重复 ceil(log2(N)) 次保证覆盖最深路径，全部为张量并行操作，
-        避免 Python while 逐节点走父链的单元素赋值。
+        树拓扑由 Python 在 host 上构建，且生产预算通常只有几十个节点。
+        因此在 host 上一次生成并缓存 mask，需要时只做一次小 H2D copy，
+        比在 GPU 上启动 ceil(log2(N)) 组小 kernel 更适合低延迟解码。
         """
         count = len(self.nodes)
-        if count == 0:
-            return torch.zeros((0, 0), dtype=torch.bool, device=device)
-        mask = torch.eye(count, dtype=torch.bool, device=device)
-        if count == 1:
-            return mask
-        parents = torch.as_tensor(self._parents(), dtype=torch.long, device=device)
-        valid = parents >= 0
-        safe_parents = parents.clamp(min=0)
-        iterations = count.bit_length()
-        for _ in range(iterations):
-            parent_rows = mask.index_select(0, safe_parents)
-            mask = torch.where(valid.unsqueeze(-1), mask | parent_rows, mask)
-        return mask
+        if self._ancestor_mask_cache is None:
+            mask = torch.zeros((count, count), dtype=torch.bool)
+            parents = self._parents()
+            for node_index in range(count):
+                current = node_index
+                while current >= 0:
+                    mask[node_index, current] = True
+                    current = parents[current]
+            self._ancestor_mask_cache = mask
+        if device is None or torch.device(device).type == "cpu":
+            return self._ancestor_mask_cache
+        return self._ancestor_mask_cache.to(device=device, non_blocking=True)
 
-    def retrieve_indices(self, device: torch.device | None = None) -> torch.Tensor:
-        """返回所有根到叶路径；-1 是对齐填充，便于与 SpecBlock/EAGLE 工具对照。"""
+    def _retrieve_paths(self) -> list[list[int]]:
+        """Return padded root-to-leaf paths as host control metadata."""
+        if self._retrieve_paths_cache is not None:
+            return self._retrieve_paths_cache
+
         children = self.children()
         parents = self._parents()
         node_count = len(self.nodes)
         leaves = [index for index in range(node_count) if index not in children]
         max_depth = max((self.nodes[index].depth for index in leaves), default=0)
-        if max_depth == 0:
-            return torch.full((len(leaves), 0), -1, dtype=torch.long, device=device)
-        result = torch.full((len(leaves), max_depth), -1, dtype=torch.long, device=device)
-        for row, leaf in enumerate(leaves):
+        paths: list[list[int]] = []
+        for leaf in leaves:
             path: list[int] = []
             current = leaf
             while current >= 0:
                 path.append(current)
                 current = parents[current]
             path.reverse()
-            result[row, : len(path)] = torch.as_tensor(path, dtype=torch.long, device=device)
-        return result
+            path.extend([-1] * (max_depth - len(path)))
+            paths.append(path)
+        self._retrieve_paths_cache = paths
+        return paths
+
+    def retrieve_paths(self) -> list[list[int]]:
+        """返回缓存在 host 的根到叶路径，供 Python 验证控制流使用。"""
+        return self._retrieve_paths()
+
+    def retrieve_indices(self, device: torch.device | None = None) -> torch.Tensor:
+        """返回所有根到叶路径；-1 是对齐填充。"""
+        paths = self._retrieve_paths()
+        if not paths:
+            return torch.empty((0, 0), dtype=torch.long, device=device)
+        return torch.tensor(paths, dtype=torch.long, device=device)
 
     def token_tensor(self, device: torch.device) -> torch.Tensor:
         if self._tokens_cache is None:
@@ -278,6 +295,48 @@ class SpecBlockTreeBuilder:
             raise ValueError("branch_factors 必须包含四个 bucket")
         if any(value < 0 for value in self.branch_factors):
             raise ValueError("branch_factors 不能包含负数")
+        # Reused page-locked host workspaces for the small amount of dynamic
+        # tree metadata that Python must inspect.  Three D2H copies are queued
+        # on one CUDA stream and paid for with a single synchronization.
+        self._host_metadata_signature: tuple[tuple[tuple[int, ...], torch.dtype], ...] | None = None
+        self._host_metadata_buffers: tuple[torch.Tensor, torch.Tensor, torch.Tensor] | None = None
+
+    def _metadata_to_host(
+        self,
+        rank_buckets: torch.Tensor,
+        top_ids: torch.Tensor,
+        top_log_probs: torch.Tensor,
+    ) -> tuple[list[list[int]], list[list[list[int]]], list[list[list[float]]]]:
+        tensors = (rank_buckets, top_ids, top_log_probs)
+        if rank_buckets.device.type == "cuda":
+            if any(tensor.device != rank_buckets.device for tensor in tensors[1:]):
+                raise ValueError("tree metadata tensors 必须位于同一 CUDA device")
+            signature = tuple((tuple(tensor.shape), tensor.dtype) for tensor in tensors)
+            if self._host_metadata_buffers is None or signature != self._host_metadata_signature:
+                self._host_metadata_buffers = tuple(
+                    torch.empty(
+                        tensor.shape,
+                        dtype=tensor.dtype,
+                        device="cpu",
+                        pin_memory=True,
+                    )
+                    for tensor in tensors
+                )
+                self._host_metadata_signature = signature
+
+            for host, source in zip(self._host_metadata_buffers, tensors):
+                host.copy_(source, non_blocking=True)
+            # All copies were enqueued on the current stream, so one wait is
+            # sufficient.  Calling ``tolist`` on the CPU buffers below cannot
+            # trigger additional device synchronizations.
+            torch.cuda.current_stream(rank_buckets.device).synchronize()
+            rank_host, ids_host, probabilities_host = self._host_metadata_buffers
+        else:
+            rank_host, ids_host, probabilities_host = (
+                tensor.detach().cpu() for tensor in tensors
+            )
+
+        return rank_host.tolist(), ids_host.tolist(), probabilities_host.tolist()
 
     @staticmethod
     def _deduplicate_and_limit(pending: list[_PendingStart], limit: int) -> list[_PendingStart]:
@@ -315,7 +374,12 @@ class SpecBlockTreeBuilder:
         requested_topk = max(max(self.branch_factors), self.beam_width if block_index == 0 else 1)
         max_branch = min(max(requested_topk, 1), vocab)
 
-        log_z = torch.logsumexp(proposal.logits.float(), dim=-1)  # [B, K]
+        # The draft logits are typically BF16/FP16 and can be [B, K, ~150K].
+        # Promoting that entire tensor to FP32 creates a large transient allocation.
+        # Branch scores only guide which candidates are verified (they cannot change
+        # lossless target acceptance), so reduce in the model dtype and promote the
+        # compact [B, K] normalizer for the subsequent host-side score bookkeeping.
+        log_z = torch.logsumexp(proposal.logits, dim=-1).float()  # [B, K]
 
         if proposal.top20_values is not None and proposal.top20_ids is not None:
             top_values = proposal.top20_values[:, :, :max_branch]
@@ -327,11 +391,11 @@ class SpecBlockTreeBuilder:
         top_log_probs = top_values - log_z.unsqueeze(-1)  # [B, K, max_branch]
         rank_buckets = proposal.rank_logits.argmax(dim=-1)  # [B, K]
 
-        # 一次性 host<-device 取回（NPU 上 3 次同步代替原来每个 slot 多次 .item()）。
-        # 后续 Python 循环全部操作原生 int/float，无任何同步。
-        rank_buckets_cpu: list[list[int]] = rank_buckets.tolist()
-        top_ids_cpu: list[list[list[int]]] = top_ids.tolist()
-        top_log_probs_cpu: list[list[list[float]]] = top_log_probs.tolist()
+        # Python 只读取一次 host metadata。CUDA 使用 page-locked 复用缓冲区，
+        # 三个异步 D2H copy 共享一个同步点；后续循环不再触发设备同步。
+        rank_buckets_cpu, top_ids_cpu, top_log_probs_cpu = self._metadata_to_host(
+            rank_buckets, top_ids, top_log_probs
+        )
 
         all_next: list[_PendingStart] = []
         beam_width = self.beam_width

@@ -106,8 +106,8 @@ def profile_vanilla(config, device, prompts, max_new_tokens, stop_ids):
 def main():
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--tree-config", default="configs/qwen3_4b_a2_tree15_float32.json")
-    parser.add_argument("--vanilla-config", default="configs/qwen3_4b_a2_float32.json")
+    parser.add_argument("--tree-config", default="configs/qwen3_4b_cuda_tree15_float32.json")
+    parser.add_argument("--vanilla-config", default="configs/qwen3_4b_cuda_float32.json")
     parser.add_argument("--n-prompts", type=int, default=5)
     parser.add_argument("--skip-vanilla", action="store_true")
     args = parser.parse_args()
@@ -125,7 +125,7 @@ def main():
     vanilla_stats = None
     if not args.skip_vanilla:
         del device
-        torch.npu.empty_cache() if hasattr(torch.npu, "empty_cache") else None
+        torch.cuda.empty_cache()
         device2 = resolve_device(config_vanilla.device)
         vanilla_stats = profile_vanilla(config_vanilla, device2, prompts, max_new_tokens, stop_ids)
 

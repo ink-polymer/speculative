@@ -163,7 +163,11 @@ class DFlashBlockAdapter:
             draft_cache=draft_cache,
             cache_prefix_length=cache_prefix_length,
         )
-        top20_values, top20_ids = torch.topk(logits.float(), k=20, dim=-1)
+        # Top-k ordering only depends on the already-quantized logits.  Keep
+        # the full vocabulary tensor in its model dtype and promote the 20
+        # retained values, avoiding a B x K x V FP32 temporary on GPU.
+        top20_values, top20_ids = torch.topk(logits, k=20, dim=-1)
+        top20_values = top20_values.float()
         rank_logits = self.ranker(hidden, logits, top20_values=top20_values)
         return BlockProposal(
             logits=logits,
@@ -222,7 +226,8 @@ class DFlashBlockAdapter:
     ) -> BlockProposal:
         """批量扩展 pending 节点；draft_context 是各起点缓存的 h(L)。"""
         logits, hidden = self.draft_continuation_raw(draft_context, anchor_ids)
-        top20_values, top20_ids = torch.topk(logits.float(), k=20, dim=-1)
+        top20_values, top20_ids = torch.topk(logits, k=20, dim=-1)
+        top20_values = top20_values.float()
         rank_logits = self.ranker(hidden, logits, top20_values=top20_values)
         return BlockProposal(
             logits=logits,

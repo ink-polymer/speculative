@@ -9,7 +9,7 @@ import warnings
 import torch
 
 from .config import ExperimentConfig
-from .device import dtype_from_name, resolve_device
+from .device import configure_cuda_runtime, dtype_from_name, resolve_device
 from .dflash_adapter import DFlashBlockAdapter
 from .engine import DFlashSpecBlockEngine
 from .models import load_models, render_prompt
@@ -19,11 +19,11 @@ from .verification import GraphedTargetTreeVerifier, TargetTreeVerifier
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="DFlash + SpecBlock Ascend A2 experiment")
-    parser.add_argument("--config", default="configs/qwen3_4b_a2.json")
+    parser = argparse.ArgumentParser(description="DFlash + SpecBlock NVIDIA CUDA experiment")
+    parser.add_argument("--config", default="configs/qwen3_4b_cuda.json")
     parser.add_argument("--prompt", required=True)
     parser.add_argument("--max-new-tokens", type=int, default=None)
-    parser.add_argument("--device", default=None, help="auto/cpu/npu:0")
+    parser.add_argument("--device", default=None, help="auto/cpu/cuda:0")
     return parser
 
 
@@ -44,6 +44,7 @@ def create_engine(config: ExperimentConfig, device: torch.device):
             device=device,
             expected_metadata={
                 "block_size": config.block_size,
+                "max_blocks": config.max_blocks,
                 "target_model_id": config.target_model_id,
                 "target_revision": config.target_revision,
                 "draft_model_id": config.draft_model_id,
@@ -70,15 +71,16 @@ def create_engine(config: ExperimentConfig, device: torch.device):
         beam_width=config.beam_width,
         branch_factors=config.branch_factors,
     )
-    verifier_cls = GraphedTargetTreeVerifier if config.use_graph_verify else TargetTreeVerifier
-    if config.use_graph_verify:
+    if config.use_cuda_graphs:
+        if device.type != "cuda":
+            raise ValueError("use_cuda_graphs=true 只能用于 NVIDIA CUDA 设备")
         verifier = GraphedTargetTreeVerifier(
             target=bundle.target,
             target_layer_ids=adapter.target_layer_ids,
             device=device,
             dtype=dtype_from_name(config.dtype),
             max_tree_budget=config.tree_budget,
-            max_cache_len=config.graph_max_cache_len,
+            max_cache_len=config.cuda_graph_max_cache_len,
         )
     else:
         verifier = TargetTreeVerifier(
@@ -103,10 +105,13 @@ def main() -> None:
     if args.device:
         config.device = args.device
     device = resolve_device(config.device)
-    if device.type != "npu":
-        warnings.warn("未检测到 NPU；真实模型实验应在 Atlas A2 的 npu:0 上运行。", stacklevel=2)
+    configure_cuda_runtime(device, allow_tf32=config.allow_tf32)
+    if device.type != "cuda":
+        warnings.warn("未使用 NVIDIA GPU；真实模型实验应在 cuda:0 上运行。", stacklevel=2)
 
     torch.manual_seed(config.seed)
+    if device.type == "cuda":
+        torch.cuda.manual_seed_all(config.seed)
     engine, tokenizer = create_engine(config, device)
     input_ids = render_prompt(tokenizer, args.prompt, config.enable_thinking).to(device)
     max_new_tokens = (
