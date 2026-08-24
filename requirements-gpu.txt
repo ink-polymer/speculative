@@ -1,0 +1,10 @@
+# 先按 https://pytorch.org/get-started/locally/ 安装与 NVIDIA 驱动匹配的 CUDA 版 PyTorch。
+# 不在本文件固定 torch，避免 pip 从默认索引误装 CPU wheel 或不匹配的 CUDA wheel。
+transformers==4.57.1
+accelerate>=1.0,<2.0
+datasets>=2.20,<4.0
+huggingface-hub>=0.34,<1.0
+safetensors>=0.4
+numpy>=1.24
+tqdm>=4.66
+typing-extensions>=4.10

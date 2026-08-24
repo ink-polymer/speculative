@@ -156,14 +156,32 @@ class DFlashBlockAdapter:
         anchor_ids: torch.Tensor,
         draft_cache: object | None = None,
         cache_prefix_length: int | None = None,
+        compute_rank: bool = True,
     ) -> BlockProposal:
+        """执行第一块 draft forward 并组装 :class:`BlockProposal`。
+
+        ``compute_rank=False`` 时跳过 top-20 摘要与 rank head 前向。DDTree 用全局
+        log-prob 分配预算，不读取这两项；在 151K 词表上多做一次 ``topk(20)`` 加一次
+        MLP 只会白白占用解码关键路径。此时 ``rank_logits`` 退化为零张量占位，仅用于
+        满足 :meth:`BlockProposal.validate` 的形状契约。
+        """
         logits, hidden = self.draft_first_raw(
             target_context,
             anchor_ids,
             draft_cache=draft_cache,
             cache_prefix_length=cache_prefix_length,
         )
-        top20_values, top20_ids = torch.topk(logits.float(), k=20, dim=-1)
+        if not compute_rank:
+            return BlockProposal(
+                logits=logits,
+                hidden=hidden,
+                rank_logits=logits.new_zeros((*logits.shape[:2], 4)),
+            )
+        # Top-k ordering only depends on the already-quantized logits.  Keep
+        # the full vocabulary tensor in its model dtype and promote the 20
+        # retained values, avoiding a B x K x V FP32 temporary on GPU.
+        top20_values, top20_ids = torch.topk(logits, k=20, dim=-1)
+        top20_values = top20_values.float()
         rank_logits = self.ranker(hidden, logits, top20_values=top20_values)
         return BlockProposal(
             logits=logits,
@@ -222,7 +240,8 @@ class DFlashBlockAdapter:
     ) -> BlockProposal:
         """批量扩展 pending 节点；draft_context 是各起点缓存的 h(L)。"""
         logits, hidden = self.draft_continuation_raw(draft_context, anchor_ids)
-        top20_values, top20_ids = torch.topk(logits.float(), k=20, dim=-1)
+        top20_values, top20_ids = torch.topk(logits, k=20, dim=-1)
+        top20_values = top20_values.float()
         rank_logits = self.ranker(hidden, logits, top20_values=top20_values)
         return BlockProposal(
             logits=logits,

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-source /opt/home/developer/Ascend/ascend-toolkit/set_env.sh
-export ASCEND_RT_VISIBLE_DEVICES="${ASCEND_RT_VISIBLE_DEVICES:-0}"
+export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
+export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
 
-CONFIG="${CONFIG:-configs/qwen3_4b_a2.json}"
+CONFIG="${CONFIG:-configs/qwen3_4b_cuda.json}"
 DATASET_DIR="${DATASET_DIR:-datasets/processed/specblock_official}"
 PROMPTS_FILE="${PROMPTS_FILE:-${DATASET_DIR}/prompts_all.jsonl}"
 RANK_TRAIN_DATA="${RANK_TRAIN_DATA:-datasets/generated/rank_train.jsonl}"

@@ -2,7 +2,7 @@
 ###############################################################################
 # DFlash-SpecBlock 全量过夜流水线（~2 天版）
 #
-# 时间预估（基于实测 910B 速度）:
+# 时间预估需在目标 NVIDIA GPU 上重新标定；下列步骤规模仅供排程参考：
 #   步骤 1 模型校验:     秒级（已下载则跳过）
 #   步骤 2 全量下载:     ~5 分钟（mt_bench 80 + humaneval 164 + math 500
 #                                  + alpaca 52K + nq 3610 + translation 3003
@@ -21,8 +21,8 @@
 set -uo pipefail
 
 # ── 环境 ──────────────────────────────────────────────────────────────────
-source /opt/home/developer/Ascend/ascend-toolkit/set_env.sh
-export ASCEND_RT_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
+export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
 export HF_ENDPOINT="${HF_ENDPOINT:-https://hf-mirror.com}"
 export HF_DATASETS_ENDPOINT="${HF_DATASETS_ENDPOINT:-https://hf-mirror.com}"
 
@@ -43,7 +43,7 @@ RANK_EPOCHS=3
 RANK_LR=2e-4
 
 # ── 路径 ──────────────────────────────────────────────────────────────────
-CONFIG="configs/qwen3_4b_a2.json"
+CONFIG="configs/qwen3_4b_cuda.json"
 DATASET_DIR="datasets/processed/specblock_official"
 PROMPTS_FILE="${DATASET_DIR}/prompts_all.jsonl"
 RANK_TRAIN_DATA="datasets/generated/rank_train_overnight.jsonl"

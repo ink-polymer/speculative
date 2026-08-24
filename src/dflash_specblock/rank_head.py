@@ -32,11 +32,16 @@ def distribution_summary(
     """
     if logits.shape[-1] < 20:
         raise ValueError("词表至少需要 20 个 token 才能计算官方 top-20 摘要")
-    work = logits.float()
     if top20_values is not None:
         top20_values = top20_values.float()
     else:
-        top20_values = torch.topk(work, k=20, dim=-1).values
+        # ``logits`` is normally BF16/FP16 and can be very large
+        # (B x K x ~150K for Qwen3).  Casting the complete vocabulary tensor
+        # to FP32 before top-k creates a large, short-lived allocation without
+        # recovering any precision: the logits have already been rounded to
+        # their storage dtype.  Select in the native dtype and promote only the
+        # 20 retained values for the numerically sensitive summary reductions.
+        top20_values = torch.topk(logits, k=20, dim=-1).values.float()
     log_z = torch.logsumexp(top20_values, dim=-1, keepdim=True)
 
     top10_values = top20_values[..., :10]
@@ -121,7 +126,7 @@ class HeuristicRanker(nn.Module):
 
     def forward(self, hidden: torch.Tensor, logits: torch.Tensor, **kwargs) -> torch.Tensor:
         del hidden
-        top = torch.topk(logits.float(), k=2, dim=-1).values
+        top = torch.topk(logits, k=2, dim=-1).values.float()
         margin = top[..., 0] - top[..., 1]
         buckets = torch.full_like(margin, 3, dtype=torch.long)
         buckets = torch.where(margin >= 0.20, torch.full_like(buckets, 2), buckets)

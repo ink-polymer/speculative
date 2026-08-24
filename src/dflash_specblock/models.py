@@ -17,6 +17,12 @@ class ModelBundle:
     tokenizer: object
 
 
+@dataclass(slots=True)
+class TargetModelBundle:
+    target: torch.nn.Module
+    tokenizer: object
+
+
 def _validate_model_pair(target: torch.nn.Module, draft: torch.nn.Module) -> None:
     """在进入解码前验证 DFlash checkpoint 与 Qwen target 的结构契约。"""
     required_draft = ("target_layer_ids", "fc", "hidden_norm", "layers", "rotary_emb")
@@ -63,42 +69,114 @@ def _validate_model_pair(target: torch.nn.Module, draft: torch.nn.Module) -> Non
         raise ValueError("DFlash decoder layer 数与 config.num_hidden_layers 不一致")
 
 
-def load_models(config: ExperimentConfig, device: torch.device) -> ModelBundle:
-    """显式 `.to(npu)`，不使用其他后端的自动设备分片路径。"""
-    from transformers import AutoModel, AutoModelForCausalLM, AutoTokenizer
+def _pretrained_kwargs(
+    config: ExperimentConfig,
+    revision: str,
+    device: torch.device,
+    attn_implementation: str,
+) -> dict[str, object]:
+    kwargs: dict[str, object] = {
+        "revision": revision,
+        "trust_remote_code": True,
+        "dtype": dtype_from_name(config.dtype),
+        "low_cpu_mem_usage": True,
+        "attn_implementation": attn_implementation,
+    }
+    if device.type == "cuda":
+        # Load shards directly on the selected GPU instead of materializing a second
+        # full copy on CPU and moving it afterwards.
+        kwargs["device_map"] = {"": 0 if device.index is None else device.index}
+    return kwargs
 
-    dtype = dtype_from_name(config.dtype)
+
+def _validate_cuda_precision(config: ExperimentConfig, device: torch.device) -> None:
+    if device.type != "cuda" or config.dtype != "bfloat16":
+        return
+    checker = getattr(torch.cuda, "is_bf16_supported", None)
+    supported = False
+    if callable(checker):
+        with torch.cuda.device(device):
+            supported = bool(checker())
+    if not supported:
+        raise RuntimeError(
+            "bfloat16 was requested, but the selected NVIDIA GPU does not support CUDA BF16; "
+            "use float16 (with AMP scaling for training) or a BF16-capable GPU"
+        )
+
+
+def _freeze_and_place(model: torch.nn.Module, device: torch.device) -> torch.nn.Module:
+    model.eval()
+    if device.type != "cuda":
+        model.to(device)
+    for parameter in model.parameters():
+        parameter.requires_grad_(False)
+    return model
+
+
+def _maybe_compile(
+    model: torch.nn.Module,
+    mode: str | None,
+) -> torch.nn.Module:
+    if mode is None:
+        return model
+    module_compile = getattr(model, "compile", None)
+    if callable(module_compile):
+        module_compile(mode=mode)
+        return model
+    return torch.compile(model, mode=mode)
+
+
+def _load_target_and_tokenizer(
+    config: ExperimentConfig,
+    device: torch.device,
+) -> tuple[torch.nn.Module, object]:
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+
+    _validate_cuda_precision(config, device)
     tokenizer = AutoTokenizer.from_pretrained(
         config.target_path,
         revision=config.target_revision,
         trust_remote_code=True,
     )
-
-    # eager attention 能可靠接收验证器生成的 4D ancestor-only additive mask。
     target = AutoModelForCausalLM.from_pretrained(
         config.target_path,
-        revision=config.target_revision,
-        trust_remote_code=True,
-        dtype=dtype,
-        low_cpu_mem_usage=True,
-        attn_implementation="eager",
-    ).eval()
+        **_pretrained_kwargs(
+            config,
+            config.target_revision,
+            device,
+            config.attn_implementation,
+        ),
+    )
+    return _freeze_and_place(target, device), tokenizer
+
+
+def load_target_model(config: ExperimentConfig, device: torch.device) -> TargetModelBundle:
+    """Load only the target and tokenizer for target-only generation workloads."""
+    target, tokenizer = _load_target_and_tokenizer(config, device)
+    target = _maybe_compile(target, config.torch_compile_mode)
+    return TargetModelBundle(target=target, tokenizer=tokenizer)
+
+
+def load_models(config: ExperimentConfig, device: torch.device) -> ModelBundle:
+    """Load the target and DFlash draft directly onto an NVIDIA GPU when selected."""
+    from transformers import AutoModel
+
+    target, tokenizer = _load_target_and_tokenizer(config, device)
+
     draft = AutoModel.from_pretrained(
         config.draft_path,
-        revision=config.draft_revision,
-        trust_remote_code=True,
-        dtype=dtype,
-        low_cpu_mem_usage=True,
-        attn_implementation="eager",
-    ).eval()
+        **_pretrained_kwargs(
+            config,
+            config.draft_revision,
+            device,
+            config.draft_attn_implementation or config.attn_implementation,
+        ),
+    )
+    draft = _freeze_and_place(draft, device)
 
-    target.to(device)
-    draft.to(device)
     _validate_model_pair(target, draft)
-    for parameter in target.parameters():
-        parameter.requires_grad_(False)
-    for parameter in draft.parameters():
-        parameter.requires_grad_(False)
+    target = _maybe_compile(target, config.torch_compile_mode)
+    draft = _maybe_compile(draft, config.torch_compile_mode)
     return ModelBundle(target=target, draft=draft, tokenizer=tokenizer)
 
 
