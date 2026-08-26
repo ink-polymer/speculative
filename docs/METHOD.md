@@ -48,12 +48,125 @@
 - rank head 严格采用 `(H+15)->256->4` 无 bias MLP；训练使用四个 bucket、块内 valid-prefix
   mask 与均匀随机 cut 的跨块 curriculum。按官方要求，块之间不额外施加「前缀全对」过滤。
 
-## 4. 必须说明的实验边界
+## 4. DDTree 部分
+
+对应论文 *Accelerating Speculative Decoding with Block Diffusion Draft Trees*
+（<https://arxiv.org/abs/2604.12989>），官方实现
+<https://github.com/liranringel/ddtree>，固定 commit 见
+`third_party/OFFICIAL_SOURCES.md`。本工程实现位于
+`src/dflash_specblock/ddtree_builder.py`，由 `tree_mode="ddtree"` 启用。
+
+### 4.1 与 SpecBlock 的分工差异
+
+SpecBlock 与 DDTree 都在解决同一个问题——给定目标模型一次可并行验证的节点预算 `B`，
+应该把预算分配给哪些候选前缀——但归纳偏置不同：
+
+- SpecBlock 做**局部宽度分配**：先连出 greedy 主链，再由 rank head 预测的 bucket 决定每个
+  slot 展开几个兄弟。宽度决策是逐位置的，依赖一个额外训练的分类器。
+- DDTree 做**全局预算分配**：把一次 block forward 得到的 `K` 个 slot 分布视作条件独立，
+  于是任一候选前缀的对数联合概率可加，直接用一个全局最大堆按累计 log-prob 弹出前 `B` 个
+  节点。不需要 rank head，也不需要跨块 continuation。
+
+### 4.2 正确性与最优性
+
+记 slot `i` 的 draft 分布为 `q_i`，候选前缀 `v = (t_1..t_d)` 的分数为
+`s(v) = Σ_{i≤d} log q_i(t_i)`。官方 `build_ddtree_tree` 的两条推入规则是：
+
+1. **sibling**：弹出 `(depth, rank)` 后推入 `(depth, rank+1)`，父节点不变；
+2. **child**：弹出节点后推入其 `(depth+1, rank=0)` 子节点。
+
+由于每个 slot 的 topk 按 log-prob 降序，`s` 沿这两条边都单调不增，所以任一尚未生成的节点
+分数都不高于其已生成的前驱（父节点或前一兄弟）。堆顶因此始终是全局最优的未生成节点，
+最先弹出的 `B` 个节点就是 `s` 最大的 `B` 个候选前缀。这也解释了 DDTree 可以在构建期直接
+按预算截断，而 SpecBlock 需要事后 `prune`。
+
+进一步地，在「target 分布与 draft 分布一致」的自一致假设下，节点 `v` 被走到的概率为
+`exp(s(v))`，于是
+
+```text
+E[接受 draft token 数] = Σ_{v ∈ 树} exp(s(v))
+```
+
+可行解是前缀封闭的节点集合（保留某节点必须保留其整条祖先链）。`tests/test_ddtree_builder.py`
+的 `test_best_first_maximizes_expected_acceptance_against_brute_force` 对小规模实例穷举所有
+前缀封闭子集，确认 best-first 的选集达到该目标的最优值。
+
+**这条结论对后续改进方向有约束意义**：任何仅仅「重新分配同一预算」的启发式，在该目标下都
+不可能超过官方策略，最多持平。要真正提升 τ，必须改变问题本身——例如提高 `q_i` 的质量、
+放宽条件独立假设（引入 slot 间依赖），或改变验证机制而非改变分配顺序。
+
+### 4.3 与本工程既有组件的复用关系
+
+DDTree 只替换「树构建」这一步，产出与 SpecBlock 相同的 `DraftTree`，因此以下组件完全复用、
+未作任何修改：ancestor-only 4D additive mask、最长 greedy 接受路径选择、非连续 target KV
+压缩、CUDA Graph/StaticCache 验证器、DFlash drafter 与其增量 draft cache 裁剪。
+
+无损性由目标模型的验证语义保证，与草稿树的形状无关：验证阶段只接受「target argmax 与草稿
+token 一致」的最长路径，树的形状只影响能接受多长，不影响接受什么。
+
+### 4.4 `ddtree_reserve_greedy_chain` 消融开关
+
+配置项 `ddtree_reserve_greedy_chain`（默认 `false`）会先无条件铺满 all-rank-0 的 greedy 链，
+再把剩余预算交给同样的 best-first 分配。sibling/child 推入规则不变，因此产出的仍是一棵合法
+DDTree。
+
+动机：当 draft 置信度偏低或随深度衰减时，best-first 会把预算优先花在浅层兄弟上，此时树中
+最长的 greedy 前缀可能明显短于 `K`，单轮接受长度存在硬上界。保留完整 greedy 链可以把这个
+上界恢复到 `K`。
+
+但由 4.2 的最优性结论，这个开关**在自一致假设下不会提升期望接受数**，因为它挤占的正是
+best-first 认为更有价值的兄弟节点。`tests/test_ddtree_builder.py` 中的
+`test_reserve_greedy_chain_does_not_beat_official_expected_acceptance` 显式断言了这一点。
+
+它唯一可能带来收益的情形是自一致假设不成立、且 target 实际比 draft 更「偏向 greedy 链」
+（即 draft 的 top-1 命中率被 `q` 低估）。这是一个经验问题，必须在真实 GPU 上以 τ 和墙钟
+时间实测判定，不能仅凭理论宣称。因此默认关闭，仅作为消融配置
+`configs/qwen3_4b_cuda_ddtree_reserve_chain.json` 保留。
+
+## 5. Latency-aware DDTree：当前上下文 + 硬件联合选预算
+
+固定预算 DDTree 只优化“给定 B 时选哪些节点”，不回答“这一轮应该用多大的 B”。已有 T=0
+结果表明固定 60 节点的 DDTree 已明显优于 DFlash；失败的 conditional repair 虽提高部分轮次
+的接受长度，却因额外 draft forward 抵消收益。因此新结构不再增加模型计算，而利用 DDTree
+best-first 顺序的嵌套性解决预算选择问题。
+
+对本轮一次 DFlash forward 产生的节点顺序 `u_1...u_Bmax`，任意前缀
+`T_b={u_1...u_b}` 都是预算 b 下的合法最优 surrogate 树。定义
+
+```text
+mass(b) = sum_{i<=b} exp(score(u_i))
+utility(b) = (1 + calibration * mass(b)) / (draft_ms + verify_ms(b))
+```
+
+其中 `mass(b)` 是 DDTree factorized surrogate 的期望 draft 接受数，常数 1 是每轮 target
+bonus token。`calibration` 用真实 T=0 接受长度做 EWMA 校准；`draft_ms` 与各预算的
+`verify_ms(b)` 均来自当前 GPU 的在线观测。策略先从历史基线 60 节点开始，各候选预算 warmup
+一次，随后选择预测 utility 最大的预算，并低频重探索以适应上下文长度变化。
+
+该设计分别吸收三类论文结论：
+
+- [DDTree](https://arxiv.org/abs/2604.12989)：best-first 前缀在固定预算下最大化
+  factorized surrogate；
+- [EAGLE-2](https://arxiv.org/abs/2406.16858)：接受行为是 context-dependent，预算决策
+  应读取当前 proposal confidence；
+- [Sequoia](https://arxiv.org/abs/2402.12374)：最优草稿树必须把硬件验证成本纳入目标，
+  而不是只最大化接受长度。
+
+它与 [DART](https://arxiv.org/abs/2601.19278) / [DARTree](https://arxiv.org/abs/2608.13524)
+的区别是当前版本不引入 N-gram trie、AR correction head 或第二次模型 forward；这些机制
+可能进一步提升 proposal 质量，但在已有 4090 实验中，额外修复计算尚未证明能覆盖成本，
+故不放入关键路径。
+
+## 6. 必须说明的实验边界
 
 DFlash 官方 checkpoint 不含 SpecBlock rank head，因此存在两种模式：
 
-- `heuristic`：仅用于权重下载后验证工程、NPU 算子和树验证是否连通，不属于论文严格结果；
+- `heuristic`：仅用于权重下载后验证工程、CUDA 算子和树验证是否连通，不属于论文严格结果；
 - `learned`：先运行 `train_rank_head.py` 训练 rank head，才用于正式 acceptance/speed 实验。
+
+`tree_mode="ddtree"` 不受这条限制：它不使用 rank head，因此 `rank_mode` 固定为
+`heuristic`（占位，其输出不被读取），可以直接进入正式 acceptance/speed 实验。配置层会拒绝
+`ddtree` + `learned` 的组合，避免误以为需要先训练分类器。
 
 当前实验协议支持 greedy lossless verification。随机采样下的树 speculative sampling 需要保存每个
 候选节点的 draft proposal probability 并进行 rejection sampling，不应把 greedy 验证直接套到

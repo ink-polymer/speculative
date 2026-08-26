@@ -10,7 +10,6 @@ import time
 from pathlib import Path
 
 import torch
-import torch_npu
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
@@ -20,17 +19,28 @@ from dflash_specblock.device import resolve_device, synchronize
 from dflash_specblock.config import ExperimentConfig
 
 
-def bench_forward(model, input_ids, mask, position_ids, cache, cache_position, device,
-                  warmup=3, iters=15):
+@torch.inference_mode()
+def bench_forward(
+    model,
+    input_ids,
+    mask,
+    position_ids,
+    cache,
+    cache_position,
+    past_length,
+    device,
+    warmup=3,
+    iters=15,
+):
     for _ in range(warmup):
-        cache.crop(input_ids.shape[1])
+        cache.crop(past_length)
         _ = model(input_ids=input_ids, attention_mask=mask,
                   position_ids=position_ids, past_key_values=cache,
                   cache_position=cache_position, use_cache=True, return_dict=True)
     synchronize(device)
     start = time.perf_counter()
     for _ in range(iters):
-        cache.crop(input_ids.shape[1])
+        cache.crop(past_length)
         _ = model(input_ids=input_ids, attention_mask=mask,
                   position_ids=position_ids, cache_position=cache_position,
                   past_key_values=cache, use_cache=True, return_dict=True)
@@ -38,28 +48,22 @@ def bench_forward(model, input_ids, mask, position_ids, cache, cache_position, d
     return (time.perf_counter() - start) / iters * 1000
 
 
-def build_causal_mask(past_len, cur_len, dtype, device):
-    total = past_len + cur_len
-    minimum = torch.finfo(dtype).min
-    mask = torch.full((1, 1, cur_len, total), minimum, dtype=dtype, device=device)
-    if past_len:
-        mask[..., :past_len] = 0
-    causal = torch.tril(torch.ones(cur_len, cur_len, dtype=torch.bool, device=device))
-    mask[..., past_length:].masked_fill_(causal, 0)
-    return mask
-
-
+@torch.inference_mode()
 def main():
     project = Path(__file__).resolve().parent.parent
-    config = ExperimentConfig.from_json(str(project / "configs/qwen3_4b_a2_tree15_float32.json"))
+    config = ExperimentConfig.from_json(str(project / "configs/qwen3_4b_cuda_tree15.json"))
     device = resolve_device(config.device)
-    dtype = torch.float32
+    dtype = (
+        torch.bfloat16
+        if device.type == "cuda" and torch.cuda.is_bf16_supported()
+        else torch.float16
+    )
 
-    print(f"Loading Qwen3-4B (eager) on {device}")
+    print(f"Loading Qwen3-4B (SDPA) on {device}, dtype={dtype}")
     tokenizer = AutoTokenizer.from_pretrained(config.target_path, trust_remote_code=True)
     model = AutoModelForCausalLM.from_pretrained(
         config.target_path, trust_remote_code=True, dtype=dtype,
-        low_cpu_mem_usage=True, attn_implementation="eager",
+        low_cpu_mem_usage=True, attn_implementation="sdpa",
     ).eval().to(device)
     for p in model.parameters():
         p.requires_grad_(False)
@@ -79,10 +83,18 @@ def main():
     print(f"\n{'cur_len':>8} {'total_len':>10} {'ms/iter':>10} {'ms/token':>10}")
     print("-" * 42)
     for cur_len in token_counts:
-        input_ids = torch.randint(0, 151936, (1, cur_len), dtype=torch.long, device=device)
+        input_ids = torch.randint(
+            0,
+            int(model.config.vocab_size),
+            (1, cur_len),
+            dtype=torch.long,
+            device=device,
+        )
         position_ids = torch.arange(past_length, past_length + cur_len,
                                     dtype=torch.long, device=device).unsqueeze(0)
-        cache_position = position_ids.clone()
+        cache_position = torch.arange(
+            past_length, past_length + cur_len, dtype=torch.long, device=device
+        )
 
         minimum = torch.finfo(dtype).min
         total = past_length + cur_len
@@ -92,8 +104,18 @@ def main():
         mask[..., past_length:].masked_fill_(causal, 0)
 
         try:
-            ms = bench_forward(model, input_ids, mask, position_ids, cache,
-                              cache_position, device, warmup=3, iters=15)
+            ms = bench_forward(
+                model,
+                input_ids,
+                mask,
+                position_ids,
+                cache,
+                cache_position,
+                past_length,
+                device,
+                warmup=3,
+                iters=15,
+            )
             results[cur_len] = ms
             print(f"{cur_len:>8} {total:>10} {ms:>10.1f} {ms/cur_len:>10.2f}")
         except Exception as e:
@@ -111,7 +133,7 @@ def main():
         print(f"{'budget':>8} {'verify_ms':>10} {'acceptance_est':>16} {'iters_est':>10} {'wall_est':>10}")
         for budget, acceptance in [(30, 2.7), (60, 3.2), (90, 4.0), (120, 5.0), (180, 6.5)]:
             cur = budget + 1
-            verify_ms = fixed + var_per_tok * cur
+            verify_ms = fixed + var_per_tok * (cur - 1)
             tokens = 128
             iters = tokens / acceptance
             wall = iters * (verify_ms + 25)

@@ -74,3 +74,37 @@ def test_stop_outside_remaining_length_does_not_trigger_false_stop() -> None:
         stop_token_ids={9},
     )
     assert result.generated_ids.tolist() == [[1, 7]]
+
+
+def test_builder_managed_budget_uses_maximum_enumeration_and_receives_observation() -> None:
+    class AdaptiveBuilder(_TreeBuilder):
+        manages_budget = True
+
+        def __init__(self) -> None:
+            self.received_budgets: list[int] = []
+            self.observations: list[dict[str, object]] = []
+
+        def build(self, *args: object, **kwargs: object) -> DraftTree:
+            self.received_budgets.append(int(kwargs["budget"]))
+            return DraftTree()
+
+        def observe(self, **kwargs: object) -> None:
+            self.observations.append(kwargs)
+
+    builder = AdaptiveBuilder()
+    engine = DFlashSpecBlockEngine(
+        target=torch.nn.Identity(),
+        adapter=_Adapter(),
+        tree_builder=builder,
+        verifier=_Verifier(GreedyPath(node_indices=[], token_ids=[], bonus_token_id=9)),
+        device=torch.device("cpu"),
+    )
+    engine._prefill = lambda _ids: (1, _Cache(), torch.zeros(1, 1, 4), 0.0)
+
+    result = engine.generate(torch.tensor([[3]]), max_new_tokens=2)
+
+    assert result.generated_ids.tolist() == [[1, 9]]
+    assert builder.received_budgets == [builder.tree_budget]
+    assert len(builder.observations) == 1
+    assert builder.observations[0]["tree_nodes"] == 0
+    assert builder.observations[0]["accepted_draft_tokens"] == 0
