@@ -1,4 +1,4 @@
-"""DFlash-SpecBlock 端到端 greedy 推理循环。"""
+"""DFlash-SpecBlock 端到端 greedy / temperature sampling 推理循环。"""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from torch import nn
 
 from .device import DeviceTimer
 from .dflash_adapter import DFlashBlockAdapter
+from .gbv import sample_probs
 from .tree import SpecBlockTreeBuilder
 from .verification import TargetTreeVerifier
 
@@ -52,12 +53,14 @@ class DFlashSpecBlockEngine:
         tree_builder: SpecBlockTreeBuilder,
         verifier: TargetTreeVerifier,
         device: torch.device,
+        temperature: float = 0.0,
     ) -> None:
         self.target = target
         self.adapter = adapter
         self.tree_builder = tree_builder
         self.verifier = verifier
         self.device = device
+        self.temperature = float(temperature)
         self._anchor_buffer = torch.empty(1, dtype=torch.long, device=device)
         # DDTree 构建器声明 requires_rank=False：它只用 log-prob 做全局预算分配，
         # 因此可以跳过 draft 阶段的 top-20 摘要与 rank head 前向。
@@ -93,7 +96,13 @@ class DFlashSpecBlockEngine:
                 logits_to_keep=1,
                 return_dict=True,
             )
-        anchor = int(output.logits[0, -1].argmax(dim=-1).item())
+        if self.temperature > 0:
+            probs = torch.softmax(
+                output.logits[0, -1].float() / self.temperature, dim=-1
+            )
+            anchor = int(sample_probs(probs[None])[0].item())
+        else:
+            anchor = int(output.logits[0, -1].argmax(dim=-1).item())
         target_update = self.adapter.extract_target_context(output.hidden_states)
         return anchor, output.past_key_values, target_update, timer.elapsed_ms
 

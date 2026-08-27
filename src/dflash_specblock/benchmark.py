@@ -14,6 +14,7 @@ from tqdm import tqdm
 from .cli import create_engine
 from .config import ExperimentConfig
 from .device import configure_cuda_runtime, resolve_device, synchronize
+from .gbv import sample_probs, sampling_probs
 from .models import render_prompt
 
 
@@ -24,8 +25,9 @@ def baseline_greedy(
     max_new_tokens: int,
     stop_ids: set[int],
     device: torch.device,
+    temperature: float = 0.0,
 ) -> tuple[torch.Tensor, float]:
-    """使用同一目标模型与 DynamicCache 的标准逐 token greedy 基线。"""
+    """使用同一目标模型与 DynamicCache 的标准逐 token 基线。"""
     from transformers import DynamicCache
 
     if max_new_tokens < 1:
@@ -44,7 +46,12 @@ def baseline_greedy(
         logits_to_keep=1,
         return_dict=True,
     )
-    token_tensor = output.logits[0, -1].argmax().reshape(1, 1)
+    if temperature > 0:
+        token_tensor = sample_probs(
+            sampling_probs(output.logits[0, -1:], temperature)
+        ).reshape(1, 1)
+    else:
+        token_tensor = output.logits[0, -1].argmax().reshape(1, 1)
     generated.append(token_tensor.reshape(-1))
     if stop_ids:
         token_id = int(token_tensor.item())
@@ -57,7 +64,12 @@ def baseline_greedy(
             use_cache=True,
             return_dict=True,
         )
-        token_tensor = output.logits[0, -1].argmax().reshape(1, 1)
+        if temperature > 0:
+            token_tensor = sample_probs(
+                sampling_probs(output.logits[0, -1:], temperature)
+            ).reshape(1, 1)
+        else:
+            token_tensor = output.logits[0, -1].argmax().reshape(1, 1)
         generated.append(token_tensor.reshape(-1))
         if stop_ids:
             token_id = int(token_tensor.item())
@@ -127,7 +139,12 @@ def main() -> None:
                 non_blocking=device.type == "cuda",
             )
             baseline_ids, baseline_ms = baseline_greedy(
-                engine.target, input_ids, max_new_tokens, stop_ids, device
+                engine.target,
+                input_ids,
+                max_new_tokens,
+                stop_ids,
+                device,
+                config.temperature,
             )
             synchronize(device)
             hybrid_started_at = time.perf_counter()
@@ -137,9 +154,13 @@ def main() -> None:
             hybrid_stage_ms = hybrid.prefill_ms + hybrid.total_decode_ms
             hybrid_ids = hybrid.generated_ids[0].detach().cpu()
             baseline_cpu = baseline_ids.detach().cpu()
-            exact_match = torch.equal(baseline_cpu, hybrid_ids)
+            exact_match = (
+                torch.equal(baseline_cpu, hybrid_ids)
+                if config.temperature == 0
+                else None
+            )
             mismatch_index = None
-            if not exact_match:
+            if exact_match is False:
                 common = min(int(baseline_cpu.numel()), int(hybrid_ids.numel()))
                 differences = (baseline_cpu[:common] != hybrid_ids[:common]).nonzero()
                 mismatch_index = int(differences[0].item()) if differences.numel() else common
@@ -179,10 +200,14 @@ def main() -> None:
                     if row["wall_clock_speedup"] is not None
                     else "n/a"
                 ),
-                match=row["greedy_exact_match"],
+                match=(
+                    row["greedy_exact_match"]
+                    if config.temperature == 0
+                    else "sampling"
+                ),
             )
             print(json.dumps(row, ensure_ascii=False))
-            if not exact_match:
+            if exact_match is False:
                 import warnings
 
                 warnings.warn(
@@ -194,18 +219,23 @@ def main() -> None:
 
     baseline_total = sum(row["baseline_ms"] for row in rows)
     hybrid_total = sum(row["hybrid_ms"] for row in rows)
-    matched_rows = [row for row in rows if row["greedy_exact_match"]]
-    mismatched_count = len(rows) - len(matched_rows)
+    matched_rows = [row for row in rows if row["greedy_exact_match"] is True]
+    mismatched_count = (
+        len(rows) - len(matched_rows) if config.temperature == 0 else None
+    )
     matched_baseline_total = sum(row["baseline_ms"] for row in matched_rows)
     matched_hybrid_total = sum(row["hybrid_ms"] for row in matched_rows)
     print(
         json.dumps(
             {
                 "prompts": len(rows),
-                "exact_matches": len(matched_rows),
+                "temperature": config.temperature,
+                "exact_matches": len(matched_rows) if config.temperature == 0 else None,
                 "mismatches": mismatched_count,
                 "mismatch_rate": (
-                    mismatched_count / len(rows) if rows else 0.0
+                    mismatched_count / len(rows)
+                    if rows and mismatched_count is not None
+                    else None
                 ),
                 "total_speedup": baseline_total / hybrid_total if hybrid_total > 0 else None,
                 "matched_speedup": (

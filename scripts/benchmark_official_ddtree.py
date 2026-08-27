@@ -28,11 +28,9 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--block-size", type=int, default=None)
     parser.add_argument("--tree-budget", type=int, default=60)
-    parser.add_argument("--gbv-paths", type=int, default=3)
     parser.add_argument("--max-samples", type=int, default=None)
     parser.add_argument("--max-new-tokens", type=int, default=128)
     parser.add_argument("--temperature", type=float, default=0.0)
-    parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--enable-cpp-compact", action="store_true")
     parser.add_argument("--resume", action="store_true")
     return parser
@@ -73,10 +71,6 @@ def _metrics(result: Any) -> dict[str, Any]:
 
 def main() -> None:
     args = _parser().parse_args()
-    if args.temperature <= 0:
-        raise ValueError(
-            "sampling comparison requires --temperature > 0 (recommended: 1.0)"
-        )
     if not OFFICIAL_ROOT.is_dir():
         raise FileNotFoundError(f"Official DDTree checkout not found: {OFFICIAL_ROOT}")
 
@@ -86,7 +80,6 @@ def main() -> None:
 
     from ddtree import ddtree_generate, maybe_enable_cpp_compact
     from dflash import dflash_generate
-    from gbv import gbv_generate
     from model import DFlashDraftModel
 
     device = torch.device(args.device)
@@ -98,8 +91,8 @@ def main() -> None:
         raise RuntimeError("Official DDTree draft path requires flash-attn") from exc
 
     torch.cuda.set_device(device)
-    torch.manual_seed(args.seed)
-    torch.cuda.manual_seed_all(args.seed)
+    torch.manual_seed(0)
+    torch.cuda.manual_seed_all(0)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     maybe_enable_cpp_compact(args.enable_cpp_compact)
@@ -136,7 +129,7 @@ def main() -> None:
         )
         return tokenizer.encode(text, return_tensors="pt", add_special_tokens=False).to(device)
 
-    def run_dflash(input_ids, size: int, verification_mode: str = "target_match"):
+    def run_dflash(input_ids, size: int):
         return dflash_generate(
             model=draft,
             target=target,
@@ -146,7 +139,6 @@ def main() -> None:
             block_size=size,
             stop_token_ids=stop_ids,
             temperature=args.temperature,
-            verification_mode=verification_mode,
         )
 
     def run_ddtree(input_ids):
@@ -162,25 +154,11 @@ def main() -> None:
             temperature=args.temperature,
         )
 
-    def run_gbv(input_ids):
-        return gbv_generate(
-            model=draft,
-            target=target,
-            input_ids=input_ids,
-            mask_token_id=draft.mask_token_id,
-            max_new_tokens=args.max_new_tokens,
-            block_size=block_size,
-            stop_token_ids=stop_ids,
-            temperature=args.temperature,
-            path_count=args.gbv_paths,
-        )
-
     warmup_ids = encode("Warmup")
     original_max_new_tokens = args.max_new_tokens
     args.max_new_tokens = min(16, original_max_new_tokens)
     run_dflash(warmup_ids, 1)
-    run_dflash(warmup_ids, block_size, "token")
-    run_gbv(warmup_ids)
+    run_dflash(warmup_ids, block_size)
     run_ddtree(warmup_ids)
     args.max_new_tokens = original_max_new_tokens
 
@@ -196,8 +174,6 @@ def main() -> None:
         for index, record in enumerate(existing):
             if int(record.get("index", -1)) != index or record.get("prompt") != rows[index]["prompt"]:
                 raise ValueError(f"resume output/input mismatch at row {index}")
-            if float(record.get("temperature", -1.0)) != args.temperature:
-                raise ValueError(f"resume temperature mismatch at row {index}")
         mode = "a"
         print(f"Resuming {output} from row {completed}/{len(rows)}")
     with output.open(mode, encoding="utf-8") as stream:
@@ -211,42 +187,20 @@ def main() -> None:
         )
         for index, row in iterator:
             input_ids = encode(row["prompt"])
-            # Common per-prompt seed keeps the comparison reproducible.  Each method
-            # is reset independently because it consumes a different number of random
-            # variates after the first rejection.
-            prompt_seed = args.seed + index
-            torch.manual_seed(prompt_seed)
-            torch.cuda.manual_seed_all(prompt_seed)
             baseline = _metrics(run_dflash(input_ids, 1))
-            torch.manual_seed(prompt_seed)
-            torch.cuda.manual_seed_all(prompt_seed)
-            dflash = _metrics(run_dflash(input_ids, block_size, "token"))
-            torch.manual_seed(prompt_seed)
-            torch.cuda.manual_seed_all(prompt_seed)
-            tree_block_verification = _metrics(run_gbv(input_ids))
-            torch.manual_seed(prompt_seed)
-            torch.cuda.manual_seed_all(prompt_seed)
+            dflash = _metrics(run_dflash(input_ids, block_size))
             ddtree = _metrics(run_ddtree(input_ids))
             record = {
                 "index": index,
                 "dataset": row.get("dataset"),
                 "source_id": row.get("source_id"),
                 "prompt": row["prompt"],
-                "implementation": "temperature_sampling_comparison",
-                "verification_modes": {
-                    "dflash": "token_rejection",
-                    "ddtree": "official_target_sampling_tree_walk",
-                    "tree_block_verification": "thomas_pal_2026_gbv_multi_path_tree",
-                },
+                "implementation": "liranringel/ddtree",
                 "dtype": "bfloat16",
                 "block_size_including_anchor": block_size,
                 "tree_budget": args.tree_budget,
-                "gbv_paths": args.gbv_paths,
-                "temperature": args.temperature,
-                "seed": prompt_seed,
                 "baseline": baseline,
                 "dflash": dflash,
-                "tree_block_verification": tree_block_verification,
                 "ddtree": ddtree,
                 "dflash_greedy_exact_match": (
                     baseline["generated_token_ids"] == dflash["generated_token_ids"]

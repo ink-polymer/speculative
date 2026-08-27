@@ -10,6 +10,7 @@
 from .config import ExperimentConfig
 from .ddtree_builder import DDTreeBuilder, LatencyAwareDDTreeBuilder
 from .engine import DFlashSpecBlockEngine, GenerationResult
+from .gbv import GBVTreeBuilder
 from .tree import BlockProposal, DraftTree, SpecBlockTreeBuilder
 
 __all__ = [
@@ -19,6 +20,7 @@ __all__ = [
     "DraftTree",
     "ExperimentConfig",
     "GenerationResult",
+    "GBVTreeBuilder",
     "LatencyAwareDDTreeBuilder",
     "SpecBlockTreeBuilder",
 ]

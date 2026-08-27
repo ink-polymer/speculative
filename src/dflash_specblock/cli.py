@@ -14,6 +14,7 @@ from .ddtree_builder import DDTreeBuilder, LatencyAwareDDTreeBuilder
 from .device import configure_cuda_runtime, dtype_from_name, resolve_device
 from .dflash_adapter import DFlashBlockAdapter
 from .engine import DFlashSpecBlockEngine
+from .gbv import GBVTreeBuilder
 from .models import load_models, render_prompt
 from .rank_head import HeuristicRanker, load_rank_head
 from .tree import SpecBlockTreeBuilder
@@ -31,7 +32,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def create_engine(config: ExperimentConfig, device: torch.device):
     rank_checkpoint = config.rank_checkpoint_path
-    if config.rank_mode == "learned" and (
+    if config.temperature == 0 and config.rank_mode == "learned" and (
         rank_checkpoint is None or not rank_checkpoint.is_file()
     ):
         raise FileNotFoundError(
@@ -39,7 +40,10 @@ def create_engine(config: ExperimentConfig, device: torch.device):
             "dflash-specblock-train-rank，或仅为连通性检查显式使用 smoke 配置。"
         )
     bundle = load_models(config, device)
-    if config.rank_mode == "learned":
+    if config.temperature > 0:
+        # GBV 直接使用完整 slot 分布，不需要 rank head 或 top-k 分支摘要。
+        ranker = HeuristicRanker().to(device).eval()
+    elif config.rank_mode == "learned":
         ranker = load_rank_head(
             rank_checkpoint,
             hidden_size=int(bundle.draft.config.hidden_size),
@@ -71,7 +75,13 @@ def create_engine(config: ExperimentConfig, device: torch.device):
         ranker=ranker,
         block_size=config.block_size,
     )
-    if config.tree_mode == "ddtree_adaptive":
+    if config.temperature > 0:
+        tree_builder = GBVTreeBuilder(
+            block_size=config.block_size,
+            path_count=config.gbv_paths,
+            temperature=config.temperature,
+        )
+    elif config.tree_mode == "ddtree_adaptive":
         tree_builder = LatencyAwareDDTreeBuilder(
             block_size=config.block_size,
             tree_budget=config.tree_budget,
@@ -103,8 +113,9 @@ def create_engine(config: ExperimentConfig, device: torch.device):
             target_layer_ids=adapter.target_layer_ids,
             device=device,
             dtype=dtype_from_name(config.dtype),
-            max_tree_budget=config.tree_budget,
+            max_tree_budget=tree_builder.tree_budget,
             max_cache_len=config.cuda_graph_max_cache_len,
+            temperature=config.temperature,
         )
     else:
         verifier = TargetTreeVerifier(
@@ -112,6 +123,7 @@ def create_engine(config: ExperimentConfig, device: torch.device):
             target_layer_ids=adapter.target_layer_ids,
             device=device,
             dtype=dtype_from_name(config.dtype),
+            temperature=config.temperature,
         )
     engine = DFlashSpecBlockEngine(
         target=bundle.target,
@@ -119,6 +131,7 @@ def create_engine(config: ExperimentConfig, device: torch.device):
         tree_builder=tree_builder,
         verifier=verifier,
         device=device,
+        temperature=config.temperature,
     )
     return engine, bundle.tokenizer
 

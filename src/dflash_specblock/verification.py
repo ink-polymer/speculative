@@ -1,7 +1,8 @@
 """目标模型的 ancestor-only 树验证与 KV cache 压缩。
 
-当前实现只提供 temperature=0 的 lossless greedy 路径。目标模型一次 forward 同时计算 anchor
-与全部树节点；每个树节点只能关注旧 KV、anchor、本节点和自己的祖先，不能看到兄弟分支。
+temperature=0 使用 lossless greedy 最长匹配路径；temperature>0 使用多路径 GBV 路径选择
+与联合 Block Verification。两者都让目标模型一次 forward 同时计算 anchor 与全部树节点；
+每个树节点只能关注旧 KV、anchor、本节点和自己的祖先，不能看到兄弟分支。
 
 ``GraphedTargetTreeVerifier`` 在 NVIDIA GPU 上用 CUDA Graph 合并大量小 kernel launch。
 它从 prefill 起就以 ``StaticCache`` 为唯一 KV 真源，以固定 shape 的
@@ -18,6 +19,7 @@ import torch
 from torch import nn
 
 from .device import DeviceTimer, synchronize
+from .gbv import GBVDraftTree, sample_probs, select_gbv_path
 from .tree import DraftTree
 
 
@@ -76,6 +78,21 @@ def select_greedy_path(current_logits: torch.Tensor, tree: DraftTree) -> GreedyP
         token_ids=[tree_tokens[index] for index in best_nodes],
         bonus_token_id=target_tokens[bonus_row],
     )
+
+
+def select_verification_path(
+    current_logits: torch.Tensor,
+    tree: DraftTree,
+) -> GreedyPath:
+    """按树类型选择 temperature=0 greedy 或 temperature>0 GBV verifier。"""
+    if isinstance(tree, GBVDraftTree):
+        node_indices, token_ids, bonus_token_id = select_gbv_path(current_logits, tree)
+        return GreedyPath(
+            node_indices=node_indices,
+            token_ids=token_ids,
+            bonus_token_id=bonus_token_id,
+        )
+    return select_greedy_path(current_logits, tree)
 
 
 def build_tree_attention_mask(
@@ -298,11 +315,13 @@ class TargetTreeVerifier:
         target_layer_ids: Sequence[int],
         device: torch.device,
         dtype: torch.dtype,
+        temperature: float = 0.0,
     ) -> None:
         self.target = target
         self.target_layer_ids = [int(x) for x in target_layer_ids]
         self.device = device
         self.dtype = dtype
+        self.temperature = float(temperature)
 
     def _context_from_hidden(
         self,
@@ -359,7 +378,7 @@ class TargetTreeVerifier:
             output_hidden_states=True,
             return_dict=True,
         )
-        path = select_greedy_path(output.logits[0], tree)
+        path = select_verification_path(output.logits[0], tree)
 
         # anchor row=0，tree node i 对应 current row=i+1。
         kept_rows_list = [0] + [index + 1 for index in path.node_indices]
@@ -423,6 +442,7 @@ class GraphedTargetTreeVerifier:
         dtype: torch.dtype,
         max_tree_budget: int,
         max_cache_len: int = 2048,
+        temperature: float = 0.0,
     ) -> None:
         if device.type != "cuda":
             raise ValueError("CUDA Graph verifier 只能在 NVIDIA CUDA 设备上运行")
@@ -441,6 +461,7 @@ class GraphedTargetTreeVerifier:
         self.target_layer_ids = [int(x) for x in target_layer_ids]
         self.device = device
         self.dtype = dtype
+        self.temperature = float(temperature)
         self.max_verify_len = int(max_tree_budget) + 1
         self.max_cache_len = int(max_cache_len)
         self._past_length = 0
@@ -566,7 +587,11 @@ class GraphedTargetTreeVerifier:
                 logits_to_keep=1,
                 return_dict=True,
             )
-        anchor = int(output.logits[0, -1].argmax(dim=-1).item())
+        if self.temperature > 0:
+            probs = torch.softmax(output.logits[0, -1].float() / self.temperature, dim=-1)
+            anchor = int(sample_probs(probs[None])[0].item())
+        else:
+            anchor = int(output.logits[0, -1].argmax(dim=-1).item())
         target_update_list = [
             output.hidden_states[lid + 1] for lid in self.target_layer_ids
         ]
@@ -705,7 +730,7 @@ class GraphedTargetTreeVerifier:
         self._graph.replay()
 
         logits = self._graph_output.logits[0, :actual_len, :]
-        path = select_greedy_path(logits, tree)
+        path = select_verification_path(logits, tree)
 
         kept_rows_list = [0] + [index + 1 for index in path.node_indices]
         kept_rows_contiguous = all(

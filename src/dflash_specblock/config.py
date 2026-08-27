@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from dataclasses import dataclass, fields
 from pathlib import Path
@@ -35,6 +36,10 @@ class ExperimentConfig:
     tree_budget: int = 60
     beam_width: int = 10
     branch_factors: tuple[int, int, int, int] = (2, 4, 10, 0)
+    # temperature>0 时不再使用 greedy/普通 DDTree 叶验证，而是从完整 DFlash
+    # slot 分布采样 gbv_paths 条路径，合并成树后执行分布保持的 GBV。
+    temperature: float = 1.0
+    gbv_paths: int = 3
     # 草稿树拓扑：``specblock`` 为 rank-guided 主链 + 兄弟分支（可跨块）；
     # ``ddtree`` 为 DDTree 官方的全局 best-first 堆式分配（单块、无需 rank head）。
     tree_mode: str = "specblock"
@@ -86,11 +91,15 @@ class ExperimentConfig:
             raise ValueError("beam_width 必须为正整数")
         if len(self.branch_factors) != 4 or any(x < 0 for x in self.branch_factors):
             raise ValueError("branch_factors 必须是四个非负整数")
+        if not math.isfinite(self.temperature) or self.temperature < 0:
+            raise ValueError("temperature 必须是有限的非负数")
+        if self.gbv_paths < 1:
+            raise ValueError("gbv_paths 必须为正整数")
         if self.tree_mode not in {"specblock", "ddtree", "ddtree_adaptive"}:
             raise ValueError("tree_mode 仅支持 specblock、ddtree 或 ddtree_adaptive")
         if not isinstance(self.ddtree_reserve_greedy_chain, bool):
             raise ValueError("ddtree_reserve_greedy_chain 必须是布尔值")
-        if self.tree_mode in {"ddtree", "ddtree_adaptive"}:
+        if self.temperature == 0 and self.tree_mode in {"ddtree", "ddtree_adaptive"}:
             # DDTree 的全部候选都来自同一次 block forward，跨块 continuation 无从定义。
             if self.max_blocks != 1:
                 raise ValueError("tree_mode=ddtree 是单块方法，max_blocks 必须为 1")
@@ -101,9 +110,9 @@ class ExperimentConfig:
                 )
             if self.rank_checkpoint:
                 raise ValueError("tree_mode=ddtree 不加载 rank checkpoint，请设为 null")
-        elif self.ddtree_reserve_greedy_chain:
+        elif self.temperature == 0 and self.ddtree_reserve_greedy_chain:
             raise ValueError("ddtree_reserve_greedy_chain 仅在 tree_mode=ddtree 下有意义")
-        if self.tree_mode == "ddtree_adaptive":
+        if self.temperature == 0 and self.tree_mode == "ddtree_adaptive":
             candidates = tuple(int(value) for value in self.ddtree_budget_candidates)
             if not candidates or tuple(sorted(set(candidates))) != candidates:
                 raise ValueError("ddtree_budget_candidates 必须是严格递增且非空的整数序列")
@@ -127,7 +136,7 @@ class ExperimentConfig:
                 )
         if self.rank_mode not in {"heuristic", "learned"}:
             raise ValueError("rank_mode 仅支持 heuristic 或 learned")
-        if self.rank_mode == "learned" and not self.rank_checkpoint:
+        if self.temperature == 0 and self.rank_mode == "learned" and not self.rank_checkpoint:
             raise ValueError("learned 模式必须配置 rank_checkpoint")
         if self.dtype not in {"bfloat16", "float16", "float32"}:
             raise ValueError("dtype 仅支持 bfloat16、float16 或 float32")
