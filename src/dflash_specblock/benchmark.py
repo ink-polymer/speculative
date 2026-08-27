@@ -225,31 +225,35 @@ def main() -> None:
     )
     matched_baseline_total = sum(row["baseline_ms"] for row in matched_rows)
     matched_hybrid_total = sum(row["hybrid_ms"] for row in matched_rows)
+    crof_diagnostics = getattr(engine.tree_builder, "diagnostics", None)
+    final_summary = {
+        "prompts": len(rows),
+        "temperature": config.temperature,
+        "exact_matches": len(matched_rows) if config.temperature == 0 else None,
+        "mismatches": mismatched_count,
+        "mismatch_rate": (
+            mismatched_count / len(rows)
+            if rows and mismatched_count is not None
+            else None
+        ),
+        "total_speedup": baseline_total / hybrid_total if hybrid_total > 0 else None,
+        "matched_speedup": (
+            matched_baseline_total / matched_hybrid_total
+            if matched_hybrid_total > 0 and matched_rows
+            else None
+        ),
+        "mean_acceptance": (
+            sum(row["average_committed_per_verify"] for row in rows) / len(rows)
+            if rows
+            else 0.0
+        ),
+        "output": str(output_path),
+    }
+    if crof_diagnostics is not None:
+        final_summary["crof"] = crof_diagnostics()
     print(
         json.dumps(
-            {
-                "prompts": len(rows),
-                "temperature": config.temperature,
-                "exact_matches": len(matched_rows) if config.temperature == 0 else None,
-                "mismatches": mismatched_count,
-                "mismatch_rate": (
-                    mismatched_count / len(rows)
-                    if rows and mismatched_count is not None
-                    else None
-                ),
-                "total_speedup": baseline_total / hybrid_total if hybrid_total > 0 else None,
-                "matched_speedup": (
-                    matched_baseline_total / matched_hybrid_total
-                    if matched_hybrid_total > 0 and matched_rows
-                    else None
-                ),
-                "mean_acceptance": (
-                    sum(row["average_committed_per_verify"] for row in rows) / len(rows)
-                    if rows
-                    else 0.0
-                ),
-                "output": str(output_path),
-            },
+            final_summary,
             ensure_ascii=False,
             indent=2,
         )

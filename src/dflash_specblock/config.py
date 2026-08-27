@@ -52,6 +52,14 @@ class ExperimentConfig:
     ddtree_warmup_rounds_per_budget: int = 1
     ddtree_policy_ewma_alpha: float = 0.2
     ddtree_exploration_interval: int = 64
+    # CROF（跨轮重叠共识森林）：高共识用小预算深走廊，首次分歧用双走廊，
+    # 无重叠/低置信时回退到上面的 latency-aware DDTree。
+    crof_consensus_budgets: tuple[int, int] = (30, 45)
+    crof_repair_budgets: tuple[int, int, int] = (60, 80, 100)
+    crof_min_consensus_slots: int = 2
+    crof_confidence_margin: float = 1.0
+    crof_old_min_hit_rate: float = 0.2
+    crof_calibration_prior: float = 2.0
     rank_mode: str = "learned"
     rank_checkpoint: str | None = "checkpoints/rank_head.pt"
     max_new_tokens: int = 128
@@ -75,6 +83,14 @@ class ExperimentConfig:
             raw["ddtree_budget_candidates"] = tuple(
                 int(x) for x in raw["ddtree_budget_candidates"]
             )
+        if "crof_consensus_budgets" in raw:
+            raw["crof_consensus_budgets"] = tuple(
+                int(x) for x in raw["crof_consensus_budgets"]
+            )
+        if "crof_repair_budgets" in raw:
+            raw["crof_repair_budgets"] = tuple(
+                int(x) for x in raw["crof_repair_budgets"]
+            )
         raw["project_root"] = config_path.parent.parent
         cfg = cls(**raw)
         cfg.validate()
@@ -95,11 +111,11 @@ class ExperimentConfig:
             raise ValueError("temperature 必须是有限的非负数")
         if self.gbv_paths < 1:
             raise ValueError("gbv_paths 必须为正整数")
-        if self.tree_mode not in {"specblock", "ddtree", "ddtree_adaptive"}:
-            raise ValueError("tree_mode 仅支持 specblock、ddtree 或 ddtree_adaptive")
+        if self.tree_mode not in {"specblock", "ddtree", "ddtree_adaptive", "crof"}:
+            raise ValueError("tree_mode 仅支持 specblock、ddtree、ddtree_adaptive 或 crof")
         if not isinstance(self.ddtree_reserve_greedy_chain, bool):
             raise ValueError("ddtree_reserve_greedy_chain 必须是布尔值")
-        if self.temperature == 0 and self.tree_mode in {"ddtree", "ddtree_adaptive"}:
+        if self.temperature == 0 and self.tree_mode in {"ddtree", "ddtree_adaptive", "crof"}:
             # DDTree 的全部候选都来自同一次 block forward，跨块 continuation 无从定义。
             if self.max_blocks != 1:
                 raise ValueError("tree_mode=ddtree 是单块方法，max_blocks 必须为 1")
@@ -112,7 +128,7 @@ class ExperimentConfig:
                 raise ValueError("tree_mode=ddtree 不加载 rank checkpoint，请设为 null")
         elif self.temperature == 0 and self.ddtree_reserve_greedy_chain:
             raise ValueError("ddtree_reserve_greedy_chain 仅在 tree_mode=ddtree 下有意义")
-        if self.temperature == 0 and self.tree_mode == "ddtree_adaptive":
+        if self.tree_mode in {"ddtree_adaptive", "crof"}:
             candidates = tuple(int(value) for value in self.ddtree_budget_candidates)
             if not candidates or tuple(sorted(set(candidates))) != candidates:
                 raise ValueError("ddtree_budget_candidates 必须是严格递增且非空的整数序列")
@@ -129,11 +145,32 @@ class ExperimentConfig:
             if self.ddtree_exploration_interval < 0:
                 raise ValueError("ddtree_exploration_interval 不能为负数")
             if self.ddtree_reserve_greedy_chain:
-                raise ValueError("ddtree_adaptive 不与 reserve_greedy_chain 叠加")
+                raise ValueError("ddtree_adaptive/crof 不与 reserve_greedy_chain 叠加")
             if self.use_cuda_graphs:
                 raise ValueError(
-                    "ddtree_adaptive 需要可变 verify shape，不能使用固定最大形状 CUDA Graph"
+                    "ddtree_adaptive/crof 需要可变 verify shape，不能使用固定最大形状 CUDA Graph"
                 )
+        if self.tree_mode == "crof":
+            if len(self.crof_consensus_budgets) != 2:
+                raise ValueError("crof_consensus_budgets 必须恰好包含 2 个预算")
+            if len(self.crof_repair_budgets) != 3:
+                raise ValueError("crof_repair_budgets 必须恰好包含 3 个预算")
+            for name, values in (
+                ("crof_consensus_budgets", self.crof_consensus_budgets),
+                ("crof_repair_budgets", self.crof_repair_budgets),
+            ):
+                if tuple(sorted(values)) != values:
+                    raise ValueError(f"{name} 必须递增")
+                if any(value < self.block_size or value > self.tree_budget for value in values):
+                    raise ValueError(f"{name} 必须位于 [block_size, tree_budget]")
+            if self.crof_min_consensus_slots < 1:
+                raise ValueError("crof_min_consensus_slots 必须为正整数")
+            if not math.isfinite(self.crof_confidence_margin) or self.crof_confidence_margin < 0:
+                raise ValueError("crof_confidence_margin 必须是有限非负数")
+            if not 0.0 <= self.crof_old_min_hit_rate <= 1.0:
+                raise ValueError("crof_old_min_hit_rate 必须位于 [0,1]")
+            if not math.isfinite(self.crof_calibration_prior) or self.crof_calibration_prior <= 0:
+                raise ValueError("crof_calibration_prior 必须是有限正数")
         if self.rank_mode not in {"heuristic", "learned"}:
             raise ValueError("rank_mode 仅支持 heuristic 或 learned")
         if self.temperature == 0 and self.rank_mode == "learned" and not self.rank_checkpoint:

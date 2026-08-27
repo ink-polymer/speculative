@@ -110,6 +110,10 @@ class DDTreeBuilder:
         # 两个异步 D2H copy 共享一个同步点。官方每轮都新分配 host 张量并隐式同步。
         self._host_signature: tuple[tuple[tuple[int, ...], torch.dtype], ...] | None = None
         self._host_buffers: tuple[torch.Tensor, torch.Tensor] | None = None
+        # 最近一次枚举的 slot top-k。CROF 在同一轮直接读取这份摘要做跨轮对齐，
+        # 从而不为共识门控重复启动 top-k / logsumexp kernel。
+        self.last_top_log_probs: np.ndarray | None = None
+        self.last_top_token_ids: np.ndarray | None = None
 
     def _to_host(
         self,
@@ -179,6 +183,8 @@ class DDTreeBuilder:
         top_log_probs_np, top_token_ids_np = self._to_host(
             top_values - log_z, top_token_ids.to(torch.int64)
         )
+        self.last_top_log_probs = top_log_probs_np
+        self.last_top_token_ids = top_token_ids_np
 
         # 索引 0 是 anchor（已验证的当前 token），节点从 1 开始，与官方保持一致；
         # 转成 DraftTree 时再整体左移一位，把 anchor 表示为 parent = -1。
@@ -482,6 +488,14 @@ class LatencyAwareDDTreeBuilder(DDTreeBuilder):
             predicted_tokens_per_ms=utility,
         )
         return selected
+
+    def select_budget_from_scores(self, node_scores: np.ndarray) -> int:
+        """只运行预算策略，不重新枚举 DDTree。
+
+        CROF 已经为了共识/分歧分析枚举了最大 DDTree；无重叠或低置信时通过本入口
+        复用原 latency-aware 回退策略，避免第二次处理同一份 draft logits。
+        """
+        return self._select_node_count(node_scores)
 
     def observe(
         self,

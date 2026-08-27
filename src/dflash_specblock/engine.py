@@ -120,6 +120,9 @@ class DFlashSpecBlockEngine:
             return GenerationResult(output_ids=input_ids, generated_ids=empty)
 
         stop_token_ids = stop_token_ids or set()
+        reset_generation = getattr(self.tree_builder, "reset_generation", None)
+        if reset_generation is not None:
+            reset_generation()
         from transformers import DynamicCache
 
         anchor, cache, target_update, prefill_ms = self._prefill(input_ids)
@@ -189,6 +192,14 @@ class DFlashSpecBlockEngine:
                     draft_ms=draft_ms,
                     verify_ms=verify_timer.elapsed_ms,
                     accepted_draft_tokens=len(verified.path.token_ids),
+                )
+            verification_observer = getattr(
+                self.tree_builder, "observe_verification", None
+            )
+            if verification_observer is not None:
+                verification_observer(
+                    accepted_token_ids=tuple(verified.path.token_ids),
+                    bonus_token_id=verified.path.bonus_token_id,
                 )
             stats.append(
                 IterationStats(

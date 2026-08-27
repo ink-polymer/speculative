@@ -10,6 +10,7 @@ from collections import Counter
 import torch
 
 from .config import ExperimentConfig
+from .crof_builder import CrossRoundConsensusForestBuilder
 from .ddtree_builder import DDTreeBuilder, LatencyAwareDDTreeBuilder
 from .device import configure_cuda_runtime, dtype_from_name, resolve_device
 from .dflash_adapter import DFlashBlockAdapter
@@ -57,7 +58,7 @@ def create_engine(config: ExperimentConfig, device: torch.device):
                 "draft_revision": config.draft_revision,
             },
         )
-    elif config.tree_mode in {"ddtree", "ddtree_adaptive"}:
+    elif config.tree_mode in {"ddtree", "ddtree_adaptive", "crof"}:
         # DDTree 的宽度分配完全由 draft log-prob 决定，rank head 的输出不会被读取。
         # 这里仍构造一个占位 ranker 以保持 adapter 的字段契约，但 engine 会通过
         # ``requires_rank=False`` 跳过它的前向。
@@ -80,6 +81,22 @@ def create_engine(config: ExperimentConfig, device: torch.device):
             block_size=config.block_size,
             path_count=config.gbv_paths,
             temperature=config.temperature,
+        )
+    elif config.tree_mode == "crof":
+        tree_builder = CrossRoundConsensusForestBuilder(
+            block_size=config.block_size,
+            tree_budget=config.tree_budget,
+            budget_candidates=config.ddtree_budget_candidates,
+            initial_budget=config.ddtree_initial_budget,
+            warmup_rounds_per_budget=config.ddtree_warmup_rounds_per_budget,
+            ewma_alpha=config.ddtree_policy_ewma_alpha,
+            exploration_interval=config.ddtree_exploration_interval,
+            consensus_budgets=config.crof_consensus_budgets,
+            repair_budgets=config.crof_repair_budgets,
+            min_consensus_slots=config.crof_min_consensus_slots,
+            confidence_margin=config.crof_confidence_margin,
+            old_min_hit_rate=config.crof_old_min_hit_rate,
+            calibration_prior=config.crof_calibration_prior,
         )
     elif config.tree_mode == "ddtree_adaptive":
         tree_builder = LatencyAwareDDTreeBuilder(
@@ -182,6 +199,9 @@ def main() -> None:
             for item in result.iterations
         ],
     }
+    diagnostics = getattr(engine.tree_builder, "diagnostics", None)
+    if diagnostics is not None:
+        summary["crof"] = diagnostics()
     print("\n[实验统计]")
     print(json.dumps(summary, ensure_ascii=False, indent=2))
 

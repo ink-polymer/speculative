@@ -1,0 +1,82 @@
+{
+  "policy": {
+    "temperature": 1.0,
+    "gbv_paths": 3,
+    "max_new_tokens": 128,
+    "expected_prompts": 2000,
+    "dataset": "datasets/processed/dflash_official/prompts_benchmark_2k.jsonl",
+    "quality_metrics_note": "The fixed prompt JSONL has no references/tests; this summary reports generation performance and verification efficiency, not task accuracy."
+  },
+  "overall": {
+    "prompts": 2000,
+    "generated_tokens": 255756,
+    "mean_time_per_token_ms": 3.76199582699393,
+    "tokens_per_second": 265.8163501470608,
+    "speedup_vs_target": 7.357602247035233,
+    "aggregate_speedup_vs_target": 7.360401960941471,
+    "mean_per_prompt_speedup": 7.674765367886313,
+    "mean_committed_per_verify": 12.423186135317732,
+    "mean_verify_iterations": 10.213,
+    "mean_tree_nodes": 39.60436607888903,
+    "baseline_decode_ms_total": 7079472.500840202,
+    "hybrid_decode_ms_total": 961832.3208987713
+  },
+  "per_dataset": {
+    "gsm8k": {
+      "prompts": 1169,
+      "generated_tokens": 149567,
+      "mean_time_per_token_ms": 3.7128964695675575,
+      "tokens_per_second": 269.33150660041713,
+      "speedup_vs_target": 7.454767605501464,
+      "aggregate_speedup_vs_target": 7.456353616236733,
+      "mean_per_prompt_speedup": 7.807576470312687,
+      "mean_committed_per_verify": 12.606014271151885,
+      "mean_verify_iterations": 10.070145423438836,
+      "mean_tree_nodes": 40.94249848828165,
+      "baseline_decode_ms_total": 4140538.2491815835,
+      "hybrid_decode_ms_total": 555303.3643905073
+    },
+    "humaneval": {
+      "prompts": 149,
+      "generated_tokens": 19072,
+      "mean_time_per_token_ms": 3.788948188095991,
+      "tokens_per_second": 263.9254881187796,
+      "speedup_vs_target": 7.334241041759506,
+      "aggregate_speedup_vs_target": 7.334241041759506,
+      "mean_per_prompt_speedup": 7.566750315166909,
+      "mean_committed_per_verify": 12.400393184796854,
+      "mean_verify_iterations": 10.241610738255034,
+      "mean_tree_nodes": 38.30377962158771,
+      "baseline_decode_ms_total": 529992.9390884936,
+      "hybrid_decode_ms_total": 72262.81984336674
+    },
+    "math500": {
+      "prompts": 450,
+      "generated_tokens": 57585,
+      "mean_time_per_token_ms": 3.6443388799124494,
+      "tokens_per_second": 274.39819208690704,
+      "speedup_vs_target": 7.6010754151973,
+      "aggregate_speedup_vs_target": 7.602192242887756,
+      "mean_per_prompt_speedup": 7.7712346986749035,
+      "mean_committed_per_verify": 12.83932584269663,
+      "mean_verify_iterations": 9.88888888888889,
+      "mean_tree_nodes": 37.32957647599314,
+      "baseline_decode_ms_total": 1595076.6020249575,
+      "hybrid_decode_ms_total": 209817.97763891518
+    },
+    "mbpp": {
+      "prompts": 232,
+      "generated_tokens": 29532,
+      "mean_time_per_token_ms": 4.2203013149848285,
+      "tokens_per_second": 236.94990602906628,
+      "speedup_vs_target": 6.532536574773077,
+      "aggregate_speedup_vs_target": 6.539789072936389,
+      "mean_per_prompt_speedup": 6.8878122009203535,
+      "mean_committed_per_verify": 10.94100074682599,
+      "mean_verify_iterations": 11.543103448275861,
+      "mean_tree_nodes": 38.10939158260056,
+      "baseline_decode_ms_total": 813864.7105451673,
+      "hybrid_decode_ms_total": 124448.15902598202
+    }
+  }
+}

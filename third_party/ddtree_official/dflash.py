@@ -5,6 +5,12 @@ import torch
 from transformers import AutoModelForCausalLM, DynamicCache
 
 from model import DFlashDraftModel, sample, extract_context_feature
+from block_verification import (
+    block_rejection_sample,
+    sample_probs,
+    sampling_probs,
+    token_rejection_sample,
+)
 
 
 DFLASH_STAGE_ORDER = ("draft", "verify", "commit")
@@ -20,7 +26,12 @@ def dflash_generate(
     block_size: int,
     stop_token_ids: list[int],
     temperature: float = 0.0,
+    verification_mode: str = "target_match",
 ) -> SimpleNamespace:
+    if verification_mode not in {"target_match", "token", "block"}:
+        raise ValueError("verification_mode must be target_match, token, or block")
+    if verification_mode != "target_match" and temperature <= 0:
+        raise ValueError("token/block rejection verification requires temperature > 0")
     num_input_tokens = input_ids.shape[1]
     max_length = num_input_tokens + max_new_tokens
 
@@ -76,7 +87,12 @@ def dflash_generate(
                 is_causal=False,
             )[:, -block_size + 1 :, :])
             past_key_values_draft.crop(start)
-            block_output_ids[:, 1:] = sample(draft_logits)
+            if verification_mode == "target_match":
+                block_output_ids[:, 1:] = sample(draft_logits)
+                draft_probs = None
+            else:
+                draft_probs = sampling_probs(draft_logits[0], temperature)
+                block_output_ids[:, 1:] = sample_probs(draft_probs).unsqueeze(0)
             draft_stage_elapsed = cuda_time() - draft_stage_start
             if draft_prefill:
                 draft_prefill = False
@@ -95,10 +111,23 @@ def dflash_generate(
         stage_times["verify"] += cuda_time() - verify_stage_start
 
         commit_stage_start = cuda_time()
-        posterior = sample(output.logits, temperature)
-        acceptance_length = (block_output_ids[:, 1:] == posterior[:, :-1]).cumprod(dim=1).sum(dim=1)[0].item()
+        if verification_mode == "target_match" or block_size == 1:
+            posterior = sample(output.logits, temperature)
+            acceptance_length = (block_output_ids[:, 1:] == posterior[:, :-1]).cumprod(dim=1).sum(dim=1)[0].item()
+            bonus = posterior[:, acceptance_length][0]
+        else:
+            target_probs = sampling_probs(output.logits[0], temperature)
+            drafts = block_output_ids[0, 1:]
+            if verification_mode == "token":
+                acceptance_length, bonus = token_rejection_sample(
+                    drafts, target_probs, draft_probs
+                )
+            else:
+                acceptance_length, bonus = block_rejection_sample(
+                    drafts, target_probs, draft_probs
+                )
         output_ids[:, start : start + acceptance_length + 1] = block_output_ids[:, : acceptance_length + 1]
-        output_ids[:, start + acceptance_length + 1] = posterior[:, acceptance_length]
+        output_ids[:, start + acceptance_length + 1] = bonus
 
         acceptance_lengths.append(acceptance_length + 1)
         start += acceptance_length + 1
