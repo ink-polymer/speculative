@@ -1,0 +1,225 @@
+{
+  "policy": {
+    "temperature": 1.0,
+    "prompts": 2000,
+    "datasets": {
+      "gsm8k": 1169,
+      "humaneval": 149,
+      "math500": 450,
+      "mbpp": 232
+    },
+    "sampling_note": "Distributional correctness must be tested statistically; sampled token IDs are not expected to match pairwise even with a common seed."
+  },
+  "overall": {
+    "baseline": {
+      "prompts": 2000,
+      "generated_tokens": 255699,
+      "mean_time_per_token_ms": 27.680940345383846,
+      "tokens_per_second": 36.12594035905875,
+      "speedup_vs_target": 1.0,
+      "mean_committed_per_verify": 1.0,
+      "decode_rounds": 255683,
+      "aggregate_decode_ms": 7078061.336792307
+    },
+    "dflash": {
+      "prompts": 2000,
+      "generated_tokens": 255749,
+      "mean_time_per_token_ms": 8.316747476608768,
+      "tokens_per_second": 120.23931264145577,
+      "speedup_vs_target": 3.328337240398095,
+      "mean_committed_per_verify": 5.003430369191115,
+      "decode_rounds": 52764,
+      "aggregate_decode_ms": 2127219.7201224044
+    },
+    "ddtree": {
+      "prompts": 2000,
+      "generated_tokens": 255783,
+      "mean_time_per_token_ms": 5.989632280382495,
+      "tokens_per_second": 166.95515737672972,
+      "speedup_vs_target": 4.621475751699427,
+      "mean_committed_per_verify": 7.207919448515443,
+      "decode_rounds": 36846,
+      "aggregate_decode_ms": 1532351.8752991222
+    },
+    "tree_block_verification": {
+      "prompts": 2000,
+      "generated_tokens": 255792,
+      "mean_time_per_token_ms": 4.061293690468203,
+      "tokens_per_second": 246.22696022870383,
+      "speedup_vs_target": 6.815793797515952,
+      "mean_committed_per_verify": 13.099797240492558,
+      "decode_rounds": 20221,
+      "aggregate_decode_ms": 1038670.4984661192
+    }
+  },
+  "per_dataset": {
+    "gsm8k": {
+      "baseline": {
+        "prompts": 1169,
+        "generated_tokens": 149502,
+        "mean_time_per_token_ms": 27.673015853687705,
+        "tokens_per_second": 36.136285444534956,
+        "speedup_vs_target": 1.0,
+        "mean_committed_per_verify": 1.0,
+        "decode_rounds": 149494,
+        "aggregate_decode_ms": 4137193.98560049
+      },
+      "dflash": {
+        "prompts": 1169,
+        "generated_tokens": 149588,
+        "mean_time_per_token_ms": 8.77400703614714,
+        "tokens_per_second": 113.97301094929622,
+        "speedup_vs_target": 3.153976938892397,
+        "mean_committed_per_verify": 4.745775729646698,
+        "decode_rounds": 32550,
+        "aggregate_decode_ms": 1312448.7099125981
+      },
+      "ddtree": {
+        "prompts": 1169,
+        "generated_tokens": 149603,
+        "mean_time_per_token_ms": 6.246978361399757,
+        "tokens_per_second": 160.07739136396344,
+        "speedup_vs_target": 4.429824189031932,
+        "mean_committed_per_verify": 6.912517242913719,
+        "decode_rounds": 22473,
+        "aggregate_decode_ms": 934567.3222797923
+      },
+      "tree_block_verification": {
+        "prompts": 1169,
+        "generated_tokens": 149598,
+        "mean_time_per_token_ms": 4.010133924046357,
+        "tokens_per_second": 249.36823032358157,
+        "speedup_vs_target": 6.9007709911505195,
+        "mean_committed_per_verify": 13.196180852885767,
+        "decode_rounds": 11678,
+        "aggregate_decode_ms": 599917.5819142256
+      }
+    },
+    "humaneval": {
+      "baseline": {
+        "prompts": 149,
+        "generated_tokens": 19072,
+        "mean_time_per_token_ms": 27.700044073381473,
+        "tokens_per_second": 36.10102559226453,
+        "speedup_vs_target": 1.0,
+        "mean_committed_per_verify": 1.0,
+        "decode_rounds": 19072,
+        "aggregate_decode_ms": 528295.2405675314
+      },
+      "dflash": {
+        "prompts": 149,
+        "generated_tokens": 19072,
+        "mean_time_per_token_ms": 8.079466210978927,
+        "tokens_per_second": 123.7705528913695,
+        "speedup_vs_target": 3.428449770077728,
+        "mean_committed_per_verify": 5.169278996865204,
+        "decode_rounds": 3828,
+        "aggregate_decode_ms": 154091.5795757901
+      },
+      "ddtree": {
+        "prompts": 149,
+        "generated_tokens": 19072,
+        "mean_time_per_token_ms": 6.017446168857075,
+        "tokens_per_second": 166.18345589453529,
+        "speedup_vs_target": 4.603289052545474,
+        "mean_committed_per_verify": 7.16534008683068,
+        "decode_rounds": 2764,
+        "aggregate_decode_ms": 114764.73333244212
+      },
+      "tree_block_verification": {
+        "prompts": 149,
+        "generated_tokens": 19072,
+        "mean_time_per_token_ms": 3.9864885740655227,
+        "tokens_per_second": 250.84732626743101,
+        "speedup_vs_target": 6.948481993297741,
+        "mean_committed_per_verify": 13.347708894878707,
+        "decode_rounds": 1484,
+        "aggregate_decode_ms": 76030.31008457765
+      }
+    },
+    "math500": {
+      "baseline": {
+        "prompts": 450,
+        "generated_tokens": 57551,
+        "mean_time_per_token_ms": 27.758412907132314,
+        "tokens_per_second": 36.025114380478776,
+        "speedup_vs_target": 1.0,
+        "mean_committed_per_verify": 1.0,
+        "decode_rounds": 57549,
+        "aggregate_decode_ms": 1597572.550711222
+      },
+      "dflash": {
+        "prompts": 450,
+        "generated_tokens": 57569,
+        "mean_time_per_token_ms": 7.179320131274086,
+        "tokens_per_second": 139.2889551816843,
+        "speedup_vs_target": 3.8664403313362397,
+        "mean_committed_per_verify": 5.794008587041374,
+        "decode_rounds": 10248,
+        "aggregate_decode_ms": 413303.9248136338
+      },
+      "ddtree": {
+        "prompts": 450,
+        "generated_tokens": 57585,
+        "mean_time_per_token_ms": 5.38616954185004,
+        "tokens_per_second": 185.66069861523897,
+        "speedup_vs_target": 5.153646332788451,
+        "mean_committed_per_verify": 8.001072242326766,
+        "decode_rounds": 7461,
+        "aggregate_decode_ms": 310168.0338426959
+      },
+      "tree_block_verification": {
+        "prompts": 450,
+        "generated_tokens": 57600,
+        "mean_time_per_token_ms": 3.9802205613482835,
+        "tokens_per_second": 251.2423582026957,
+        "speedup_vs_target": 6.974089118752069,
+        "mean_committed_per_verify": 13.452610351781313,
+        "decode_rounds": 4463,
+        "aggregate_decode_ms": 229260.70433366112
+      }
+    },
+    "mbpp": {
+      "baseline": {
+        "prompts": 232,
+        "generated_tokens": 29574,
+        "mean_time_per_token_ms": 27.55833095975597,
+        "tokens_per_second": 36.28666777608273,
+        "speedup_vs_target": 1.0,
+        "mean_committed_per_verify": 1.0,
+        "decode_rounds": 29568,
+        "aggregate_decode_ms": 814999.5599130634
+      },
+      "dflash": {
+        "prompts": 232,
+        "generated_tokens": 29520,
+        "mean_time_per_token_ms": 8.371319842466933,
+        "tokens_per_second": 119.45547641449467,
+        "speedup_vs_target": 3.2919935539859675,
+        "mean_committed_per_verify": 4.946399478657543,
+        "decode_rounds": 6138,
+        "aggregate_decode_ms": 247375.5058203824
+      },
+      "ddtree": {
+        "prompts": 232,
+        "generated_tokens": 29523,
+        "mean_time_per_token_ms": 5.845565014208847,
+        "tokens_per_second": 171.06986194992177,
+        "speedup_vs_target": 4.714399872855709,
+        "mean_committed_per_verify": 7.410077145612343,
+        "decode_rounds": 4148,
+        "aggregate_decode_ms": 172851.7858441919
+      },
+      "tree_block_verification": {
+        "prompts": 232,
+        "generated_tokens": 29522,
+        "mean_time_per_token_ms": 4.524374024067772,
+        "tokens_per_second": 221.02505112981808,
+        "speedup_vs_target": 6.091081509432512,
+        "mean_committed_per_verify": 11.917950693374422,
+        "decode_rounds": 2596,
+        "aggregate_decode_ms": 133461.9021336548
+      }
+    }
+  }
+}
