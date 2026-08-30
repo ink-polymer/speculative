@@ -1,9 +1,9 @@
-"""POC: NPU graph mode + StaticCache 加速 verify forward。
+"""POC: CUDA Graph + StaticCache 加速 verify forward。
 
 测试三种模式:
 1. DynamicCache + eager (当前实现)
 2. StaticCache + eager (固定 shape)
-3. StaticCache + NPUGraph (graph replay)
+3. StaticCache + CUDA Graph (graph replay)
 """
 
 from __future__ import annotations
@@ -13,7 +13,6 @@ import time
 from pathlib import Path
 
 import torch
-import torch_npu
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
@@ -36,7 +35,7 @@ def bench(fn, device, warmup=3, iters=20):
 
 def main():
     project = Path(__file__).resolve().parent.parent
-    config = ExperimentConfig.from_json(str(project / "configs/qwen3_4b_a2_tree15_float32.json"))
+    config = ExperimentConfig.from_json(str(project / "configs/qwen3_4b_cuda_tree15_float32.json"))
     device = resolve_device(config.device)
     dtype = torch.float32
 
@@ -108,17 +107,17 @@ def main():
         print(f"   ERROR: {type(e).__name__}: {e}")
         static_ms = None
 
-    # === 3. StaticCache + NPUGraph ===
+    # === 3. StaticCache + CUDA Graph ===
     if static_ms is not None:
-        print("\n3. StaticCache + NPUGraph")
+        print("\n3. StaticCache + CUDA Graph")
         try:
             # Warmup
             for _ in range(3):
                 _ = static_forward()
             synchronize(device)
 
-            graph = torch.npu.NPUGraph()
-            with torch.npu.graph(graph):
+            graph = torch.cuda.CUDAGraph()
+            with torch.cuda.graph(graph):
                 graph_output = model(
                     input_ids=static_input_ids,
                     attention_mask=static_mask,

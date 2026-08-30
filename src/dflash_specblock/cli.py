@@ -5,25 +5,29 @@ from __future__ import annotations
 import argparse
 import json
 import warnings
+from collections import Counter
 
 import torch
 
+from .bandit_builder import ContextualBanditDDTreeBuilder
 from .config import ExperimentConfig
-from .device import dtype_from_name, resolve_device
+from .ddtree_builder import DDTreeBuilder, LatencyAwareDDTreeBuilder
+from .device import configure_cuda_runtime, dtype_from_name, resolve_device
 from .dflash_adapter import DFlashBlockAdapter
 from .engine import DFlashSpecBlockEngine
 from .models import load_models, render_prompt
+from .ppo_builder import PPODDTreeBuilder
 from .rank_head import HeuristicRanker, load_rank_head
 from .tree import SpecBlockTreeBuilder
 from .verification import GraphedTargetTreeVerifier, TargetTreeVerifier
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="DFlash + SpecBlock Ascend A2 experiment")
-    parser.add_argument("--config", default="configs/qwen3_4b_a2.json")
+    parser = argparse.ArgumentParser(description="DFlash + SpecBlock NVIDIA CUDA experiment")
+    parser.add_argument("--config", default="configs/qwen3_4b_cuda.json")
     parser.add_argument("--prompt", required=True)
     parser.add_argument("--max-new-tokens", type=int, default=None)
-    parser.add_argument("--device", default=None, help="auto/cpu/npu:0")
+    parser.add_argument("--device", default=None, help="auto/cpu/cuda:0")
     return parser
 
 
@@ -44,12 +48,23 @@ def create_engine(config: ExperimentConfig, device: torch.device):
             device=device,
             expected_metadata={
                 "block_size": config.block_size,
+                "max_blocks": config.max_blocks,
                 "target_model_id": config.target_model_id,
                 "target_revision": config.target_revision,
                 "draft_model_id": config.draft_model_id,
                 "draft_revision": config.draft_revision,
             },
         )
+    elif config.tree_mode in {
+        "ddtree",
+        "ddtree_adaptive",
+        "ddtree_bandit",
+        "ddtree_ppo",
+    }:
+        # DDTree 的宽度分配完全由 draft log-prob 决定，rank head 的输出不会被读取。
+        # 这里仍构造一个占位 ranker 以保持 adapter 的字段契约，但 engine 会通过
+        # ``requires_rank=False`` 跳过它的前向。
+        ranker = HeuristicRanker().to(device).eval()
     else:
         warnings.warn(
             "当前使用 heuristic ranker，只能做工程连通性测试；正式实验请训练 rank head。",
@@ -63,22 +78,98 @@ def create_engine(config: ExperimentConfig, device: torch.device):
         ranker=ranker,
         block_size=config.block_size,
     )
-    tree_builder = SpecBlockTreeBuilder(
-        block_size=config.block_size,
-        max_blocks=config.max_blocks,
-        tree_budget=config.tree_budget,
-        beam_width=config.beam_width,
-        branch_factors=config.branch_factors,
-    )
-    verifier_cls = GraphedTargetTreeVerifier if config.use_graph_verify else TargetTreeVerifier
-    if config.use_graph_verify:
+    policy_metadata = {
+        "target_model_id": config.target_model_id,
+        "target_revision": config.target_revision,
+        "draft_model_id": config.draft_model_id,
+        "draft_revision": config.draft_revision,
+        "dtype": config.dtype,
+        "attn_implementation": config.attn_implementation,
+        "verification": "ancestor_only_greedy_target_verification",
+    }
+    if config.tree_mode == "ddtree_ppo":
+        tree_builder = PPODDTreeBuilder(
+            block_size=config.block_size,
+            tree_budget=config.tree_budget,
+            budget_candidates=config.ddtree_budget_candidates,
+            initial_budget=config.ddtree_initial_budget,
+            hidden_size=config.ddtree_ppo_hidden_size,
+            learning_rate=config.ddtree_ppo_learning_rate,
+            gamma=config.ddtree_ppo_gamma,
+            gae_lambda=config.ddtree_ppo_gae_lambda,
+            clip_range=config.ddtree_ppo_clip_range,
+            value_coefficient=config.ddtree_ppo_value_coefficient,
+            entropy_coefficient=config.ddtree_ppo_entropy_coefficient,
+            rollout_steps=config.ddtree_ppo_rollout_steps,
+            update_epochs=config.ddtree_ppo_update_epochs,
+            minibatch_size=config.ddtree_ppo_minibatch_size,
+            max_grad_norm=config.ddtree_ppo_max_grad_norm,
+            tree_build_cost_weight=config.ddtree_ppo_tree_build_cost_weight,
+            context_length_scale=config.ddtree_ppo_context_length_scale,
+            learning_enabled=config.ddtree_ppo_train,
+            policy_metadata={**policy_metadata, "policy_algorithm": "ppo_discrete"},
+        )
+        policy_path = config.ddtree_ppo_checkpoint_path
+        if policy_path is not None and policy_path.is_file():
+            tree_builder.load_policy(policy_path)
+        elif not config.ddtree_ppo_train:
+            raise FileNotFoundError(
+                f"冻结 PPO 推理缺少 policy checkpoint: {policy_path}"
+            )
+    elif config.tree_mode == "ddtree_bandit":
+        tree_builder = ContextualBanditDDTreeBuilder(
+            block_size=config.block_size,
+            tree_budget=config.tree_budget,
+            budget_candidates=config.ddtree_budget_candidates,
+            initial_budget=config.ddtree_initial_budget,
+            exploration_alpha=config.ddtree_bandit_exploration_alpha,
+            ridge=config.ddtree_bandit_ridge,
+            warmup_rounds_per_budget=config.ddtree_bandit_warmup_rounds_per_budget,
+            context_length_scale=config.ddtree_bandit_context_length_scale,
+            learning_enabled=config.ddtree_bandit_train,
+            policy_metadata={**policy_metadata, "policy_algorithm": "linucb_disjoint"},
+        )
+        policy_path = config.ddtree_bandit_checkpoint_path
+        if policy_path is not None and policy_path.is_file():
+            tree_builder.load_policy(policy_path)
+        elif not config.ddtree_bandit_train:
+            raise FileNotFoundError(
+                f"冻结 bandit 推理缺少 policy checkpoint: {policy_path}"
+            )
+    elif config.tree_mode == "ddtree_adaptive":
+        tree_builder = LatencyAwareDDTreeBuilder(
+            block_size=config.block_size,
+            tree_budget=config.tree_budget,
+            budget_candidates=config.ddtree_budget_candidates,
+            initial_budget=config.ddtree_initial_budget,
+            warmup_rounds_per_budget=config.ddtree_warmup_rounds_per_budget,
+            ewma_alpha=config.ddtree_policy_ewma_alpha,
+            exploration_interval=config.ddtree_exploration_interval,
+        )
+    elif config.tree_mode == "ddtree":
+        tree_builder = DDTreeBuilder(
+            block_size=config.block_size,
+            tree_budget=config.tree_budget,
+            reserve_greedy_chain=config.ddtree_reserve_greedy_chain,
+        )
+    else:
+        tree_builder = SpecBlockTreeBuilder(
+            block_size=config.block_size,
+            max_blocks=config.max_blocks,
+            tree_budget=config.tree_budget,
+            beam_width=config.beam_width,
+            branch_factors=config.branch_factors,
+        )
+    if config.use_cuda_graphs:
+        if device.type != "cuda":
+            raise ValueError("use_cuda_graphs=true 只能用于 NVIDIA CUDA 设备")
         verifier = GraphedTargetTreeVerifier(
             target=bundle.target,
             target_layer_ids=adapter.target_layer_ids,
             device=device,
             dtype=dtype_from_name(config.dtype),
             max_tree_budget=config.tree_budget,
-            max_cache_len=config.graph_max_cache_len,
+            max_cache_len=config.cuda_graph_max_cache_len,
         )
     else:
         verifier = TargetTreeVerifier(
@@ -97,16 +188,41 @@ def create_engine(config: ExperimentConfig, device: torch.device):
     return engine, bundle.tokenizer
 
 
+def persist_tree_policy(engine: DFlashSpecBlockEngine, config: ExperimentConfig) -> None:
+    """Persist a configured training-mode tree policy without flushing its rollout."""
+    if config.tree_mode == "ddtree_ppo" and config.ddtree_ppo_train:
+        policy_path = config.ddtree_ppo_checkpoint_path
+    elif config.tree_mode == "ddtree_bandit" and config.ddtree_bandit_train:
+        policy_path = config.ddtree_bandit_checkpoint_path
+    else:
+        return
+    save_policy = getattr(engine.tree_builder, "save_policy", None)
+    if policy_path is not None and save_policy is not None:
+        save_policy(policy_path)
+
+
+def finalize_tree_policy(engine: DFlashSpecBlockEngine, config: ExperimentConfig) -> None:
+    """Flush the final partial PPO rollout before the last checkpoint."""
+    if config.tree_mode != "ddtree_ppo" or not config.ddtree_ppo_train:
+        return
+    finalize_training = getattr(engine.tree_builder, "finalize_training", None)
+    if finalize_training is not None:
+        finalize_training()
+
+
 def main() -> None:
     args = build_parser().parse_args()
     config = ExperimentConfig.from_json(args.config)
     if args.device:
         config.device = args.device
     device = resolve_device(config.device)
-    if device.type != "npu":
-        warnings.warn("未检测到 NPU；真实模型实验应在 Atlas A2 的 npu:0 上运行。", stacklevel=2)
+    configure_cuda_runtime(device, allow_tf32=config.allow_tf32)
+    if device.type != "cuda":
+        warnings.warn("未使用 NVIDIA GPU；真实模型实验应在 cuda:0 上运行。", stacklevel=2)
 
     torch.manual_seed(config.seed)
+    if device.type == "cuda":
+        torch.cuda.manual_seed_all(config.seed)
     engine, tokenizer = create_engine(config, device)
     input_ids = render_prompt(tokenizer, args.prompt, config.enable_thinking).to(device)
     max_new_tokens = (
@@ -116,8 +232,11 @@ def main() -> None:
         raise ValueError("max-new-tokens 必须为正整数")
     stop_ids = {int(tokenizer.eos_token_id)} if tokenizer.eos_token_id is not None else set()
     result = engine.generate(input_ids, max_new_tokens=max_new_tokens, stop_token_ids=stop_ids)
+    finalize_tree_policy(engine, config)
+    persist_tree_policy(engine, config)
 
     print(tokenizer.decode(result.output_ids[0], skip_special_tokens=True))
+    budget_histogram = Counter(item.tree_nodes for item in result.iterations)
     summary = {
         "device": str(device),
         "prefill_ms": result.prefill_ms,
@@ -125,6 +244,9 @@ def main() -> None:
         "generated_tokens": int(result.generated_ids.shape[1]),
         "verify_iterations": len(result.iterations),
         "average_committed_per_verify": result.average_accepted_length,
+        "tree_budget_histogram": {
+            str(budget): budget_histogram[budget] for budget in sorted(budget_histogram)
+        },
         "iterations": [
             {
                 "draft_ms": item.draft_ms,
@@ -136,6 +258,9 @@ def main() -> None:
             for item in result.iterations
         ],
     }
+    policy_diagnostics = getattr(engine.tree_builder, "policy_diagnostics", None)
+    if policy_diagnostics is not None:
+        summary["tree_policy"] = policy_diagnostics()
     print("\n[实验统计]")
     print(json.dumps(summary, ensure_ascii=False, indent=2))
 

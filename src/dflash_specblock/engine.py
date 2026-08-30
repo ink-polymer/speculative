@@ -58,9 +58,27 @@ class DFlashSpecBlockEngine:
         self.tree_builder = tree_builder
         self.verifier = verifier
         self.device = device
+        self._anchor_buffer = torch.empty(1, dtype=torch.long, device=device)
+        # DDTree 构建器声明 requires_rank=False：它只用 log-prob 做全局预算分配，
+        # 因此可以跳过 draft 阶段的 top-20 摘要与 rank head 前向。
+        self._compute_rank = bool(getattr(tree_builder, "requires_rank", True))
+        self._builder_manages_budget = bool(getattr(tree_builder, "manages_budget", False))
+
+    @property
+    def _uses_static_target_cache(self) -> bool:
+        return bool(getattr(self.verifier, "manages_static_cache", False))
+
+    def _target_cache_length(self, cache: object) -> int:
+        if self._uses_static_target_cache:
+            return int(self.verifier.past_length)
+        return int(cache.get_seq_length())
 
     @torch.inference_mode()
     def _prefill(self, input_ids: torch.Tensor) -> tuple[int, object, torch.Tensor, float]:
+        if self._uses_static_target_cache:
+            anchor, target_update, elapsed_ms = self.verifier.prefill(input_ids)
+            return anchor, self.verifier.static_cache, target_update, elapsed_ms
+
         from transformers import DynamicCache
 
         cache = DynamicCache()
@@ -70,6 +88,9 @@ class DFlashSpecBlockEngine:
                 past_key_values=cache,
                 use_cache=True,
                 output_hidden_states=True,
+                # Keep all hidden states needed by DFlash, but project only the
+                # final prompt row through the 151K-token LM head.
+                logits_to_keep=1,
                 return_dict=True,
             )
         anchor = int(output.logits[0, -1].argmax(dim=-1).item())
@@ -103,23 +124,42 @@ class DFlashSpecBlockEngine:
         prev_accepted = self.tree_builder.block_size
         K = self.tree_builder.block_size
         max_budget = self.tree_builder.tree_budget
-        min_budget = K * 2
+        min_budget = min(max_budget, K * 2)
+
+        begin_episode = getattr(self.tree_builder, "begin_episode", None)
+        if begin_episode is not None:
+            # PPO treats all verify rounds for one prompt as one trajectory.
+            begin_episode()
 
         while len(generated) < max_new_tokens and anchor not in stop_token_ids:
-            ratio = prev_accepted / K
-            adaptive_budget = int(min_budget + ratio * (max_budget - min_budget))
-            adaptive_budget = max(min_budget, min(max_budget, adaptive_budget))
+            if self._builder_manages_budget:
+                # LatencyAwareDDTree 使用当前 block 的概率质量和实测 GPU 延迟选预算。
+                # 传入最大预算，让它一次枚举后选择嵌套前缀；不再使用上一轮接受长度。
+                adaptive_budget = max_budget
+            else:
+                ratio = prev_accepted / K
+                adaptive_budget = int(min_budget + ratio * (max_budget - min_budget))
+                adaptive_budget = max(min_budget, min(max_budget, adaptive_budget))
 
-            cache_prefix = int(cache.get_seq_length())
+            cache_prefix = self._target_cache_length(cache)
+            set_runtime_context = getattr(self.tree_builder, "set_runtime_context", None)
+            if set_runtime_context is not None:
+                # Contextual tree policies may use current KV length as a latency feature.
+                # The verifier and its cache semantics remain unchanged.
+                set_runtime_context(prefix_length=cache_prefix)
 
             with DeviceTimer(self.device) as draft_timer:
+                self._anchor_buffer.fill_(anchor)
                 first = self.adapter.propose_first(
                     target_context=target_update,
-                    anchor_ids=torch.tensor([anchor], dtype=torch.long, device=self.device),
+                    anchor_ids=self._anchor_buffer,
                     draft_cache=draft_cache,
                     cache_prefix_length=cache_prefix,
+                    compute_rank=self._compute_rank,
                 )
-            with DeviceTimer(self.device) as tree_timer:
+            # Tree topology is Python/host control flow. CUDA events would only time
+            # its few kernels and miss the host work, so retain an honest wall clock.
+            with DeviceTimer(self.device, use_cuda_events=False) as tree_timer:
                 tree = self.tree_builder.build(
                     first, self.adapter.propose_continuation, budget=adaptive_budget
                 )
@@ -142,9 +182,28 @@ class DFlashSpecBlockEngine:
                     stop_reached = True
                     break
             generated.extend(committed)
+            draft_ms = draft_timer.elapsed_ms + tree_timer.elapsed_ms
+            observer = getattr(self.tree_builder, "observe", None)
+            if observer is not None:
+                observation = {
+                    "tree_nodes": len(tree),
+                    "draft_ms": draft_ms,
+                    "verify_ms": verify_timer.elapsed_ms,
+                    "accepted_draft_tokens": len(verified.path.token_ids),
+                }
+                if bool(getattr(self.tree_builder, "observes_round_timing", False)):
+                    # PPO optimizes actual committed-token throughput and receives the
+                    # separately measured host-side tree construction time.
+                    observation.update(
+                        tree_build_ms=tree_timer.elapsed_ms,
+                        committed_tokens=len(committed),
+                    )
+                observer(
+                    **observation,
+                )
             stats.append(
                 IterationStats(
-                    draft_ms=draft_timer.elapsed_ms + tree_timer.elapsed_ms,
+                    draft_ms=draft_ms,
                     verify_ms=verify_timer.elapsed_ms,
                     tree_nodes=len(tree),
                     accepted_draft_tokens=len(verified.path.token_ids),
@@ -160,6 +219,10 @@ class DFlashSpecBlockEngine:
 
             if stop_reached:
                 break
+
+        end_episode = getattr(self.tree_builder, "end_episode", None)
+        if end_episode is not None:
+            end_episode()
 
         generated_tensor = torch.tensor(
             generated,

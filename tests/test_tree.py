@@ -79,6 +79,28 @@ def test_ancestor_mask_blocks_siblings() -> None:
     assert not mask[child, sibling]
 
 
+def test_retrieve_indices_keeps_host_control_paths_on_cpu() -> None:
+    tree = DraftTree()
+    first = tree.add_node(1, -1, -0.1, 0, 0, 0)
+    tree.add_node(2, -1, -0.2, 0, 0, 0)
+    tree.add_node(3, first, -0.3, 0, 1, 0)
+
+    # The verifier immediately calls ``tolist``.  Even when its logits are on
+    # CUDA, constructing this Python-owned topology on CUDA would only add a
+    # device round-trip and several tiny assignment kernels.
+    paths = tree.retrieve_indices(device=torch.device("cuda"))
+    assert paths.device.type == "cpu"
+    assert paths.tolist() == [[1, -1], [0, 2]]
+
+
+def test_retrieve_indices_cache_is_invalidated_when_tree_changes() -> None:
+    tree = DraftTree()
+    parent = tree.add_node(1, -1, -0.1, 0, 0, 0)
+    assert tree.retrieve_indices().tolist() == [[0]]
+    tree.add_node(2, parent, -0.2, 0, 1, 0)
+    assert tree.retrieve_indices().tolist() == [[0, 1]]
+
+
 def test_prune_keeps_ancestors() -> None:
     tree = DraftTree()
     root_child = tree.add_node(1, -1, -5.0, 0, 0, 0)
