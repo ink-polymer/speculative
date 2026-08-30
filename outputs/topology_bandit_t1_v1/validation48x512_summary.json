@@ -1,0 +1,39 @@
+{
+  "prompts": 48,
+  "temperature": 1.0,
+  "action_histogram": {
+    "gbv:2": 40,
+    "gbv:3": 7,
+    "gbv:5": 1
+  },
+  "fixed_ddtree": {
+    "mean_speedup": 5.554948640618283,
+    "median_speedup": 5.508000595790934,
+    "aggregate_speedup": 5.197533476388559,
+    "mean_committed": 8.335348801839617,
+    "exact_matches": 0,
+    "per_dataset_mean_speedup": {
+      "gsm8k": 5.677105591694892,
+      "humaneval": 5.028305056078551,
+      "math500": 5.97653997757543,
+      "mbpp": 4.29481041096818
+    }
+  },
+  "policy": {
+    "mean_speedup": 7.733106134500399,
+    "median_speedup": 8.215372718072969,
+    "aggregate_speedup": 7.568461311604431,
+    "mean_committed": 14.650113591086518,
+    "exact_matches": 0,
+    "per_dataset_mean_speedup": {
+      "gsm8k": 7.731390507380796,
+      "humaneval": 8.076556128646413,
+      "math500": 7.828892611269725,
+      "mbpp": 7.345756947191751
+    }
+  },
+  "gain_over_fixed": {
+    "mean_speedup": 2.1781574938821153,
+    "aggregate_speedup": 2.3709278352158725
+  }
+}
