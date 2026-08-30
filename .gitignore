@@ -21,3 +21,5 @@ data/*.jsonl
 logs/
 backups/
 .pipeline_checkpoints/
+.codex_*.tgz
+*.whl

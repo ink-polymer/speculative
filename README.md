@@ -59,8 +59,12 @@ MAX_PROMPTS=2 MAX_NEW_TOKENS=32 bash scripts/run_ddtree_benchmark.sh  # smoke
 6. CUDA 设备 fail-closed、SDPA 注意力、TF32 开关和 CUDA Graph 固定 shape 验证；
 7. baseline/hybrid 逐样本正确性、延迟、接受长度和加速比记录。
 
-当前只支持 `temperature=0`。随机采样需要 proposal probability 与 rejection sampling，不能
-复用 greedy 最长路径验证。
+核心 `dflash_specblock` engine 只支持 `temperature=0`；它不能把 greedy 最长路径验证直接
+套到随机采样。T=1 实验走 vendored official sampling runtime：DFlash 使用标准 token
+rejection sampling，RL-DDTree 使用目标模型逐节点采样并沿树提交的传统验证，不使用 GBV。
+`scripts/run_temperature_block_verification_2k.sh` 先训练离散 PPO 树预算策略，再冻结策略运行
+2K evaluation；运行器会先按来源 ID 和规范化题目内容过滤训练集，避免与冻结的 2K 测试集
+重合。目标验证、ancestor-only mask 与 KV 压缩均不由策略修改。
 
 正式默认配置是 [configs/qwen3_4b_cuda.json](configs/qwen3_4b_cuda.json)：
 

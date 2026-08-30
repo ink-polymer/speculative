@@ -166,6 +166,46 @@ def build_ddtree_tree(
     return node_token_ids, node_depths, parents, child_maps, visibility, build_subtimes
 
 
+def build_ddtree_tree_with_policy(draft_logits: torch.Tensor, tree_builder):
+    """Build the official tensor representation from an RL-selected DDTree prefix.
+
+    The policy builder emits the same parent-before-child best-first prefix as
+    ``build_ddtree_tree``.  This adapter changes only the selected node count;
+    target-side tree compilation and verification continue through the original
+    DDTree functions below.
+    """
+    tree = tree_builder.build_from_logits(
+        draft_logits,
+        budget=int(tree_builder.tree_budget),
+    )
+    node_token_ids = torch.tensor(
+        [int(node.token_id) for node in tree.nodes], dtype=torch.long
+    )
+    node_depths = torch.tensor(
+        [int(node.slot_index) + 1 for node in tree.nodes], dtype=torch.long
+    )
+    parents = [-1]
+    child_maps: list[dict[int, int]] = [dict() for _ in range(len(tree) + 1)]
+    for index, node in enumerate(tree.nodes, start=1):
+        parent = int(node.parent) + 1
+        parents.append(parent)
+        child_maps[parent][int(node.token_id)] = index
+    visibility = torch.zeros((len(tree) + 1, len(tree) + 1), dtype=torch.bool)
+    visibility[0, 0] = True
+    for index in range(1, len(tree) + 1):
+        parent = parents[index]
+        visibility[index, :index] = visibility[parent, :index]
+        visibility[index, index] = True
+    return (
+        node_token_ids,
+        node_depths,
+        parents,
+        child_maps,
+        visibility,
+        empty_stage_times(DDTREE_TREE_BUILD_STAGE_ORDER),
+    )
+
+
 def compile_ddtree_tree(
     root_token_id: torch.Tensor,
     start: int,
@@ -289,6 +329,7 @@ def ddtree_generate(
     temperature: float = 0.0,
     tree_budget: int | None = None,
     save_tree_traces: bool = False,
+    tree_builder=None,
 ) -> SimpleNamespace:
     if block_size <= 1:
         return dflash_generate(
@@ -306,6 +347,8 @@ def ddtree_generate(
     max_length = num_input_tokens + max_new_tokens
     draft_horizon = block_size - 1
     tree_budget = draft_horizon if tree_budget is None else max(tree_budget, 0)
+    if tree_builder is not None and int(tree_builder.tree_budget) != tree_budget:
+        raise ValueError("tree_builder.tree_budget must match tree_budget")
     max_tree_nodes = 1 + tree_budget
 
     output_ids = torch.full(
@@ -352,9 +395,12 @@ def ddtree_generate(
     acceptance_lengths = []
     round_timestamps = []
     round_trees = [] if save_tree_traces else None
+    selected_tree_budgets = []
     draft_prefill = True
     previous_tree_start = 0
     previous_tree_length = 0
+    if tree_builder is not None and hasattr(tree_builder, "begin_episode"):
+        tree_builder.begin_episode()
 
     while start < max_length:
         block_output_ids = output_ids[:, start : start + block_size].clone()
@@ -379,10 +425,22 @@ def ddtree_generate(
             stage_times["draft"] += draft_stage_elapsed
 
         tree_build_start = cuda_time()
-        node_token_ids, node_depths, parents, child_maps, visibility_cpu, tree_build_subtimes = build_ddtree_tree(
-            draft_logits[0], tree_budget
-        )
-        stage_times["tree_build"] += cuda_time() - tree_build_start
+        if tree_builder is None:
+            tree_result = build_ddtree_tree(draft_logits[0], tree_budget)
+        else:
+            tree_builder.set_runtime_context(prefix_length=start)
+            tree_result = build_ddtree_tree_with_policy(draft_logits[0], tree_builder)
+        (
+            node_token_ids,
+            node_depths,
+            parents,
+            child_maps,
+            visibility_cpu,
+            tree_build_subtimes,
+        ) = tree_result
+        tree_build_elapsed = cuda_time() - tree_build_start
+        stage_times["tree_build"] += tree_build_elapsed
+        selected_tree_budgets.append(int(node_token_ids.numel()))
         for stage_name, stage_elapsed in tree_build_subtimes.items():
             stage_times[stage_name] += stage_elapsed
 
@@ -403,7 +461,8 @@ def ddtree_generate(
             previous_tree_start=previous_tree_start,
             previous_tree_length=previous_tree_length,
         )
-        stage_times["tree_compile"] += cuda_time() - tree_compile_start
+        tree_compile_elapsed = cuda_time() - tree_compile_start
+        stage_times["tree_compile"] += tree_compile_elapsed
 
         verify_stage_start = cuda_time()
         output = target(
@@ -414,7 +473,8 @@ def ddtree_generate(
             use_cache=True,
             output_hidden_states=True,
         )
-        stage_times["verify"] += cuda_time() - verify_stage_start
+        verify_stage_elapsed = cuda_time() - verify_stage_start
+        stage_times["verify"] += verify_stage_elapsed
 
         commit_stage_start = cuda_time()
         posterior = sample(output.logits, temperature)
@@ -430,6 +490,14 @@ def ddtree_generate(
 
         acceptance_lengths.append(len(accepted_indices))
         start += len(accepted_indices)
+        if tree_builder is not None:
+            tree_builder.observe(
+                tree_nodes=int(node_token_ids.numel()),
+                draft_ms=draft_stage_elapsed * 1000.0,
+                tree_build_ms=(tree_build_elapsed + tree_compile_elapsed) * 1000.0,
+                verify_ms=verify_stage_elapsed * 1000.0,
+                accepted_draft_tokens=max(0, len(accepted_indices) - 1),
+            )
         stage_times["commit"] += cuda_time() - commit_stage_start
         round_timestamps.append(cuda_time() - round_clock_start)
         if save_tree_traces:
@@ -446,6 +514,9 @@ def ddtree_generate(
             new_tokens = output_ids[:, start - len(accepted_indices) : start + 1]
             if torch.isin(new_tokens[0], stop_token_ids_tensor).any():
                 break
+
+    if tree_builder is not None and hasattr(tree_builder, "end_episode"):
+        tree_builder.end_episode()
 
     output_ids = output_ids[:, :max_length]
     output_ids = output_ids[:, output_ids[0] != mask_token_id]
@@ -469,4 +540,8 @@ def ddtree_generate(
         stage_times=stage_times,
         round_timestamps=round_timestamps,
         round_trees=round_trees,
+        selected_tree_budgets=selected_tree_budgets,
+        tree_policy=(
+            tree_builder.policy_diagnostics() if tree_builder is not None else None
+        ),
     )

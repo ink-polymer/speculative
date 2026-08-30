@@ -6,13 +6,16 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 OFFICIAL_ROOT = PROJECT_ROOT / "third_party" / "ddtree_official"
+SRC_ROOT = PROJECT_ROOT / "src"
 sys.path.insert(0, str(OFFICIAL_ROOT))
+sys.path.insert(0, str(SRC_ROOT))
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -26,9 +29,36 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--model-revision", default=None)
     parser.add_argument("--draft-revision", default=None)
     parser.add_argument("--device", default="cuda:0")
+    parser.add_argument(
+        "--draft-attn-implementation",
+        choices=("flash_attention_2", "sdpa", "eager"),
+        default="flash_attention_2",
+    )
     parser.add_argument("--block-size", type=int, default=None)
-    parser.add_argument("--tree-budget", type=int, default=60)
-    parser.add_argument("--gbv-paths", type=int, default=3)
+    parser.add_argument("--tree-budget", type=int, default=256)
+    parser.add_argument("--fixed-tree-budget", type=int, default=60)
+    parser.add_argument(
+        "--budget-candidates",
+        default="30,40,50,60,70,80,90,100,112,128,144,160,192,224,256",
+    )
+    parser.add_argument("--initial-budget", type=int, default=60)
+    parser.add_argument("--ppo-hidden-size", type=int, default=64)
+    parser.add_argument("--ppo-learning-rate", type=float, default=3e-4)
+    parser.add_argument("--ppo-gamma", type=float, default=0.99)
+    parser.add_argument("--ppo-gae-lambda", type=float, default=0.95)
+    parser.add_argument("--ppo-clip-range", type=float, default=0.2)
+    parser.add_argument("--ppo-value-coefficient", type=float, default=0.5)
+    parser.add_argument("--ppo-entropy-coefficient", type=float, default=0.01)
+    parser.add_argument("--ppo-rollout-steps", type=int, default=256)
+    parser.add_argument("--ppo-update-epochs", type=int, default=4)
+    parser.add_argument("--ppo-minibatch-size", type=int, default=64)
+    parser.add_argument("--ppo-max-grad-norm", type=float, default=0.5)
+    parser.add_argument("--ppo-tree-build-cost-weight", type=float, default=2.0)
+    parser.add_argument("--ppo-context-length-scale", type=int, default=4096)
+    parser.add_argument("--ppo-checkpoint", type=Path, required=True)
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--ppo-train", action="store_true")
+    mode.add_argument("--ppo-eval", action="store_true")
     parser.add_argument("--max-samples", type=int, default=None)
     parser.add_argument("--max-new-tokens", type=int, default=128)
     parser.add_argument("--temperature", type=float, default=0.0)
@@ -59,6 +89,7 @@ def _load_rows(path: Path, limit: int | None) -> list[dict[str, Any]]:
 def _metrics(result: Any) -> dict[str, Any]:
     generated = result.output_ids[0, result.num_input_tokens :].detach().cpu().tolist()
     decode_s = float(result.time_per_output_token) * int(result.num_output_tokens)
+    budgets = Counter(int(x) for x in getattr(result, "selected_tree_budgets", []))
     return {
         "generated_token_ids": generated,
         "generated_tokens": int(result.num_output_tokens),
@@ -68,6 +99,8 @@ def _metrics(result: Any) -> dict[str, Any]:
         "acceptance_lengths": [int(value) for value in result.acceptance_lengths],
         "decode_rounds": int(result.decode_rounds),
         "stage_times_s": {key: float(value) for key, value in result.stage_times.items()},
+        "tree_budget_histogram": {str(k): budgets[k] for k in sorted(budgets)},
+        "tree_policy": getattr(result, "tree_policy", None),
     }
 
 
@@ -86,16 +119,20 @@ def main() -> None:
 
     from ddtree import ddtree_generate, maybe_enable_cpp_compact
     from dflash import dflash_generate
-    from gbv import gbv_generate
+    from dflash_specblock.ppo_builder import PPODDTreeBuilder
     from model import DFlashDraftModel
 
     device = torch.device(args.device)
     if device.type != "cuda" or not torch.cuda.is_available():
         raise RuntimeError("Official DDTree benchmark requires an available CUDA GPU")
-    try:
-        import flash_attn  # noqa: F401
-    except ImportError as exc:
-        raise RuntimeError("Official DDTree draft path requires flash-attn") from exc
+    if args.draft_attn_implementation == "flash_attention_2":
+        try:
+            import flash_attn  # noqa: F401
+        except ImportError as exc:
+            raise RuntimeError(
+                "--draft-attn-implementation=flash_attention_2 requires flash-attn; "
+                "use sdpa on hosts without a matching prebuilt wheel or nvcc"
+            ) from exc
 
     torch.cuda.set_device(device)
     torch.manual_seed(args.seed)
@@ -109,7 +146,7 @@ def main() -> None:
         "dtype": torch.bfloat16,
     }
     draft_kwargs: dict[str, Any] = {
-        "attn_implementation": "flash_attention_2",
+        "attn_implementation": args.draft_attn_implementation,
         "dtype": torch.bfloat16,
     }
     tokenizer_kwargs: dict[str, Any] = {}
@@ -123,6 +160,49 @@ def main() -> None:
     draft = DFlashDraftModel.from_pretrained(args.draft, **draft_kwargs).to(device).eval()
     tokenizer = AutoTokenizer.from_pretrained(args.model, **tokenizer_kwargs)
     block_size = int(draft.block_size if args.block_size is None else args.block_size)
+    budget_candidates = tuple(
+        int(value.strip())
+        for value in args.budget_candidates.split(",")
+        if value.strip()
+    )
+    policy_metadata = {
+        "target_model_id": str(args.model),
+        "target_revision": str(args.model_revision),
+        "draft_model_id": str(args.draft),
+        "draft_revision": str(args.draft_revision),
+        "dtype": "bfloat16",
+        "draft_attn_implementation": args.draft_attn_implementation,
+        "temperature": str(args.temperature),
+        "verification": "official_target_sampling_tree_walk",
+        "policy_algorithm": "ppo_discrete",
+    }
+    ppo_builder = PPODDTreeBuilder(
+        block_size=block_size - 1,
+        tree_budget=args.tree_budget,
+        budget_candidates=budget_candidates,
+        initial_budget=args.initial_budget,
+        hidden_size=args.ppo_hidden_size,
+        learning_rate=args.ppo_learning_rate,
+        gamma=args.ppo_gamma,
+        gae_lambda=args.ppo_gae_lambda,
+        clip_range=args.ppo_clip_range,
+        value_coefficient=args.ppo_value_coefficient,
+        entropy_coefficient=args.ppo_entropy_coefficient,
+        rollout_steps=args.ppo_rollout_steps,
+        update_epochs=args.ppo_update_epochs,
+        minibatch_size=args.ppo_minibatch_size,
+        max_grad_norm=args.ppo_max_grad_norm,
+        tree_build_cost_weight=args.ppo_tree_build_cost_weight,
+        context_length_scale=args.ppo_context_length_scale,
+        learning_enabled=args.ppo_train,
+        policy_metadata=policy_metadata,
+    )
+    checkpoint = args.ppo_checkpoint.expanduser().resolve()
+    checkpoint_loaded = checkpoint.is_file()
+    if checkpoint_loaded:
+        ppo_builder.load_policy(checkpoint)
+    elif args.ppo_eval:
+        raise FileNotFoundError(f"Frozen PPO evaluation requires {checkpoint}")
     stop_ids = target.generation_config.eos_token_id or tokenizer.eos_token_id
     stop_ids = [int(stop_ids)] if isinstance(stop_ids, int) else [int(x) for x in stop_ids]
     rows = _load_rows(args.prompts, args.max_samples)
@@ -149,7 +229,8 @@ def main() -> None:
             verification_mode=verification_mode,
         )
 
-    def run_ddtree(input_ids):
+    def run_ddtree(input_ids, *, use_policy: bool = True):
+        selected_budget = args.tree_budget if use_policy else args.fixed_tree_budget
         return ddtree_generate(
             model=draft,
             target=target,
@@ -157,22 +238,10 @@ def main() -> None:
             mask_token_id=draft.mask_token_id,
             max_new_tokens=args.max_new_tokens,
             block_size=block_size,
-            tree_budget=args.tree_budget,
+            tree_budget=selected_budget,
             stop_token_ids=stop_ids,
             temperature=args.temperature,
-        )
-
-    def run_gbv(input_ids):
-        return gbv_generate(
-            model=draft,
-            target=target,
-            input_ids=input_ids,
-            mask_token_id=draft.mask_token_id,
-            max_new_tokens=args.max_new_tokens,
-            block_size=block_size,
-            stop_token_ids=stop_ids,
-            temperature=args.temperature,
-            path_count=args.gbv_paths,
+            tree_builder=ppo_builder if use_policy else None,
         )
 
     warmup_ids = encode("Warmup")
@@ -180,8 +249,8 @@ def main() -> None:
     args.max_new_tokens = min(16, original_max_new_tokens)
     run_dflash(warmup_ids, 1)
     run_dflash(warmup_ids, block_size, "token")
-    run_gbv(warmup_ids)
-    run_ddtree(warmup_ids)
+    # Warm the original target tree-walk without updating or consulting PPO.
+    run_ddtree(warmup_ids, use_policy=False)
     args.max_new_tokens = original_max_new_tokens
 
     output = args.output.expanduser().resolve()
@@ -191,6 +260,10 @@ def main() -> None:
     if args.resume and output.exists():
         existing = _load_rows(output, None)
         completed = len(existing)
+        if args.ppo_train and completed and not checkpoint_loaded:
+            raise FileNotFoundError(
+                "Cannot resume PPO training output without its policy checkpoint"
+            )
         if completed > len(rows):
             raise ValueError(f"resume output has {completed} rows, but input has only {len(rows)}")
         for index, record in enumerate(existing):
@@ -198,6 +271,8 @@ def main() -> None:
                 raise ValueError(f"resume output/input mismatch at row {index}")
             if float(record.get("temperature", -1.0)) != args.temperature:
                 raise ValueError(f"resume temperature mismatch at row {index}")
+            if record.get("ppo_mode") != ("train" if args.ppo_train else "eval"):
+                raise ValueError(f"resume PPO mode mismatch at row {index}")
         mode = "a"
         print(f"Resuming {output} from row {completed}/{len(rows)}")
     with output.open(mode, encoding="utf-8") as stream:
@@ -215,18 +290,23 @@ def main() -> None:
             # is reset independently because it consumes a different number of random
             # variates after the first rejection.
             prompt_seed = args.seed + index
+            comparison: dict[str, Any] = {}
+            if args.ppo_eval:
+                torch.manual_seed(prompt_seed)
+                torch.cuda.manual_seed_all(prompt_seed)
+                comparison["baseline"] = _metrics(run_dflash(input_ids, 1))
+                torch.manual_seed(prompt_seed)
+                torch.cuda.manual_seed_all(prompt_seed)
+                comparison["dflash"] = _metrics(run_dflash(input_ids, block_size, "token"))
+                torch.manual_seed(prompt_seed)
+                torch.cuda.manual_seed_all(prompt_seed)
+                comparison["ddtree"] = _metrics(run_ddtree(input_ids, use_policy=False))
             torch.manual_seed(prompt_seed)
             torch.cuda.manual_seed_all(prompt_seed)
-            baseline = _metrics(run_dflash(input_ids, 1))
-            torch.manual_seed(prompt_seed)
-            torch.cuda.manual_seed_all(prompt_seed)
-            dflash = _metrics(run_dflash(input_ids, block_size, "token"))
-            torch.manual_seed(prompt_seed)
-            torch.cuda.manual_seed_all(prompt_seed)
-            tree_block_verification = _metrics(run_gbv(input_ids))
-            torch.manual_seed(prompt_seed)
-            torch.cuda.manual_seed_all(prompt_seed)
-            ddtree = _metrics(run_ddtree(input_ids))
+            ddtree_ppo = _metrics(run_ddtree(input_ids))
+            if args.ppo_train:
+                # Checkpointing is outside measured decode time and makes long jobs resumable.
+                ppo_builder.save_policy(checkpoint)
             record = {
                 "index": index,
                 "dataset": row.get("dataset"),
@@ -236,31 +316,28 @@ def main() -> None:
                 "verification_modes": {
                     "dflash": "token_rejection",
                     "ddtree": "official_target_sampling_tree_walk",
-                    "tree_block_verification": "thomas_pal_2026_gbv_multi_path_tree",
+                    "ddtree_ppo": "official_target_sampling_tree_walk",
                 },
                 "dtype": "bfloat16",
+                "draft_attn_implementation": args.draft_attn_implementation,
                 "block_size_including_anchor": block_size,
                 "tree_budget": args.tree_budget,
-                "gbv_paths": args.gbv_paths,
+                "fixed_tree_budget": args.fixed_tree_budget,
                 "temperature": args.temperature,
                 "seed": prompt_seed,
-                "baseline": baseline,
-                "dflash": dflash,
-                "tree_block_verification": tree_block_verification,
-                "ddtree": ddtree,
-                "dflash_greedy_exact_match": (
-                    baseline["generated_token_ids"] == dflash["generated_token_ids"]
-                    if args.temperature == 0.0
-                    else None
-                ),
-                "ddtree_greedy_exact_match": (
-                    baseline["generated_token_ids"] == ddtree["generated_token_ids"]
-                    if args.temperature == 0.0
-                    else None
-                ),
+                "ppo_mode": "train" if args.ppo_train else "eval",
+                "ppo_checkpoint": str(checkpoint),
+                "ppo_budget_candidates": list(budget_candidates),
+                "ppo_tree_build_cost_weight": args.ppo_tree_build_cost_weight,
+                "ddtree_ppo": ddtree_ppo,
+                **comparison,
             }
             stream.write(json.dumps(record, ensure_ascii=False) + "\n")
             stream.flush()
+
+    if args.ppo_train:
+        ppo_builder.finalize_training()
+        ppo_builder.save_policy(checkpoint)
 
 
 if __name__ == "__main__":

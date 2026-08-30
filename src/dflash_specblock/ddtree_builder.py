@@ -80,6 +80,7 @@ class DDTreeBuilder:
     """
 
     requires_rank = False
+    manages_budget = False
 
     def __init__(
         self,
@@ -250,6 +251,13 @@ class DDTreeBuilder:
             push_sibling(ranks, parent_index, depth, rank, logw)
             push_child(ranks, node_index, depth, logw)
 
+        selected_count = self._select_node_count(node_scores[:node_count])
+        if not 0 <= selected_count <= node_count:
+            raise AssertionError(
+                f"预算策略返回非法节点数 {selected_count}，可用范围是 [0, {node_count}]"
+            )
+        node_count = selected_count
+
         return self._to_draft_tree(
             node_token_ids[:node_count],
             node_depths[:node_count],
@@ -257,6 +265,10 @@ class DDTreeBuilder:
             node_scores[:node_count],
             parents[: node_count + 1],
         )
+
+    def _select_node_count(self, node_scores: np.ndarray) -> int:
+        """Select a prefix length from the nested best-first DDTree."""
+        return int(node_scores.shape[0])
 
     @staticmethod
     def _to_draft_tree(
