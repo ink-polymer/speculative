@@ -1,5 +1,16 @@
 # DFlash-SpecBlock：面向昇腾 910B A2 的扩散块动态树推测解码实验
 
+## H200 全量 GBV 论文实验
+
+本分支新增 DFlash 扩散草稿与多路径 GBV 的独立实验套件，覆盖 GSM8K、MATH-500、AIME25、HumanEval、MBPP、LiveCodeBench 和 MT-Bench 全量评测。主实验及所有消融共用固定配置，MT-Bench 保留完整双轮对话，并提供外部裁判评分导出/导入接口。
+
+- [实验协议与运行说明](docs/GBV_PAPER_EXPERIMENTS.md)
+- [全量主实验与消融配置](configs/gbv_paper_full.json)
+- 启动：`bash scripts/run_gbv_paper_full.sh`（先按说明安装 H200/CUDA 环境和评分容器）。
+- 本地 CPU 测试及独立解压包均通过 69 项测试；H200 实际 checkpoint 验证、全量数据审计和正式测速尚待运行。
+
+## 既有 Ascend / SpecBlock 实验
+
 本工程把两篇论文的核心思路组合为一个可审计的实验实现：
 
 - **DFlash** 负责草稿生成：目标模型多层隐藏状态持续注入每个 draft layer 的 KV，未来
