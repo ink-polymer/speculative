@@ -8,3 +8,7 @@ numpy==2.2.6
 tqdm==4.67.1
 pytest==8.4.2
 packaging==25.0
+loguru==0.7.3
+ninja>=1.11
+typing-extensions>=4.10
+# Install a flash-attn wheel matching the server's PyTorch/CUDA build separately.

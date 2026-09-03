@@ -126,9 +126,12 @@ class DFlashSpecBlockEngine:
         min_budget = min(max_budget, K * 2)
 
         while len(generated) < max_new_tokens and anchor not in stop_token_ids:
-            ratio = prev_accepted / K
-            adaptive_budget = int(min_budget + ratio * (max_budget - min_budget))
-            adaptive_budget = max(min_budget, min(max_budget, adaptive_budget))
+            if getattr(self.tree_builder, "manages_budget", False):
+                adaptive_budget = max_budget
+            else:
+                ratio = prev_accepted / K
+                adaptive_budget = int(min_budget + ratio * (max_budget - min_budget))
+                adaptive_budget = max(min_budget, min(max_budget, adaptive_budget))
 
             cache_prefix = self._target_cache_length(cache)
 
@@ -166,6 +169,12 @@ class DFlashSpecBlockEngine:
                     stop_reached = True
                     break
             generated.extend(committed)
+            observer = getattr(self.tree_builder, "observe", None)
+            if observer is not None:
+                observer(tree_nodes=len(tree),
+                         draft_ms=draft_timer.elapsed_ms + tree_timer.elapsed_ms,
+                         verify_ms=verify_timer.elapsed_ms,
+                         accepted_draft_tokens=len(verified.path.token_ids))
             stats.append(
                 IterationStats(
                     draft_ms=draft_timer.elapsed_ms + tree_timer.elapsed_ms,

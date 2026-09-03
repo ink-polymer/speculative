@@ -1,21 +1,76 @@
 {
+  "version": 4,
+  "protocol": "ddtree_official_t0",
+  "official_commit": "c96427a185677bf4133ed865dd1626a5041aef9b",
   "temperature": 0,
-  "block_size": 15,
-  "baseline_budget": 60,
   "max_new_tokens": 2048,
-  "seeds": [17, 29, 43],
-  "variants": ["full", "fixed_budget", "fixed_depth", "fixed_quotas", "fixed_width", "no_target", "no_history", "draft_only", "acceptance_reward", "local_ratio_reward", "no_pretrain", "no_online_rl"],
-  "train_epochs": 2,
-  "pretrain_epochs": 3,
-  "learning_rate": 0.0003,
-  "value_coef": 0.5,
-  "gamma": 1.0,
-  "cf_actions": 8,
-  "cf_repeats": 3,
-  "oracle_budgets": [60, 200, 400],
-  "validation_fraction": 0.1,
-  "bootstrap_samples": 2000,
-  "eval_repeats": 3,
-  "warmup_runs": 2,
-  "model_config": "configs/paper_t0_model.json"
+  "seed": 0,
+  "datasets": [
+    "gsm8k",
+    "math500",
+    "aime24",
+    "aime25",
+    "humaneval",
+    "mbpp",
+    "livecodebench",
+    "swe-bench",
+    "mt-bench",
+    "alpaca"
+  ],
+  "sample_limits": {
+    "gsm8k": 128,
+    "math500": 128,
+    "aime24": 30,
+    "aime25": 30,
+    "humaneval": 164,
+    "mbpp": 128,
+    "livecodebench": 128,
+    "swe-bench": 128,
+    "mt-bench": 80,
+    "alpaca": 128
+  },
+  "tree_budgets": [
+    16,
+    32,
+    64,
+    128,
+    256,
+    512,
+    1024
+  ],
+  "models": [
+    [
+      "Qwen/Qwen3-4B",
+      "z-lab/Qwen3-4B-DFlash-b16"
+    ],
+    [
+      "Qwen/Qwen3-8B",
+      "z-lab/Qwen3-8B-DFlash-b16"
+    ],
+    [
+      "Qwen/Qwen3-Coder-30B-A3B-Instruct",
+      "z-lab/Qwen3-Coder-30B-A3B-DFlash"
+    ]
+  ],
+  "variants": [
+    "adaptive",
+    "no_acceptance_calibration",
+    "no_latency",
+    "no_exploration",
+    "frozen_after_warmup"
+  ],
+  "adaptive": {
+    "budget_candidates": [
+      30,
+      45,
+      60,
+      80,
+      100,
+      128
+    ],
+    "initial_budget": 60,
+    "warmup_rounds_per_budget": 1,
+    "ewma_alpha": 0.2,
+    "exploration_interval": 64
+  }
 }

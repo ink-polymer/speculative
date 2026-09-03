@@ -1,1 +1,1 @@
-"""Reproducible, full-split experiments for the T=0 layered structure policy."""
+"""Original non-RL Adaptive DDTree under the pinned official DDTree T=0 protocol."""

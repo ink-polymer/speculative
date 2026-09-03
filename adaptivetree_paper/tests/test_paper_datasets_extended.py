@@ -9,7 +9,7 @@ import pytest
 import torch
 
 from dflash_specblock.paper import data
-from dflash_specblock.paper.__main__ import load_data, main
+from dflash_specblock.paper.controlled_main import load_data, main
 from dflash_specblock.paper.common import ROOT, atomic_json, load_config, load_json
 from dflash_specblock.paper.evaluation import measure_case, same_dialogue
 from dflash_specblock.paper.runtime import PaperRuntime
@@ -28,11 +28,7 @@ def test_aime_source_train_split_is_evaluation_only():
     assert row["split"] == "train" and row["usage"] == "evaluation_only"
     assert data.is_evaluation_row(row)
     assert "999" not in row["prompt"]
-    data.validate_rows([], [], [row], .1)
-    with pytest.raises(ValueError, match="official training"):
-        data.validate_rows([row], [], [], .1)
-    with pytest.raises(ValueError, match="Evaluation-only"):
-        data.partition_train([row], [], .1)
+    data.validate_evaluation([row])
 
 
 @pytest.mark.parametrize("starter", ["", "class Solution:\n    def solve(self, nums):\n        pass"])
@@ -47,7 +43,7 @@ def test_lcb_starter_and_private_test_isolation(starter):
     assert ("Use the provided code structure." if starter else "Read from standard input") in row["prompt"]
     if starter:
         assert starter in row["prompt"]
-    data.validate_rows([], [], [row], .1)
+    data.validate_evaluation([row])
 
 
 def test_lcb_reads_all_six_release_files_without_remote_code(tmp_path, monkeypatch):
@@ -76,14 +72,7 @@ def test_mtbench_keeps_both_turns_and_checks_raw_turn_leakage():
     altered["turns"][1] += " different"
     other = data.make_row("mt-bench", altered, 0, "test", "lm-sys/FastChat", None)
     assert other["prompt_hash"] != row["prompt_hash"]
-    training = [data.make_row("gsm8k", {"question": f"train question {i}"}, i,
-                             "train", "openai/gsm8k", "main") for i in range(100)]
-    leak = data.make_row("gsm8k", {"question": row["user_turns"][1]}, 100,
-                         "train", "openai/gsm8k", "main")
-    training.append(leak)
-    train_rows, dev, removed = data.partition_train(training, [row], .2)
-    assert {r["id"] for r in removed} == {leak["id"]}
-    data.validate_rows(train_rows, dev, [row], .2)
+    data.validate_evaluation([row])
     with pytest.raises(ValueError, match="both nonempty"):
         data.make_row("mt-bench", {"turns": ["only first"]}, 0, "test", "lm-sys/FastChat", None)
 
@@ -93,7 +82,7 @@ def test_multiturn_uses_own_generated_answer_and_sums_turn_times():
     def encode(messages):
         seen.append(copy.deepcopy(messages))
         return torch.tensor([[len(messages), sum(len(m["content"]) for m in messages)]])
-    def generate(ids, method, policy):
+    def generate(ids, method, replica):
         return {"tokens": [5 if method == "ar" else 7], "wall_ms": 10. if ids[0, 0] == 1 else 30., "rounds": []}
     runtime = SimpleNamespace(encode_messages=encode, generate=generate,
                               tokenizer=SimpleNamespace(decode=lambda tokens, **_: f"answer-{tokens[0]}"))
@@ -139,21 +128,12 @@ def test_plan_counts_two_mtbench_turns(capsys):
     plan = json.loads(capsys.readouterr().out)
     assert sum(plan["test_counts"].values()) == 3905
     assert plan["turns_per_case"]["mt-bench"] == 2
-    assert plan["test_generation_calls"] == 609705
+    assert plan["test_generation_calls"] == 466245
 
 
 def test_preparation_and_full_manifest_with_synthetic_sources(tmp_path, monkeypatch):
     # Exercise real prepare/load validation at the declared full cardinalities,
     # but generate clearly synthetic tasks locally; never download or run a model.
-    def load_train(repo, subset, *, split, revision):
-        assert split == "train" and revision == "a" * 40
-        if repo == "openai/gsm8k":
-            return [{"question": f"synthetic gsm train {i}"} for i in range(7473)]
-        if repo == "google-research-datasets/mbpp":
-            return [{"text": f"synthetic code train {i}", "task_id": 601 + i} for i in range(374)]
-        assert repo == "EleutherAI/hendrycks_math"
-        size = 1500 if subset == data.MATH_SUBJECTS[-1] else 1000
-        return [{"problem": f"synthetic math train {subset} {i}"} for i in range(size)]
     def load_eval(name, revision):
         assert revision == (data.MTBENCH_REVISION if name == "mt-bench" else "a" * 40)
         for i in range(data.SOURCES[name][3]):
@@ -164,22 +144,22 @@ def test_preparation_and_full_manifest_with_synthetic_sources(tmp_path, monkeypa
             elif name == "humaneval": yield {"prompt": text, "task_id": f"HumanEval/{i}"}
             elif name == "livecodebench": yield {"question_content": text, "question_id": str(i), "platform": "atcoder"}
             else: yield {"question_id": 101 + i, "turns": [text, text + " followup"], "category": "writing"}
-    monkeypatch.setitem(sys.modules, "datasets", SimpleNamespace(load_dataset=load_train))
     monkeypatch.setitem(sys.modules, "huggingface_hub", SimpleNamespace(
         HfApi=lambda: SimpleNamespace(dataset_info=lambda repo: SimpleNamespace(sha="a" * 40))))
     monkeypatch.setattr(data, "load_evaluation_source", load_eval)
-    manifest = data.prepare(tmp_path, .1)
-    checked, train_rows, dev, evaluation = load_data(tmp_path, 0)
-    assert manifest == checked and manifest["version"] == 2
-    assert len(train_rows) + len(dev) == 15347
+    manifest = data.prepare(tmp_path)
+    checked, evaluation = load_data(tmp_path, 0)
+    assert manifest == checked and manifest["version"] == 3
+    assert manifest["training"] is False
+    assert not (tmp_path / "train.jsonl").exists()
+    assert not (tmp_path / "dev.jsonl").exists()
     assert len(evaluation) == 3905
     assert sum(len(data.user_turns(row)) for row in evaluation) == 3985
     assert set(r["dataset"] for r in evaluation) == set(data.SOURCES)
-    assert not any(r["dataset"] in {"aime25", "livecodebench", "mt-bench"} for r in train_rows + dev)
-    assert data.prepare(tmp_path, .1) == manifest  # read-only validated resume
+    assert data.prepare(tmp_path) == manifest  # read-only validated resume
     path = tmp_path / "mt-bench.jsonl"
     records = [json.loads(line) for line in path.read_text().splitlines()]
     records[0]["user_turns"].pop()
     path.write_text("".join(json.dumps(r) + "\n" for r in records))
-    with pytest.raises(ValueError, match="Dataset manifest mismatch"):
+    with pytest.raises(ValueError, match="dataset manifest mismatch"):
         load_data(tmp_path, 0)

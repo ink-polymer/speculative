@@ -40,6 +40,11 @@ class ExperimentConfig:
     tree_mode: str = "specblock"
     # 仅 ddtree 模式生效的可选改动：预留 greedy 链，默认关闭以严格复现官方。
     ddtree_reserve_greedy_chain: bool = False
+    ddtree_budget_candidates: tuple[int, ...] = (30, 45, 60, 80, 100, 128)
+    ddtree_initial_budget: int = 60
+    ddtree_warmup_rounds_per_budget: int = 1
+    ddtree_policy_ewma_alpha: float = 0.2
+    ddtree_exploration_interval: int = 64
     rank_mode: str = "learned"
     rank_checkpoint: str | None = "checkpoints/rank_head.pt"
     max_new_tokens: int = 128
@@ -75,11 +80,11 @@ class ExperimentConfig:
             raise ValueError("beam_width 必须为正整数")
         if len(self.branch_factors) != 4 or any(x < 0 for x in self.branch_factors):
             raise ValueError("branch_factors 必须是四个非负整数")
-        if self.tree_mode not in {"specblock", "ddtree"}:
-            raise ValueError("tree_mode 仅支持 specblock 或 ddtree")
+        if self.tree_mode not in {"specblock", "ddtree", "ddtree_adaptive"}:
+            raise ValueError("tree_mode 仅支持 specblock、ddtree 或 ddtree_adaptive")
         if not isinstance(self.ddtree_reserve_greedy_chain, bool):
             raise ValueError("ddtree_reserve_greedy_chain 必须是布尔值")
-        if self.tree_mode == "ddtree":
+        if self.tree_mode in {"ddtree", "ddtree_adaptive"}:
             # DDTree 的全部候选都来自同一次 block forward，跨块 continuation 无从定义。
             if self.max_blocks != 1:
                 raise ValueError("tree_mode=ddtree 是单块方法，max_blocks 必须为 1")
@@ -92,6 +97,16 @@ class ExperimentConfig:
                 raise ValueError("tree_mode=ddtree 不加载 rank checkpoint，请设为 null")
         elif self.ddtree_reserve_greedy_chain:
             raise ValueError("ddtree_reserve_greedy_chain 仅在 tree_mode=ddtree 下有意义")
+        if self.tree_mode == "ddtree_adaptive":
+            if self.ddtree_reserve_greedy_chain:
+                raise ValueError("原版 Adaptive DDTree 不预留 greedy 链")
+            candidates = self.ddtree_budget_candidates
+            if (not candidates or any(type(b) is not int or not self.block_size <= b <= self.tree_budget for b in candidates)
+                    or self.ddtree_initial_budget not in candidates):
+                raise ValueError("非法 Adaptive DDTree 候选预算")
+            if (self.ddtree_warmup_rounds_per_budget < 1 or not 0 < self.ddtree_policy_ewma_alpha <= 1
+                    or self.ddtree_exploration_interval < 0):
+                raise ValueError("非法 Adaptive DDTree 预热/EMA/探索配置")
         if self.rank_mode not in {"heuristic", "learned"}:
             raise ValueError("rank_mode 仅支持 heuristic 或 learned")
         if self.rank_mode == "learned" and not self.rank_checkpoint:

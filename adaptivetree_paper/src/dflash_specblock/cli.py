@@ -9,7 +9,7 @@ import warnings
 import torch
 
 from .config import ExperimentConfig
-from .ddtree_builder import DDTreeBuilder
+from .ddtree_builder import DDTreeBuilder, LatencyAwareDDTreeBuilder
 from .device import configure_cuda_runtime, dtype_from_name, resolve_device
 from .dflash_adapter import DFlashBlockAdapter
 from .engine import DFlashSpecBlockEngine
@@ -52,7 +52,7 @@ def create_engine(config: ExperimentConfig, device: torch.device):
                 "draft_revision": config.draft_revision,
             },
         )
-    elif config.tree_mode == "ddtree":
+    elif config.tree_mode in {"ddtree", "ddtree_adaptive"}:
         # DDTree 的宽度分配完全由 draft log-prob 决定，rank head 的输出不会被读取。
         # 这里仍构造一个占位 ranker 以保持 adapter 的字段契约，但 engine 会通过
         # ``requires_rank=False`` 跳过它的前向。
@@ -70,7 +70,16 @@ def create_engine(config: ExperimentConfig, device: torch.device):
         ranker=ranker,
         block_size=config.block_size,
     )
-    if config.tree_mode == "ddtree":
+    if config.tree_mode == "ddtree_adaptive":
+        tree_builder = LatencyAwareDDTreeBuilder(
+            block_size=config.block_size, tree_budget=config.tree_budget,
+            budget_candidates=tuple(config.ddtree_budget_candidates),
+            initial_budget=config.ddtree_initial_budget,
+            warmup_rounds_per_budget=config.ddtree_warmup_rounds_per_budget,
+            ewma_alpha=config.ddtree_policy_ewma_alpha,
+            exploration_interval=config.ddtree_exploration_interval,
+        )
+    elif config.tree_mode == "ddtree":
         tree_builder = DDTreeBuilder(
             block_size=config.block_size,
             tree_budget=config.tree_budget,

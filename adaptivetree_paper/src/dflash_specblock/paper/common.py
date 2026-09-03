@@ -9,12 +9,10 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[3]
-VARIANTS = (
-    "full", "fixed_budget", "fixed_depth", "fixed_quotas", "fixed_width",
-    "no_target", "no_history", "draft_only", "acceptance_reward",
-    "local_ratio_reward", "no_pretrain", "no_online_rl",
-)
-BASELINES = ("ar", "dflash", "ddtree", "acceptance_budget_control", "static_layered")
+ORIGINAL_COMMIT = "9dd67698ad828b8c3fca8659e3a388f0b2dfbdf7"
+VARIANTS = ("adaptive", "no_acceptance_calibration", "no_latency", "no_exploration", "frozen_after_warmup")
+BASELINES = ("ar", "dflash", "ddtree", "fixed_30", "fixed_45", "fixed_80", "fixed_100", "fixed_128")
+K = 15
 
 
 def digest(value) -> str:
@@ -95,29 +93,26 @@ def code_identity() -> str:
 
 def load_config(path: Path) -> dict:
     cfg = load_json(path)
-    if cfg["temperature"] != 0:
-        raise ValueError("This protocol proves and tests T=0 only")
-    if cfg["baseline_budget"] != 60 or cfg["block_size"] != 15:
-        raise ValueError("This version fixes the control to B=60 and K=15")
+    expected = {"version", "method", "model_config", "temperature", "block_size",
+                "baseline_budget", "budget_candidates", "initial_budget",
+                "warmup_rounds_per_budget", "ewma_alpha", "exploration_interval",
+                "max_new_tokens", "seeds", "variants", "eval_repeats",
+                "warmup_runs", "bootstrap_samples"}
+    if set(cfg) != expected or cfg["version"] != 3 or cfg["method"] != "latency_aware_ddtree":
+        raise ValueError("Expected non-RL Adaptive DDTree v3; old RL configs are incompatible")
+    if cfg["temperature"] != 0 or cfg["block_size"] != K or cfg["baseline_budget"] != 60:
+        raise ValueError("Protocol requires T=0, K=15, fixed DDTree control B=60")
+    if cfg["budget_candidates"] != [30, 45, 60, 80, 100, 128] or cfg["initial_budget"] != 60:
+        raise ValueError("Use the original six budgets and initial budget 60")
+    if cfg["warmup_rounds_per_budget"] != 1 or cfg["ewma_alpha"] != .2 or cfg["exploration_interval"] != 64:
+        raise ValueError("Original controller parameters are fixed before evaluation")
     if (not cfg["seeds"] or len(set(cfg["seeds"])) != len(cfg["seeds"])
             or any(type(s) is not int or not 0 <= s < 2**32 for s in cfg["seeds"])):
         raise ValueError("seeds must be nonempty and unique")
     if (not cfg["variants"] or len(set(cfg["variants"])) != len(cfg["variants"])
-            or "full" not in cfg["variants"] or set(cfg["variants"]) - set(VARIANTS)):
-        raise ValueError("Unknown/duplicate ablation or missing full method")
-    for key in ("max_new_tokens", "train_epochs", "pretrain_epochs", "cf_actions", "cf_repeats",
-                "eval_repeats", "warmup_runs", "bootstrap_samples"):
+            or "adaptive" not in cfg["variants"] or set(cfg["variants"]) - set(VARIANTS)):
+        raise ValueError("Unknown/duplicate ablation or missing adaptive method")
+    for key in ("max_new_tokens", "eval_repeats", "warmup_runs", "bootstrap_samples"):
         if type(cfg[key]) is not int or cfg[key] < 1:
             raise ValueError(f"{key} must be a positive integer")
-    if cfg.get("gamma", 1.0) != 1.0:
-        raise ValueError("Full-episode latency reward requires gamma=1")
-    for key in ("learning_rate", "value_coef"):
-        if not math.isfinite(cfg[key]) or cfg[key] <= 0:
-            raise ValueError(f"Invalid {key}")
-    if not 0 < cfg["validation_fraction"] < 1:
-        raise ValueError("validation_fraction must be in (0,1)")
-    budgets = cfg["oracle_budgets"]
-    if (not budgets or 60 not in budgets or len(set(budgets)) != len(budgets)
-            or any(type(b) is not int or not 1 <= b <= 400 for b in budgets)):
-        raise ValueError("Counterfactual budgets must include 60 and be unique integers in [1,400]")
     return cfg

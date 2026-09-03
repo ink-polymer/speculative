@@ -37,11 +37,22 @@ DDTree 是「全局最优预算分配」：把 DFlash 一次 block forward 得�
 from __future__ import annotations
 
 import heapq
+from dataclasses import dataclass
 
 import numpy as np
 import torch
 
 from .tree import BlockProposal, DraftTree
+
+
+@dataclass(frozen=True, slots=True)
+class BudgetDecision:
+    """一次 latency-aware DDTree 的预算决策诊断。"""
+
+    budget: int
+    expected_draft_tokens: float
+    predicted_round_ms: float | None
+    predicted_tokens_per_ms: float | None
 
 
 def _rank_bucket(rank: int) -> int:
@@ -80,6 +91,7 @@ class DDTreeBuilder:
     """
 
     requires_rank = False
+    manages_budget = False
 
     def __init__(
         self,
@@ -250,6 +262,13 @@ class DDTreeBuilder:
             push_sibling(ranks, parent_index, depth, rank, logw)
             push_child(ranks, node_index, depth, logw)
 
+        selected_count = self._select_node_count(node_scores[:node_count])
+        if not 0 <= selected_count <= node_count:
+            raise AssertionError(
+                f"预算策略返回非法节点数 {selected_count}，可用范围是 [0, {node_count}]"
+            )
+        node_count = selected_count
+
         return self._to_draft_tree(
             node_token_ids[:node_count],
             node_depths[:node_count],
@@ -257,6 +276,10 @@ class DDTreeBuilder:
             node_scores[:node_count],
             parents[: node_count + 1],
         )
+
+    def _select_node_count(self, node_scores: np.ndarray) -> int:
+        """从 best-first 前缀中选择要验证的节点数；基础 DDTree 保留全部节点。"""
+        return int(node_scores.shape[0])
 
     @staticmethod
     def _to_draft_tree(
@@ -324,3 +347,166 @@ class DDTreeBuilder:
         if first_block.logits.shape[0] != 1:
             raise ValueError("DDTree 只从单个已验证 anchor 出发构建")
         return self.build_from_logits(first_block.logits[0], budget=budget)
+
+
+class LatencyAwareDDTreeBuilder(DDTreeBuilder):
+    """按当前 proposal 质量和实测 GPU 延迟选择 DDTree 节点预算。
+
+    DDTree 的 best-first 输出有一个关键性质：前 ``b`` 个节点对任意预算 ``b`` 都是合法且
+    在 factorized draft surrogate 下最优的树。因此可以一次枚举到最大预算，再从若干嵌套
+    前缀中选择预计吞吐最高者，无需第二次 draft forward。
+
+    对候选预算 ``b``，当前 block 的期望 draft 接受数是前 ``b`` 个节点概率质量之和。
+    本类用在线观测校准这份 surrogate，并用每个预算在当前 GPU 上的 verify EWMA 延迟估计
+    ``expected committed tokens / round latency``。首次运行只需各预算少量 warmup；之后主要
+    走预测最优预算，并按固定间隔重新探索，适应上下文长度与运行环境变化。
+    """
+
+    manages_budget = True
+
+    def __init__(
+        self,
+        block_size: int,
+        tree_budget: int,
+        budget_candidates: tuple[int, ...],
+        initial_budget: int,
+        warmup_rounds_per_budget: int = 1,
+        ewma_alpha: float = 0.2,
+        exploration_interval: int = 64,
+    ) -> None:
+        super().__init__(
+            block_size=block_size,
+            tree_budget=tree_budget,
+            reserve_greedy_chain=False,
+        )
+        candidates = tuple(sorted({int(value) for value in budget_candidates}))
+        if not candidates:
+            raise ValueError("budget_candidates 不能为空")
+        if candidates[0] < self.block_size:
+            raise ValueError("每个候选预算都必须不少于 block_size")
+        if candidates[-1] > self.tree_budget:
+            raise ValueError("候选预算不能超过 tree_budget")
+        if int(initial_budget) not in candidates:
+            raise ValueError("initial_budget 必须包含在 budget_candidates 中")
+        if int(warmup_rounds_per_budget) < 1:
+            raise ValueError("warmup_rounds_per_budget 必须至少为 1")
+        if not 0.0 < float(ewma_alpha) <= 1.0:
+            raise ValueError("ewma_alpha 必须在 (0, 1] 内")
+        if int(exploration_interval) < 0:
+            raise ValueError("exploration_interval 不能为负数")
+
+        self.budget_candidates = candidates
+        self.initial_budget = int(initial_budget)
+        self.warmup_rounds_per_budget = int(warmup_rounds_per_budget)
+        self.ewma_alpha = float(ewma_alpha)
+        self.exploration_interval = int(exploration_interval)
+
+        # 先复测已有的 60-node 基线，再按与它的距离逐步探索，避免冷启动第一轮直接使用
+        # 最大树。相同距离时优先较小预算。
+        self._warmup_order = tuple(
+            sorted(candidates, key=lambda value: (value != self.initial_budget, abs(value - self.initial_budget), value))
+        )
+        self._observations = {budget: 0 for budget in candidates}
+        self._verify_ms: dict[int, float] = {}
+        self._fixed_ms: float | None = None
+        self._acceptance_scale = 1.0
+        self._decision_count = 0
+        self._last_mass_by_budget: dict[int, float] = {}
+        self._last_selected_budget: int | None = None
+        self._last_expected_draft_tokens: float | None = None
+        self.last_decision: BudgetDecision | None = None
+
+    @staticmethod
+    def _ewma(previous: float | None, value: float, alpha: float) -> float:
+        return value if previous is None else (1.0 - alpha) * previous + alpha * value
+
+    def _next_warmup_budget(self, available: tuple[int, ...]) -> int | None:
+        for budget in self._warmup_order:
+            if budget in available and self._observations[budget] < self.warmup_rounds_per_budget:
+                return budget
+        return None
+
+    def _select_node_count(self, node_scores: np.ndarray) -> int:
+        node_count = int(node_scores.shape[0])
+        available = tuple(value for value in self.budget_candidates if value <= node_count)
+        if not available:
+            return node_count
+
+        # 节点按 prefix probability 递减产生；累加 exp(log q(prefix)) 正是 DDTree
+        # surrogate 下的期望 draft 接受数。clip 只防止极小概率下溢，不改变有效项。
+        probability_mass = np.exp(np.clip(node_scores.astype(np.float64), -745.0, 0.0))
+        cumulative_mass = np.cumsum(probability_mass)
+        mass_by_budget = {budget: float(cumulative_mass[budget - 1]) for budget in available}
+        self._last_mass_by_budget = mass_by_budget
+
+        selected = self._next_warmup_budget(available)
+        if selected is None and self.exploration_interval > 0:
+            if self._decision_count > 0 and self._decision_count % self.exploration_interval == 0:
+                selected = min(available, key=lambda value: (self._observations[value], value))
+
+        utility: float | None = None
+        predicted_ms: float | None = None
+        if selected is None:
+            measured = tuple(value for value in available if value in self._verify_ms)
+            if not measured or self._fixed_ms is None:
+                selected = self.initial_budget if self.initial_budget in available else available[0]
+            else:
+                def score(budget: int) -> tuple[float, int]:
+                    expected_draft = min(
+                        float(self.block_size),
+                        self._acceptance_scale * mass_by_budget[budget],
+                    )
+                    round_ms = self._fixed_ms + self._verify_ms[budget]
+                    value = (1.0 + expected_draft) / max(round_ms, 1e-6)
+                    return value, -budget
+
+                selected = max(measured, key=score)
+                utility = score(selected)[0]
+                predicted_ms = self._fixed_ms + self._verify_ms[selected]
+
+        expected = min(
+            float(self.block_size),
+            self._acceptance_scale * mass_by_budget[selected],
+        )
+        if predicted_ms is None and self._fixed_ms is not None and selected in self._verify_ms:
+            predicted_ms = self._fixed_ms + self._verify_ms[selected]
+            utility = (1.0 + expected) / max(predicted_ms, 1e-6)
+
+        self._last_selected_budget = selected
+        self._last_expected_draft_tokens = mass_by_budget[selected]
+        self._decision_count += 1
+        self.last_decision = BudgetDecision(
+            budget=selected,
+            expected_draft_tokens=expected,
+            predicted_round_ms=predicted_ms,
+            predicted_tokens_per_ms=utility,
+        )
+        return selected
+
+    def observe(
+        self,
+        *,
+        tree_nodes: int,
+        draft_ms: float,
+        verify_ms: float,
+        accepted_draft_tokens: int,
+    ) -> None:
+        """把一轮真实延迟和接受长度反馈给在线预算策略。"""
+        budget = self._last_selected_budget
+        expected = self._last_expected_draft_tokens
+        if budget is None or expected is None:
+            return
+        if int(tree_nodes) != budget:
+            raise ValueError(
+                f"观测树节点数 {tree_nodes} 与最近预算决策 {budget} 不一致"
+            )
+        self._observations[budget] += 1
+        self._fixed_ms = self._ewma(self._fixed_ms, max(float(draft_ms), 0.0), self.ewma_alpha)
+        self._verify_ms[budget] = self._ewma(
+            self._verify_ms.get(budget), max(float(verify_ms), 0.0), self.ewma_alpha
+        )
+        if expected > 1e-9:
+            ratio = max(0.0, min(2.0, float(accepted_draft_tokens) / expected))
+            self._acceptance_scale = self._ewma(
+                self._acceptance_scale, ratio, self.ewma_alpha
+            )

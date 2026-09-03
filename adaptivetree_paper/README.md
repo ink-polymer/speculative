@@ -1,77 +1,57 @@
-# AdaptiveTree：T=0 全量论文实验
+# Adaptive DDTree：原版非 RL，DDTree 官方 T=0 实验
 
-本目录是独立运行的分层结构策略 AdaptiveTree 实验包，包含训练、主实验、
-11 个独立重训消融和相关测试。**不包含 GBV 实验实现、模型权重、数据集或正式 GPU 结果。**
+新增 [Qwen3-8B 独立版本](docs/ADAPTIVE_QWEN3_8B.md)：bash scripts/run_paper_t0_qwen3_8b.sh plan。包含同一套主实验及四项消融，默认独立输出；不传参数仅显示计划，不启动 GPU。8B 权重 revision 与已上传 GBV 配置一致。
 
-与仓库根目录的历史实验相互独立；运行下面的命令前先进入 `adaptivetree_paper/`。
-完整协议见 [PAPER_T0_EXPERIMENTS.md](docs/PAPER_T0_EXPERIMENTS.md)。
+本包恢复截图对应的原版延迟感知预算控制器，包含方法介绍、数学证明、正式评测、4 项消融和测试。**没有 RL 训练、GBV、模型权重、数据文件或新 GPU 实验结果。** 文件名中的 full 指完整实验矩阵，采样数量按用户要求采用 DDTree 官方设置，并非全量数据集。
 
-## 实验范围
+[构树与流程图](docs/ADAPTIVE_DDTREE_METHOD.md) · [论文证明](docs/ADAPTIVE_DDTREE_T0_PROOF.md) · [完整实验说明](docs/PAPER_T0_EXPERIMENTS.md) · [官方对齐核对](docs/DDTREE_PROTOCOL_ALIGNMENT.md)
 
-- 原始 Qwen3-4B target 与 DFlash-b16 draft 均冻结，仅训练树结构策略。
-- 同状态反事实采集 → 监督预训练 → Monte Carlo actor-critic → dev 选模 → 全量配对测试。
-- 主测试：GSM8K 1,319、MATH-500 500、HumanEval 164、MBPP-full 500、
-  AIME25 30、LiveCodeBench release_v6 1,055、MT-Bench 80 组双轮对话。
-- MBPP-sanitized test 257 题为独立附加测试，不与 MBPP-full 混写。
-- 原始训练源 15,347 题；去除与评测重叠及重复样本后，约 90% train / 10% dev。
-- T=0、BF16、共享 eager 后端；关闭 TF32、CUDA Graph、torch.compile。
-- 逐题逐轮对齐 AR token；失败不删题。质量评分器不属于本入口。
+## 方法与评测
 
-## 获取本目录
+- 保留原版 DDTree best-first；最多枚举 128 节点，在 30/45/60/80/100/128 的嵌套树间按校准接受收益与实测成本选预算。没有 policy 网络、训练集或 checkpoint。
+- 官方十数据集：GSM8K 128、MATH-500 128、AIME24 30、AIME25 30、HumanEval 164、MBPP-sanitized 128、LiveCodeBench 128、SWE-bench 128、MT-Bench 80、Alpaca 128。
+- 共 1,072 题/对话，含 MT-Bench 双轮后每方法 1,152 次回答。直接执行固定版官方数据处理和 seed=0 抽样，不是全量测试集。
+- 三组原始 Target/DFlash 模型：Qwen3-4B、Qwen3-8B、Qwen3-Coder-30B-A3B-Instruct。T=0、BF16、每回答最多 2,048 新 token。
+- Draft 使用 FA2；Target 分 SDPA/FA2 两组；树方法仅 SDPA。固定 DDTree 对照预算 16/32/64/128/256/512/1024，采用官方回答级 decode TPOT 均值之比。
+- 主方法与四项消融：去接受校准、去延迟项、去周期探索、预热后冻结校准。默认完整矩阵 60 个进程组、55,296 次生成调用，另加预热。
+- 逐题 token 对照官方 Target-only；不一致保存诊断并停止，不删除失败题。不是任务准确率评分或 BF16 无条件等价保证。
 
-仓库历史分支中已有较大的运行产物。可只获取本次实验包，避免下载它们：
+## 环境与运行
 
-```bash
-git clone --depth 1 --filter=blob:none --sparse \
-  --branch paper/adaptivetree-full-datasets-20260903 \
-  https://github.com/ink-polymer/speculative.git speculative-adaptivetree
-cd speculative-adaptivetree
-git sparse-checkout set adaptivetree_paper
-cd adaptivetree_paper
-```
-
-## 环境与入口
-
-正式服务器使用独立 Python 3.10/3.11 环境，先安装与驱动兼容的 CUDA PyTorch，
-然后在本目录执行：
+进入本目录，在独立 Python 3.10/3.11 环境中先安装与 NVIDIA 驱动匹配的 CUDA PyTorch，再执行：
 
 ```bash
 python -m pip install -r requirements-paper.txt
 python -m pip install -e . --no-deps
-export CUDA_VISIBLE_DEVICES=0
+# 按当前 PyTorch/CUDA 安装兼容的 flash-attn；还需可用 C++ 编译器。
 bash scripts/run_paper_t0_full.sh plan
 bash scripts/run_paper_t0_full.sh doctor
+bash scripts/run_paper_t0_full.sh prepare
+bash scripts/run_paper_t0_full.sh all
 ```
 
-`plan` 只展示实验矩阵，不下载、不训练。`doctor` 检查 GPU 环境。
-全量数据下载、模型加载和训练须在服务器另行运行：
+默认沿用官方八 GPU 进程。单卡、仅 4B 的联调必须显式缩小范围：
 
 ```bash
-bash scripts/run_paper_t0_full.sh prepare
-bash scripts/run_paper_t0_full.sh all --smoke-count 2 --run-dir outputs/paper_t0_smoke
-bash scripts/run_paper_t0_full.sh collect
-# 阅读候选空间诊断后，再决定是否启动正式训练。
-bash scripts/run_paper_t0_full.sh train
-bash scripts/run_paper_t0_full.sh evaluate
-bash scripts/run_paper_t0_full.sh summarize
+CUDA_VISIBLE_DEVICES=0 bash scripts/run_paper_t0_full.sh all \
+  --nproc-per-node 1 --model-index 0 --dataset gsm8k \
+  --smoke-count 2 --run-dir outputs/adaptive_official_smoke
 ```
 
-smoke 仅用于联调，不能作为论文结果。完整默认矩阵包含 36 个策略 checkpoint、
-609,705 次测试生成调用，另有反事实采集、训练和验证开销。
-`2048` 是每轮回答的 token 上限，不是题量上限。
+smoke 不能用于论文；显式单卡/模型子集会记录为协议范围或硬件偏离。正式运行可分别调用 evaluate 和 summarize。上游未公开历史 HF 快照，本包锁定本次数据和权重 revision；不能声称复原未知的作者历史快照。没有 collect/train 步骤。
 
-## 本地测试
-
-以下测试不需要下载预训练模型或真实数据；不能替代服务器 BF16/GPU 验收：
+## 本地检查与历史结果
 
 ```bash
 PYTHONPATH=src python -m pytest \
-  tests/test_paper_protocol.py tests/test_paper_datasets_extended.py \
+  tests/test_paper_runtime_audit.py tests/test_paper_real_forward.py \
+  tests/test_paper_qwen3_8b.py tests/test_paper_official_protocol.py tests/test_paper_protocol.py \
+  tests/test_paper_datasets_extended.py tests/test_config_device.py \
   tests/test_engine.py tests/test_ddtree_builder.py tests/test_ddtree_integration.py \
   tests/test_verification.py tests/test_dflash_adapter.py tests/test_vanilla_engine.py \
   -o addopts='' -q
 ```
 
-`SOURCE_SHA256.json` 记录原样复制的源码、配置、协议、依赖与测试文件的 SHA-256。
-本目录新增的 README、忽略规则和来源说明不包含在该原始文件清单中。
-第三方文件的来源及用途见 [OFFICIAL_SOURCES.md](third_party/OFFICIAL_SOURCES.md)。
+本地测试不加载真实预训练模型，不能替代服务器 GPU 验收。旧截图 5.468/5.644/6.801/5.516× 对应原版非 RL 算法，但原始 2,000 条中只有 727 条与当时 AR 完全一致；不能作为已验证无损或新官方协议结果。
+
+SOURCE_SHA256.json 记录本包当前分发文件（不含清单自身）的校验和。third_party/ddtree_pinned 保留官方源码和独立来源清单；旧 DDTree reference 及 controlled_* 文件只供回归测试，不是当前入口。来源与许可证见 [OFFICIAL_SOURCES.md](third_party/OFFICIAL_SOURCES.md) 和 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。

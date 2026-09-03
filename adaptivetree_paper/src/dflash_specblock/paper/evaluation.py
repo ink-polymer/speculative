@@ -1,4 +1,4 @@
-"""Full-split, paired, randomized-order measurement with fail-closed publication gates."""
+"""Historical non-default controlled evaluation; current tables use official_reporting.py."""
 from __future__ import annotations
 
 import csv
@@ -11,8 +11,7 @@ import torch
 
 from .common import BASELINES, VARIANTS, atomic_json, contract, digest, file_hash, load_json, run_lock, verify_contract
 from .data import SOURCES, expected_turns, is_evaluation_row, user_turns
-from .structure import StructurePolicy
-from .training import cf_variant, restore, training_metadata
+from .controller import PaperAdaptiveBuilder
 
 
 def result_metrics(result):
@@ -25,10 +24,10 @@ def result_metrics(result):
             "nodes": sum(r["nodes"] for r in rounds),
             "policy_ms": sum(r.get("policy_ms", 0.) for r in rounds),
             "build_ms": sum(r.get("build_ms", 0.) for r in rounds),
-            "actions": [r["action"] for r in rounds if r.get("action") is not None]}
+            "actions": result.get("decisions", [])}
 
 
-def measure_case(runtime, row, method, policy=None):
+def measure_case(runtime, row, method, replica=0):
     """Each method builds its own complete dialogue; no reference answer injection.
 
     A turn is cold-prefilled from its chat history. Template/tokenization/decoding
@@ -40,7 +39,7 @@ def measure_case(runtime, row, method, policy=None):
         messages.append({"role": "user", "content": prompt})
         ids = runtime.encode(prompt) if len(prompts) == 1 else runtime.encode_messages(messages)
         input_sha256 = digest(ids.detach().cpu().tolist())
-        result = runtime.generate(ids, method if method in BASELINES else "layered", policy)
+        result = runtime.generate(ids, method, replica)
         measured.append({**result_metrics(result), "input_sha256": input_sha256})
         answer = runtime.tokenizer.decode(result["tokens"], skip_special_tokens=True)
         messages.append({"role": "assistant", "content": answer})
@@ -58,36 +57,42 @@ def same_dialogue(left, right):
             [(t["tokens"], t["input_sha256"]) for t in right["turns"]])
 
 
-def evaluate(runtime, rows, checkpoints, directory, metadata, seed):
-    policies = {}
-    if set(checkpoints) != set(runtime.cfg["variants"]):
-        raise ValueError("Missing or unexpected ablation checkpoints")
-    for variant in runtime.cfg["variants"]:
-        path = checkpoints[variant]
-        cf_dir = path.parents[3] / "counterfactual" / cf_variant(variant)
-        identity = verify_contract(path.parent, training_metadata(metadata, variant, seed, cf_dir))
-        completion = load_json(path.parent / "complete.json")
-        if completion["identity"] != identity or completion["best_sha256"] != file_hash(path):
-            raise ValueError(f"Checkpoint integrity failure: {path}")
-        policy = StructurePolicy(variant)
-        saved = restore(path, policy)
-        if saved.get("selected_on") != "dev" or saved.get("identity") != identity:
-            raise ValueError("Only development-selected checkpoints may enter test evaluation")
-        policies[variant] = policy.eval()
-    methods = list(BASELINES) + list(policies)
+def initial_states(cfg):
+    return {f"{method}:{repeat}": PaperAdaptiveBuilder(cfg, method).state_dict()
+            for method in cfg["variants"] for repeat in range(cfg["eval_repeats"])}
+
+
+def validate_states(states, cfg):
+    expected = initial_states(cfg)
+    if set(states) != set(expected):
+        raise ValueError("Missing/extra controller state")
+    for key, state in states.items():
+        method, _ = key.rsplit(":", 1)
+        PaperAdaptiveBuilder(cfg, method).load_state_dict(state)
+
+
+def evaluate(runtime, rows, directory, metadata, seed):
+    methods = list(BASELINES) + runtime.cfg["variants"]
     with run_lock(directory):
-        contract(directory, {**metadata, "stage": "evaluate", "seed": seed,
-                            "checkpoints": {name: file_hash(path) for name, path in checkpoints.items()}})
-        runtime.warmup(list(policies.values()))
+        contract(directory, {**metadata, "stage": "evaluate", "seed": seed})
+        runtime.warmup()
+        runtime.restore_controllers(initial_states(runtime.cfg))
         order = list(range(len(rows)))
         random.Random(seed).shuffle(order)
         for completed, index in enumerate(order):
             row = rows[index]
             path = directory / "prompts" / f"{index:06d}.json"
+            before = digest(runtime.controller_states())
             if path.exists():
                 record = load_json(path)
-                if record["id"] != row["id"] or not record["exact_match"]:
-                    raise ValueError(f"Resume refuses mismatched/failed record: {path}")
+                if (record["id"] != row["id"] or record["prompt_hash"] != row["prompt_hash"]
+                        or not record["exact_match"] or record["state_before_sha256"] != before
+                        or record["order_index"] != completed):
+                    raise ValueError(f"Resume state chain/identity failure: {path}")
+                validate_states(record["controller_states_after"], runtime.cfg)
+                if digest(record["controller_states_after"]) != record["state_after_sha256"]:
+                    raise ValueError("Corrupted controller checkpoint")
+                runtime.restore_controllers(record["controller_states_after"])
                 continue
             observations = {method: [] for method in methods}
             peak = {}
@@ -97,14 +102,17 @@ def evaluate(runtime, rows, checkpoints, directory, metadata, seed):
                 for method in shuffled:
                     if runtime.device.type == "cuda":
                         torch.cuda.reset_peak_memory_stats(runtime.device)
-                    result = measure_case(runtime, row, method, policies.get(method))
+                    result = measure_case(runtime, row, method, repeat)
                     observations[method].append(result)
                     if runtime.device.type == "cuda":
                         peak[method] = max(peak.get(method, 0), torch.cuda.max_memory_allocated(runtime.device))
             reference = observations["ar"][0]
             exact = all(same_dialogue(item, reference) for values in observations.values() for item in values)
             texts = [runtime.tokenizer.decode(turn["tokens"], skip_special_tokens=True) for turn in reference["turns"]]
-            record = {"id": row["id"], "dataset": row["dataset"], "prompt_hash": row["prompt_hash"],
+            states = runtime.controller_states()
+            record = {"order_index": completed, "state_before_sha256": before,
+                      "controller_states_after": states, "state_after_sha256": digest(states),
+                      "id": row["id"], "dataset": row["dataset"], "prompt_hash": row["prompt_hash"],
                       "seed": seed, "exact_match": exact, "observations": observations,
                       "peak_allocated_bytes": peak,
                       "generated_text": texts[0] if len(texts) == 1 else None,
@@ -159,15 +167,7 @@ def summarize(run_root: Path, rows, cfg, *, smoke=False):
     for seed in cfg["seeds"]:
         directory = run_root / "evaluation" / str(seed)
         if metadata is not None:
-            checkpoints = {v: run_root / "training" / str(seed) / v / "best.pt" for v in cfg["variants"]}
-            verify_contract(directory, {**metadata, "stage": "evaluate", "seed": seed,
-                                        "checkpoints": {v: file_hash(p) for v, p in checkpoints.items()}})
-            for variant, path in checkpoints.items():
-                cf_dir = run_root / "counterfactual" / cf_variant(variant)
-                identity = verify_contract(path.parent, training_metadata(metadata, variant, seed, cf_dir))
-                trained = load_json(path.parent / "complete.json")
-                if trained["identity"] != identity or trained["best_sha256"] != file_hash(path):
-                    raise ValueError("Training lineage changed after evaluation")
+            verify_contract(directory, {**metadata, "stage": "evaluate", "seed": seed})
         completion = load_json(directory / "complete.json")
         if (completion["prompts"] != len(rows) or completion["methods"] != expected_methods
                 or completion["seed"] != seed or completion["repeats"] != cfg["eval_repeats"]
@@ -205,6 +205,17 @@ def summarize(run_root: Path, rows, cfg, *, smoke=False):
                         if not math.isclose(observation[key], sum(turn[key] for turn in turns), rel_tol=1e-12, abs_tol=1e-9):
                             raise ValueError("Aggregate metric does not match conversation turns")
             records.append(record)
+        order = list(range(len(rows)))
+        random.Random(seed).shuffle(order)
+        state_hash = digest(initial_states(cfg))
+        for position, index in enumerate(order):
+            record = records[index]
+            states = record["controller_states_after"]
+            validate_states(states, cfg)
+            if (record["order_index"] != position or record["state_before_sha256"] != state_hash
+                    or record["state_after_sha256"] != digest(states)):
+                raise ValueError("Controller state chain broken")
+            state_hash = record["state_after_sha256"]
         complete.append({"seed": seed, "prompts": len(records)})
         for dataset in datasets:
             selected = [r for r in records if r["dataset"] == dataset]
@@ -223,8 +234,8 @@ def summarize(run_root: Path, rows, cfg, *, smoke=False):
                     "wall_ms": sum(latency), "tokens_per_second": 1000 * tokens / sum(latency),
                     "speedup_vs_ar": sum(baseline) / sum(latency),
                     "speedup_vs_ddtree": sum(ddtree) / sum(latency),
-                    "paired_ar_ci95": paired_bootstrap(baseline, latency, cfg["bootstrap_samples"]),
-                    "paired_ddtree_ci95": paired_bootstrap(ddtree, latency, cfg["bootstrap_samples"]),
+                    "descriptive_paired_ar_ci95": paired_bootstrap(baseline, latency, cfg["bootstrap_samples"]),
+                    "descriptive_paired_ddtree_ci95": paired_bootstrap(ddtree, latency, cfg["bootstrap_samples"]),
                     "mean_nodes_per_verify": sum(v["nodes"] for v in measured) / round_count if round_count else 0.,
                     "mean_committed_per_verify": sum(v["committed"] for v in measured) / round_count if round_count else 0.,
                     "policy_ms": sum(v["policy_ms"] for v in measured),
@@ -242,6 +253,8 @@ def summarize(run_root: Path, rows, cfg, *, smoke=False):
     report = {"publication_eligible": not smoke, "full_split": not smoke,
               "eligibility_scope": "automated completeness/exactness gates, not a guarantee of scientific validity",
               "measurement": "paired aggregate tokens / end-to-end seconds; all repeats included",
+              "uncertainty": "prompt bootstrap is descriptive only: online states couple consecutive cases; order-seed SD reported separately",
+              "training": False, "controller_state": "persistent per method/repetition, reset per order seed",
               "multi_turn": "own generated assistant history; cold prefill each turn; bootstrap by whole dialogue",
               "scope": "controlled in-repository implementations; not unmodified official runtimes",
               "seed_runs": complete, "rows": tables, "seed_summary": seed_summary}
@@ -251,14 +264,14 @@ def summarize(run_root: Path, rows, cfg, *, smoke=False):
         writer.writeheader()
         writer.writerows(tables)
     lines = ["# T=0 完整实验与消融", "", "此表来自共享模型、共享树验证器的受控实现，不代表未经修改的官方程序。", "",
-             "计时含 prefill、策略、构树、验证、缓存和同步；重复测量全部计入。置信区间为每个训练种子内按 prompt 配对 bootstrap。", "",
-             "| 数据集 | 训练种子 | 方法 | 题/对话数 | 轮/题 | tok/s | 相对 AR | 相对 DDTree |", "| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: |"]
+             "计时含 prefill、策略、构树、验证、缓存和同步；重复测量全部计入。按 prompt 配对 bootstrap 仅描述已观测样本的离散性；在线状态引入序列依赖，不保证其名义覆盖率。另报顺序种子间标准差。", "",
+             "| 数据集 | 顺序种子 | 方法 | 题/对话数 | 轮/题 | tok/s | 相对 AR | 相对 DDTree |", "| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: |"]
     if smoke:
         lines[0] = "# SMOKE ONLY：不可用于论文"
     for row in tables:
         lines.append(f"| {row['dataset']} | {row['seed']} | {row['method']} | {row['prompts']} | {row['turns_per_prompt']} | {row['tokens_per_second']:.2f} | {row['speedup_vs_ar']:.4f} | {row['speedup_vs_ddtree']:.4f} |")
     (run_root / "tables.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
-    comparison = ["# " + ("SMOKE ONLY：不可用于论文" if smoke else "跨训练种子汇总"), "",
+    comparison = ["# " + ("SMOKE ONLY：不可用于论文" if smoke else "跨顺序种子汇总"), "",
                   "相对 AR 加速比：独立种子的均值 ± 样本标准差；不是置信区间，也不混合 full/sanitized。", "",
                   "| 方法 | " + " | ".join(datasets) + " |",
                   "| --- | " + " | ".join("---:" for _ in datasets) + " |"]

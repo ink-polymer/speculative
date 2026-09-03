@@ -3,11 +3,9 @@ set -euo pipefail
 PAPER_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PAPER_ROOT"
 export PYTHONPATH="$PAPER_ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
-export TOKENIZERS_PARALLELISM=false
-export OMP_NUM_THREADS=1
-export MKL_NUM_THREADS=1
-export CUBLAS_WORKSPACE_CONFIG=:4096:8
-# Default is the complete protocol. No max-samples / 2K truncation flags.
+export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0,1,2,3,4,5,6,7}"
+# "full" is the complete OFFICIAL matrix, not full dataset splits.
+# Limits and seed=0 sampling exactly follow the pinned DDTree run_benchmark.sh.
 if [[ "$#" -eq 0 ]]; then
   set -- all
 fi
