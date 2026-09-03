@@ -1,5 +1,8 @@
 # DFlash-SpecBlock：面向昇腾 910B A2 的扩散块动态树推测解码实验
 
+> 本分支新增 **T=0 AdaptiveTree 全量论文实验**，请从 [adaptivetree_paper/README.md](adaptivetree_paper/README.md) 进入。
+> 仅包含 AdaptiveTree 训练、消融、评测与测试；不包含 GBV 实验。以下历史实验内容保持原样。
+
 本工程把两篇论文的核心思路组合为一个可审计的实验实现：
 
 - **DFlash** 负责草稿生成：目标模型多层隐藏状态持续注入每个 draft layer 的 KV，未来

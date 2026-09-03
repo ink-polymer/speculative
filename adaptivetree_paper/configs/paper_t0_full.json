@@ -1,0 +1,21 @@
+{
+  "temperature": 0,
+  "block_size": 15,
+  "baseline_budget": 60,
+  "max_new_tokens": 2048,
+  "seeds": [17, 29, 43],
+  "variants": ["full", "fixed_budget", "fixed_depth", "fixed_quotas", "fixed_width", "no_target", "no_history", "draft_only", "acceptance_reward", "local_ratio_reward", "no_pretrain", "no_online_rl"],
+  "train_epochs": 2,
+  "pretrain_epochs": 3,
+  "learning_rate": 0.0003,
+  "value_coef": 0.5,
+  "gamma": 1.0,
+  "cf_actions": 8,
+  "cf_repeats": 3,
+  "oracle_budgets": [60, 200, 400],
+  "validation_fraction": 0.1,
+  "bootstrap_samples": 2000,
+  "eval_repeats": 3,
+  "warmup_runs": 2,
+  "model_config": "configs/paper_t0_model.json"
+}
