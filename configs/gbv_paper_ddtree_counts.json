@@ -40,19 +40,6 @@
       2,
       3,
       4
-    ],
-    "lengths": [
-      4,
-      8,
-      15
-    ],
-    "temperatures": [
-      0.0,
-      1.0
-    ],
-    "switches": [
-      "block_verification",
-      "prefix_sharing"
     ]
   },
   "bootstrap_samples": 1000,

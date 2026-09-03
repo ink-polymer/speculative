@@ -16,28 +16,31 @@ SUITE = ROOT / "configs/gbv_paper_suite.json"
 @pytest.mark.parametrize("phase,variants,jobs,records,generations", [
     ("gbv-first", 2, 42, 4716, 5196),
     ("main", 10, 210, 23580, 25980),
-    ("complete", 20, 420, 47160, 51960),
+    ("complete", 12, 252, 28296, 31176),
 ])
 def test_two_model_workload_and_focused_controls(phase, variants, jobs, records, generations):
     plan = plan_suite(SUITE, phase)
     assert (plan["model_count"], plan["model_variant_count"], plan["evaluation_jobs"],
             plan["expected_records"], plan["expected_generations"]) == (2, variants, jobs, records, generations)
     models = load_suite(SUITE)
-    assert [len(build_variants(m["config"])) for m in models] == [13, 7]
+    assert [len(build_variants(m["config"])) for m in models] == [7, 5]
     assert models[0]["config"]["evaluation"] == models[1]["config"]["evaluation"]
     for model in models:
         entries = build_variants(model["config"])
         by_name = {e["variant"]["name"]: e["variant"] for e in entries}
         assert all(v["draft_attention"] == "bidirectional" and v["condition_features"] == "target" for v in by_name.values())
+        assert all(v["temperature"] == 1. and v["length"] == 15 and v["share_prefixes"] for v in by_name.values())
+        expected = {"target_t1", "dflash_match", "dflash_bv", "gbv", "ddtree"}
+        if model["id"] == "qwen3_4b":
+            expected |= {"gbv_k2", "gbv_k4"}
+        assert set(by_name) == expected
         assert by_name["gbv"]["paths"] == 3
         assert by_name["ddtree"]["tree_budget"] == 3 * 15
         assert by_name["dflash_match"]["method"] == "dflash"
         assert "gbv_k1" not in by_name
         groups = {g for e in entries for g in e["groups"]}
-        assert not groups & {"bidirectional_attention", "target_features", "draft_cache", "probability_precision"}
+        assert groups <= {"main", "paths"}
         if model["id"] == "qwen3_4b":
-            assert by_name["single_token_rejection"]["method"] == "token"
-            assert "main" not in next(e["groups"] for e in entries if e["variant"]["name"] == "single_token_rejection")
             assert "paths" in next(e["groups"] for e in entries if e["variant"]["name"] == "dflash_bv")
         if phase == "gbv-first":
             assert [e["variant"]["name"] for e in plan["models"][model["id"]]["variants"]] == ["gbv"]
@@ -123,7 +126,7 @@ def test_gbv_first_resume_reuses_results_and_preserves_full_manifest(tmp_path, m
     runner.run(cfg, tmp_path / "data", tmp_path, "cuda:0", only_variants=["gbv"])
     first_rows = read_jsonl(tmp_path / "results.jsonl")
     manifest = json.loads((tmp_path / "run_manifest.json").read_text())
-    assert len(first_rows) == 2 and len(manifest["variants"]) == 13
+    assert len(first_rows) == 2 and len(manifest["variants"]) == 7
     assert not (tmp_path / "completed.json").exists()
     stage = json.loads(next(tmp_path.glob("stage_completed_*.json")).read_text())
     assert stage["stage_complete"] and not stage["full_experiment_complete"]
@@ -131,8 +134,8 @@ def test_gbv_first_resume_reuses_results_and_preserves_full_manifest(tmp_path, m
     assert len(loads) == 1 and len(calls) == 2
     runner.run(cfg, tmp_path / "data", tmp_path, "cuda:0")
     complete_rows = read_jsonl(tmp_path / "results.jsonl")
-    assert len(complete_rows) == len(calls) == 26 and len(loads) == 2
+    assert len(complete_rows) == len(calls) == 14 and len(loads) == 2
     assert [r for r in complete_rows if r["variant"] == "gbv"] == first_rows
-    assert len({runner.key(r) for r in complete_rows}) == 26
+    assert len({runner.key(r) for r in complete_rows}) == 14
     assert {r["run_id"] for r in complete_rows} == {manifest["run_id"]}
-    assert json.loads((tmp_path / "completed.json").read_text())["records"] == 26
+    assert json.loads((tmp_path / "completed.json").read_text())["records"] == 14

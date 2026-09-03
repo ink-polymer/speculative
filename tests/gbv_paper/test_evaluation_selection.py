@@ -42,8 +42,8 @@ def test_default_plan_and_unchanged_full_alternative(monkeypatch, tmp_path):
                                 "mbpp": 128, "livecodebench": 128, "mt-bench": 80}
     assert sum(plan["datasets"].values()) == 786
     assert sum(plan["user_turns"].values()) == 866
-    assert plan["variant_count"] == 13
-    assert (plan["expected_records"], plan["expected_generations"]) == (30654, 33774)
+    assert plan["variant_count"] == 7
+    assert (plan["expected_records"], plan["expected_generations"]) == (16506, 18186)
     cfg = load_config(ROOT / "configs/gbv_paper_ddtree_counts.json")
     main_plan = make_plan(cfg, ["main"])
     assert (main_plan["expected_records"], main_plan["expected_generations"]) == (11790, 12990)
@@ -51,7 +51,7 @@ def test_default_plan_and_unchanged_full_alternative(monkeypatch, tmp_path):
     assert {k: v for k, v in cfg.items() if k != "evaluation"} == full_cfg
     full = make_plan(full_cfg)
     assert full["datasets"] == plan["source_counts"]
-    assert (full["expected_records"], full["expected_generations"]) == (142272, 145392)
+    assert (full["expected_records"], full["expected_generations"]) == (76608, 78288)
     cfg["seeds"] = [777]
     assert make_plan(cfg)["evaluation"] == plan["evaluation"]
 

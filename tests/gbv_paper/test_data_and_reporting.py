@@ -23,16 +23,13 @@ def test_full_plan_and_ablation_controls():
     assert sum(plan["user_turns"].values()) == 3728
     assert plan["expected_generations"] == 3728 * 3 * plan["variant_count"]
     assert plan["expected_records"] == 3648 * 3 * plan["variant_count"]
-    entries = build_variants(cfg, ["block_verification"])
-    methods = {e["variant"]["method"] for e in entries}
-    assert methods == {"target", "token", "bv"}
-    assert all(e["variant"]["paths"] == 1 for e in entries)
-    for group in ("prefix_sharing",):
-        candidates = [e["variant"] for e in build_variants(cfg, [group]) if e["variant"]["method"] != "target"]
-        a, b = candidates
-        assert sum(a[k] != b[k] for k in a if k != "name") == 1
-    assert not ({"bidirectional_attention", "target_features", "draft_cache", "probability_precision"}
-                & {g for e in build_variants(cfg) for g in e["groups"]})
+    assert plan["variant_count"] == 7
+    entries = build_variants(cfg, ["paths"])
+    candidates = [e["variant"] for e in entries if e["variant"]["method"] != "target"]
+    assert {v["paths"] for v in candidates} == {1, 2, 3, 4}
+    assert all(v["length"] == 15 and v["temperature"] == 1. for v in candidates)
+    assert next(v for v in candidates if v["paths"] == 1)["method"] == "bv"
+    assert {g for e in build_variants(cfg) for g in e["groups"]} == {"main", "paths"}
 
 
 def test_prompts_keep_answers_and_hidden_tests_out():

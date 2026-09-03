@@ -34,12 +34,7 @@
     "tree_budget": 45,
     "probability_dtype": "float64"
   },
-  "ablations": {
-    "temperatures": [
-      0.0,
-      1.0
-    ]
-  },
+  "ablations": {},
   "bootstrap_samples": 1000,
   "scoring": {
     "code_backend": "docker",

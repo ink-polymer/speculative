@@ -11,7 +11,8 @@ The bundle's `SOURCE_SHA256.json` identifies the actual shipped files.
 The local DFlash baseline uses greedy draft tokens and target-sampling prefix
 matching, following `dflash.py` in the pinned DDTree checkout above. Its shared
 benchmark runtime and timing differ from the optimized upstream implementation.
-The separate single-path p/q rejection baseline is labeled as a mechanism control.
+The separate single-path p/q rejection implementation remains available for
+optional mechanism controls, but is absent from the default 12-configuration study.
 
 DFlash model/paper: https://github.com/z-lab/dflash and
 https://arxiv.org/abs/2602.06036 .

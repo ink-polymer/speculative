@@ -28,7 +28,7 @@ def main():
         for path in sorted(files):
             archive.write(path, str(path.relative_to(ROOT)))
         archive.writestr("SOURCE_SHA256.json", json.dumps(hashes, indent=2) + "\n")
-        archive.writestr("README.md", "# Three-path GBV: Qwen3-4B and Qwen3-8B\n\nRun bash scripts/run_gbv_paper.sh gbv-first to evaluate three-path GBV first on both model pairs; main and complete resume the same model-specific result directories. Default: 786 questions/conversations from seven datasets, selected once with seed 0; 866 answer turns per method and generation seed.\n\nSee docs/GBV_PAPER_EXPERIMENTS.md for the focused experimental design and commands. Count alignment and matching algorithm rules do not reproduce the complete optimized official DDTree/DFlash runtime.\n\nThis is source code; it contains no formal GPU benchmark results.\n")
+        archive.writestr("README.md", "# Three-path GBV: Qwen3-4B and Qwen3-8B\n\nRun bash scripts/run_gbv_paper.sh gbv-first to evaluate three-path GBV first on both model pairs; main and complete resume the same model-specific result directories. Default: 786 questions/conversations from seven datasets, selected once with seed 0; 866 answer turns per method and generation seed.\n\nThe reduced study has seven configurations on 4B and five on 8B, all at T=1; only 4B adds K=2 and K=4. Small GPU greedy-correctness checks remain required. See docs/GBV_PAPER_EXPERIMENTS.md for the experimental design and commands. Count alignment and matching algorithm rules do not reproduce the complete optimized official DDTree/DFlash runtime.\n\nThis is source code; it contains no formal GPU benchmark results.\n")
     print(output)
 
 
