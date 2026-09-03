@@ -4,7 +4,7 @@
 
 ## 1. 固定协议
 
-配置：`configs/gbv_paper_full.json`。
+默认配置：`configs/gbv_paper_ddtree_counts.json`，七套数据的评测题数对齐 DDTree 官方基准脚本。`configs/gbv_paper_full.json` 保留为全量评测划分的备选配置。
 
 - Target：`Qwen/Qwen3-4B`，revision `1cfa9a7208912126459214e8b04321603b3df60c`。
 - Draft：`z-lab/Qwen3-4B-DFlash-b16`，revision `b74e3a329c4d963783143b1e970d95b002be72bd`。
@@ -18,28 +18,34 @@
 
 ## 2. 数据及训练/测试边界
 
-“全量”指下列固定评测集合中的每一题，没有 2,000 条或其他本地抽样上限。AIME25 的源仓库把比赛题存放在名为 `train` 的划分中；本实验将这 30 题全部用于评测，不用于训练。
+默认使用固定评测子集。题数取自 [DDTree 官方运行脚本](https://github.com/liranringel/ddtree/blob/master/run_benchmark.sh)，只对齐本套实验已有的七个数据集。AIME25 的源仓库把比赛题存放在名为 `train` 的划分中；本实验将这 30 题全部用于评测，不用于训练。
 
-| 数据集 | 来源 | 配置 / 划分 | 每个方法、每个种子的题数 |
-|---|---|---|---:|
-| GSM8K | openai/gsm8k | main / test | 1,319 |
-| MATH-500 | HuggingFaceH4/MATH-500 | 默认 / test | 500 |
-| AIME25 | MathArena/aime_2025 | 默认 / train（仅评测） | 30 |
-| HumanEval | openai/openai_humaneval | 默认 / test | 164 |
-| MBPP | google-research-datasets/mbpp | full / test | 500 |
-| LiveCodeBench | livecodebench/code_generation_lite | test / 累计 release_v6 | 1,055 |
-| MT-Bench | lm-sys/FastChat | 官方 question.jsonl | 80 组双轮对话 |
-| 合计 | | | 3,648 题或对话，3,728 次回答 |
+| 数据集 | 来源 | 配置 / 划分 | 数据源完整条数 | 每个方法、每个生成种子的评测条数 |
+|---|---|---|---:|---:|
+| GSM8K | openai/gsm8k | main / test | 1,319 | 128 |
+| MATH-500 | HuggingFaceH4/MATH-500 | 默认 / test | 500 | 128 |
+| AIME25 | MathArena/aime_2025 | 默认 / train（仅评测） | 30 | 30 |
+| HumanEval | openai/openai_humaneval | 默认 / test | 164 | 164 |
+| MBPP | google-research-datasets/mbpp | full / test | 500 | 128 |
+| LiveCodeBench | livecodebench/code_generation_lite | test / 累计 release_v6 | 1,055 | 128 |
+| MT-Bench | lm-sys/FastChat | 官方 question.jsonl | 80 组双轮对话 | 80 组双轮对话 |
+| 合计 | | | 3,648 题或对话 | **786 题或对话，866 次回答** |
+
+抽样遵循 [DDTree 官方基准代码](https://github.com/liranringel/ddtree/blob/master/benchmark.py)：源集合大于预定题数时使用 `shuffle(seed=0).select(range(n))`；题数等于源集合大小时保持原顺序。选题种子固定为 **0**，与生成种子 17、29、43 分离；所有基线、GBV 和消融复用同一份题号清单，不随方法或生成种子重抽。代码通过 Hugging Face `Dataset.shuffle` 的实际输出核对该抽样规则。
+
+这里对齐的是**评测数量与抽样规则**，未宣称与 DDTree 论文使用完全相同的题目、提示或推理协议。只有数据源版本与原始顺序也一致，抽出的题号才会一致。例如本配置仍从 MBPP `full/test` 的 500 题中选 128 题，DDTree 官方加载器使用 `sanitized/test`；二者题数相同不代表样本相同。LiveCodeBench 的时间窗口、提示处理和 MT-Bench 对话历史等也以本文代码为准。数量对齐后仍须按实际运行协议比较速度和质量，不能把官方表中数值当成本代码重跑结果。
 
 来源：[GSM8K](https://huggingface.co/datasets/openai/gsm8k/blob/main/README.md)、[MATH-500](https://huggingface.co/datasets/HuggingFaceH4/MATH-500)、[AIME25](https://huggingface.co/datasets/MathArena/aime_2025/blob/main/README.md)、[HumanEval](https://github.com/openai/human-eval)、[MBPP](https://huggingface.co/datasets/google-research-datasets/mbpp/blob/main/README.md)、[LiveCodeBench 官方加载器](https://huggingface.co/datasets/livecodebench/code_generation_lite/blob/main/code_generation_lite.py)、[MT-Bench 官方题目](https://github.com/lm-sys/FastChat/blob/587d5cfa1609a43d192cedb8441cac3c17db105d/fastchat/llm_judge/data/mt_bench/question.jsonl)。七个数据集覆盖 [DFlash 论文主表](https://arxiv.org/html/2602.06036v1) 的任务名称；这不表示版本、提示、生成上限和硬件与其原始实验完全相同，本文应报告本节的实际协议。
 
-`mbpp_sanitized` 的 257 条 test 也受支持，但它是另一配置；不得把它的分数与 full 500 的分数混写。可复制配置，把 `mbpp` 换成 `mbpp_sanitized`，同时更换数据目录和输出目录。AIME24 的 30 题保留为可选配置，默认主实验不包含。
+`mbpp_sanitized` 的 257 条 test 也受支持，但它是另一配置；不得把从它抽出的 128 题与从 `full/test` 抽出的 128 题混写。若另做该配置，需复制配置，将 `datasets` 和 `evaluation.counts` 中的 `mbpp` 一并换成 `mbpp_sanitized`，并更换数据目录和输出目录。AIME24 的 30 题保留为可选配置，默认主实验不包含。
 
-LiveCodeBench 固定为累计 `release_v6`：读取 `test.jsonl`、`test2.jsonl` 至 `test6.jsonl` 全部六个官方文件，共 1,055 题，不只取新增的 v6 题目，也不另做日期筛选。`lite` 数据源本身经过官方测试用例精简，本代码保留该数据源提供的全部公开和隐藏用例，不再截取。论文应写明 `code_generation_lite / release_v6`；不能与其他时间窗口或完整版测试用例的分数直接混用。每题的测试用例独立保存并校验哈希，评分时按需加载，避免同时把所有隐藏测试放入内存。
+LiveCodeBench 的抽样母集固定为累计 `release_v6`：按 `test.jsonl`、`test2.jsonl` 至 `test6.jsonl` 的顺序读取六个官方文件并核查共 1,055 题，再固定选取 128 题；不只取新增的 v6 题目，也不另做日期筛选。`lite` 数据源本身经过官方测试用例精简，本代码保留每道入选题的全部公开和隐藏用例，不再截取。论文应写明 `code_generation_lite / release_v6，固定 seed=0 抽取 128 题`；不能与其他时间窗口或完整版测试用例的分数直接混用。入选题的测试用例独立保存并校验哈希，评分时按需加载，避免同时把所有隐藏测试放入内存。
 
 MT-Bench 固定为 FastChat commit `587d5cfa1609a43d192cedb8441cac3c17db105d` 的全部 80 组对话，保留官方题号 81–160。第二轮输入依次包含第一轮用户问题、当前方法生成的第一轮回答、第二轮用户问题。每个方法使用自己的对话历史，生成器重新编码完整历史，并记录每轮输入与随机种子的哈希；不拼入参考答案。
 
-数据准备保留题目、原始 ID 及数据源提供的答案、参考实现和测试用例；首次准备解析并记录 Hugging Face revision，MT-Bench 使用上述固定 GitHub commit。清单固定实际条数、提示格式与文件 SHA-256。**生成器只读取 `prompt` / `user_turns`，评分资料保存在独立的 `evaluation` 字段或文件中**。数学答案、隐藏测试及参考实现不进入提示。MBPP 提示包含第一条公开断言以指定函数接口，其他标准断言隐藏，评分要求全部标准断言通过；challenge tests 保留但不计入主分数。LiveCodeBench 使用完整题面与提供的 starter code，评分执行全部保留的测试。论文需注明这些提示协议。
+数据准备先遍历源划分并核查完整条数与 ID 唯一性，再保存入选题目、原始 ID 及数据源提供的答案、参考实现和测试用例；首次准备解析并记录 Hugging Face revision，MT-Bench 使用上述固定 GitHub commit。因此减少生成题数不保证按相同比例减少源文件下载量。清单分别记录源条数 `source_count`、评测条数 `count`、原始行号 `selected_source_indices`、题号 `selected_source_ids`、抽样规则、提示格式与文件 SHA-256。固定子集的覆盖标记为 `fixed_evaluation_subset`；不能写成 `full_evaluation_split`。重新运行复用已准备清单，条数、题号、顺序或文件哈希不符时报错。
+
+**生成器只读取 `prompt` / `user_turns`，评分资料保存在独立的 `evaluation` 字段或文件中**。数学答案、隐藏测试及参考实现不进入提示。MBPP 提示包含第一条公开断言以指定函数接口，其他标准断言隐藏，评分要求全部标准断言通过；challenge tests 保留但不计入主分数。LiveCodeBench 使用完整题面与提供的 starter code，评分执行入选题的全部保留测试。论文需注明这些提示协议。
 
 本套实验不进行训练、微调、拟合或从测试分数选择 checkpoint；Target 和 Draft 均冻结。旧目录中的 rank-head、PPO、策略训练数据及 checkpoint 不参与本套实验。因而不需要为了 GBV 另外构造训练集。若以后加入学习型模块，应单独提供其训练数据和验证集，再使用 `audit --training-jsonl ...` 做题目重叠检查。已有测试集不能充当选超参数的验证集；本配置应在正式结果产生前固定，消融表展示预定网格的全部结果。
 
@@ -63,7 +69,7 @@ MT-Bench 固定为 FastChat commit `587d5cfa1609a43d192cedb8441cac3c17db105d` �
 
 注意：因果 mask 和特征置零会改变既有预训练模型的输入条件，不能据此推断“重新训练一个因果模型一定差多少”。这里没有因果模型重训实验。也没有通过故意省略 GBV 校正来制造更快的有偏方法。
 
-相同参数组合会去重，保留所属的所有消融组。默认共 22 个配置、3 个种子，合计 **240,768 条题目/完整对话记录，246,048 次回答生成**；仅 `main` 为 54,720 条记录、55,920 次回答生成。每一个配置都使用相同的七套全量题目。MT-Bench 的两个回答算一条完整记录，避免把多轮对话重复计为不同题目。
+相同参数组合会去重，保留所属的所有消融组。默认共 22 个配置、3 个生成种子，合计 **51,876 条题目/完整对话记录，57,156 次回答生成**；仅 `main` 的 5 个配置为 **11,790 条记录、12,990 次回答生成**。每个配置和生成种子使用相同的 786 题或对话。MT-Bench 的两个回答算一条完整记录，避免把多轮对话重复计为不同题目。题数及任务总量可用 `plan` 命令核对。
 
 ## 4. H200 环境与启动
 
@@ -75,10 +81,10 @@ source .venv-gbv/bin/activate
 python -m pip install torch==2.9.1
 python -m pip install -r requirements-gbv-paper.txt
 docker build -t gbv-code-eval:py311 experiments/gbv_paper
-PYTHON_BIN=.venv-gbv/bin/python bash scripts/run_gbv_paper_full.sh
+PYTHON_BIN=.venv-gbv/bin/python bash scripts/run_gbv_paper.sh
 ```
 
-默认脚本依次执行：本地代码测试 → 七套全量数据准备 → 数据审计 → 所有可用官方参考答案的评分自检 → GPU 实际 checkpoint 校验 → 全量生成 → 评分 → 汇总。MT-Bench 的默认汇总包括性能，外部裁判质量分数通过下述独立接口导入。任何必需步骤失败即停止，不跳题，不把失败样本作为成功实验记录。
+默认脚本依次执行：本地代码测试 → 七套数据固定选题与清单准备 → 数据审计 → 入选题所有可用官方参考答案的评分自检 → GPU 实际 checkpoint 校验 → 预定任务全部生成 → 评分 → 汇总。MT-Bench 的默认汇总包括性能，外部裁判质量分数通过下述独立接口导入。任何必需步骤失败即停止，不跳题，不把失败样本作为成功实验记录。
 
 代码题默认在禁网容器中执行，固定内存、CPU 时间与进程上限。Docker 镜像 ID 进入评分记录。若服务器没有 Docker，可在专用隔离环境明确设置 `CODE_BACKEND=process`；该模式只有子进程资源限制，不提供文件系统或网络隔离，不能当作容器沙箱。论文记录实际后端，不能混合两个后端的评分文件。评测容器不挂载模型目录或账户凭据。
 
@@ -87,26 +93,37 @@ PYTHON_BIN=.venv-gbv/bin/python bash scripts/run_gbv_paper_full.sh
 分步运行：
 
 ```bash
-python scripts/gbv_paper.py plan --output outputs/gbv_paper_full/plan.json
-python scripts/gbv_paper.py prepare --data-dir datasets/gbv_paper_full
-python scripts/gbv_paper.py audit --data-dir datasets/gbv_paper_full --output outputs/gbv_paper_full/data_audit.json
-python scripts/gbv_paper.py validate-gold --output outputs/gbv_paper_full/gold_audit.json
-python scripts/gbv_paper.py check-model --output outputs/gbv_paper_full/gpu_preflight.json
-python scripts/gbv_paper.py run --output outputs/gbv_paper_full
-python scripts/gbv_paper.py score --run-dir outputs/gbv_paper_full
-python scripts/gbv_paper.py report --run-dir outputs/gbv_paper_full --output outputs/gbv_paper_full/report
+python scripts/gbv_paper.py plan --output outputs/gbv_paper_ddtree_counts/plan.json
+python scripts/gbv_paper.py prepare
+python scripts/gbv_paper.py audit --output outputs/gbv_paper_ddtree_counts/data_audit.json
+python scripts/gbv_paper.py validate-gold --output outputs/gbv_paper_ddtree_counts/gold_audit.json
+python scripts/gbv_paper.py check-model --output outputs/gbv_paper_ddtree_counts/gpu_preflight.json
+python scripts/gbv_paper.py run --output outputs/gbv_paper_ddtree_counts
+python scripts/gbv_paper.py score --run-dir outputs/gbv_paper_ddtree_counts
+python scripts/gbv_paper.py report --run-dir outputs/gbv_paper_ddtree_counts --output outputs/gbv_paper_ddtree_counts/report
 ```
 
 只运行主实验或单个完整消融组：
 
 ```bash
-python scripts/gbv_paper.py run --groups main --output outputs/gbv_main_full
-python scripts/gbv_paper.py run --groups paths --output outputs/gbv_paths_full
+python scripts/gbv_paper.py run --groups main --output outputs/gbv_main_ddtree_counts
+python scripts/gbv_paper.py run --groups paths --output outputs/gbv_paths_ddtree_counts
 ```
 
-两条命令均是全量数据。若一开始计划运行整套，直接使用同一个完整配置，避免重复运行共同基线。`--smoke` 仅用于安装诊断，会明确标记为 smoke 且要求单独的 smoke 输出目录，正式报告拒绝此类结果。
+两条命令均使用固定的 786 题或对话；`--groups` 只选择实验组，不改变评测题目。若一开始计划运行整套，直接使用同一个完整配置，避免重复运行共同基线。`--smoke` 仅用于安装诊断，会明确标记为 smoke 且要求单独的 smoke 输出目录，正式报告拒绝此类结果。
 
-若此前已用四数据集版本生成数据或结果，请使用新的 `DATA_DIR` 和 `OUTPUT`。程序会拒绝把不同数据集、提示格式或代码版本的记录混入同一实验目录。
+默认数据目录为 `datasets/gbv_paper_ddtree_counts`，默认脚本输出目录为 `outputs/gbv_paper_ddtree_counts`。若此前已用全量或四数据集配置生成数据或结果，请使用这些新目录。程序会拒绝把不同选题协议、题号清单、数据集、提示格式或代码版本的记录混入同一实验目录。
+
+旧命令 `bash scripts/run_gbv_paper_full.sh` 作为兼容入口保留，默认也转到本次 DDTree 题数配置。若明确需要恢复原全量划分，使用独立目录并显式指定：
+
+```bash
+CONFIG=configs/gbv_paper_full.json \
+DATA_DIR=datasets/gbv_paper_full \
+OUTPUT=outputs/gbv_paper_full \
+PYTHON_BIN=.venv-gbv/bin/python bash scripts/run_gbv_paper.sh
+```
+
+全量备选为每个方法、每个生成种子 3,648 题或对话、3,728 次回答；22 个配置、3 个种子共 240,768 条记录、246,048 次回答。默认的固定子集与这个备选协议必须分别报告。
 
 指定已有本地模型时，把配置中的 `model.target` / `model.draft` 改为目录。程序记录权重及配置文件哈希；不要把微调模型伪装成指定的公开 checkpoint。
 
@@ -132,15 +149,15 @@ python scripts/gbv_paper.py run --groups paths --output outputs/gbv_paths_full
 
 ```bash
 python scripts/gbv_paper.py export-mtbench \
-  --run-dir outputs/gbv_paper_full --data-dir datasets/gbv_paper_full \
-  --output outputs/gbv_paper_full/mtbench_export
+  --run-dir outputs/gbv_paper_ddtree_counts --data-dir datasets/gbv_paper_ddtree_counts \
+  --output outputs/gbv_paper_ddtree_counts/mtbench_export
 
 # 使用上述回答按 FastChat 协议完成外部裁判后，导入其单答案评分 JSONL。
 python scripts/gbv_paper.py import-mtbench-judgments \
-  --run-dir outputs/gbv_paper_full \
-  --export-dir outputs/gbv_paper_full/mtbench_export \
+  --run-dir outputs/gbv_paper_ddtree_counts \
+  --export-dir outputs/gbv_paper_ddtree_counts/mtbench_export \
   --judgments /path/to/single_answer_judgments.jsonl \
-  --output outputs/gbv_paper_full/mtbench_quality
+  --output outputs/gbv_paper_ddtree_counts/mtbench_quality
 ```
 
 导入要求同一个裁判模型、每个配置/种子的全部 80 题及两个轮次，拒绝重复、遗漏、预测哈希变化和无法解析的 `-1` 分数。产物包括逐题逐轮原始分数、第一轮/第二轮/整体均分及裁判身份与输入哈希。论文使用该质量指标时，应另行固定并说明裁判模型、评分提示、参考答案和裁判采样设置；当前代码没有宣称裁判评分已经执行。
@@ -151,7 +168,7 @@ GBV 实现沿用本项目的扩散条件分布 → K 次候选抽样 → 前缀�
 
 原先直接计算两项近似相等的幂之差可能在长前缀中产生全零概率行。新内核在缩放后用非负多项式计算这个差商，并逐层更新相对质量，主配置用 FP64。遇到不合法概率报错，不静默替换为其他分布。这个实现减少已知的消减误差，不等于机器浮点与实数严格相等。
 
-本地测试包括小词表下的有理数全枚举、枚举实际 BV 采样分支验证最终联合输出分布、深前缀数值退化回归，以及真实小型 Qwen3/DFlash 的树/顺序 logits、特征、缓存、EOS 和长度边界校验。新增数据测试覆盖 AIME 原始题号、LiveCodeBench 六文件加载与私有测试解码/执行、MT-Bench 第二轮历史、分轮 token 计数、完整对话续跑和裁判导出/导入。H200 上另执行真正 checkpoint 的 greedy、树分支及缓存回退校验。CPU 测试通过不能替代 H200/BF16 校验；后者不通过时不得生成正式速度结果。
+本地测试包括小词表下的有理数全枚举、枚举实际 BV 采样分支验证最终联合输出分布、深前缀数值退化回归，以及真实小型 Qwen3/DFlash 的树/顺序 logits、特征、缓存、EOS 和长度边界校验。数据测试覆盖 AIME 原始题号、LiveCodeBench 六文件加载与私有测试解码/执行、MT-Bench 第二轮历史、分轮 token 计数、完整对话续跑和裁判导出/导入。选题测试对照实际 Hugging Face shuffle，核查原始题号与顺序、源条数、全量/子集目录隔离、入选题完整测试用例及固定子集从准备到评分汇总的流程；缺题、重复题号或替换题号不能生成完整报告。这些使用本地构造的数据，不替代真实数据准备与审计。H200 上另执行真正 checkpoint 的 greedy、树分支及缓存回退校验。CPU 测试通过不能替代 H200/BF16 校验；后者不通过时不得生成正式速度结果。
 
 GBV/BV 的算法归属需保留：[Thomas 与 Pal，2026](https://arxiv.org/abs/2602.16961)、项目 vendored 的 BV 文献引用及 [DFlash](https://arxiv.org/abs/2602.06036)。本实验框架和数值实现调整不构成对原 GBV 算法原创性的声明。
 
@@ -159,6 +176,7 @@ GBV/BV 的算法归属需保留：[Thomas 与 Pal，2026](https://arxiv.org/abs/
 
 | 文件 | 用途 |
 |---|---|
+| datasets/gbv_paper_ddtree_counts/manifest.json | 源版本与完整条数、选题种子、入选原始行号和题号、文件哈希 |
 | data_audit.json / gold_audit.json | 数据结构、训练文件重叠及标准答案评分检查 |
 | gpu_preflight.json | H200 环境、实际模型校验及误差记录 |
 | run_manifest.json | 模型、数据、源代码、环境、参数和完整任务集合的身份 |
@@ -173,4 +191,4 @@ GBV/BV 的算法归属需保留：[Thomas 与 Pal，2026](https://arxiv.org/abs/
 
 断点续跑复用同一命令。程序用 `(variant, dataset, source_id, seed)` 去重，只修复未写完的最后一行；中间损坏、重复键或模型/数据/代码/环境改变都会报错。MT-Bench 两轮完成后才写入一条记录；第二轮中断会从该对话第一轮重新生成，汇总拒绝缺轮的记录。生成和评分共享输出目录写锁，防止两个进程同时写入。运行期间不要修改代码或配置。
 
-正式汇总要求全量生成与全量评分；`--allow-partial` 和 `--performance-only` 仅用于诊断，输出明确标记其状态。全量评测结果应按数据集逐项呈现，不把不同任务的分数混成一个未经定义的综合准确率。
+正式汇总要求预定评测集合中的所有方法、题目及生成种子均完成生成与评分，并将运行题号清单与数据准备清单核对；默认子集完成后的标记仍为 `fixed_evaluation_subset`。`--allow-partial` 和 `--performance-only` 仅用于诊断，输出明确标记其状态。评测结果应按数据集逐项呈现，不把不同任务的分数混成一个未经定义的综合准确率。

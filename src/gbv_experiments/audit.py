@@ -15,7 +15,7 @@ def normalize(text):
 
 
 def audit(cfg, data_dir: Path, training_files: list[Path], output: Path):
-    manifest, rows = load_prepared(data_dir, cfg["datasets"])
+    manifest, rows = load_prepared(data_dir, cfg["datasets"], cfg.get("evaluation", {}))
     normalized = defaultdict(list)
     for row in rows:
         normalized[digest(normalize(row["source_question"]))].append([row["dataset"], row["source_id"]])
@@ -49,6 +49,7 @@ def audit(cfg, data_dir: Path, training_files: list[Path], output: Path):
     result = {
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "data_manifest_sha256": digest(manifest),
+        "coverage": manifest["coverage"], "evaluation": manifest.get("evaluation", {"protocol": "full"}),
         "evaluation_counts": {name: info["count"] for name, info in manifest["datasets"].items()},
         "training_policy": "frozen_target_and_frozen_published_draft; no local training or fitting",
         "locally_trained_components_used": [],

@@ -12,7 +12,7 @@ from contextlib import contextmanager
 
 from .common import canonical, digest, file_hash, prompt_seed, source_hashes, write_json
 from .config import Variant, build_variants
-from .data import DATASETS, load_prepared
+from .data import DATASETS, evaluation_coverage, evaluation_policy, load_prepared
 
 
 def key(record):
@@ -42,9 +42,11 @@ def resume_records(path: Path, run_id: str) -> dict:
 
 def make_plan(cfg, groups=None):
     entries = build_variants(cfg, groups)
-    counts = {name: DATASETS[name].expected for name in cfg["datasets"]}
-    turn_counts = {name: DATASETS[name].expected * DATASETS[name].turns for name in cfg["datasets"]}
-    return {"coverage": "full_evaluation_split", "datasets": counts,
+    policy = evaluation_policy(cfg["datasets"], cfg.get("evaluation"))
+    counts = policy["counts"]
+    turn_counts = {name: counts[name] * DATASETS[name].turns for name in cfg["datasets"]}
+    return {"coverage": evaluation_coverage(policy), "evaluation": policy, "datasets": counts,
+            "source_counts": {name: DATASETS[name].expected for name in cfg["datasets"]},
             "seeds": cfg["seeds"], "max_new_tokens": cfg["max_new_tokens"],
             "variants": entries, "variant_count": len(entries),
             "user_turns": turn_counts,
@@ -87,7 +89,8 @@ def _run(cfg, data_dir: Path, output: Path, device: str, groups=None, smoke=Fals
     from .engine import load_models
     from .conversation import encode_messages, generate_conversation
 
-    data_manifest, rows = load_prepared(data_dir, cfg["datasets"])
+    policy = evaluation_policy(cfg["datasets"], cfg.get("evaluation"))
+    data_manifest, rows = load_prepared(data_dir, cfg["datasets"], policy)
     entries = build_variants(cfg, groups)
     if smoke:
         rows = [next(r for r in rows if r["dataset"] == name) for name in cfg["datasets"]]
@@ -104,9 +107,9 @@ def _run(cfg, data_dir: Path, output: Path, device: str, groups=None, smoke=Fals
         driver = subprocess.check_output(["nvidia-smi", "--query-gpu=driver_version", "--format=csv,noheader"], text=True).strip().splitlines()[0]
     except (OSError, subprocess.CalledProcessError):
         driver = "unavailable"
-    spec = {"schema": 2, "model": model, "variants": entries, "seeds": cfg["seeds"],
+    spec = {"schema": 3, "model": model, "variants": entries, "seeds": cfg["seeds"],
             "max_new_tokens": min(16, cfg["max_new_tokens"]) if smoke else cfg["max_new_tokens"],
-            "coverage": "smoke" if smoke else "full_evaluation_split", "profile": profile,
+            "coverage": "smoke" if smoke else evaluation_coverage(policy), "evaluation": policy, "profile": profile,
             "scoring": cfg.get("scoring", {}), "bootstrap_samples": cfg.get("bootstrap_samples", 1000),
             "data_manifest": data_manifest, "dataset_names": cfg["datasets"],
             "dataset_turn_counts": {name: DATASETS[name].turns for name in cfg["datasets"]},

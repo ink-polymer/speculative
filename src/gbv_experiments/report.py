@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import Counter, defaultdict
 import csv
 import json
 from pathlib import Path
@@ -8,6 +8,7 @@ from pathlib import Path
 import numpy as np
 
 from .common import digest, read_jsonl, write_json
+from .data import evaluation_coverage, evaluation_policy
 from .runner import key
 
 
@@ -18,11 +19,28 @@ def expected_keys(manifest):
 
 
 def validate_results(manifest, records, scores=None, allow_partial=False):
+    prompt_keys = [(d, i) for d, i, _ in manifest["prompt_ids"]]
+    if len(set(prompt_keys)) != len(prompt_keys):
+        raise ValueError("Duplicate prompt IDs in run manifest")
+    if manifest["coverage"] == "fixed_evaluation_subset":
+        policy = evaluation_policy(manifest["dataset_names"], manifest.get("evaluation"))
+        if evaluation_coverage(policy) != "fixed_evaluation_subset":
+            raise ValueError("Missing fixed-subset evaluation policy")
+        counts = dict(Counter(d for d, _, _ in manifest["prompt_ids"]))
+        if counts != policy["counts"]:
+            raise ValueError("Run prompt counts do not match the fixed evaluation subset")
+        data_manifest = manifest.get("data_manifest", {})
+        if data_manifest.get("evaluation") != policy or data_manifest.get("coverage") != manifest["coverage"]:
+            raise ValueError("Run and prepared data selection policies do not match")
+        selected = [(name, ident) for name in manifest["dataset_names"]
+                    for ident in data_manifest["datasets"][name]["selected_source_ids"]]
+        if prompt_keys != selected:
+            raise ValueError("Run prompts do not match the prepared sample IDs and order")
     expected = expected_keys(manifest)
     actual = {key(r) for r in records}
     if len(actual) != len(records) or actual - expected:
         raise ValueError("Duplicate or unexpected result keys")
-    if not allow_partial and (actual != expected or manifest["coverage"] != "full_evaluation_split"):
+    if not allow_partial and (actual != expected or manifest["coverage"] not in {"full_evaluation_split", "fixed_evaluation_subset"}):
         raise ValueError(f"Formal report requires every evaluation record: {len(actual)}/{len(expected)}")
     hashes = {(d, i): h for d, i, h in manifest["prompt_ids"]}
     for r in records:
@@ -68,7 +86,8 @@ def validate_results(manifest, records, scores=None, allow_partial=False):
             elif not isinstance(score["passed"], bool):
                 raise ValueError("Objective evaluation is missing a boolean score")
     return {"expected": len(expected), "actual": len(actual), "missing": len(expected - actual),
-            "coverage": manifest["coverage"], "complete": actual == expected}
+            "coverage": manifest["coverage"], "evaluation": manifest.get("evaluation", {"protocol": "full"}),
+            "complete": actual == expected}
 
 
 def ratio(numerator, denominator):

@@ -39,8 +39,60 @@ DATASETS = {
 }
 
 
+DDTREE_COUNTS = {"gsm8k": 128, "math500": 128, "aime25": 30, "humaneval": 164,
+                 "mbpp": 128, "mbpp_sanitized": 128, "livecodebench": 128, "mt-bench": 80,
+                 "aime24": 30}
+
+
+def evaluation_policy(names, settings=None):
+    """Keep source split sizes separate from the fixed experimental sample sizes."""
+    settings = {} if settings is None else settings
+    if not isinstance(settings, dict) or set(settings) - {"protocol", "sample_seed", "counts"}:
+        raise ValueError("Invalid evaluation selection settings")
+    if not names or len(set(names)) != len(names) or set(names) - set(DATASETS):
+        raise ValueError("Unknown, empty, or duplicate dataset names")
+    protocol = settings.get("protocol", "full")
+    if protocol == "full":
+        seed, counts = None, {name: DATASETS[name].expected for name in names}
+        if settings.get("sample_seed") is not None:
+            raise ValueError("Full splits do not use a sample seed")
+    elif protocol == "ddtree_counts":
+        seed = settings.get("sample_seed", 0)
+        if type(seed) is not int or seed != 0:
+            raise ValueError("DDTree sample selection uses seed 0")
+        counts = {name: DDTREE_COUNTS[name] for name in names}
+    else:
+        raise ValueError(f"Unknown evaluation protocol: {protocol}")
+    if "counts" in settings:
+        supplied = settings["counts"]
+        if not isinstance(supplied, dict) or supplied != counts or any(type(v) is not int for v in supplied.values()):
+            raise ValueError("Evaluation counts do not match the selected protocol")
+    return {"protocol": protocol, "sample_seed": seed, "counts": counts}
+
+
+def evaluation_coverage(policy):
+    return "full_evaluation_split" if policy["protocol"] == "full" else "fixed_evaluation_subset"
+
+
+def selection_indices(source_count, count, seed):
+    if not 0 < count <= source_count:
+        raise ValueError("Invalid evaluation sample count")
+    if count == source_count:
+        return list(range(source_count))
+    import numpy as np
+    # datasets.Dataset.shuffle(seed=0) uses this same NumPy generator permutation.
+    return np.random.default_rng(seed).permutation(source_count)[:count].tolist()
+
+
+def record_source_id(name, row, index):
+    if name == "livecodebench":
+        return f"{row['platform']}:{row['question_id']}"
+    return str(row.get("task_id", row.get("question_id", row.get("problem_idx", row.get("id", index)))))
+
+
 def formatter_id():
-    return digest([inspect.getsource(format_record), inspect.getsource(decode_lcb_tests)])
+    return digest([inspect.getsource(format_record), inspect.getsource(decode_lcb_tests),
+                   inspect.getsource(record_source_id)])
 
 
 class DataOnlyUnpickler(pickle.Unpickler):
@@ -80,7 +132,7 @@ def prompt_hash(row):
 
 
 def format_record(name: str, row: dict, index: int) -> dict:
-    source_id = str(row.get("task_id", row.get("question_id", row.get("problem_idx", row.get("id", index)))))
+    source_id = record_source_id(name, row, index)
     evaluation = {}
     if name in {"gsm8k", "math500", "aime24", "aime25"}:
         question = row["question"] if name == "gsm8k" else row["problem"]
@@ -108,7 +160,6 @@ def format_record(name: str, row: dict, index: int) -> dict:
                       "challenge_tests": row.get("challenge_test_list", []),
                       "reference_code": row.get("code", "")}
     elif name == "livecodebench":
-        source_id = f"{row['platform']}:{row['question_id']}"
         public = decode_lcb_tests(row["public_test_cases"])
         private = decode_lcb_tests(row["private_test_cases"])
         if not public and not private:
@@ -205,49 +256,61 @@ def resolve_evaluation(record, directory):
     return evaluation
 
 
-def prepare(names: list[str], output: Path) -> dict:
+def prepare(names: list[str], output: Path, evaluation=None) -> dict:
     from huggingface_hub import HfApi
 
-    unknown = set(names) - set(DATASETS)
-    if unknown:
-        raise ValueError(f"Unknown datasets: {sorted(unknown)}")
+    policy = evaluation_policy(names, evaluation)
     manifest_path = output / "manifest.json"
     if manifest_path.exists():
         manifest = json.loads(manifest_path.read_text())
         if set(manifest["datasets"]) != set(names):
             raise ValueError("Existing data manifest has different datasets; use a new output directory")
-        load_prepared(output, names)
+        load_prepared(output, names, policy)
         return manifest
     output.mkdir(parents=True, exist_ok=True)
-    manifest = {"schema": 1, "coverage": "full_evaluation_split", "formatter_id": formatter_id(), "datasets": {}}
+    manifest = {"schema": 2, "coverage": evaluation_coverage(policy), "evaluation": policy,
+                "formatter_id": formatter_id(), "datasets": {}}
     api = HfApi()
     for name in names:
         spec = DATASETS[name]
         revision = spec.revision or api.dataset_info(spec.repo).sha
-        rows = []
+        indices = selection_indices(spec.expected, policy["counts"][name], policy["sample_seed"])
+        selected, source_ids, source_count = {}, set(), 0
+        wanted = set(indices)
         for i, source in enumerate(load_source(spec, revision, output)):
-            # Keep large private tests in per-question sidecars, not in RAM for all questions.
-            rows.append(persist_evaluation(format_record(name, dict(source), i), output))
-        if len(rows) != spec.expected:
-            raise ValueError(f"{name}: expected full split of {spec.expected}, got {len(rows)}")
-        if len({r["source_id"] for r in rows}) != len(rows):
-            raise ValueError(f"Duplicate source IDs in {name}")
+            source_count += 1
+            source_id = record_source_id(name, source, i)
+            if source_id in source_ids:
+                raise ValueError(f"Duplicate source IDs in {name}")
+            source_ids.add(source_id)
+            if i in wanted:
+                # Parse and retain every test for each selected question only.
+                selected[i] = persist_evaluation(format_record(name, dict(source), i), output)
+        if source_count != spec.expected:
+            raise ValueError(f"{name}: expected full source split of {spec.expected}, got {source_count}")
+        rows = [selected[i] for i in indices]
         path = output / f"{name}.jsonl"
         tmp = path.with_suffix(".tmp")
         tmp.write_text("".join(canonical(row) + "\n" for row in rows))
         tmp.replace(path)
         manifest["datasets"][name] = {**asdict(spec), "revision": revision,
+                                       "source_count": source_count, "selected_source_indices": indices,
+                                       "selected_source_ids": [r["source_id"] for r in rows],
                                        "count": len(rows), "file": path.name,
                                        "sha256": file_hash(path)}
-        print(f"Prepared {name}: {len(rows)}/{spec.expected}", flush=True)
+        print(f"Prepared {name}: {len(rows)} selected from {source_count} source rows", flush=True)
     write_json(manifest_path, manifest)
     return manifest
 
 
-def load_prepared(directory: Path, names: list[str]) -> tuple[dict, list[dict]]:
+def load_prepared(directory: Path, names: list[str], evaluation=None) -> tuple[dict, list[dict]]:
     manifest = json.loads((directory / "manifest.json").read_text())
-    if manifest.get("coverage") != "full_evaluation_split":
-        raise ValueError("Data manifest is not a full evaluation split")
+    policy = evaluation_policy(list(manifest["datasets"]), manifest.get("evaluation"))
+    if manifest.get("coverage") != evaluation_coverage(policy):
+        raise ValueError("Data coverage disagrees with its evaluation selection protocol")
+    if evaluation is not None and evaluation_policy(names, evaluation) != evaluation_policy(names, {
+        **policy, "counts": {name: policy["counts"][name] for name in names}}):
+        raise ValueError("Evaluation selection changed; prepare a new dataset directory")
     if manifest.get("formatter_id") != formatter_id():
         raise ValueError("Prompt formatting code changed; prepare a new dataset directory")
     rows = []
@@ -261,8 +324,16 @@ def load_prepared(directory: Path, names: list[str]) -> tuple[dict, list[dict]]:
         if file_hash(path) != entry["sha256"]:
             raise ValueError(f"Dataset hash mismatch: {path}")
         part = read_jsonl(path)
-        if len(part) != DATASETS[name].expected or len(part) != entry["count"]:
+        expected_count = policy["counts"][name]
+        if len(part) != expected_count or len(part) != entry["count"]:
             raise ValueError(f"Incomplete evaluation set: {name}")
+        if manifest.get("schema", 1) >= 2 or policy["protocol"] != "full":
+            indices = selection_indices(DATASETS[name].expected, expected_count, policy["sample_seed"])
+            if (entry.get("source_count") != DATASETS[name].expected
+                    or entry.get("selected_source_indices") != indices
+                    or [r["source_index"] for r in part] != indices
+                    or entry.get("selected_source_ids") != [r["source_id"] for r in part]):
+                raise ValueError(f"Evaluation sample selection mismatch: {name}")
         if len({r["source_id"] for r in part}) != len(part):
             raise ValueError(f"Duplicate IDs: {name}")
         if any(r["dataset"] != name or prompt_hash(r) != r["prompt_sha256"] or len(user_turns(r)) != DATASETS[name].turns for r in part):

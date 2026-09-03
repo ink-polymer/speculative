@@ -9,13 +9,13 @@ from .config import load_config
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Full-split diffusion GBV experiments")
+    parser = argparse.ArgumentParser(description="Diffusion GBV experiments with a fixed evaluation protocol")
     sub = parser.add_subparsers(dest="command", required=True)
     for name in ("prepare", "plan", "run", "audit"):
         p = sub.add_parser(name)
-        p.add_argument("--config", type=Path, default=ROOT / "configs/gbv_paper_full.json")
+        p.add_argument("--config", type=Path, default=ROOT / "configs/gbv_paper_ddtree_counts.json")
         if name != "plan":
-            p.add_argument("--data-dir", type=Path, default=ROOT / "datasets/gbv_paper_full")
+            p.add_argument("--data-dir", type=Path, default=ROOT / "datasets/gbv_paper_ddtree_counts")
         if name in {"plan", "run"}:
             p.add_argument("--groups", nargs="+")
             p.add_argument("--output", type=Path, required=name == "run")
@@ -28,14 +28,14 @@ def main():
             p.add_argument("--output", type=Path, required=True)
     p = sub.add_parser("score")
     p.add_argument("--run-dir", type=Path, required=True)
-    p.add_argument("--data-dir", type=Path, default=ROOT / "datasets/gbv_paper_full")
+    p.add_argument("--data-dir", type=Path, default=ROOT / "datasets/gbv_paper_ddtree_counts")
     p.add_argument("--code-backend", choices=["docker", "process"])
     p.add_argument("--workers", type=int)
     p.add_argument("--timeout", type=float)
     p.add_argument("--lcb-timeout", type=int)
     p = sub.add_parser("validate-gold")
-    p.add_argument("--config", type=Path, default=ROOT / "configs/gbv_paper_full.json")
-    p.add_argument("--data-dir", type=Path, default=ROOT / "datasets/gbv_paper_full")
+    p.add_argument("--config", type=Path, default=ROOT / "configs/gbv_paper_ddtree_counts.json")
+    p.add_argument("--data-dir", type=Path, default=ROOT / "datasets/gbv_paper_ddtree_counts")
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--code-backend", choices=["docker", "process"], default="docker")
     p.add_argument("--timeout", type=float, default=10)
@@ -47,13 +47,13 @@ def main():
     p.add_argument("--performance-only", action="store_true")
     p.add_argument("--no-plots", action="store_true")
     p = sub.add_parser("check-model")
-    p.add_argument("--config", type=Path, default=ROOT / "configs/gbv_paper_full.json")
+    p.add_argument("--config", type=Path, default=ROOT / "configs/gbv_paper_ddtree_counts.json")
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--device", default="cuda:0")
     p.add_argument("--code-backend", choices=["docker", "process"], default="docker")
     p = sub.add_parser("export-mtbench")
     p.add_argument("--run-dir", type=Path, required=True)
-    p.add_argument("--data-dir", type=Path, default=ROOT / "datasets/gbv_paper_full")
+    p.add_argument("--data-dir", type=Path, default=ROOT / "datasets/gbv_paper_ddtree_counts")
     p.add_argument("--output", type=Path, required=True)
     p = sub.add_parser("import-mtbench-judgments")
     p.add_argument("--run-dir", type=Path, required=True)
@@ -64,7 +64,7 @@ def main():
     cfg = load_config(args.config) if hasattr(args, "config") else None
     if args.command == "prepare":
         from .data import prepare
-        prepare(cfg["datasets"], args.data_dir)
+        prepare(cfg["datasets"], args.data_dir, cfg.get("evaluation"))
     elif args.command == "plan":
         from .runner import make_plan
         plan = make_plan(cfg, args.groups)
@@ -94,7 +94,7 @@ def main():
         check_model(cfg, args.output, args.device, args.code_backend)
     elif args.command == "validate-gold":
         from .scoring import validate_gold
-        validate_gold(args.data_dir, cfg["datasets"], args.output, args.code_backend, args.timeout)
+        validate_gold(args.data_dir, cfg["datasets"], args.output, args.code_backend, args.timeout, cfg.get("evaluation", {}))
     elif args.command == "export-mtbench":
         from .mtbench import export_answers
         export_answers(args.run_dir, args.data_dir, args.output)

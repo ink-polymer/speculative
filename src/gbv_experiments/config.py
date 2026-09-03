@@ -46,7 +46,7 @@ class Variant:
 def load_config(path: Path) -> dict:
     cfg = json.loads(path.read_text())
     allowed = {"model", "datasets", "seeds", "max_new_tokens", "warmup_tokens", "main",
-               "ablations", "bootstrap_samples", "scoring"}
+               "ablations", "bootstrap_samples", "scoring", "evaluation"}
     if set(cfg) - allowed:
         raise ValueError(f"Unknown configuration keys: {sorted(set(cfg)-allowed)}")
     if not cfg.get("datasets") or len(set(cfg["datasets"])) != len(cfg["datasets"]):
@@ -68,6 +68,8 @@ def load_config(path: Path) -> dict:
         raise ValueError("Unsupported model dtype")
     if any(not isinstance(seed, int) or isinstance(seed, bool) for seed in cfg["seeds"]):
         raise ValueError("Seeds must be integers")
+    from .data import evaluation_policy
+    evaluation_policy(cfg["datasets"], cfg.get("evaluation"))
     return cfg
 
 

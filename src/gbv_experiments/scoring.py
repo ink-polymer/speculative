@@ -125,7 +125,7 @@ def _score_run(run_dir: Path, data_dir: Path, backend="docker", workers=4, timeo
         subprocess.run(["docker", "image", "inspect", "gbv-code-eval:py311"],
                        check=True, stdout=subprocess.DEVNULL)
     manifest = json.loads((run_dir / "run_manifest.json").read_text())
-    data_manifest, data = load_prepared(data_dir, manifest["dataset_names"])
+    data_manifest, data = load_prepared(data_dir, manifest["dataset_names"], manifest.get("evaluation"))
     if data_manifest != manifest["data_manifest"]:
         raise ValueError("Scoring data differ from generation data")
     lookup = {(r["dataset"], r["source_id"]): r for r in data}
@@ -187,9 +187,9 @@ def _score_run(run_dir: Path, data_dir: Path, backend="docker", workers=4, timeo
                "mt_bench_quality": "not_scored; export-mtbench can prepare official judge inputs"})
 
 
-def validate_gold(data_dir: Path, names: list[str], output: Path, backend="docker", timeout=10):
+def validate_gold(data_dir: Path, names: list[str], output: Path, backend="docker", timeout=10, evaluation=None):
     """Check all available references; report reference-free tasks explicitly."""
-    manifest, rows = load_prepared(data_dir, names)
+    manifest, rows = load_prepared(data_dir, names, evaluation)
     results = []
     for row in rows:
         evaluation = row["evaluation"]
