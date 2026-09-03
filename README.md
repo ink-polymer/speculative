@@ -1,14 +1,17 @@
 # DFlash-SpecBlock：面向昇腾 910B A2 的扩散块动态树推测解码实验
 
-## H200 GBV 论文实验（数据量对齐 DDTree）
+## H200 三路径 GBV 论文实验：Qwen3-4B 与 Qwen3-8B
 
-本分支新增 DFlash 扩散草稿与多路径 GBV 的独立实验套件。默认评测数量对齐 DDTree：GSM8K 128、MATH-500 128、AIME25 30、HumanEval 164、MBPP 128、LiveCodeBench 128、MT-Bench 80 组双轮对话。每个方法、每个生成种子共 786 题或对话、866 次回答。选题种子固定为 0，主实验及所有消融复用原始题号清单；MT-Bench 提供外部裁判评分导出/导入接口。题数对齐不表示完整官方协议或样本身份一致，具体数据源和提示以实验说明为准。
+本分支提供两组 Target 与各自 DFlash-b16 扩散草稿的 GBV 实验。核心为 K=3、L=15、T=1；保留原双向注意力和正常 Target 特征输入。4B 做主实验及候选数、验证长度、单路径验证机制、前缀共享消融；8B 做主实验。两个模型均补充 T=0 的 AR/GBV 一致性对照。
 
 - [实验协议与运行说明](docs/GBV_PAPER_EXPERIMENTS.md)
-- [默认主实验与消融配置](configs/gbv_paper_ddtree_counts.json)；[全量备选配置](configs/gbv_paper_full.json)。
-- 启动：`bash scripts/run_gbv_paper.sh`（先按说明安装 H200/CUDA 环境和评分容器）。旧 `run_gbv_paper_full.sh` 兼容入口默认也使用 DDTree 题数。
-- 默认 22 个配置、3 个生成种子，共 51,876 条记录、57,156 次回答生成。
-- 本地 CPU 测试及独立解压包均通过 91 项测试；H200 实际 checkpoint 验证、真实数据准备与审计、正式测速尚待运行。
+- [两模型套件](configs/gbv_paper_suite.json)、[4B 配置](configs/gbv_paper_ddtree_counts.json)、[8B 配置](configs/gbv_paper_qwen3_8b.json)。
+- 默认 `bash scripts/run_gbv_paper.sh gbv-first`：先跑两模型三路径 GBV，共 5,196 次回答。随后运行 `main`、`complete`，自动复用已有记录。
+- 完整方案：4B 的 13 配置、8B 的 7 配置，三个生成种子，共 420 个数据集任务、47,160 条题目/完整对话记录、51,960 次回答。
+- 数据量继续对齐 DDTree：GSM8K 128、MATH-500 128、AIME25 30、HumanEval 164、MBPP 128、LiveCodeBench 128、MT-Bench 80 组双轮；每个配置/种子为 786 题或对话、866 次回答。固定选题种子 0，所有方法和两个模型共用原始题号清单。
+- DFlash 基线使用贪心草稿与 Target 采样匹配规则；标准 p/q 拒绝采样单独作为机制对照。这里是同一引擎内的复现，数据量和算法规则对齐不表示完整优化运行时或官方样本身份一致。
+- CPU 回归与独立代码包检查通过；8B 验证包含固定配置的模型结构构造。H200 真实权重/BF16 校验、七套真实数据准备审计和正式测速仍待运行。
+- MT-Bench 提供外部裁判导出/导入接口，尚未执行真实裁判评分。旧 `run_gbv_paper_full.sh` 默认转到两模型 `complete`；4B 全源划分仅作为独立备选配置保留。
 
 ## 既有 Ascend / SpecBlock 实验
 

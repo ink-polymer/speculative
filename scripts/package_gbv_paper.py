@@ -14,9 +14,10 @@ def main():
     files += list((ROOT / "third_party/ddtree_official/model").glob("*.py"))
     files += list((ROOT / "third_party/livecodebench_official").glob("*.py"))
     files += [ROOT / p for p in (
-        "configs/gbv_paper_ddtree_counts.json", "configs/gbv_paper_full.json", "requirements-gbv-paper.txt",
+        "configs/gbv_paper_ddtree_counts.json", "configs/gbv_paper_qwen3_8b.json", "configs/gbv_paper_suite.json",
+        "configs/gbv_paper_full.json", "requirements-gbv-paper.txt",
         "scripts/gbv_paper.py", "scripts/run_gbv_paper.sh", "scripts/run_gbv_paper_full.sh", "scripts/package_gbv_paper.py",
-        "docs/GBV_PAPER_EXPERIMENTS.md", "experiments/gbv_paper/Dockerfile",
+        "docs/GBV_PAPER_EXPERIMENTS.md", "experiments/gbv_paper/Dockerfile", "experiments/gbv_paper/qwen3_8b_metadata.json",
         "third_party/ddtree_official/LICENSE", "third_party/livecodebench_official/LICENSE",
         "experiments/gbv_paper/THIRD_PARTY_NOTICES.md", "LICENSE",
     )]
@@ -27,7 +28,7 @@ def main():
         for path in sorted(files):
             archive.write(path, str(path.relative_to(ROOT)))
         archive.writestr("SOURCE_SHA256.json", json.dumps(hashes, indent=2) + "\n")
-        archive.writestr("README.md", "# GBV experiments with DDTree sample counts\n\nDefault: 786 questions/conversations from seven datasets, selected once with seed 0; 866 answer turns per method and generation seed. Run bash scripts/run_gbv_paper.sh.\n\nSee docs/GBV_PAPER_EXPERIMENTS.md for the protocol, commands, and optional full-split configuration. Count alignment alone does not reproduce the complete official DDTree protocol.\n\nThis is source code; it contains no formal GPU benchmark results.\n")
+        archive.writestr("README.md", "# Three-path GBV: Qwen3-4B and Qwen3-8B\n\nRun bash scripts/run_gbv_paper.sh gbv-first to evaluate three-path GBV first on both model pairs; main and complete resume the same model-specific result directories. Default: 786 questions/conversations from seven datasets, selected once with seed 0; 866 answer turns per method and generation seed.\n\nSee docs/GBV_PAPER_EXPERIMENTS.md for the focused experimental design and commands. Count alignment and matching algorithm rules do not reproduce the complete optimized official DDTree/DFlash runtime.\n\nThis is source code; it contains no formal GPU benchmark results.\n")
     print(output)
 
 

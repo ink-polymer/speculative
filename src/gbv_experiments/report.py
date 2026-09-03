@@ -139,7 +139,7 @@ def summarize(manifest, records, scores=None, bootstrap=1000):
         entry = variants[name]
         v = entry["variant"]
         rows.sort(key=lambda r: (r["source_id"], r["seed"]))
-        baseline_name = baseline_names[v["temperature"]]
+        baseline_name = baseline_names.get(v["temperature"])
         pairs = [(r, lookup[(baseline_name, dataset, r["source_id"], r["seed"])]) for r in rows
                  if (baseline_name, dataset, r["source_id"], r["seed"]) in lookup]
         paired_rows, baselines = zip(*pairs) if pairs else ([], [])
@@ -171,6 +171,7 @@ def summarize(manifest, records, scores=None, bootstrap=1000):
                "decode_tps": ratio(1000 * sum(r["decode_tokens"] for r in rows), sum(r["decode_ms"] for r in rows)),
                "e2e_tps": ratio(1000 * sum(r["generated_tokens"] for r in rows), sum(r["e2e_ms"] for r in rows)),
                "speedup_vs_ar": speedup(paired_rows, baselines),
+               "baseline_status": "paired" if len(pairs) == len(rows) else "missing_or_partial",
                "speedup_ci_low": intervals[0], "speedup_ci_high": intervals[1],
                "matched_baseline_samples": len(pairs),
                "ttft_mean_ms": float(np.mean([t["prefill_ms"] for t in turns])),
@@ -231,13 +232,18 @@ def report(run_dir: Path, output: Path, bootstrap=1000, allow_partial=False, per
                     continue
                 fig, ax = plt.subplots(figsize=(9, max(3, .5 * len(part) + 1)))
                 y = np.arange(len(part))
-                ax.barh(y, [r["speedup_vs_ar"] or 0 for r in part], color="#3179aa")
-                for i, r in enumerate(part):
-                    if r["speedup_ci_low"] is not None:
-                        ax.hlines(i, r["speedup_ci_low"], r["speedup_ci_high"], color="black", linewidth=1.5)
+                paired = all(r["speedup_vs_ar"] is not None and r["baseline_status"] == "paired" for r in part)
+                field = "speedup_vs_ar" if paired else "decode_tps"
+                ax.barh(y, [r[field] or 0 for r in part], color="#3179aa")
+                if paired:
+                    for i, r in enumerate(part):
+                        if r["speedup_ci_low"] is not None:
+                            ax.hlines(i, r["speedup_ci_low"], r["speedup_ci_high"], color="black", linewidth=1.5)
                 ax.set_yticks(y, [r["variant"] for r in part])
-                ax.axvline(1, color="black", linewidth=.8, linestyle="--")
-                ax.set(xlabel="Decode speedup vs. matched target AR (95% paired CI)", title=f"{dataset}: {group}")
+                if paired:
+                    ax.axvline(1, color="black", linewidth=.8, linestyle="--")
+                label = "Decode speedup vs. matched target AR (95% paired CI)" if paired else "Decode tokens/s (AR comparison unavailable)"
+                ax.set(xlabel=label, title=f"{dataset}: {group}")
                 ax.invert_yaxis()
                 fig.tight_layout()
                 for ext in ("pdf", "png"):

@@ -1,9 +1,9 @@
 {
   "model": {
-    "target": "Qwen/Qwen3-4B",
-    "target_revision": "1cfa9a7208912126459214e8b04321603b3df60c",
-    "draft": "z-lab/Qwen3-4B-DFlash-b16",
-    "draft_revision": "b74e3a329c4d963783143b1e970d95b002be72bd",
+    "target": "Qwen/Qwen3-8B",
+    "target_revision": "b968826d9c46dd6066d109eabc6255188de91218",
+    "draft": "z-lab/Qwen3-8B-DFlash-b16",
+    "draft_revision": "9b41424b7109f9c5413454f481b09a82b85333f4",
     "dtype": "bfloat16",
     "target_attention": "sdpa",
     "draft_attention": "sdpa",
@@ -35,24 +35,9 @@
     "probability_dtype": "float64"
   },
   "ablations": {
-    "paths": [
-      1,
-      2,
-      3,
-      4
-    ],
-    "lengths": [
-      4,
-      8,
-      15
-    ],
     "temperatures": [
       0.0,
       1.0
-    ],
-    "switches": [
-      "block_verification",
-      "prefix_sharing"
     ]
   },
   "bootstrap_samples": 1000,
@@ -61,5 +46,18 @@
     "workers": 4,
     "timeout_seconds": 10,
     "lcb_timeout_seconds": 6
+  },
+  "evaluation": {
+    "protocol": "ddtree_counts",
+    "sample_seed": 0,
+    "counts": {
+      "gsm8k": 128,
+      "math500": 128,
+      "aime25": 30,
+      "humaneval": 164,
+      "mbpp": 128,
+      "livecodebench": 128,
+      "mt-bench": 80
+    }
   }
 }

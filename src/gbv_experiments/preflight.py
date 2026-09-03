@@ -11,12 +11,13 @@ from .common import digest, source_hashes, write_json
 from .config import Variant, build_variants
 
 
-def check_environment(cfg, code_backend="docker"):
+def check_environment(cfg, code_backend="docker", device="cuda:0"):
     import torch
     import math_verify  # noqa: F401
     from transformers import Qwen3ForCausalLM  # noqa: F401
-    if not torch.cuda.is_available():
+    if not torch.cuda.is_available() or torch.device(device).type != "cuda":
         raise RuntimeError("CUDA is unavailable")
+    torch.cuda.set_device(device)
     if cfg["model"].get("dtype", "bfloat16") == "bfloat16" and not torch.cuda.is_bf16_supported():
         raise RuntimeError("The GPU does not support BF16")
     image_id = None
@@ -44,23 +45,24 @@ def check_environment(cfg, code_backend="docker"):
                     raise RuntimeError(f"LiveCodeBench evaluator preflight failed: {result}")
                 evaluator_checks.append({"functional": functional, "expected_pass": correct, "result": result})
     return {"versions": versions, "python": platform.python_version(), "cuda": torch.version.cuda,
-            "gpu": torch.cuda.get_device_name(), "total_memory_bytes": torch.cuda.get_device_properties(0).total_memory,
+            "gpu": torch.cuda.get_device_name(device), "total_memory_bytes": torch.cuda.get_device_properties(device).total_memory,
             "code_backend": code_backend, "code_image_id": image_id, "lcb_evaluator_checks": evaluator_checks}
 
 
-def check_model(cfg, output: Path, device="cuda:0", code_backend="docker"):
+def check_model(cfg, output: Path, device="cuda:0", code_backend="docker", only_variants=None):
     import torch
     from .engine import load_models
     from .runner import model_identity
     from .tree import sampled_tree, compact_cache
 
-    environment = check_environment(cfg, code_backend)
+    environment = check_environment(cfg, code_backend, device)
     model = model_identity(cfg["model"])
     engine, tokenizer = load_models(model, device)
     prompts = ["Compute 19 + 23. Give a brief explanation.",
                "Write a Python function that reverses a list.",
                "Explain why the sum of two even integers is even."]
-    variants = [Variant(**e["variant"]) for e in build_variants(cfg)]
+    from .config import select_variants
+    variants = [Variant(**e["variant"]) for e in select_variants(build_variants(cfg), only_variants)]
     # Keep every structural variation; set T=0 solely for the equality gate.
     unique = {}
     for v in variants:

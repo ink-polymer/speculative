@@ -18,6 +18,7 @@ def main():
             p.add_argument("--data-dir", type=Path, default=ROOT / "datasets/gbv_paper_ddtree_counts")
         if name in {"plan", "run"}:
             p.add_argument("--groups", nargs="+")
+            p.add_argument("--only-variants", nargs="+")
             p.add_argument("--output", type=Path, required=name == "run")
         if name == "run":
             p.add_argument("--device", default="cuda:0")
@@ -51,10 +52,21 @@ def main():
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--device", default="cuda:0")
     p.add_argument("--code-backend", choices=["docker", "process"], default="docker")
+    p.add_argument("--only-variants", nargs="+")
     p = sub.add_parser("export-mtbench")
     p.add_argument("--run-dir", type=Path, required=True)
     p.add_argument("--data-dir", type=Path, default=ROOT / "datasets/gbv_paper_ddtree_counts")
     p.add_argument("--output", type=Path, required=True)
+    for name in ("plan-suite", "run-suite"):
+        p = sub.add_parser(name)
+        p.add_argument("--suite", type=Path, default=ROOT / "configs/gbv_paper_suite.json")
+        p.add_argument("--phase", choices=["gbv-first", "main", "complete"], default="gbv-first")
+        p.add_argument("--model-ids", nargs="+")
+        p.add_argument("--output", type=Path, required=name == "run-suite")
+        if name == "run-suite":
+            p.add_argument("--data-dir", type=Path, default=ROOT / "datasets/gbv_paper_ddtree_counts")
+            p.add_argument("--device", default="cuda:0")
+            p.add_argument("--code-backend", choices=["docker", "process"], default="docker")
     p = sub.add_parser("import-mtbench-judgments")
     p.add_argument("--run-dir", type=Path, required=True)
     p.add_argument("--export-dir", type=Path, required=True)
@@ -67,13 +79,13 @@ def main():
         prepare(cfg["datasets"], args.data_dir, cfg.get("evaluation"))
     elif args.command == "plan":
         from .runner import make_plan
-        plan = make_plan(cfg, args.groups)
+        plan = make_plan(cfg, args.groups, args.only_variants)
         if args.output:
             write_json(args.output, plan)
         print(json.dumps(plan, ensure_ascii=False, indent=2))
     elif args.command == "run":
         from .runner import run
-        run(cfg, args.data_dir, args.output, args.device, args.groups, args.smoke, args.profile)
+        run(cfg, args.data_dir, args.output, args.device, args.groups, args.smoke, args.profile, args.only_variants)
     elif args.command == "score":
         from .scoring import score_run
         manifest_path = args.run_dir / "run_manifest.json"
@@ -91,7 +103,7 @@ def main():
         print(json.dumps(audit(cfg, args.data_dir, args.training_jsonl, args.output), ensure_ascii=False, indent=2))
     elif args.command == "check-model":
         from .preflight import check_model
-        check_model(cfg, args.output, args.device, args.code_backend)
+        check_model(cfg, args.output, args.device, args.code_backend, args.only_variants)
     elif args.command == "validate-gold":
         from .scoring import validate_gold
         validate_gold(args.data_dir, cfg["datasets"], args.output, args.code_backend, args.timeout, cfg.get("evaluation", {}))
@@ -101,6 +113,15 @@ def main():
     elif args.command == "import-mtbench-judgments":
         from .mtbench import import_judgments
         import_judgments(args.run_dir, args.export_dir, args.judgments, args.output)
+    elif args.command == "plan-suite":
+        from .suite import plan_suite
+        plan = plan_suite(args.suite, args.phase, args.model_ids)
+        if args.output:
+            write_json(args.output, plan)
+        print(json.dumps(plan, ensure_ascii=False, indent=2))
+    elif args.command == "run-suite":
+        from .suite import run_suite
+        run_suite(args.suite, args.data_dir, args.output, args.device, args.code_backend, args.phase, args.model_ids)
 
 
 if __name__ == "__main__":

@@ -43,7 +43,7 @@ def test_tree_logits_and_compacted_cache_equal_sequential(tiny_engine, share):
     torch.testing.assert_close(actual.logits[0, -1], reference.logits[0, -1], atol=2e-6, rtol=1e-5)
 
 
-@pytest.mark.parametrize("method,paths", [("token", 1), ("bv", 1), ("gbv", 3), ("ddtree", 1)])
+@pytest.mark.parametrize("method,paths", [("dflash", 1), ("token", 1), ("bv", 1), ("gbv", 3), ("ddtree", 1)])
 @pytest.mark.parametrize("options", [{}, {"reuse_draft_cache": False}, {"share_prefixes": False}, {"draft_attention": "causal"}, {"condition_features": "zero"}])
 def test_greedy_matches_target_across_cache_attention_and_verifiers(tiny_engine, method, paths, options):
     ids = torch.tensor([[1, 4, 2, 6]])
@@ -63,6 +63,26 @@ def test_stochastic_repeat_cache_and_prefix_equivalence(tiny_engine):
     expected = tiny_engine.generate(ids, v, 23, [], seed=4)["generated_token_ids"]
     for modified in (v, replace(v, reuse_draft_cache=False), replace(v, share_prefixes=False)):
         assert tiny_engine.generate(ids, modified, 23, [], seed=4)["generated_token_ids"] == expected
+
+
+def test_dflash_uses_greedy_draft_at_nonzero_target_temperature(tiny_engine, monkeypatch):
+    import gbv_experiments.engine as module
+    from gbv_experiments.sampling import matching_verify
+    observed = []
+    handle = tiny_engine.draft.register_forward_hook(
+        lambda model, args, output: observed.append(tiny_engine.target.get_output_embeddings()(output[:, 1:4]).argmax(-1)[0]))
+    calls = []
+    def verify(path, p, generator):
+        assert torch.equal(path, observed[-1])
+        calls.append(path.tolist())
+        return matching_verify(path, p, generator)
+    monkeypatch.setattr(module, "matching_verify", verify)
+    try:
+        v = Variant(name="dflash", method="dflash", paths=1, length=3, temperature=1.)
+        tiny_engine.generate(torch.tensor([[1, 3, 5]]), v, 17, [], seed=4)
+    finally:
+        handle.remove()
+    assert calls and len(calls) == len(observed)
 
 
 @pytest.mark.parametrize("max_tokens", [1, 2, 3, 7])

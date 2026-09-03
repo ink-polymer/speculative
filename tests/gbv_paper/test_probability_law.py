@@ -126,3 +126,26 @@ def test_ties_follow_token_order_and_k1_identity():
 def test_zero_draft_mass_fails_instead_of_silent_fallback():
     with pytest.raises(FloatingPointError):
         sampling.select_and_reweight(torch.tensor([[0]]), torch.ones(1, 2, 2) / 2, torch.tensor([[1., 0.]]))
+
+
+def test_matching_verifier_preserves_target_output_law(monkeypatch):
+    draft = (0, 1)
+    p = [target(draft[:i]) for i in range(3)]
+    law = defaultdict(float)
+    for posterior in product(range(2), repeat=3):
+        probability = float(p[0][posterior[0]] * p[1][posterior[1]] * p[2][posterior[2]])
+        monkeypatch.setattr(sampling, "sample", lambda weights, generator=None: torch.tensor(posterior))
+        accepted, bonus = sampling.matching_verify(torch.tensor(draft), tensor(p))
+        emitted = draft[:accepted] + (bonus,)
+        for tail in product(range(2), repeat=3-len(emitted)):
+            sequence, weight = emitted, probability
+            for token in tail:
+                weight *= float(target(sequence)[token])
+                sequence += (token,)
+            law[sequence] += weight
+    assert sum(law.values()) == pytest.approx(1)
+    for sequence in product(range(2), repeat=3):
+        expected = F(1)
+        for i, token in enumerate(sequence):
+            expected *= target(sequence[:i])[token]
+        assert law[sequence] == pytest.approx(float(expected), abs=1e-12)

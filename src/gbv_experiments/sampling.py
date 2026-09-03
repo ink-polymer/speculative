@@ -107,3 +107,12 @@ def token_verify(path, p, q, generator=None):
                 raise FloatingPointError("Rejection with empty residual")
             return i, int(sample(residual / total, generator).item())
     return len(path), int(sample(p[len(path)], generator).item())
+
+
+def matching_verify(path, p, generator=None):
+    """DFlash rule: match a greedy draft against sampled Target tokens."""
+    if p.shape[0] != path.numel() + 1:
+        raise ValueError("Matching verifier needs one Target row per draft token plus bonus")
+    posterior = sample(p, generator)
+    accepted = int((path == posterior[:-1]).long().cumprod(0).sum().item())
+    return accepted, int(posterior[accepted].item())

@@ -8,6 +8,11 @@ The originating repository is https://github.com/liranringel/ddtree and the
 workspace's recorded checkout is `c96427a185677bf4133ed865dd1626a5041aef9b`.
 The bundle's `SOURCE_SHA256.json` identifies the actual shipped files.
 
+The local DFlash baseline uses greedy draft tokens and target-sampling prefix
+matching, following `dflash.py` in the pinned DDTree checkout above. Its shared
+benchmark runtime and timing differ from the optimized upstream implementation.
+The separate single-path p/q rejection baseline is labeled as a mechanism control.
+
 DFlash model/paper: https://github.com/z-lab/dflash and
 https://arxiv.org/abs/2602.06036 .
 

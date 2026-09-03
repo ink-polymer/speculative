@@ -10,7 +10,7 @@ import torch
 
 from .common import ROOT
 from .config import Variant
-from .sampling import block_verify, probabilities, sample, select_and_reweight, token_verify
+from .sampling import block_verify, matching_verify, probabilities, sample, select_and_reweight, token_verify
 from .tree import compact_cache, probability_tree, sampled_tree
 
 
@@ -193,12 +193,15 @@ class Engine:
                 logits = self.target.get_output_embeddings()(hidden[:, 1:variant.length + 1])[0]
                 draft_cache.crop(prefix_len)
                 draft_temp = variant.draft_temperature or variant.temperature or 1.0
-                q = probabilities(logits, draft_temp, dtype)
+                q = None if variant.method == "dflash" else probabilities(logits, draft_temp, dtype)
                 draft_calls += 1
             with meter.measure("tree_build"):
                 if variant.method == "ddtree":
                     tree = probability_tree(q, variant.tree_budget)
                     paths = None
+                elif variant.method == "dflash":
+                    paths = logits.argmax(-1)[None]
+                    tree = sampled_tree(paths)
                 else:
                     paths = sample(q[None].expand(variant.paths, -1, -1), generator)
                     tree = sampled_tree(paths, variant.share_prefixes)
@@ -226,12 +229,16 @@ class Engine:
                     accepted = len(nodes)
                 else:
                     p_by_path = torch.stack([all_p[[0] + nodes] for nodes in tree.path_nodes])
-                    if variant.method == "gbv":
+                    if variant.method == "dflash":
+                        chosen, r = 0, None
+                        accepted, bonus = matching_verify(paths[0], p_by_path[0], generator)
+                    elif variant.method == "gbv":
                         chosen, r = select_and_reweight(paths, p_by_path, q)
                     else:
                         chosen, r = 0, q
-                    verifier = token_verify if variant.method == "token" else block_verify
-                    accepted, bonus = verifier(paths[chosen], p_by_path[chosen], r, generator)
+                    if variant.method != "dflash":
+                        verifier = token_verify if variant.method == "token" else block_verify
+                        accepted, bonus = verifier(paths[chosen], p_by_path[chosen], r, generator)
                     nodes = tree.path_nodes[chosen][:accepted]
                     tokens = paths[chosen, :accepted].tolist()
             with meter.measure("commit"):

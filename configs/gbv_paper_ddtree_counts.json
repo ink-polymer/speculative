@@ -31,15 +31,15 @@
     "paths": 3,
     "length": 15,
     "temperature": 1.0,
-    "tree_budget": 60
+    "tree_budget": 45,
+    "probability_dtype": "float64"
   },
   "ablations": {
     "paths": [
       1,
       2,
       3,
-      4,
-      8
+      4
     ],
     "lengths": [
       4,
@@ -48,17 +48,11 @@
     ],
     "temperatures": [
       0.0,
-      0.2,
-      0.6,
       1.0
     ],
     "switches": [
       "block_verification",
-      "prefix_sharing",
-      "draft_cache",
-      "bidirectional_attention",
-      "target_features",
-      "probability_precision"
+      "prefix_sharing"
     ]
   },
   "bootstrap_samples": 1000,

@@ -27,10 +27,12 @@ def test_full_plan_and_ablation_controls():
     methods = {e["variant"]["method"] for e in entries}
     assert methods == {"target", "token", "bv"}
     assert all(e["variant"]["paths"] == 1 for e in entries)
-    for group in ("prefix_sharing", "draft_cache", "bidirectional_attention", "target_features", "probability_precision"):
+    for group in ("prefix_sharing",):
         candidates = [e["variant"] for e in build_variants(cfg, [group]) if e["variant"]["method"] != "target"]
         a, b = candidates
         assert sum(a[k] != b[k] for k in a if k != "name") == 1
+    assert not ({"bidirectional_attention", "target_features", "draft_cache", "probability_precision"}
+                & {g for e in build_variants(cfg) for g in e["groups"]})
 
 
 def test_prompts_keep_answers_and_hidden_tests_out():
@@ -120,6 +122,24 @@ def test_report_refuses_partial_scores_and_duplicates(tmp_path):
     assert gbv["speedup_ci_low"] == gbv["speedup_ci_high"] == 2
     assert (tmp_path / "report/table.tex").exists()
     assert (tmp_path / "report/gsm8k_main.pdf").stat().st_size > 1000
+
+
+def test_gbv_first_report_leaves_missing_ar_comparison_empty(tmp_path):
+    manifest, rows, scores = results_fixture()
+    rows = [r for r in rows if r["variant"] == "gbv"]
+    scores = [r for r in scores if r["variant"] == "gbv"]
+    write_json(tmp_path / "run_manifest.json", manifest)
+    for name, items in (("results", rows), ("scores", scores)):
+        (tmp_path / f"{name}.jsonl").write_text("".join(json.dumps(x) + "\n" for x in items))
+    with pytest.raises(ValueError, match="every"):
+        report(tmp_path, tmp_path / "formal", plots=False)
+    coverage = report(tmp_path, tmp_path / "partial", bootstrap=20, allow_partial=True, plots=True)
+    assert not coverage["complete"]
+    summary = json.loads((tmp_path / "partial/summary.json").read_text())["rows"][0]
+    assert summary["speedup_vs_ar"] is None and summary["quality_delta_vs_ar"] is None
+    assert summary["baseline_status"] == "missing_or_partial"
+    assert summary["decode_tps"] == 200 and summary["quality"] == 1
+    assert (tmp_path / "partial/gsm8k_main.pdf").exists()
 
 
 @pytest.mark.parametrize("prediction,answer,passed", [

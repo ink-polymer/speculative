@@ -11,7 +11,7 @@ import traceback
 from contextlib import contextmanager
 
 from .common import canonical, digest, file_hash, prompt_seed, source_hashes, write_json
-from .config import Variant, build_variants
+from .config import Variant, build_variants, select_variants
 from .data import DATASETS, evaluation_coverage, evaluation_policy, load_prepared
 
 
@@ -40,12 +40,13 @@ def resume_records(path: Path, run_id: str) -> dict:
     return records
 
 
-def make_plan(cfg, groups=None):
-    entries = build_variants(cfg, groups)
+def make_plan(cfg, groups=None, only_variants=None):
+    entries = select_variants(build_variants(cfg, groups), only_variants)
     policy = evaluation_policy(cfg["datasets"], cfg.get("evaluation"))
     counts = policy["counts"]
     turn_counts = {name: counts[name] * DATASETS[name].turns for name in cfg["datasets"]}
     return {"coverage": evaluation_coverage(policy), "evaluation": policy, "datasets": counts,
+            "model": cfg["model"], "only_variants": only_variants,
             "source_counts": {name: DATASETS[name].expected for name in cfg["datasets"]},
             "seeds": cfg["seeds"], "max_new_tokens": cfg["max_new_tokens"],
             "variants": entries, "variant_count": len(entries),
@@ -79,12 +80,12 @@ def output_lock(directory):
         yield
 
 
-def run(cfg, data_dir: Path, output: Path, device: str, groups=None, smoke=False, profile=False):
+def run(cfg, data_dir: Path, output: Path, device: str, groups=None, smoke=False, profile=False, only_variants=None):
     with output_lock(output):
-        return _run(cfg, data_dir, output, device, groups, smoke, profile)
+        return _run(cfg, data_dir, output, device, groups, smoke, profile, only_variants)
 
 
-def _run(cfg, data_dir: Path, output: Path, device: str, groups=None, smoke=False, profile=False):
+def _run(cfg, data_dir: Path, output: Path, device: str, groups=None, smoke=False, profile=False, only_variants=None):
     import torch
     from .engine import load_models
     from .conversation import encode_messages, generate_conversation
@@ -92,6 +93,7 @@ def _run(cfg, data_dir: Path, output: Path, device: str, groups=None, smoke=Fals
     policy = evaluation_policy(cfg["datasets"], cfg.get("evaluation"))
     data_manifest, rows = load_prepared(data_dir, cfg["datasets"], policy)
     entries = build_variants(cfg, groups)
+    active_entries = select_variants(entries, only_variants)
     if smoke:
         rows = [next(r for r in rows if r["dataset"] == name) for name in cfg["datasets"]]
         if "smoke" not in output.name.lower():
@@ -135,10 +137,24 @@ def _run(cfg, data_dir: Path, output: Path, device: str, groups=None, smoke=Fals
     completed = resume_records(output / "results.jsonl", run_id)
     valid = {(e["variant"]["name"], r["dataset"], r["source_id"], seed)
              for e in entries for r in rows for seed in cfg["seeds"]}
+    active_names = {e["variant"]["name"] for e in active_entries}
+    active_keys = {k for k in valid if k[0] in active_names}
     if set(completed) - valid:
         raise ValueError("Resume file contains unexpected experiments")
-    if len(completed) == len(valid):
-        print(f"Already complete: {len(completed)} question/conversation records")
+    def mark_completion():
+        full_complete = set(completed) == valid
+        if full_complete:
+            write_json(output / "completed.json", {"run_id": run_id, "records": len(completed),
+                       "generations": sum(r["turn_count"] for r in completed.values())})
+        if only_variants is not None:
+            write_json(output / f"stage_completed_{digest(sorted(active_names))[:12]}.json", {
+                "run_id": run_id, "variants": sorted(active_names), "records": len(active_keys),
+                "generations": sum(completed[k]["turn_count"] for k in active_keys),
+                "stage_complete": True, "full_experiment_complete": full_complete})
+
+    if active_keys <= set(completed):
+        mark_completion()
+        print(f"Requested variants already complete: {len(active_keys)} question/conversation records")
         return
     engine, tokenizer = load_models(model, device)
     write_json(output / "model_parameters.json", {
@@ -152,14 +168,14 @@ def _run(cfg, data_dir: Path, output: Path, device: str, groups=None, smoke=Fals
     stop_ids = [stop_ids] if isinstance(stop_ids, int) else list(stop_ids or [])
 
     warmup = encode_messages(tokenizer, [{"role": "user", "content": "Compute 1 + 1."}], model, device)
-    for entry in entries:
+    for entry in active_entries:
         engine.generate(warmup, Variant(**entry["variant"]), cfg.get("warmup_tokens", 16),
                         stop_ids, seed=0, profile=profile)
     with (output / "results.jsonl").open("a", encoding="utf-8") as stream:
         for seed in cfg["seeds"]:
             for row in rows:
                 per_prompt_seed = prompt_seed(seed, row["dataset"], row["source_id"])
-                order = entries.copy()
+                order = active_entries.copy()
                 random.Random(per_prompt_seed).shuffle(order)
                 for entry in order:
                     v = Variant(**entry["variant"])
@@ -182,5 +198,4 @@ def _run(cfg, data_dir: Path, output: Path, device: str, groups=None, smoke=Fals
                         with (output / "errors.jsonl").open("a") as errors:
                             errors.write(canonical({"experiment": ident, "traceback": traceback.format_exc()}) + "\n")
                         raise
-    write_json(output / "completed.json", {"run_id": run_id, "records": len(completed),
-                                           "generations": sum(r["turn_count"] for r in completed.values())})
+    mark_completion()

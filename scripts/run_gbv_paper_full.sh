@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
-# Compatibility entry point; defaults to the current DDTree sample-count protocol.
+# Compatibility entry point for the complete two-model study.
 set -euo pipefail
-exec bash "$(dirname "$0")/run_gbv_paper.sh" "$@"
+exec bash "$(dirname "$0")/run_gbv_paper.sh" complete "$@"

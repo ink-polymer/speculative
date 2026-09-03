@@ -22,13 +22,13 @@ class Variant:
     tree_budget: int = 60
 
     def validate(self) -> None:
-        if self.method not in {"target", "token", "bv", "gbv", "ddtree"}:
+        if self.method not in {"target", "dflash", "token", "bv", "gbv", "ddtree"}:
             raise ValueError(f"Unknown method: {self.method}")
         if self.paths < 1 or self.length < 1 or self.temperature < 0:
             raise ValueError("paths/length must be positive and temperature nonnegative")
         if not math.isfinite(self.temperature) or any(not isinstance(v, int) or isinstance(v, bool) for v in (self.paths, self.length, self.tree_budget)):
             raise ValueError("Counts must be integers and temperature must be finite")
-        if self.method in {"token", "bv"} and self.paths != 1:
+        if self.method in {"dflash", "token", "bv"} and self.paths != 1:
             raise ValueError("Single-path token/BV baselines require paths=1")
         if self.draft_temperature is not None and (self.draft_temperature <= 0 or not math.isfinite(self.draft_temperature)):
             raise ValueError("Draft temperature must be positive")
@@ -95,13 +95,14 @@ def build_variants(cfg: dict, groups: list[str] | None = None) -> list[dict]:
                     temperature=temp), group)
 
     target_at(base.temperature, "main")
-    add(replace(base, name="dflash_token", method="token", paths=1), "main")
+    add(replace(base, name="dflash_match", method="dflash", paths=1), "main")
     add(replace(base, name="dflash_bv", method="bv", paths=1), "main")
     add(base, "main")
     add(replace(base, name="ddtree", method="ddtree", paths=1), "main")
     ablations = cfg.get("ablations", {})
     for k in ablations.get("paths", []):
-        add(replace(base, name=f"gbv_k{k}", paths=k), "paths")
+        # K=1 GBV is exactly single-path BV; reuse that measured baseline.
+        add(replace(base, name=f"gbv_k{k}", paths=k, method="bv" if k == 1 else "gbv"), "paths")
     for length in ablations.get("lengths", []):
         add(replace(base, name=f"gbv_l{length}", length=length), "lengths")
     for temp in ablations.get("temperatures", []):
@@ -123,7 +124,8 @@ def build_variants(cfg: dict, groups: list[str] | None = None) -> list[dict]:
         # BV versus token verification is isolated at K=1.
         if name == "block_verification":
             add(replace(base, name="dflash_bv", method="bv", paths=1), name)
-        add(replace(base, name=f"ablate_{name}", **switches[name]), name)
+        variant_name = "single_token_rejection" if name == "block_verification" else f"ablate_{name}"
+        add(replace(base, name=variant_name, **switches[name]), name)
     known = {g for e in variants.values() for g in e["groups"]}
     if groups and set(groups) - known:
         raise ValueError(f"Unknown groups: {sorted(set(groups)-known)}")
@@ -135,3 +137,15 @@ def build_variants(cfg: dict, groups: list[str] | None = None) -> list[dict]:
             if e["variant"].method == "target" and e["variant"].temperature == temp and e not in selected:
                 selected.append(e)
     return [{"variant": e["variant"].to_dict(), "groups": e["groups"]} for e in selected]
+
+
+def select_variants(entries, names=None):
+    """Select a scheduling phase without changing the declared full experiment."""
+    if names is None:
+        return entries
+    if not names or len(set(names)) != len(names):
+        raise ValueError("Variant selection must be nonempty and unique")
+    unknown = set(names) - {e["variant"]["name"] for e in entries}
+    if unknown:
+        raise ValueError(f"Unknown variants in this experiment: {sorted(unknown)}")
+    return [e for e in entries if e["variant"]["name"] in names]
