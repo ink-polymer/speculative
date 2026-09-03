@@ -1,5 +1,7 @@
 # 延迟感知 Adaptive DDTree 的结构性质与贪心等价性
 
+可直接用于论文数学部分的独立表述见 [论文版证明](ADAPTIVE_DDTREE_T0_PAPER_PROOF.md)；本文件保留完整控制器更新规则与实现边界。
+
 ## 1. 定义
 
 设词表 $\mathcal V$ 有限，目标模型在上下文 $c$ 后的 logits 为 $z_P(\cdot\mid c)$。固定并列最大值的消歧规则 $\tau$，定义
