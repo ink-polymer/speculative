@@ -97,6 +97,42 @@ def test_complete_joint_law_and_simultaneous_acceptance_floors(monkeypatch, case
         assert no_fill >= float(probability(rows, tuple(greedy[:d].tolist()))) - 1e-10
 
 
+@pytest.mark.parametrize("case", range(8))
+def test_shared_probability_fast_path_has_same_complete_target_law(monkeypatch, case):
+    vocab, length, branches = 2 + case % 2, 2, 1 + case % 2
+    rows = fraction_rows(Random(9917 + case), vocab, length)
+    q = tensor([[3, 2] if vocab == 2 else [4, 2, 1]] * length)
+    q /= q.sum(-1, keepdim=True)
+    temperature = [0.3, 0.6, 1.0][case % 3]
+    law = diffusion.DiffusionBlockLaw.from_logits(
+        q.log() * temperature,
+        torch.tensor([0] + [vocab - 1] * length),
+        temperature, vocab - 1, support_size=vocab,
+    )
+    proposal = diffusion.propose(
+        law, branches, torch.Generator().manual_seed(case)
+    )
+    greedy, budget = q.argmax(-1), (branches + 1) * length + 1
+
+    def fast(logits, tree, current):
+        p = diffusion.sampling.probabilities(logits, temperature)
+        return diffusion.verify_scaffold_logits(
+            logits, tree, current, temperature, node_probabilities=p,
+        )
+
+    actual = enumerate_scaffold(
+        monkeypatch, proposal, rows, greedy, budget,
+        temperature=temperature, verify=fast,
+    )
+    expected = {seq: float(probability(rows, seq))
+                for seq in product(range(vocab), repeat=length + 1)}
+    completed = complete(actual, rows, length + 1)
+    assert sum(actual.values()) == pytest.approx(1., abs=1e-10)
+    assert {seq: completed.get(seq, 0.) for seq in expected} == pytest.approx(
+        expected, abs=1e-10, rel=0,
+    )
+
+
 @pytest.mark.parametrize("seed", range(12))
 def test_same_budget_counterexample_is_repaired_and_fixed_filler_is_retained(seed):
     q0, p0, length, budget = F(51, 100), F(99, 100), 15, 45

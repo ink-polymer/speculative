@@ -402,7 +402,8 @@ class Engine:
                     output = self.target_forward(ids, target_cache, hidden=True,
                                                  positions=positions, mask=mask)
                     all_p = (None if variant.method in (ATOM_TREE_METHODS - {"atom_tree_ancestral"})
-                             | (DIFFUSION_TREE_METHODS - {"diffusion_tree_ancestral"})
+                             | (DIFFUSION_TREE_METHODS - DIFFUSION_SCAFFOLD_METHODS
+                                - {"diffusion_tree_ancestral"})
                              else probabilities(output.logits[0], variant.temperature, dtype))
                     target_tokens += ids.shape[1]
                 target_calls += 1
@@ -484,7 +485,7 @@ class Engine:
                         output.logits[0], tree, tree_proposal, variant.temperature, generator,
                         recycle=variant.method != "diffusion_scaffold_no_recycle",
                         continuation="ancestral" if variant.method == "diffusion_scaffold_ancestral" else "terminal",
-                        validate=False)
+                        validate=False, node_probabilities=all_p)
                     accepted = len(nodes)
                 elif variant.method in DIFFUSION_TREE_METHODS:
                     nodes, tokens, bonus = diffusion_tree_bv.verify_logits(

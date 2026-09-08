@@ -187,6 +187,64 @@ def verify_logits(node_logits, tree, proposal, temperature, generator=None,
     return nodes, [tree.tokens[node - 1] for node in nodes], bonus
 
 
+def verify_probabilities(node_probabilities, tree, proposal, generator=None,
+                         *, pool=True, validate=True):
+    """Diffusion BV using already-normalized Target rows.
+
+    The scaffold verifier needs the same full Target rows again when an initial
+    correction lands inside its deterministic continuation tree. Accepting a
+    shared probability tensor avoids repeating the expensive FP64 full-vocabulary
+    normalization while preserving the same transport recurrence.
+    """
+    k, length, _ = proposal.slots.shape
+    if (node_probabilities.ndim != 2 or not node_probabilities.is_floating_point()
+            or node_probabilities.shape[-1] < 1
+            or node_probabilities.shape[0] != len(tree.parents)
+            or node_probabilities.device != proposal.source.device):
+        raise ValueError("Target trie probabilities mismatch")
+    if validate:
+        proposal.validate(node_probabilities.shape[-1])
+        merged = sampled_tree(proposal.paths())
+        unmerged = sampled_tree(proposal.paths(), False)
+        if tree != merged and tree != unmerged:
+            raise ValueError("Target tree must represent exactly the retained diffusion samples")
+        tolerance = max(1e-10, 8 * torch.finfo(node_probabilities.dtype).eps)
+        if not bool(torch.isfinite(node_probabilities).all()
+                    & (node_probabilities >= 0).all()
+                    & torch.isclose(
+                        node_probabilities.sum(-1),
+                        node_probabilities.new_ones(node_probabilities.shape[0]),
+                        rtol=tolerance, atol=1e-12,
+                    ).all()):
+            raise ValueError("Invalid target probabilities")
+    row_nodes = torch.tensor([[0] + nodes for nodes in tree.path_nodes],
+                             dtype=torch.long, device=node_probabilities.device)
+    if row_nodes.shape != (k, length + 1):
+        raise ValueError("Diffusion path index mismatch")
+    prefix_nodes = row_nodes[:, :-1]
+    support = node_probabilities[prefix_nodes[..., None], proposal.tokens]
+    alpha = proposal.source.new_full((k,), 1 / k)
+    state = transport.plan(alpha, support, proposal, pool=pool)
+    by_branch = _normalize(state.residual_mass.T).T
+    weights = state.endpoint[None] * by_branch
+    selected = sampling.sample(_normalize(weights.reshape(-1)), generator)
+    branch, depth = selected // (length + 1), selected % (length + 1)
+    chosen_row = row_nodes[branch, depth]
+    correction = state.scores[branch, depth] * node_probabilities[chosen_row]
+    flows = torch.cat((state.flow, proposal.source.new_zeros((
+        k, 1, proposal.source.shape[1]
+    ))), 1)
+    mapped = proposal.tokens.gather(-1, proposal.slots)
+    mapped = torch.cat((mapped, mapped.new_zeros((
+        k, 1, proposal.source.shape[1]
+    ))), 1)
+    correction.scatter_add_(0, mapped[branch, depth], -flows[branch, depth])
+    token = sampling.sample(_normalize(correction.clamp_min(0)), generator)
+    branch, depth, bonus = torch.stack((branch, depth, token)).tolist()
+    nodes = tree.path_nodes[branch][:depth]
+    return nodes, [tree.tokens[node - 1] for node in nodes], bonus
+
+
 def snapshot(proposal):
     """Flat tensor/metadata format supports CPU storage and existing GPU replay."""
     result = {"diffusion_" + key: value.detach().cpu().clone()
@@ -259,7 +317,8 @@ def scaffold_tree(proposal, greedy, budget, *, fill=True):
 
 
 def verify_scaffold_logits(node_logits, tree, proposal, temperature, generator=None,
-                           *, recycle=True, continuation="terminal", validate=True):
+                           *, recycle=True, continuation="terminal", validate=True,
+                           node_probabilities=None):
     """Original diffusion BV, then independent ancestral Target continuation.
 
     Conditional on a correction landing in the verified tree, sample the
@@ -284,10 +343,27 @@ def verify_scaffold_logits(node_logits, tree, proposal, temperature, generator=N
                 or bool(torch.isnan(node_logits).any() | torch.isposinf(node_logits).any()
                         | ~torch.isfinite(node_logits).any(-1).all())):
             raise ValueError("Invalid scaffold target rows or topology")
-    nodes, tokens, bonus = verify_logits(node_logits[:count], base, proposal, temperature,
-                                         generator, validate=validate)
+    if node_probabilities is None:
+        nodes, tokens, bonus = verify_logits(
+            node_logits[:count], base, proposal, temperature, generator,
+            validate=validate,
+        )
+    else:
+        if (node_probabilities.ndim != 2
+                or node_probabilities.shape != node_logits.shape
+                or node_probabilities.device != node_logits.device):
+            raise ValueError("Shared scaffold probabilities mismatch")
+        nodes, tokens, bonus = verify_probabilities(
+            node_probabilities[:count], base, proposal, generator,
+            validate=validate,
+        )
     if not recycle:
         return nodes, tokens, bonus
+    if node_probabilities is not None:
+        return continue_scaffold_probabilities(
+            node_probabilities, tree, nodes, tokens, bonus, generator,
+            continuation=continuation,
+        )
     return continue_scaffold_logits(node_logits, tree, nodes, tokens, bonus,
                                     temperature, generator, continuation=continuation)
 
@@ -318,8 +394,44 @@ def continue_scaffold_logits(node_logits, tree, nodes, tokens, bonus, temperatur
             proposed.append(tree.tokens[n - 1])
     selected = node_logits[torch.tensor(indices, device=node_logits.device)].double()
     p = sampling.probabilities(selected, temperature)
+    return _continue_scaffold_probabilities(
+        p, indices, parents, proposed, nodes, tokens, bonus, generator,
+        continuation=continuation,
+    )
+
+
+def continue_scaffold_probabilities(node_probabilities, tree, nodes, tokens, bonus,
+                                    generator=None, *, continuation="terminal"):
+    """Continue an initial diffusion correction using shared Target rows."""
+    if continuation not in {"terminal", "ancestral"}:
+        raise ValueError("Unknown scaffold continuation backend")
+    children = {(parent, token): n for n, (parent, token)
+                in enumerate(zip(tree.parents[1:], tree.tokens), 1)}
+    child = children.get((nodes[-1] if nodes else 0, bonus))
+    if child is None:
+        return nodes, tokens, bonus
+    indices, local = [child], {child: 0}
+    parents, proposed = [-1], []
+    for n in range(child + 1, len(tree.parents)):
+        if tree.parents[n] in local:
+            local[n] = len(indices)
+            indices.append(n)
+            parents.append(local[tree.parents[n]])
+            proposed.append(tree.tokens[n - 1])
+    p = node_probabilities.index_select(
+        0, torch.tensor(indices, device=node_probabilities.device)
+    )
+    return _continue_scaffold_probabilities(
+        p, indices, parents, proposed, nodes, tokens, bonus, generator,
+        continuation=continuation,
+    )
+
+
+def _continue_scaffold_probabilities(p, indices, parents, proposed, nodes, tokens,
+                                     bonus, generator, *, continuation):
     verifier = (sampling.tree_block_verify_terminal_mass if continuation == "terminal"
                 else sampling.tree_verify_ancestral_batched)
     more_nodes, more_tokens, correction = verifier(
         parents, proposed, p, generator, validate=False)
-    return nodes + [child] + [indices[n] for n in more_nodes], tokens + [bonus] + more_tokens, correction
+    return (nodes + [indices[0]] + [indices[n] for n in more_nodes],
+            tokens + [bonus] + more_tokens, correction)
