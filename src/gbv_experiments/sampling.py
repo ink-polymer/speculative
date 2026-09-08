@@ -562,7 +562,8 @@ def tree_block_verify_terminal_mass(parents, tokens, all_p, generator=None,
     This changes execution architecture, not the DDTree proposal or its
     accepted-prefix distribution.
     """
-    if prefix_mode not in {"batched", "serial"} or exit_mode not in {"internal", "dense"}:
+    if (prefix_mode not in {"batched", "serial"}
+            or exit_mode not in {"internal", "dense", "complement"}):
         raise ValueError("Unknown terminal-mass ablation mode")
     parents = list(parents)
     tokens = list(tokens)
@@ -604,24 +605,35 @@ def tree_block_verify_terminal_mass(parents, tokens, all_p, generator=None,
     # FP64 softmax row, yet 1 - p[0] == 0.  Only internal nodes need a dense
     # masked copy; leaves have exit probability 1.  This trades O(I * vocab)
     # temporary storage for cancellation-free exit masses (I internal nodes).
-    internal_nodes = (list(range(node_count)) if exit_mode == "dense"
-                      else sorted(set(parents[1:])))
-    internal_lookup = [-1] * node_count
-    for index, node in enumerate(internal_nodes):
-        internal_lookup[node] = index
-    internal_indices = torch.tensor(internal_nodes, dtype=torch.long, device=device)
-    internal_map = torch.tensor(internal_lookup, dtype=torch.long, device=device)
-    edge_rows = internal_map.index_select(0, edge_parents)
-    exit_rows = all_p.index_select(0, internal_indices)
-    exit_rows[edge_rows, edge_tokens] = 0
-    tail_weights = exit_rows.sum(-1)
-    covered_weights = all_p.new_zeros(len(internal_nodes))
-    covered_weights.scatter_add_(0, edge_rows, edge_probabilities)
-    row_weights = tail_weights + covered_weights
-    edge_probabilities = edge_probabilities / row_weights.index_select(0, edge_rows)
-    exit_mass = all_p.new_ones(node_count).index_copy_(
-        0, internal_indices, tail_weights / row_weights
-    )
+    if exit_mode == "complement":
+        # Fast model-probability path: softmax rows are normalized, so only the
+        # sparse child support is needed to obtain each first-exit mass.  The
+        # validation above keeps the public input contract explicit.  The
+        # cancellation-safe internal mode remains the default for adversarial
+        # probability rows whose uncovered tail is below one FP64 ulp.
+        covered_weights = all_p.new_zeros(node_count)
+        covered_weights.scatter_add_(0, edge_parents, edge_probabilities)
+        exit_mass = (1 - covered_weights).clamp_min(0)
+        internal_map = exit_rows = None
+    else:
+        internal_nodes = (list(range(node_count)) if exit_mode == "dense"
+                          else sorted(set(parents[1:])))
+        internal_lookup = [-1] * node_count
+        for index, node in enumerate(internal_nodes):
+            internal_lookup[node] = index
+        internal_indices = torch.tensor(internal_nodes, dtype=torch.long, device=device)
+        internal_map = torch.tensor(internal_lookup, dtype=torch.long, device=device)
+        edge_rows = internal_map.index_select(0, edge_parents)
+        exit_rows = all_p.index_select(0, internal_indices)
+        exit_rows[edge_rows, edge_tokens] = 0
+        tail_weights = exit_rows.sum(-1)
+        covered_weights = all_p.new_zeros(len(internal_nodes))
+        covered_weights.scatter_add_(0, edge_rows, edge_probabilities)
+        row_weights = tail_weights + covered_weights
+        edge_probabilities = edge_probabilities / row_weights.index_select(0, edge_rows)
+        exit_mass = all_p.new_ones(node_count).index_copy_(
+            0, internal_indices, tail_weights / row_weights
+        )
 
     # Compile padded ancestor lists on the host, then gather and multiply all
     # prefixes in two tensor operations.  The old recurrence launched a tiny
@@ -660,13 +672,23 @@ def tree_block_verify_terminal_mass(parents, tokens, all_p, generator=None,
     target_row = all_p.index_select(
         0, terminal_node_tensor.reshape(1)
     )[0]
-    terminal_internal = internal_map.index_select(
-        0, terminal_node_tensor.reshape(1)
-    )
-    exit_row = exit_rows.index_select(0, terminal_internal.clamp_min(0))[0]
-    correction_weights = torch.where(
-        terminal_internal[0] >= 0, exit_row, target_row
-    )
+    if exit_mode == "complement":
+        # Remove only children of the selected terminal node from one Target
+        # row.  Repeated token labels below other parents contribute zero.
+        selected_edges = edge_parents.eq(terminal_node_tensor).to(all_p.dtype)
+        correction_weights = target_row.clone()
+        correction_weights.scatter_add_(
+            0, edge_tokens, -edge_probabilities * selected_edges
+        )
+        correction_weights.clamp_min_(0)
+    else:
+        terminal_internal = internal_map.index_select(
+            0, terminal_node_tensor.reshape(1)
+        )
+        exit_row = exit_rows.index_select(0, terminal_internal.clamp_min(0))[0]
+        correction_weights = torch.where(
+            terminal_internal[0] >= 0, exit_row, target_row
+        )
     correction_total = correction_weights.sum()
     if validate and not bool(torch.isfinite(correction_total)
                              & (correction_total > 0)):

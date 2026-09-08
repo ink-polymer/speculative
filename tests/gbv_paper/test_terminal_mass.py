@@ -64,7 +64,8 @@ def test_official_ddtree_batched_posterior_has_exact_ancestral_law(monkeypatch):
 
 
 @pytest.mark.parametrize("validate", [False, True])
-@pytest.mark.parametrize("mode", [{}, {"prefix_mode": "serial"}, {"exit_mode": "dense"}])
+@pytest.mark.parametrize("mode", [{}, {"prefix_mode": "serial"}, {"exit_mode": "dense"},
+                                  {"exit_mode": "complement"}])
 @pytest.mark.parametrize("parents,tokens,rows", [
     ([-1], [], [[2, 3, 5]]),
     ([-1, 0, 1, 2], [0, 1, 0], [[2, 3, 5], [7, 2, 1], [3, 4, 3], [1, 8, 1]]),

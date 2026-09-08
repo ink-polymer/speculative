@@ -325,6 +325,8 @@ def replay_functions(state):
                 parents, tokens, p, g, validate=False, prefix_mode="serial"),
             "tm_dense_exit": lambda g: sampling.tree_block_verify_terminal_mass(
                 parents, tokens, p, g, validate=False, exit_mode="dense"),
+            "tm_complement": lambda g: sampling.tree_block_verify_terminal_mass(
+                parents, tokens, p, g, validate=False, exit_mode="complement"),
         }
     paths, q = state["paths"], state["q"]
     args = (paths[:, 0], p[0], paths[0, 1:], p[1:].view(*paths.shape, -1), q[1:])
