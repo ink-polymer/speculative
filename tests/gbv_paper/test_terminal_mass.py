@@ -7,7 +7,8 @@ import pytest
 import torch
 
 from gbv_experiments import sampling
-from gbv_experiments.fused_tree_sampling import tree_verify_ancestral_fused
+from gbv_experiments.fused_tree_sampling import (tree_verify_ancestral_fused,
+                                                 tree_verify_ancestral_fused_parallel)
 
 
 class ZeroMass(Exception):
@@ -15,7 +16,9 @@ class ZeroMass(Exception):
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA extension test")
-def test_fused_tree_sampler_matches_inverse_cdf_paths():
+@pytest.mark.parametrize("function", [tree_verify_ancestral_fused,
+                                      tree_verify_ancestral_fused_parallel])
+def test_fused_tree_sampler_matches_inverse_cdf_paths(function):
     parents = [-1, 0, 0, 1]
     tokens = [0, 1, 2]
     p = torch.tensor(
@@ -39,9 +42,7 @@ def test_fused_tree_sampler_matches_inverse_cdf_paths():
                 break
             expected_nodes.append(child)
             node = child
-        result = tree_verify_ancestral_fused(
-            parents, tokens, p, second, validate=True
-        )
+        result = function(parents, tokens, p, second, validate=True)
         assert result == (
             expected_nodes,
             [tokens[index - 1] for index in expected_nodes],

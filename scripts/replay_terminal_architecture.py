@@ -30,7 +30,7 @@ from gbv_experiments.terminal_formal import (DIAGNOSTIC_PROMPTS,
 
 TEMPERATURES = (0.3, 0.6, 1.0)
 METHODS = ("ddtree", "tm_full", "tm_dense_exit", "tm_complement", "tm_joint",
-           "fused_ancestral")
+           "fused_ancestral", "fused_parallel")
 
 
 def _geomean(values):
@@ -112,6 +112,7 @@ def run(args) -> dict:
             ("tm_complement", "ddtree_terminal_block"),
             ("tm_joint", "ddtree_terminal_block"),
             ("fused_ancestral", "ddtree"),
+            ("fused_parallel", "ddtree"),
         )
     }
 

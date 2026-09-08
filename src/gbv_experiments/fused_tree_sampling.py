@@ -13,6 +13,13 @@ torch::Tensor fused_tree_sample_cuda(
     torch::Tensor edge_tokens,
     torch::Tensor uniforms,
     int64_t max_depth);
+
+torch::Tensor fused_tree_sample_parallel_cuda(
+    torch::Tensor probabilities,
+    torch::Tensor edge_parents,
+    torch::Tensor edge_tokens,
+    torch::Tensor uniforms,
+    int64_t max_depth);
 """
 
 
@@ -156,6 +163,188 @@ torch::Tensor fused_tree_sample_cuda(
   C10_CUDA_KERNEL_LAUNCH_CHECK();
   return output;
 }
+
+template <typename scalar_t>
+__global__ void probability_chunk_sums_kernel(
+    const scalar_t* __restrict__ probabilities,
+    const int64_t* __restrict__ state,
+    double* __restrict__ block_sums,
+    int vocabulary,
+    int max_depth) {
+  if (state[max_depth + 3]) {
+    return;
+  }
+  extern __shared__ double values[];
+  const int row = static_cast<int>(state[max_depth + 2]);
+  const int block_chunk = (vocabulary + gridDim.x - 1) / gridDim.x;
+  const int begin = blockIdx.x * block_chunk;
+  const int end = min(begin + block_chunk, vocabulary);
+  double local = 0.0;
+  for (int token = begin + threadIdx.x; token < end; token += blockDim.x) {
+    local += static_cast<double>(probabilities[row * vocabulary + token]);
+  }
+  values[threadIdx.x] = local;
+  __syncthreads();
+  for (int offset = blockDim.x / 2; offset > 0; offset >>= 1) {
+    if (threadIdx.x < offset) {
+      values[threadIdx.x] += values[threadIdx.x + offset];
+    }
+    __syncthreads();
+  }
+  if (threadIdx.x == 0) {
+    block_sums[blockIdx.x] = values[0];
+  }
+}
+
+template <typename scalar_t>
+__global__ void select_tree_step_kernel(
+    const scalar_t* __restrict__ probabilities,
+    const int64_t* __restrict__ edge_parents,
+    const int64_t* __restrict__ edge_tokens,
+    const double* __restrict__ uniforms,
+    const double* __restrict__ block_sums,
+    int64_t* __restrict__ state,
+    int node_count,
+    int vocabulary,
+    int max_depth,
+    int depth,
+    int reduction_blocks) {
+  if (state[max_depth + 3]) {
+    return;
+  }
+  extern __shared__ double lane_sums[];
+  __shared__ int selected_block;
+  __shared__ double local_threshold;
+  const int row = static_cast<int>(state[max_depth + 2]);
+  const int block_chunk = (vocabulary + reduction_blocks - 1) / reduction_blocks;
+
+  if (threadIdx.x == 0) {
+    double total = 0.0;
+    for (int block = 0; block < reduction_blocks; ++block) {
+      total += block_sums[block];
+    }
+    const double threshold = uniforms[depth] * total;
+    double prefix = 0.0;
+    selected_block = reduction_blocks - 1;
+    for (int block = 0; block < reduction_blocks; ++block) {
+      const double next = prefix + block_sums[block];
+      if (threshold < next || block == reduction_blocks - 1) {
+        selected_block = block;
+        local_threshold = threshold - prefix;
+        break;
+      }
+      prefix = next;
+    }
+  }
+  __syncthreads();
+
+  const int selected_begin = selected_block * block_chunk;
+  const int selected_end = min(selected_begin + block_chunk, vocabulary);
+  const int lane_chunk = (selected_end - selected_begin + blockDim.x - 1) / blockDim.x;
+  const int lane_begin = selected_begin + threadIdx.x * lane_chunk;
+  const int lane_end = min(lane_begin + lane_chunk, selected_end);
+  double local = 0.0;
+  for (int token = lane_begin; token < lane_end; ++token) {
+    local += static_cast<double>(probabilities[row * vocabulary + token]);
+  }
+  lane_sums[threadIdx.x] = local;
+  __syncthreads();
+
+  if (threadIdx.x == 0) {
+    double prefix = 0.0;
+    int selected_lane = blockDim.x - 1;
+    for (int lane = 0; lane < blockDim.x; ++lane) {
+      const double next = prefix + lane_sums[lane];
+      if (local_threshold < next || lane == blockDim.x - 1) {
+        selected_lane = lane;
+        break;
+      }
+      prefix = next;
+    }
+    int selected_token = min(selected_begin + selected_lane * lane_chunk,
+                             vocabulary - 1);
+    const int token_end = min(selected_token + lane_chunk, selected_end);
+    for (int token = selected_token; token < token_end; ++token) {
+      prefix += static_cast<double>(probabilities[row * vocabulary + token]);
+      selected_token = token;
+      if (local_threshold < prefix) {
+        break;
+      }
+    }
+
+    int child = -1;
+    for (int edge = 0; edge < node_count - 1; ++edge) {
+      if (edge_parents[edge] == row && edge_tokens[edge] == selected_token) {
+        child = edge + 1;
+        break;
+      }
+    }
+    const int accepted = static_cast<int>(state[max_depth]);
+    if (child >= 0 && depth < max_depth) {
+      state[accepted] = child;
+      state[max_depth] = accepted + 1;
+      state[max_depth + 2] = child;
+    } else {
+      state[max_depth + 1] = selected_token;
+      state[max_depth + 3] = 1;
+    }
+  }
+}
+
+torch::Tensor fused_tree_sample_parallel_cuda(
+    torch::Tensor probabilities,
+    torch::Tensor edge_parents,
+    torch::Tensor edge_tokens,
+    torch::Tensor uniforms,
+    int64_t max_depth) {
+  TORCH_CHECK(probabilities.is_cuda() && probabilities.is_contiguous(),
+              "probabilities must be contiguous CUDA");
+  TORCH_CHECK(probabilities.dim() == 2, "probabilities must have rank two");
+  TORCH_CHECK(edge_parents.is_cuda() && edge_tokens.is_cuda(), "tree edges must be CUDA");
+  TORCH_CHECK(edge_parents.scalar_type() == torch::kLong && edge_tokens.scalar_type() == torch::kLong,
+              "tree edges must use torch.long");
+  TORCH_CHECK(uniforms.is_cuda() && uniforms.scalar_type() == torch::kFloat64,
+              "uniforms must be CUDA float64");
+  const int64_t node_count = probabilities.size(0);
+  const int64_t vocabulary = probabilities.size(1);
+  TORCH_CHECK(node_count > 0 && vocabulary > 0 && edge_parents.numel() == node_count - 1
+              && edge_tokens.numel() == node_count - 1, "tree dimensions mismatch");
+  TORCH_CHECK(max_depth >= 0 && uniforms.numel() >= max_depth + 1,
+              "not enough uniforms for the tree depth");
+  TORCH_CHECK(node_count <= INT_MAX && vocabulary <= INT_MAX && max_depth <= INT_MAX,
+              "tree dimensions exceed CUDA kernel limits");
+
+  c10::cuda::CUDAGuard device_guard(probabilities.device());
+  auto state = torch::zeros(
+      {max_depth + 4},
+      torch::TensorOptions().dtype(torch::kLong).device(probabilities.device()));
+  constexpr int reduction_blocks = 64;
+  constexpr int reduction_threads = 256;
+  constexpr int selection_threads = 256;
+  auto block_sums = torch::empty(
+      {reduction_blocks},
+      torch::TensorOptions().dtype(torch::kFloat64).device(probabilities.device()));
+  auto stream = at::cuda::getCurrentCUDAStream();
+  AT_DISPATCH_FLOATING_TYPES(probabilities.scalar_type(), "fused_tree_sample_parallel_cuda", [&] {
+    for (int depth = 0; depth <= max_depth; ++depth) {
+      probability_chunk_sums_kernel<scalar_t><<<
+          reduction_blocks, reduction_threads,
+          reduction_threads * sizeof(double), stream>>>(
+          probabilities.data_ptr<scalar_t>(), state.data_ptr<int64_t>(),
+          block_sums.data_ptr<double>(), static_cast<int>(vocabulary),
+          static_cast<int>(max_depth));
+      select_tree_step_kernel<scalar_t><<<
+          1, selection_threads, selection_threads * sizeof(double), stream>>>(
+          probabilities.data_ptr<scalar_t>(), edge_parents.data_ptr<int64_t>(),
+          edge_tokens.data_ptr<int64_t>(), uniforms.data_ptr<double>(),
+          block_sums.data_ptr<double>(), state.data_ptr<int64_t>(),
+          static_cast<int>(node_count), static_cast<int>(vocabulary),
+          static_cast<int>(max_depth), depth, reduction_blocks);
+    }
+  });
+  C10_CUDA_KERNEL_LAUNCH_CHECK();
+  return state;
+}
 """
 
 
@@ -166,10 +355,10 @@ def load_fused_tree_sampler():
     from torch.utils.cpp_extension import load_inline
 
     return load_inline(
-        name="gbv_fused_tree_sampler_v1",
+        name="gbv_fused_tree_sampler_v2",
         cpp_sources=[CPP_SOURCE],
         cuda_sources=[CUDA_SOURCE],
-        functions=["fused_tree_sample_cuda"],
+        functions=["fused_tree_sample_cuda", "fused_tree_sample_parallel_cuda"],
         extra_cflags=["-O3"],
         extra_cuda_cflags=["-O3"],
         with_cuda=True,
@@ -225,3 +414,36 @@ def tree_verify_ancestral_fused(parents, tokens, all_p, generator=None,
     nodes = [int(node) for node in packed[:accepted_count]]
     output_tokens = [tokens[node - 1] for node in nodes]
     return nodes, output_tokens, bonus
+
+
+def tree_verify_ancestral_fused_parallel(parents, tokens, all_p, generator=None,
+                                         validate: bool = True):
+    """Traverse on device with multi-SM row reductions and no host decisions."""
+    parents, tokens, max_depth = _topology(parents, tokens)
+    node_count = len(parents)
+    if (not all_p.is_cuda or all_p.ndim != 2 or all_p.shape[0] != node_count
+            or all_p.shape[1] < 1 or not all_p.is_floating_point()):
+        raise ValueError("Parallel fused DDTree probability tensor mismatch")
+    if any(token < 0 or token >= all_p.shape[1] for token in tokens):
+        raise ValueError("Tree token is outside the Target vocabulary")
+    if validate:
+        valid = (torch.isfinite(all_p).all() & (all_p >= 0).all()
+                 & (all_p.sum(-1) > 0).all())
+        if not bool(valid):
+            raise FloatingPointError("Invalid Target probabilities for parallel fused DDTree")
+
+    device = all_p.device
+    edge_parents = torch.tensor(parents[1:], dtype=torch.long, device=device)
+    edge_tokens = torch.tensor(tokens, dtype=torch.long, device=device)
+    uniforms = torch.rand(
+        max_depth + 1, dtype=torch.float64, device=device, generator=generator
+    )
+    packed = load_fused_tree_sampler().fused_tree_sample_parallel_cuda(
+        all_p.contiguous(), edge_parents, edge_tokens, uniforms, max_depth
+    ).tolist()
+    accepted_count = int(packed[max_depth])
+    bonus = int(packed[max_depth + 1])
+    if not 0 <= accepted_count <= max_depth or not 0 <= bonus < all_p.shape[1]:
+        raise RuntimeError("Parallel fused tree sampler returned invalid control values")
+    nodes = [int(node) for node in packed[:accepted_count]]
+    return nodes, [tokens[node - 1] for node in nodes], bonus
