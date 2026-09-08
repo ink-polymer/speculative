@@ -22,6 +22,7 @@ uploaded.
 | 2146157 | Qwen3-8B | diffusion support-width 8/16/32/64 scan | COMPLETED |
 | 2147349 | Qwen3-4B | terminal-mass tree-block kernel/shape scan | COMPLETED |
 | 2147350 | Qwen3-8B | terminal-mass tree-block kernel/shape scan | COMPLETED |
+| 2147882 | model-independent | terminal-mass exact-law/engine gate | COMPLETED |
 
 The pilots run the full `tests/gbv_paper` gate before loading checkpoints.
 Pilot metrics are diagnostic and use three fixed development prompts; they are
@@ -116,8 +117,12 @@ models. They compare canonical DFlash and DDTree with seven terminal-mass tree
 shapes and three exact verification kernels. In particular, L=15/B=45 keeps the
 DDTree probability tree and model work fixed and changes only the sampler from
 the official batched ancestral posterior to a terminal-mass block draw. The
-other shapes are an explicitly diagnostic throughput search. Each job runs the
-relevant exact-law tests before loading checkpoints; speed measurements remain
+other shapes are an explicitly diagnostic throughput search. The two completed
+performance jobs inherited the generic optimizer's diffusion test list. A
+separate post-run server gate, job 2147882, subsequently passed the terminal-mass
+exact-law, probability-law, fairness, optimization, and full engine tests with
+exit code zero. The batch script is fixed so future `terminal` scans run this
+method-specific gate before loading checkpoints. Speed measurements remain
 development-prompt results until a frozen held-out run passes all gates.
 
 Both terminal-mass jobs completed successfully and both models now have one
