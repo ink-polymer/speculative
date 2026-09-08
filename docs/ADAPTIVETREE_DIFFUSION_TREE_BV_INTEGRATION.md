@@ -75,7 +75,15 @@ export DIFFUSION_PILOT_FAMILY=diffusion_scaffold
 sbatch --export=ALL scripts/diffusion-tree-pilot.sbatch
 ```
 
+Run one isolated pilot per model pair:
+
+```bash
+DIFFUSION_PILOT_MODEL=qwen3_4b sbatch --export=ALL scripts/diffusion-tree-pilot.sbatch
+DIFFUSION_PILOT_MODEL=qwen3_8b sbatch --export=ALL scripts/diffusion-tree-pilot.sbatch
+```
+
 The pilot runs the complete GBV test directory first, then isolated T=0.3, 0.6,
-and 1.0 probes. A failed test prevents GPU probes from starting. Formal runs must
-use separately frozen registrations and must not relabel GH200 measurements as
-H200 evidence.
+and 1.0 probes. Qwen3-4B and Qwen3-8B have separate study identities and output
+directories; their statistics are never pooled into a single-model claim. A
+failed test prevents GPU probes from starting. Formal runs must use separately
+frozen registrations and must not relabel GH200 measurements as H200 evidence.

@@ -20,16 +20,26 @@ export HF_HUB_OFFLINE=1 HF_DATASETS_OFFLINE=1
 export PATH="$FUYILE_ROOT/envs/gbv/bin:$PATH"
 DIFFUSION_PYTHON="$FUYILE_ROOT/envs/gbv/bin/python"
 DIFFUSION_PILOT_FAMILY="${DIFFUSION_PILOT_FAMILY:-diffusion_tree}"
+DIFFUSION_PILOT_MODEL="${DIFFUSION_PILOT_MODEL:-qwen3_8b}"
 case "$DIFFUSION_PILOT_FAMILY" in
   diffusion_tree|diffusion_scaffold) ;;
   *) echo "Pilot family must be diffusion_tree or diffusion_scaffold" >&2; exit 2 ;;
 esac
-DIFFUSION_OUTPUT="$FUYILE_ROOT/runs/${DIFFUSION_PILOT_FAMILY}-pilot-${SLURM_JOB_ID}"
+case "$DIFFUSION_PILOT_MODEL" in
+  qwen3_8b) STUDY_INFIX="" ;;
+  qwen3_4b)
+    test "$DIFFUSION_PILOT_FAMILY" = diffusion_scaffold
+    STUDY_INFIX="_qwen3_4b"
+    ;;
+  *) echo "Pilot model must be qwen3_4b or qwen3_8b" >&2; exit 2 ;;
+esac
+DIFFUSION_OUTPUT="$FUYILE_ROOT/runs/${DIFFUSION_PILOT_FAMILY}-${DIFFUSION_PILOT_MODEL}-pilot-${SLURM_JOB_ID}"
 mkdir -p "$DIFFUSION_OUTPUT"
 srun --ntasks=1 "$DIFFUSION_PYTHON" -m pytest tests/gbv_paper -q --tb=short \
   --junitxml="$DIFFUSION_OUTPUT/unit_tests.xml"
 for tag in t03 t06 t10; do
   srun --ntasks=1 "$DIFFUSION_PYTHON" -m gbv_experiments.protected_pilot \
-    --study "configs/${DIFFUSION_PILOT_FAMILY}_${tag}.json" --output "$DIFFUSION_OUTPUT/$tag" \
+    --study "configs/${DIFFUSION_PILOT_FAMILY}${STUDY_INFIX}_${tag}.json" \
+    --output "$DIFFUSION_OUTPUT/$tag" \
     --gpu-family GH200 --tokens 96
 done

@@ -199,6 +199,18 @@ def test_new_study_identity_and_capture_replay(tiny_engine, tag):
     assert "tests/gbv_paper/test_diffusion_scaffold.py" in UNIT_FILES
 
 
+@pytest.mark.parametrize("tag,temperature", [("t03", .3), ("t06", .6), ("t10", 1.)])
+def test_qwen3_4b_registration_is_separate_and_matched(tag, temperature):
+    from gbv_experiments.common import ROOT
+    from gbv_experiments.terminal_protocol import load_study, variants
+
+    study = load_study(ROOT / f"configs/diffusion_scaffold_qwen3_4b_{tag}.json")
+    assert study["model_id"] == "qwen3_4b"
+    assert study["config"]["model"]["target"] == "Qwen/Qwen3-4B"
+    assert {v.temperature for v in variants(study)} == {temperature}
+    assert len(variants(study)) == 10
+
+
 def test_scaffold_budget_and_sharing_contract():
     with pytest.raises(ValueError):
         Variant(name="bad", method="diffusion_scaffold_bv", paths=3, length=15, tree_budget=45).validate()
