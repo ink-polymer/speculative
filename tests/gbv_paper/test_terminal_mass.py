@@ -145,6 +145,68 @@ def test_terminal_mass_preserves_positive_exit_tail(monkeypatch, validate, mode,
     torch.testing.assert_close(calls[1], torch.tensor([0., 1.], dtype=p.dtype))
 
 
+@pytest.mark.parametrize("validate", [False, True])
+@pytest.mark.parametrize("tail", [1e-10, 1e-16, 1e-20, 1e-200])
+def test_joint_terminal_draw_preserves_positive_exit_tail(monkeypatch, validate, tail):
+    p = torch.tensor([[1 - tail, tail], [0.25, 0.75]], dtype=torch.float64)
+    calls = []
+
+    def force_rare_exit(weights, generator=None):
+        calls.append(weights / weights.sum())
+        return torch.tensor(1)
+
+    monkeypatch.setattr(sampling, "sample", force_rare_exit)
+    assert sampling.tree_block_verify_terminal_mass(
+        [-1, 0], [0], p, validate=validate, exit_mode="joint"
+    ) == ([], [], 1)
+    assert len(calls) == 1
+    assert float(calls[0][1]) == pytest.approx(tail, rel=1e-13, abs=0)
+
+
+@pytest.mark.parametrize("validate", [False, True])
+def test_joint_terminal_draw_has_exact_terminal_event_law(monkeypatch, validate):
+    parents, tokens = [-1, 0, 0, 1], [0, 1, 2]
+    rows = [[2, 3, 5], [4, 1, 5], [3, 6, 1], [7, 2, 1]]
+    rational = [[Fraction(value, sum(row)) for value in row] for row in rows]
+    p = torch.tensor([[float(value) for value in row] for row in rational],
+                     dtype=torch.float64)
+    observed = defaultdict(float)
+    for node in range(len(parents)):
+        for token in range(p.shape[-1]):
+            choice = node * p.shape[-1] + token
+
+            def forced(weights, generator=None):
+                normalized = weights / weights.sum()
+                if normalized[choice] == 0:
+                    raise ZeroMass
+                observed[(node, token)] += float(normalized[choice])
+                return torch.tensor(choice)
+
+            monkeypatch.setattr(sampling, "sample", forced)
+            try:
+                result = sampling.tree_block_verify_terminal_mass(
+                    parents, tokens, p, validate=validate, exit_mode="joint"
+                )
+            except ZeroMass:
+                continue
+            assert result[2] == token
+
+    prefix_mass = [Fraction(1)]
+    children = [set() for _ in parents]
+    for node, parent in enumerate(parents[1:], 1):
+        prefix_mass.append(
+            prefix_mass[parent] * rational[parent][tokens[node - 1]]
+        )
+        children[parent].add(tokens[node - 1])
+    expected = {
+        (node, token): float(prefix_mass[node] * rational[node][token])
+        for node in range(len(parents))
+        for token in range(p.shape[-1])
+        if token not in children[node]
+    }
+    assert observed == pytest.approx(expected, rel=1e-13, abs=0)
+
+
 @pytest.mark.parametrize("parents,tokens,p,exception", [
     ([], [], torch.empty(0, 2), ValueError),
     ([-1], [], torch.empty(1, 0), ValueError),

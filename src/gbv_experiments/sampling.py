@@ -563,7 +563,7 @@ def tree_block_verify_terminal_mass(parents, tokens, all_p, generator=None,
     accepted-prefix distribution.
     """
     if (prefix_mode not in {"batched", "serial"}
-            or exit_mode not in {"internal", "dense", "complement"}):
+            or exit_mode not in {"internal", "dense", "complement", "joint"}):
         raise ValueError("Unknown terminal-mass ablation mode")
     parents = list(parents)
     tokens = list(tokens)
@@ -605,7 +605,11 @@ def tree_block_verify_terminal_mass(parents, tokens, all_p, generator=None,
     # FP64 softmax row, yet 1 - p[0] == 0.  Only internal nodes need a dense
     # masked copy; leaves have exit probability 1.  This trades O(I * vocab)
     # temporary storage for cancellation-free exit masses (I internal nodes).
-    if exit_mode == "complement":
+    if exit_mode == "joint":
+        # The joint first-exit draw below uses the original Target rows, so no
+        # per-node exit totals are required here.
+        exit_mass = internal_map = exit_rows = None
+    elif exit_mode == "complement":
         # Fast model-probability path: softmax rows are normalized, so only the
         # sparse child support is needed to obtain each first-exit mass.  The
         # validation above keeps the public input contract explicit.  The
@@ -655,23 +659,45 @@ def tree_block_verify_terminal_mass(parents, tokens, all_p, generator=None,
         )
         node_weights = torch.cat((all_p.new_ones(1), edge_probabilities))
         prefix_mass = node_weights[ancestor_indices].prod(-1)
-    terminal_mass = prefix_mass * exit_mass
-    total_terminal_mass = terminal_mass.sum()
-    if validate and not bool(torch.isfinite(total_terminal_mass)
-                             & (total_terminal_mass > 0)
-                             & torch.isclose(
-                                 total_terminal_mass, all_p.new_ones(()),
-                                 rtol=max(1e-10, 8 * torch.finfo(all_p.dtype).eps),
-                                 atol=1e-12,
-                             )):
-        raise FloatingPointError("Tree terminal masses do not partition Target law")
-    terminal_node_tensor = sample(
-        terminal_mass / total_terminal_mass, generator
-    )
+    if exit_mode == "joint":
+        # Sample (terminal node, correction token) as one categorical event.
+        # Its weight is Target(prefix(node)) * Target(token | prefix(node));
+        # tree-child events are zero because they continue rather than exit.
+        # This is the terminal block law without two dependent multinomials.
+        joint_weights = prefix_mass[:, None] * all_p
+        joint_weights[edge_parents, edge_tokens] = 0
+        joint_total = joint_weights.sum()
+        if validate and not bool(torch.isfinite(joint_total)
+                                 & (joint_total > 0)
+                                 & torch.isclose(
+                                     joint_total, all_p.new_ones(()),
+                                     rtol=max(1e-10, 8 * torch.finfo(all_p.dtype).eps),
+                                     atol=1e-12,
+                                 )):
+            raise FloatingPointError("Joint terminal events do not partition Target law")
+        joint_choice = sample(joint_weights.reshape(-1), generator)
+        terminal_node_tensor = torch.div(
+            joint_choice, vocab, rounding_mode="floor"
+        )
+        bonus_tensor = torch.remainder(joint_choice, vocab)
+    else:
+        terminal_mass = prefix_mass * exit_mass
+        total_terminal_mass = terminal_mass.sum()
+        if validate and not bool(torch.isfinite(total_terminal_mass)
+                                 & (total_terminal_mass > 0)
+                                 & torch.isclose(
+                                     total_terminal_mass, all_p.new_ones(()),
+                                     rtol=max(1e-10, 8 * torch.finfo(all_p.dtype).eps),
+                                     atol=1e-12,
+                                 )):
+            raise FloatingPointError("Tree terminal masses do not partition Target law")
+        terminal_node_tensor = sample(
+            terminal_mass / total_terminal_mass, generator
+        )
 
-    target_row = all_p.index_select(
-        0, terminal_node_tensor.reshape(1)
-    )[0]
+        target_row = all_p.index_select(
+            0, terminal_node_tensor.reshape(1)
+        )[0]
     if exit_mode == "complement":
         # Remove only children of the selected terminal node from one Target
         # row.  Repeated token labels below other parents contribute zero.
@@ -681,7 +707,7 @@ def tree_block_verify_terminal_mass(parents, tokens, all_p, generator=None,
             0, edge_tokens, -edge_probabilities * selected_edges
         )
         correction_weights.clamp_min_(0)
-    else:
+    elif exit_mode != "joint":
         terminal_internal = internal_map.index_select(
             0, terminal_node_tensor.reshape(1)
         )
@@ -689,11 +715,12 @@ def tree_block_verify_terminal_mass(parents, tokens, all_p, generator=None,
         correction_weights = torch.where(
             terminal_internal[0] >= 0, exit_row, target_row
         )
-    correction_total = correction_weights.sum()
-    if validate and not bool(torch.isfinite(correction_total)
-                             & (correction_total > 0)):
-        raise FloatingPointError("Selected terminal node has no exit token")
-    bonus_tensor = sample(correction_weights / correction_total, generator)
+    if exit_mode != "joint":
+        correction_total = correction_weights.sum()
+        if validate and not bool(torch.isfinite(correction_total)
+                                 & (correction_total > 0)):
+            raise FloatingPointError("Selected terminal node has no exit token")
+        bonus_tensor = sample(correction_weights / correction_total, generator)
 
     # One device-to-host synchronization for all control-flow values.
     terminal_node, bonus = torch.stack((
