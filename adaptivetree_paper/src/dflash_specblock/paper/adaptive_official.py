@@ -200,12 +200,16 @@ def adaptive_generate(
         acceptance_lengths.append(len(accepted_indices))
         start += len(accepted_indices)
         stage_times["commit"] += cuda_time() - commit_stage_start
-        # Same scalar controller as the original. Feed the stages that now live in
-        # the official runner: proposal+build, and compile+verify+KV/commit.
-        builder.observe(
+        # The frozen official controller retains its original attribution.  An
+        # opt-in diagnostic controller can instead charge tree construction to
+        # the selected budget without changing any timed work or decoded token.
+        builder.observe_stages(
             tree_nodes=int(node_token_ids.numel()),
-            draft_ms=1000 * (draft_stage_elapsed + stage_times["tree_build"] - stage_before["tree_build"]),
-            verify_ms=1000 * sum(stage_times[k] - stage_before[k] for k in ("tree_compile", "verify", "commit")),
+            draft_ms=1000 * draft_stage_elapsed,
+            tree_build_ms=1000 * (stage_times["tree_build"] - stage_before["tree_build"]),
+            tree_compile_ms=1000 * (stage_times["tree_compile"] - stage_before["tree_compile"]),
+            target_verify_ms=1000 * (stage_times["verify"] - stage_before["verify"]),
+            commit_ms=1000 * (stage_times["commit"] - stage_before["commit"]),
             accepted_draft_tokens=len(accepted_indices) - 1,
         )
         round_timestamps.append(cuda_time() - round_clock_start)

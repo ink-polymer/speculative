@@ -11,6 +11,8 @@ import math
 from ..ddtree_builder import BudgetDecision, DDTreeBuilder, LatencyAwareDDTreeBuilder
 from .common import BASELINES, K, VARIANTS, digest
 
+TIMING_PARTITIONS = ("legacy", "budget_aware")
+
 
 class FixedBudgetBuilder(DDTreeBuilder):
     # Bypass the legacy engine's separate previous-acceptance budget interpolation.
@@ -18,16 +20,24 @@ class FixedBudgetBuilder(DDTreeBuilder):
 
 
 class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
-    def __init__(self, cfg, variant="adaptive"):
+    def __init__(self, cfg, variant="adaptive", timing_partition="legacy"):
         if variant not in VARIANTS:
             raise ValueError(f"Unknown controller variant: {variant}")
+        if timing_partition not in TIMING_PARTITIONS:
+            raise ValueError(f"Unknown timing partition: {timing_partition}")
         super().__init__(K, max(cfg["budget_candidates"]), tuple(cfg["budget_candidates"]),
                          cfg["initial_budget"], cfg["warmup_rounds_per_budget"],
                          cfg["ewma_alpha"], 0 if variant == "no_exploration" else cfg["exploration_interval"])
         self.variant = variant
-        self.identity = digest({"variant": variant, "budgets": self.budget_candidates,
+        self.timing_partition = timing_partition
+        identity = {"variant": variant, "budgets": self.budget_candidates,
             "initial": self.initial_budget, "warmup": self.warmup_rounds_per_budget,
-            "alpha": self.ewma_alpha, "explore": self.exploration_interval})
+            "alpha": self.ewma_alpha, "explore": self.exploration_interval}
+        # Preserve all existing official controller identities and resume files.
+        # The corrected experimental controller must never load legacy state.
+        if timing_partition != "legacy":
+            identity["timing_partition"] = timing_partition
+        self.identity = digest(identity)
         self.trace = []
 
     def _select_node_count(self, scores):
@@ -53,6 +63,40 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
             self._acceptance_scale = 1.
         self.trace.append({"decision": asdict(self.last_decision) if self.last_decision else None,
                            **kwargs})
+
+    def observe_stages(self, *, tree_nodes, draft_ms, tree_build_ms,
+                       tree_compile_ms, target_verify_ms, commit_ms,
+                       accepted_draft_tokens):
+        """Attribute measured stages without changing the frozen default.
+
+        Tree construction varies materially with the selected node budget.  The
+        legacy paper protocol counted it as fixed proposal cost, which biases
+        the controller toward large budgets.  ``budget_aware`` moves only that
+        observed stage into the per-budget latency EWMA.  The timed generation
+        loop, tree, outputs and total latency are unchanged.
+        """
+        stages = {
+            "draft": float(draft_ms),
+            "tree_build": float(tree_build_ms),
+            "tree_compile": float(tree_compile_ms),
+            "target_verify": float(target_verify_ms),
+            "commit": float(commit_ms),
+        }
+        if any(not math.isfinite(value) or value < 0 for value in stages.values()):
+            raise ValueError("Controller stage timings must be finite and nonnegative")
+        if self.timing_partition == "legacy":
+            fixed_ms = stages["draft"] + stages["tree_build"]
+            budget_ms = stages["tree_compile"] + stages["target_verify"] + stages["commit"]
+        else:
+            fixed_ms = stages["draft"]
+            budget_ms = (stages["tree_build"] + stages["tree_compile"]
+                         + stages["target_verify"] + stages["commit"])
+        self.observe(tree_nodes=tree_nodes, draft_ms=fixed_ms,
+                     verify_ms=budget_ms,
+                     accepted_draft_tokens=accepted_draft_tokens)
+        if self.trace:
+            self.trace[-1]["raw_stage_ms"] = stages
+            self.trace[-1]["timing_partition"] = self.timing_partition
 
     def state_dict(self):
         return {"version": 1, "identity": self.identity,

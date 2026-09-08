@@ -77,6 +77,35 @@ def test_original_warmup_scoring_and_ewma_equations():
     assert builder._select_node_count(scores) == expected
 
 
+def test_budget_aware_stage_attribution_is_isolated_and_exact():
+    legacy = PaperAdaptiveBuilder(cfg(), "no_exploration")
+    corrected = PaperAdaptiveBuilder(
+        cfg(), "no_exploration", timing_partition="budget_aware"
+    )
+    scores = np.linspace(-1, -8, 128)
+    assert legacy._select_node_count(scores) == corrected._select_node_count(scores) == 60
+    stages = dict(tree_nodes=60, draft_ms=2, tree_build_ms=3,
+                  tree_compile_ms=5, target_verify_ms=7, commit_ms=11,
+                  accepted_draft_tokens=4)
+    legacy.observe_stages(**stages)
+    corrected.observe_stages(**stages)
+    assert legacy._fixed_ms == 5
+    assert legacy._verify_ms[60] == 23
+    assert corrected._fixed_ms == 2
+    assert corrected._verify_ms[60] == 26
+    assert legacy._fixed_ms + legacy._verify_ms[60] == 28
+    assert corrected._fixed_ms + corrected._verify_ms[60] == 28
+    assert legacy.identity != corrected.identity
+    assert corrected.trace[-1]["raw_stage_ms"]["tree_build"] == 3
+    with pytest.raises(ValueError, match="identity/schema mismatch"):
+        corrected.load_state_dict(legacy.state_dict())
+    restored = PaperAdaptiveBuilder(
+        cfg(), "no_exploration", timing_partition="budget_aware"
+    )
+    restored.load_state_dict(corrected.state_dict())
+    assert restored.state_dict() == corrected.state_dict()
+
+
 @pytest.mark.parametrize("seed", range(6))
 def test_prefix_closure_mass_identity_and_greedy_tree_semantics(seed):
     # Exhaust every full string and every budget for a finite factorized proposal.
