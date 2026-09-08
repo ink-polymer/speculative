@@ -15,6 +15,7 @@ import statistics
 
 from dflash_specblock.paper.common import load_json
 from dflash_specblock.paper.official_reporting import load_completed, official_rows
+from dflash_specblock.paper.official_worker import response_tokens
 
 
 def _mean(values):
@@ -109,6 +110,34 @@ def _controller_metrics(run, method, exploration_interval):
     }
 
 
+def _trajectory_pair(left_run, left_method, right_run, right_method):
+    """Compare latency only where both methods emitted the exact same tokens."""
+    left = [response[left_method] for response in left_run["responses"]]
+    right = [response[right_method] for response in right_run["responses"]]
+    if len(left) != len(right):
+        raise ValueError("Paired runs contain different response counts")
+    exact = [
+        (left_result, right_result)
+        for left_result, right_result in zip(left, right)
+        if response_tokens(left_result) == response_tokens(right_result)
+    ]
+    left_tpot = _mean(pair[0].time_per_output_token for pair in exact)
+    right_tpot = _mean(pair[1].time_per_output_token for pair in exact)
+    return {
+        "left_method": left_method,
+        "right_method": right_method,
+        "responses": len(left),
+        "exact_output_responses": len(exact),
+        "exact_output_rate": len(exact) / len(left) if left else None,
+        "exact_subset_left_tpot_ms": 1000 * left_tpot if left_tpot is not None else None,
+        "exact_subset_right_tpot_ms": 1000 * right_tpot if right_tpot is not None else None,
+        "exact_subset_right_speedup_vs_left": (
+            left_tpot / right_tpot
+            if left_tpot is not None and right_tpot is not None else None
+        ),
+    }
+
+
 def audit(run_dir: Path):
     contract = load_json(run_dir / "contract.json")
     identity = contract["identity"]
@@ -158,6 +187,14 @@ def audit(run_dir: Path):
                 "adaptive": _controller_metrics(sdpa, "adaptive", interval),
                 "no_exploration": _controller_metrics(sdpa, "no_exploration", 0),
             },
+            "trajectory_pairs": {
+                "no_exploration_vs_adaptive": _trajectory_pair(
+                    sdpa, "adaptive", sdpa, "no_exploration"
+                ),
+                "ddtree_vs_dflash": _trajectory_pair(
+                    dflash_run, "dflash", sdpa, ddtree_row["selected_key"]
+                ),
+            },
         })
     if not datasets:
         raise ValueError("No completed SDPA/FlashAttention result pairs found")
@@ -173,6 +210,7 @@ def audit(run_dir: Path):
         "limitations": [
             "Partial completed datasets only",
             "record-bf16-mismatches runs are not strict lossless claims",
+            "Exact-output subsets are post-hoc diagnostics, not randomized comparisons",
             "Stage attribution follows fields emitted by the pinned official runner",
         ],
         "geomean_speedup": {
