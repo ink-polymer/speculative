@@ -14,6 +14,8 @@ uploaded.
 | 2142851 | Qwen3-8B | first resume attempt | FAILED: shared prepare lock |
 | 2142956 | Qwen3-8B | second resume attempt | FAILED: locked GPU UUID differed |
 | 2143068 | Qwen3-8B | fresh 10-dataset 350GB rerun | RUNNING on n555 |
+| 2144508 | Qwen3-4B | diffusion scaffold fixed-grid optimization | RUNNING on n495 |
+| 2144509 | Qwen3-8B | diffusion scaffold fixed-grid optimization | RUNNING on n66 |
 
 The pilots run the full `tests/gbv_paper` gate before loading checkpoints.
 Pilot metrics are diagnostic and use three fixed development prompts; they are
@@ -49,6 +51,23 @@ Complete per-method pilot metrics:
 - [Qwen3-8B T=0.3](../results/pilots/20260908/qwen3_8b_t03.json)
 - [Qwen3-8B T=0.6](../results/pilots/20260908/qwen3_8b_t06.json)
 - [Qwen3-8B T=1.0](../results/pilots/20260908/qwen3_8b_t10.json)
+
+## Diffusion scaffold optimization in progress
+
+Jobs 2144508 and 2144509 are practical follow-up runs for Qwen3-4B and
+Qwen3-8B. For each of T=0.3, 0.6, and 1.0, the fixed grid covers ten
+`(labelled paths, block length, tree budget)` settings and both terminal-mass
+and ancestral continuation backends, for twenty candidates total. Every
+temperature also remeasures canonical L=15/B=45 DFlash and DDTree controls on
+the same GPU.
+
+The scan reports weighted decode TPOT, speedup versus both controls, accepted
+draft tokens, committed tokens, mean tree nodes, repeat equality, and CUDA stage
+profiles for the best two candidates at each temperature. Selection and timing
+use the same three development prompts, so this is explicitly a diagnostic
+optimization rather than a held-out or formal result. The strict checkpoint
+equivalence audit remains a separate mandatory gate and is not weakened by the
+optimizer.
 
 ## AdaptiveTree results available now
 
