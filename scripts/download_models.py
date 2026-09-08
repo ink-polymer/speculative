@@ -14,7 +14,7 @@ def _validate_downloaded_pair(
     draft_dir: Path,
     required_future_tokens: int,
 ) -> None:
-    """下载后立即验证 target/DFlash 结构，避免到 A2 加载数 GB 权重后才发现配错。"""
+    """下载后立即验证 target/DFlash 结构，避免到 GPU 加载数 GB 权重后才发现配错。"""
     with (target_dir / "config.json").open("r", encoding="utf-8") as stream:
         target = json.load(stream)
     with (draft_dir / "config.json").open("r", encoding="utf-8") as stream:
@@ -51,7 +51,7 @@ def _validate_downloaded_pair(
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Download Qwen3 and DFlash checkpoints")
-    parser.add_argument("--config", default="configs/qwen3_4b_a2.json")
+    parser.add_argument("--config", default="configs/qwen3_4b_cuda.json")
     parser.add_argument("--token", default=None, help="也可使用环境变量 HF_TOKEN，切勿提交 token")
     return parser
 

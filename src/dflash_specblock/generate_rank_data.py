@@ -11,8 +11,8 @@ from tqdm import tqdm
 
 from .benchmark import baseline_greedy
 from .config import ExperimentConfig
-from .device import resolve_device
-from .models import load_models, render_prompt
+from .device import configure_cuda_runtime, resolve_device
+from .models import load_target_model, render_prompt
 
 
 def _resolve_output_path(config: ExperimentConfig, value: str | Path) -> Path:
@@ -37,8 +37,10 @@ def _load_prompt_rows(path: Path) -> list[dict]:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Generate target-model training texts for rank head")
-    parser.add_argument("--config", default="configs/qwen3_4b_a2.json")
+    parser = argparse.ArgumentParser(
+        description="Generate target-model training texts for rank head"
+    )
+    parser.add_argument("--config", default="configs/qwen3_4b_cuda.json")
     parser.add_argument("--prompts", required=True)
     parser.add_argument("--output", default="datasets/generated/rank_train.jsonl")
     parser.add_argument("--max-prompts", type=int, default=0)
@@ -55,7 +57,10 @@ def main() -> None:
     if args.max_prompts < 0:
         raise ValueError("max-prompts 不能为负数")
     device = resolve_device(config.device)
+    configure_cuda_runtime(device, config.allow_tf32)
     torch.manual_seed(config.seed)
+    if device.type == "cuda":
+        torch.cuda.manual_seed_all(config.seed)
 
     rows = _load_prompt_rows(Path(args.prompts).expanduser().resolve())
     if args.max_prompts > 0:
@@ -66,8 +71,14 @@ def main() -> None:
     if max_new_tokens < 1:
         raise ValueError("max-new-tokens 必须为正整数")
 
-    bundle = load_models(config, device)
-    stop_ids = {int(bundle.tokenizer.eos_token_id)} if bundle.tokenizer.eos_token_id is not None else set()
+    # Rank-data generation uses only the target model. Avoid loading the unused 4B
+    # DFlash draft, which saves one full model's GPU memory and startup I/O.
+    bundle = load_target_model(config, device)
+    stop_ids = (
+        {int(bundle.tokenizer.eos_token_id)}
+        if bundle.tokenizer.eos_token_id is not None
+        else set()
+    )
     output_path = _resolve_output_path(config, args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -76,7 +87,10 @@ def main() -> None:
         progress = tqdm(rows, desc="generate rank train data")
         for item in progress:
             prompt = item["prompt"]
-            input_ids = render_prompt(bundle.tokenizer, prompt, config.enable_thinking).to(device)
+            input_ids = render_prompt(bundle.tokenizer, prompt, config.enable_thinking).to(
+                device,
+                non_blocking=device.type == "cuda",
+            )
             generated_ids, elapsed_ms = baseline_greedy(
                 bundle.target,
                 input_ids=input_ids,

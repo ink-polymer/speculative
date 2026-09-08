@@ -1,7 +1,7 @@
 """端到端集成测试：验证树投机解码框架正确性并测量加速比。
 
 使用确定性 mock 模型（embedding + 移位 lm_head），draft 完美匹配 target，
-从而在 NPU（或 CPU 回退）上验证：
+从而在 CUDA GPU（或 CPU 测试后备）上验证：
 1. 框架是树模型（多节点、兄弟分支、ancestor mask 生效）
 2. 输出与 baseline greedy 完全一致（无损保证）
 3. 加速比测量（hybrid vs baseline 墙钟时间）

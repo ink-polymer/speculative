@@ -1,0 +1,36 @@
+{
+  "version": 3,
+  "method": "latency_aware_ddtree",
+  "model_config": "configs/paper_t0_model.json",
+  "temperature": 0,
+  "block_size": 15,
+  "baseline_budget": 60,
+  "budget_candidates": [
+    30,
+    45,
+    60,
+    80,
+    100,
+    128
+  ],
+  "initial_budget": 60,
+  "warmup_rounds_per_budget": 1,
+  "ewma_alpha": 0.2,
+  "exploration_interval": 64,
+  "max_new_tokens": 2048,
+  "seeds": [
+    17,
+    29,
+    43
+  ],
+  "variants": [
+    "adaptive",
+    "no_acceptance_calibration",
+    "no_latency",
+    "no_exploration",
+    "frozen_after_warmup"
+  ],
+  "eval_repeats": 3,
+  "warmup_runs": 2,
+  "bootstrap_samples": 2000
+}

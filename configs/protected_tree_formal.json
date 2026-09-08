@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "study": "protected_tree_verification",
+  "models": [{"id": "qwen3_4b", "config": "root_marginal_bv_qwen3_4b.json"}],
+  "seeds": [17, 29, 43],
+  "timing_repeats": 3,
+  "max_new_tokens": 2048,
+  "warmup_tokens": 32,
+  "bootstrap_samples": 10000,
+  "bootstrap_seed": 20260907,
+  "gpu_family": "H200",
+  "cpu_threads": 8,
+  "diagnostic_tokens": 64,
+  "capture_states_per_prompt": 4,
+  "replay_warmup": 5,
+  "replay_iterations": 50,
+  "replay_repeats": 3,
+  "primary_endpoint": "equal_dataset_geomean_decode_speedup_vs_ddtree",
+  "success_rule": "complete_evidence_and_95pct_CI_lower_bound_gt_1",
+  "mtbench_quality": "not_claimed_no_external_judge",
+  "claim_scope": "controlled_shared_engine_single_model_architecture_comparison"
+}

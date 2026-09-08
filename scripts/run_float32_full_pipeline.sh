@@ -24,8 +24,8 @@
 ###############################################################################
 set -uo pipefail
 
-source /opt/home/developer/Ascend/ascend-toolkit/set_env.sh
-export ASCEND_RT_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
+export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
 export HF_ENDPOINT="${HF_ENDPOINT:-https://hf-mirror.com}"
 export HF_DATASETS_ENDPOINT="${HF_DATASETS_ENDPOINT:-https://hf-mirror.com}"
 
@@ -37,10 +37,10 @@ MAX_NEW_TOKENS=128
 RANK_EPOCHS=3
 RANK_LR=2e-4
 
-VANILLA_CONFIG="configs/qwen3_4b_a2_tree15_float32.json"
+VANILLA_CONFIG="configs/qwen3_4b_cuda_tree15_float32.json"
 VANILLA_OUTPUT="outputs/benchmark_vanilla_dflash_float32.jsonl"
 
-TREE15_CONFIG="configs/qwen3_4b_a2_float32.json"
+TREE15_CONFIG="configs/qwen3_4b_cuda_float32.json"
 TREE15_OUTPUT="outputs/benchmark_tree15_float32.jsonl"
 
 RANK_PROMPTS_FILE="datasets/processed/specblock_official/prompts_rank_train_tree15.jsonl"
@@ -99,7 +99,7 @@ else
     --output "${RANK_TRAIN_DATA}" \
     --max-prompts 0 \
     --max-new-tokens "${MAX_NEW_TOKENS}" \
-    --device npu:0 \
+    --device cuda:0 \
     || die "Rank 训练集生成失败"
   TRAIN_ROWS=$(wc -l < "${RANK_TRAIN_DATA}")
   log "Rank 训练集完成: ${TRAIN_ROWS} 条 (耗时: $(fmt_duration $(step_timer_elapsed)))"
@@ -117,7 +117,7 @@ else
     --output "${RANK_CHECKPOINT}" \
     --epochs "${RANK_EPOCHS}" \
     --learning-rate "${RANK_LR}" \
-    --device npu:0 \
+    --device cuda:0 \
     || die "Rank head 训练失败"
   log "Rank head 训练完成 (耗时: $(fmt_duration $(step_timer_elapsed)))"
 fi
@@ -133,7 +133,7 @@ python -m dflash_specblock.benchmark_vanilla \
   --output "${VANILLA_OUTPUT}" \
   --max-prompts 0 \
   --max-new-tokens "${MAX_NEW_TOKENS}" \
-  --device npu:0 \
+  --device cuda:0 \
   || die "Vanilla DFlash (float32) benchmark 运行失败"
 log "Vanilla DFlash 完成 (耗时: $(fmt_duration $(step_timer_elapsed)))"
 
@@ -149,7 +149,7 @@ python -m dflash_specblock.benchmark \
   --output "${TREE15_OUTPUT}" \
   --max-prompts 0 \
   --max-new-tokens "${MAX_NEW_TOKENS}" \
-  --device npu:0 \
+  --device cuda:0 \
   || die "Tree15 DFlash-SpecBlock (float32) benchmark 运行失败"
 log "Tree15 DFlash-SpecBlock 完成 (耗时: $(fmt_duration $(step_timer_elapsed)))"
 

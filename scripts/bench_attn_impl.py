@@ -1,11 +1,10 @@
-"""测试 Qwen3-4B 在 NPU 上不同 attn_impl + mask 组合下的 forward 性能。
+"""测试 Qwen3-4B 在 NVIDIA GPU 上不同 attn_impl + mask 组合下的 forward 性能。
 
 目标:确认 SDPA fast path 是否能显著快于当前 eager + 4D additive mask。
 """
 
 from __future__ import annotations
 
-import json
 import sys
 import time
 from pathlib import Path
@@ -32,45 +31,69 @@ def build_causal_4d_mask(past_len, cur_len, dtype, device):
 
 
 def build_tree_4d_mask(past_len, cur_len, dtype, device):
+    """Build a deterministic binary-tree ancestor mask and tree-depth positions."""
     total = past_len + cur_len
     minimum = torch.finfo(dtype).min
     allowed = torch.zeros((cur_len, cur_len), dtype=torch.bool, device=device)
     allowed[0, 0] = True
-    allowed[1:, 0] = True
-    for i in range(1, cur_len):
-        for j in range(1, i + 1):
-            allowed[i, j] = True
+    depths = torch.zeros(cur_len, dtype=torch.long, device=device)
+    for node_index in range(cur_len - 1):
+        row = node_index + 1
+        allowed[row, 0] = True
+        current = node_index
+        depth = 0
+        while current >= 0:
+            allowed[row, current + 1] = True
+            depth += 1
+            current = -1 if current == 0 else (current - 1) // 2
+        depths[row] = depth
     mask = torch.full((1, 1, cur_len, total), minimum, dtype=dtype, device=device)
     if past_len:
         mask[..., :past_len] = 0
     mask[0, 0, :, past_len:].masked_fill_(allowed, 0)
-    return mask
+    return mask, past_len + depths.unsqueeze(0)
 
 
-def bench_one(model, input_ids, attention_mask, position_ids, cache, cache_position,
-              device, warmup=3, iters=10):
+@torch.inference_mode()
+def bench_one(
+    model,
+    input_ids,
+    attention_mask,
+    position_ids,
+    cache,
+    cache_position,
+    past_length,
+    device,
+    warmup=3,
+    iters=10,
+):
     synchronize(device)
     for _ in range(warmup):
         _ = model(input_ids=input_ids, attention_mask=attention_mask,
                   position_ids=position_ids, past_key_values=cache,
                   cache_position=cache_position, use_cache=True, return_dict=True)
-        cache.crop(input_ids.shape[1])
+        cache.crop(past_length)
     synchronize(device)
     start = time.perf_counter()
     for _ in range(iters):
         _ = model(input_ids=input_ids, attention_mask=attention_mask,
                   position_ids=position_ids, past_key_values=cache,
                   cache_position=cache_position, use_cache=True, return_dict=True)
-        cache.crop(input_ids.shape[1])
+        cache.crop(past_length)
     synchronize(device)
     return (time.perf_counter() - start) / iters * 1000
 
 
+@torch.inference_mode()
 def main():
     project = Path(__file__).resolve().parent.parent
-    config = ExperimentConfig.from_json(str(project / "configs/qwen3_4b_a2_tree15_float32.json"))
+    config = ExperimentConfig.from_json(str(project / "configs/qwen3_4b_cuda_tree15.json"))
     device = resolve_device(config.device)
-    dtype = torch.float32
+    dtype = (
+        torch.bfloat16
+        if device.type == "cuda" and torch.cuda.is_bf16_supported()
+        else torch.float16
+    )
     target_path = config.target_path
 
     print(f"Loading Qwen3-4B on {device} dtype={dtype}")
@@ -83,22 +106,18 @@ def main():
     past_length = input_ids_full.shape[1]
 
     cur_len = 31  # anchor + 30 tree nodes
-    input_ids = torch.randint(0, 151936, (1, cur_len), dtype=torch.long, device=device)
-    position_ids = torch.arange(past_length, past_length + cur_len,
-                                dtype=torch.long, device=device).unsqueeze(0)
-    cache_position = position_ids.clone()
+    input_ids = None
+    causal_position_ids = torch.arange(
+        past_length, past_length + cur_len, dtype=torch.long, device=device
+    ).unsqueeze(0)
+    cache_position = torch.arange(
+        past_length, past_length + cur_len, dtype=torch.long, device=device
+    )
 
     causal_mask = build_causal_4d_mask(past_length, cur_len, dtype, device)
-    tree_mask = build_tree_4d_mask(past_length, cur_len, dtype, device)
-
-    configs_to_test = [
-        ("eager", None),
-        ("eager + 4D causal", causal_mask),
-        ("eager + 4D tree", tree_mask),
-        ("sdpa", None),
-        ("sdpa + 4D causal", causal_mask),
-        ("sdpa + 4D tree", tree_mask),
-    ]
+    tree_mask, tree_position_ids = build_tree_4d_mask(
+        past_length, cur_len, dtype, device
+    )
 
     results = {}
     for label, attn_impl in [("eager", "eager"), ("sdpa", "sdpa")]:
@@ -110,17 +129,38 @@ def main():
         for param in model.parameters():
             param.requires_grad_(False)
 
-        for mask_name, mask in [("None", None),
-                                 ("4D causal", causal_mask),
-                                 ("4D tree", tree_mask)]:
+        if input_ids is None:
+            input_ids = torch.randint(
+                0,
+                int(model.config.vocab_size),
+                (1, cur_len),
+                dtype=torch.long,
+                device=device,
+            )
+
+        for mask_name, mask, position_ids in [
+            ("None", None, causal_position_ids),
+            ("4D causal", causal_mask, causal_position_ids),
+            ("4D binary-tree ancestor", tree_mask, tree_position_ids),
+        ]:
             cache = DynamicCache()
             _ = model(input_ids=input_ids_full, past_key_values=cache,
                       use_cache=True, return_dict=True)
             cache.crop(past_length)
 
             try:
-                ms = bench_one(model, input_ids, mask, position_ids, cache,
-                               cache_position, device, warmup=3, iters=10)
+                ms = bench_one(
+                    model,
+                    input_ids,
+                    mask,
+                    position_ids,
+                    cache,
+                    cache_position,
+                    past_length,
+                    device,
+                    warmup=3,
+                    iters=10,
+                )
                 key = f"{attn_impl} + {mask_name}"
                 results[key] = ms
                 print(f"  {key:30s}: {ms:7.1f} ms/iter")
@@ -130,13 +170,13 @@ def main():
                 print(f"  {key:30s}: ERROR — {type(e).__name__}: {e}")
 
         del model
-        torch.npu.empty_cache() if hasattr(torch.npu, "empty_cache") else None
+        torch.cuda.empty_cache()
         synchronize(device)
 
     print("\n" + "=" * 60)
     print("SUMMARY")
     print("=" * 60)
-    baseline_key = "eager + 4D tree"
+    baseline_key = "eager + 4D binary-tree ancestor"
     baseline_ms = results.get(baseline_key, 0)
     if isinstance(baseline_ms, (int, float)):
         for k, v in results.items():

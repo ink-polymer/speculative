@@ -1,0 +1,13 @@
+{
+  "study": "branch_recycling_tree_bv",
+  "models": [
+    {
+      "id": "qwen3_4b",
+      "config": "tree_bv_qwen3_4b.json"
+    },
+    {
+      "id": "qwen3_8b",
+      "config": "tree_bv_qwen3_8b.json"
+    }
+  ]
+}

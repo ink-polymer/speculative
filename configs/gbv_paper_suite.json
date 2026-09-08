@@ -1,0 +1,12 @@
+{
+  "models": [
+    {
+      "id": "qwen3_4b",
+      "config": "gbv_paper_ddtree_counts.json"
+    },
+    {
+      "id": "qwen3_8b",
+      "config": "gbv_paper_qwen3_8b.json"
+    }
+  ]
+}

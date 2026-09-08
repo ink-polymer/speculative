@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
 from pathlib import Path
 
 import torch
@@ -15,7 +16,7 @@ from tqdm import tqdm
 
 from .benchmark import baseline_greedy, _load_prompts
 from .config import ExperimentConfig
-from .device import dtype_from_name, resolve_device
+from .device import configure_cuda_runtime, dtype_from_name, resolve_device, synchronize
 from .dflash_adapter import DFlashBlockAdapter
 from .models import load_models, render_prompt
 from .rank_head import HeuristicRanker
@@ -44,9 +45,9 @@ def create_vanilla_engine(config: ExperimentConfig, device: torch.device):
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Benchmark vanilla DFlash (linear speculative decoding) on Ascend A2"
+        description="Benchmark vanilla DFlash (linear speculative decoding) on NVIDIA CUDA"
     )
-    parser.add_argument("--config", default="configs/qwen3_4b_a2_tree15.json")
+    parser.add_argument("--config", default="configs/qwen3_4b_cuda_tree15.json")
     parser.add_argument("--prompts", required=True)
     parser.add_argument("--output", default="outputs/benchmark_vanilla_dflash.jsonl")
     parser.add_argument("--max-prompts", type=int, default=0)
@@ -61,6 +62,10 @@ def main() -> None:
     if args.device:
         config.device = args.device
     device = resolve_device(config.device)
+    configure_cuda_runtime(device, config.allow_tf32)
+    torch.manual_seed(config.seed)
+    if device.type == "cuda":
+        torch.cuda.manual_seed_all(config.seed)
     engine, tokenizer = create_vanilla_engine(config, device)
     prompts = _load_prompts(Path(args.prompts))
     if args.max_prompts > 0:
@@ -82,12 +87,19 @@ def main() -> None:
     with output_path.open("w", encoding="utf-8") as stream:
         progress = tqdm(prompts, desc="vanilla-dflash", unit="prompt")
         for index, prompt in enumerate(progress):
-            input_ids = render_prompt(tokenizer, prompt, config.enable_thinking).to(device)
+            input_ids = render_prompt(tokenizer, prompt, config.enable_thinking).to(
+                device,
+                non_blocking=device.type == "cuda",
+            )
             baseline_ids, baseline_ms = baseline_greedy(
                 engine.target, input_ids, max_new_tokens, stop_ids, device
             )
+            synchronize(device)
+            hybrid_started_at = time.perf_counter()
             hybrid = engine.generate(input_ids, max_new_tokens, stop_ids)
-            hybrid_ms = hybrid.prefill_ms + hybrid.total_decode_ms
+            synchronize(device)
+            hybrid_ms = (time.perf_counter() - hybrid_started_at) * 1000.0
+            hybrid_stage_ms = hybrid.prefill_ms + hybrid.total_decode_ms
             hybrid_ids = hybrid.generated_ids[0].detach().cpu()
             baseline_cpu = baseline_ids.detach().cpu()
             exact_match = torch.equal(baseline_cpu, hybrid_ids)
@@ -105,6 +117,7 @@ def main() -> None:
                 "baseline_ms": baseline_ms,
                 "hybrid_tokens": int(hybrid.generated_ids.numel()),
                 "hybrid_ms": hybrid_ms,
+                "hybrid_stage_ms": hybrid_stage_ms,
                 "wall_clock_speedup": (
                     baseline_ms / hybrid_ms if hybrid_ms > 0 else None
                 ),
@@ -130,7 +143,7 @@ def main() -> None:
 
                 warnings.warn(
                     f"提示词 {index} 的 hybrid 输出与 target greedy baseline 在 token "
-                    f"{mismatch_index} 处不一致（bfloat16 数值精度差异）；"
+                    f"{mismatch_index} 处不一致（{config.dtype} 或 attention backend 数值差异）；"
                     f"记录 mismatch 并继续，不中断 benchmark。",
                     stacklevel=2,
                 )

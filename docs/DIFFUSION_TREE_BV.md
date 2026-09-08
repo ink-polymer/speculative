@@ -1,0 +1,386 @@
+# One-step block diffusion tree block verification
+
+后续改进见 [保底路径与树内续接](DIFFUSION_SCAFFOLD_BV.md)。本文保留原随机
+候选核及其证明；新方案复用该核，但增加固定覆盖与目标续接，使用独立协议。
+
+中文导读：这是 **T>0 下的树上块验证**，不是 T=0 最长匹配。证明从 DFlash
+一次 masked-block 去噪得到的实际分布出发；首层同样随机采样，后续任意深度
+可分叉，共享前缀只合并计算、不丢失概率标签。第 4 节证明完整输出分布守恒，
+第 5 节把去噪交叉熵与截断质量写入接受长度下界。该下界不保证超过最优预算
+DDTree 或 DFlash 的实测速度，也不等于确认新颖性。
+
+Status (2026-09-07): implemented research candidate. Positive target temperatures
+only. The statements below are finite-space, exact-arithmetic theorems for the
+specified sampler. Novelty relative to prior tree verification is unestablished;
+there are no measured GPU speedups for this implementation.
+
+[Theoretical comparison audit](DIFFUSION_TREE_THEORY_AUDIT.md): universal
+acceptance dominance over DDTree and DFlash is DISPROVED by a strictly positive
+same-budget counterexample. A conditional strict advantage is proved separately;
+its distribution assumptions are not verified on the frozen language models.
+The audit also includes an independent exact-rational joint-law test and the
+additional cost conditions required to turn an acceptance bound into speed.
+
+## 1. The diffusion object actually executed
+
+Fix a committed context c, including its clean anchor a, and the target features
+h(c) available before drafting. Let m=(a,MASK,...,MASK). The frozen DFlash
+denoiser runs ONCE with bidirectional within-block attention and produces
+z_theta,j(m,h(c)), j=1,...,L. For draft temperature delta>0 define
+
+    d_j(x|c) = softmax(z_theta,j(m,h(c))/delta)[x].
+    Q_D(x_1:L|c) = product_j d_j(x_j|c).                 (1)
+
+Equation (1) is the transition law of *independent categorical sampling from
+this single denoising evaluation*. It does not assert that the data distribution
+factorizes, that neural features are independent, or that official DFlash's
+argmax proposals already have this law. Our sampler changes how its denoising
+logits are sampled. No multi-step diffusion trajectory is invented.
+
+This is the specific DFlash structure used by the construction: every d_j is
+fixed before the candidate tokens are drawn, and all L rows are available from
+one denoising call. An autoregressive drafter's q_j(.|sampled prefix) cannot be
+substituted into (1) while reusing this one fixed CDF partition. Other one-pass
+factorized non-autoregressive models could satisfy the same assumptions. A
+theorem's applicability to those models does not invalidate the theorem, but
+it precludes claiming that its mathematics uniquely identifies diffusion.
+
+Choose S_j as the top min(8,V) logits and let rho_j=sum_{x in S_j}d_j(x).
+The executed denoising transition uses
+
+    q_j(x)=1{x in S_j} d_j(x)/rho_j,
+    Q_S(x_1:L)=product_j q_j(x_j).                       (2)
+
+All q rows are frozen before sampling. DiffusionBlockLaw records S_j, q_j,
+rho_j, masked input, mask id and delta. Diagnostic snapshots retain these with
+the complete latent partition, realized draws and target tree logits.
+
+Lemma 1 (exact truncation accounting). If E={x: x_j in S_j for every j}, then
+Q_S=Q_D(.|E), Q_D(E)=product_j rho_j, and
+
+    TV(Q_D,Q_S) = 1-product_j rho_j.                     (3)
+
+Proof. Under the one-step factorization, conditioning on the Cartesian support
+normalizes each factor separately. On E, Q_S=Q_D/Q_D(E)>=Q_D; outside E,
+Q_S=0. Summing the two absolute differences and dividing by two proves (3).
+This is an identity about proposal truncation, not output approximation.
+The output correction retains the entire target vocabulary.
+
+## 2. Joint diffusion samples and the verified trie
+
+For each position j choose fixed shifts beta_aj, a=1,...,K. Draw independent
+U_j~Uniform[0,1), and set
+
+    X_aj = CDF(q_j)^(-1)((U_j+beta_aj) mod 1).           (4)
+
+The main sampler permutes the set {0,1/K,...,(K-1)/K} across depths. Aligned
+coupling sets all shifts to zero. There is no claim that this permutation is
+optimal or that it dominates every coupling.
+
+Partition the unit interval at every shifted CDF boundary. The resulting atoms
+h have widths s_j(h) and deterministic mappings g_aj(h)=X_aj. Zero-width atoms
+are padding and never sampled. There are at most KR+1 atom columns per depth.
+
+Lemma 2 (diffusion marginal and witness law). For every a,j,
+
+    sum_{h:g_aj(h)=x}s_j(h)=q_j(x).
+    Law(X_a,1:L)=Q_S.
+    Q_H(h_1:L)=product_j s_j(h_j).                       (5)
+
+Proof. Translation modulo one preserves Lebesgue measure; the preimage of token
+x therefore has measure q_j(x). Independent U_j give the block product law for
+each labelled sample. Across labels the samples are correlated. The second
+equality would require modification for history-dependent denoising schedules.
+
+The verification trie is the union of the K sampled token paths. Branching can
+occur at any depth, and duplicate paths and prefixes are merged for target
+evaluation. K is the number of labelled samples, not the root degree. The trie
+has at most KL draft nodes. This covers the sampled-trie family generated by
+(4), not all possible tree-proposal distributions or adaptive pruning rules.
+
+IMPORTANT: Q_H(h) is a retained latent witness probability, not Q(trie).
+Multiple h and label arrangements may yield the same trie. We retain their
+labels and integrate over them in the proof. No quotient by trie probability,
+IID path-selection formula, or product of node marginals is used instead.
+
+One ancestor-masked target evaluation obtains every P_T(.|c,u), T>0, needed at
+the trie nodes u (including the clean anchor). For identical token prefixes,
+the target distribution is the same. Transport labels can share that row while
+keeping distinct probability weights. Correct positions, masks and KV selection
+are preconditions of the mathematical target oracle.
+
+## 3. Diffusion-coordinate transport
+
+Index j=0,...,L by the number of proposed tokens already in the prefix. Given
+h_1:j, label a has prefix x_a,1:j and target row p_aj(x)=P_T(x|c,x_a,1:j).
+Set alpha_a=1/K and e_a0=w_a0=alpha_a. For j<L lift the target row onto the next
+denoising atoms (write s=s_{j+1}, q=q_{j+1}, g_a=g_{a,j+1}):
+
+    ell_a(h)=p_aj(g_a(h))*s(h)/q(g_a(h)),
+    B_a(h)=min(e_aj*ell_a(h), alpha_a*s(h)),
+    C_a(h)=w_aj*ell_a(h), D_a(h)=C_a(h)-B_a(h),
+    U(h)=s(h)-sum_a B_a(h),
+    F_a(h)=B_a(h)+D_a(h)*min(1,U(h)/sum_b D_b(h)).        (6)
+
+Use zero lift at q=0 and zero extra flow if sum D=0. After the actual atom h,
+
+    e_a,j+1=B_a(h)/s(h), w_a,j+1=F_a(h)/s(h).            (7)
+
+This reuses the protected transport recurrence in atom_tree_bv, which is an
+instantiation of earlier layer-flow ideas. The new boundary condition is the
+COMMON EMPTY PREFIX for every label; the first token also follows (4)-(7).
+The earlier AC-TBV instead preselected distinct first tokens and branched only
+there. Its restricted root treatment is not used here.
+
+Lemma 3 (feasibility). At every reachable history, w>=e>=0, sum_a w_a<=1,
+0<=F_a(h)<=w_a ell_a(h), and sum_a F_a(h)<=s(h).
+
+Proof. Initially these statements hold. B<=e ell<=w ell, so D>=0; also
+sum B<=s sum alpha=s, so U>=0. The interpolation factor is in [0,1], and
+the allocated extras sum to at most U. Division by a positive sampled s in
+(7) proves the induction. The same floor e is computed with and without pooling.
+
+Define target-token residuals, summing ALL atoms that map to a token:
+
+    R_aj(x)=w_aj*p_aj(x)-sum_{h:g_a(h)=x}F_a(h).
+    r_j=sum_{a,x}R_aj(x), f_j=1-sum_a w_aj.             (8)
+
+At j=L set F=0 and R_aL=w_aL*p_aL. R is nonnegative: the lifted target mass
+aggregated over a supported token is p_aj(x), so Lemma 3 bounds its subtraction;
+outside proposal support no mass is subtracted. The identity
+
+    r_j+f_j=1-sum_{a,h}F_a(h)                           (9)
+
+follows by summing (8). At the terminal row r_L+f_L=1.
+
+## 4. Joint block endpoint and exact output law
+
+For a realized complete latent sample define
+
+    pi_j = r_j/(r_j+f_j) * product_{t=j+1}^L f_t/(r_t+f_t).
+    Pr(A=a,J=j | h) = pi_j * R_aj(Sigma)/r_j.           (10)
+
+Sample one (A,J), then ONE token Y from R_AJ/R_AJ(Sigma), and emit
+x_A,1:J followed by Y. This accepts a whole prefix block, rather than making
+irrevocable independent token decisions. Implementation constructs only the
+selected full-vocabulary residual. The terminal next-token row is included.
+
+Zero-mass rows: if r_j=0 and f_j>0 their endpoint weight is zero; if r_j=f_j=0,
+the probability of reaching that row after failure of all deeper rows is zero
+almost surely. Arbitrary normalized completion there cannot affect output.
+Since f_0=0, the endpoint probabilities telescope to one. Numerically the
+implementation normalizes them to correct floating-point accumulation only.
+
+Lemma 4 (backward cancellation). Conditional on a history h_1:j,
+
+    E[product_{t=j+1}^L f_t/(r_t+f_t) | h_1:j]=r_j+f_j. (11)
+
+Proof. For j=L both sides equal one. Assuming (11) at j+1, average the next
+failure factor times its deeper product, conditional on the next atom. The
+denominator cancels by the inductive hypothesis. The remaining expectation is
+sum_h s(h)*(1-sum_a F_a(h)/s(h))=1-sum_{a,h}F_a(h),
+which equals (9). More explicitly, let W be the deeper failure product at
+j+1 and t=r_{j+1}+f_{j+1}. If t>0, cancellation gives (f/t)E[W]=f.
+If t=0, nonnegativity gives r=f=0 and the inductive hypothesis gives E[W]=0;
+since W>=0, W=0 almost surely. Any bounded completion of the 0/0 ratio then
+also contributes zero=f. This derives zero-denominator harmlessness without
+assuming it from the losslessness theorem being proved. Zero-probability atoms
+need no conditional expectation and are omitted from the sum.
+
+Theorem 1 (lossless one-step diffusion trie BV). Under the finite sampler
+(1)-(10), exact arithmetic, valid target conditionals, and independent latent
+coordinates, completing the emitted variable-length block with target sampling
+has exactly law P_T for every T>0 and delta>0.
+
+Proof. Multiply (10) by its correction probability R_aj(x)/R_aj(Sigma).
+Averaging future atoms with Lemma 4 shows that the unconditional mass of the
+exit (a,j,x), at a fixed past latent history, is
+
+    Q_H(h_1:j)*R_aj(x).                                 (12)
+
+Interpret Q_H(h_1:j)*w_aj as incoming mass of that labelled prefix. Equations
+(7)-(8) split its target continuation pointwise into exits and outgoing atoms:
+
+    w_aj*p_aj(x)=R_aj(x)+sum_{h:g_a(h)=x}F_a(h).
+
+Outgoing atom mass becomes Q_H(h_1:j)*s(h)*w_a,j+1, exactly the incoming mass
+at the next depth. Beginning with total root mass sum alpha=1, repeated
+substitution partitions the target law into all exits. Completing each exit
+with its target conditional yields the original full joint target law. Histories
+and labels that yield equal token prefixes are summed, not discarded. This
+proves shared-prefix and duplicate-path correctness as well as marginal tokens.
+
+Corollary (multi-round generation and stopping). Apply Theorem 1 conditional on
+each committed context. For a finite output cap N each round emits at least one
+token, so induction on the remaining cap composes the kernels without any
+unbounded stopping argument. Truncate an overshooting final block at N, or at
+the first EOS according to the target's same rule. Deterministic stopping of
+equal sequence laws gives equal stopped laws. For an uncapped run every finite
+prefix has this law; almost-sure EOS termination is a separate property of P_T.
+
+## 5. Acceptance bound that uses the diffusion denoiser
+
+Let D be the number of accepted draft tokens, excluding the correction. Disable
+pooling by taking F=B. For label a, (6)-(7) give
+
+    e_ad/alpha_a=min_{0<=k<=d} product_{i=k+1}^d
+                   P_T(x_i|c,x_1:i-1)/q_i(x_i).
+
+By Lemma 2, each labelled path has exactly the truncated block diffusion law,
+even though paths are correlated. The forward-mass proof therefore gives
+
+    Pr_no_pool(D>=d) = A_d
+      = sum_{x_1:d} min_{0<=k<=d}
+          [Q_S(x_1:k)*P_T(x_{k+1:d}|c,x_1:k)].           (13)
+
+Empty prefixes/suffixes have probability one; zero-Q paths contribute zero.
+The same expression is ordinary single-path BV's survival probability for Q_S.
+Protected pooling retains the pointwise floor, so Lemma 3 implies
+
+    Pr_full(D>=d)>=A_d, E_full[D]>=sum_{d=1}^L A_d.      (14)
+
+This is a guarantee relative to BV using the SAME actual diffusion transition,
+not relative to best-budget DDTree, UniVer, or arbitrary draft laws.
+
+An explicit (often loose) denoising-quality bound follows. Let P_k be the target
+k-token marginal and Q_D,k the product of the first k denoising rows. For each
+k<=d define the normalized cut measure M_k=Q_S,k*P_T(tail|prefix), with M_0=P_d.
+Pointwise min_k M_k >= M_0 - sum_{k=1}^d (M_0-M_k)_+. Hence
+
+    A_d >= [1-sum_{k=1}^d TV(P_k,Q_S,k)]_+
+        >= [1-sum_{k=1}^d {sqrt(KL(P_k||Q_D,k)/2)
+                          +1-product_{i=1}^k rho_i}]_+. (15)
+
+The second inequality uses Pinsker and Lemma 1, and is interpreted as the
+trivial zero bound for infinite KL. The diffusion KL has the exact identity
+
+    KL(P_k||Q_D,k)
+      = sum_{i=1}^k E_{X~P_k}[-log d_i(X_i|c)]-H(P_k). (16)
+
+Thus the one-shot block denoiser's cross-entropy and retained support mass
+enter a proved acceptance lower bound. Equations (3), (5), (13), (15), (16)
+use its frozen, parallel position distributions explicitly. Training loss on
+another dataset/temperature, especially weighted loss, is NOT equal to the
+expectations in (16). No claim that observed training loss guarantees speed.
+
+Complexity: one DFlash denoising call, one ancestor-masked target call per round;
+at most KL+1 target positions including the anchor. Atom flow is O(KLC),
+C<=KR+1; partition sorting costs O(LKR log(KR)). Full target logit normalization
+still costs O(number_of_trie_nodes * V), plus one V-wide residual. The model LM
+head is not eliminated. Cache compaction and CPU trie building are timed.
+
+## 6. Novelty and limitations
+
+Relevant primary sources checked 2026-09-07:
+
+- [DFlash](https://arxiv.org/html/2602.06036): one-step masked block denoising.
+- [DDTree](https://arxiv.org/abs/2604.12989): trees from the same per-position
+  diffusion outputs; diffusion trees themselves are established.
+- [Block Verification](https://arxiv.org/abs/2403.10444): chain block acceptance.
+- [Traversal Verification](https://arxiv.org/abs/2505.12398): tree sequence-level BV.
+- [GBV](https://arxiv.org/abs/2602.16961): multi-path BV and IID path-selection law.
+- [UniVer](https://arxiv.org/html/2605.04543v1): conditional OT across tree levels.
+- [Layer Verification](https://chulheeyun.github.io/publication/cha2026layer/):
+  lifting single-step verification to layer-flow tree verification.
+
+The transport and backward sweep reuse prior framework ideas. Proving this
+diffusion specialization correct does not prove it is outside those frameworks.
+The proposed contribution to investigate is the particular diffusion-coordinate
+coupling, full-depth trie realization, and efficient computation; its novelty
+and any separation from prior methods remain OPEN. Do not claim "first tree
+BV", "first diffusion tree", or guaranteed publication. The report explicitly
+leaves novelty_established and research_goal_achieved false, even if speed gates pass.
+
+The proofs assume real arithmetic and exact target conditionals. BF16 model
+outputs, finite CDF boundaries/RNG and FP64 rounding require empirical checks;
+they are not converted into a machine-exact theorem by probability clamps.
+Support mass and latent-witness mass must not be reported as acceptance rates.
+
+## 7. Tests, protocol and commands
+
+New configs: diffusion_tree_t03.json, diffusion_tree_t06.json, diffusion_tree_t10.json.
+Each registers Qwen3-8B, the existing fixed seven-dataset selection, 3 seeds,
+3 timing repeats, 2048 new-token cap, 11 methods, 77,814 records / 85,734
+generations. Temperatures are separate studies; do not choose the best one
+after observing results. Their total is 233,442 records / 257,202 generations.
+
+Methods: target sampling, DFlash argmax-draft matching, DDTree B45, full method,
+aligned coupling, no pooling, same-trie ancestral verification, unmerged paths,
+one diffusion path, old AC-TBV control, GBV. The DFlash matching baseline uses
+its original argmax draft; draft_temperature therefore does not affect that
+baseline. Shared engine, model, target T and max budget remain matched.
+The single-path control uses fewer nodes; it measures K, not equal work.
+
+The success rule concerns fixed-budget shared-engine speed only. Official
+backend/budget-tuned comparisons and Traversal/UniVer/LV implementations remain
+required before a broader competitive or novelty claim. Existing historical
+registrations and results retain their identities.
+
+```sh
+.artifacts/gbv-test-venv/bin/python -m pytest tests/gbv_paper/test_diffusion_tree_bv.py -q
+bash scripts/run_diffusion_tree.sh
+DIFFUSION_PYTHON=/path/to/python bash scripts/run_diffusion_tree.sh plan --study configs/diffusion_tree_t10.json
+```
+
+The wrapper without arguments only prints plans. The existing staged CLI still
+supplies freeze, unit, diagnostics, timing repeats, scoring, audit and report.
+With a stage but without --study it selects t10; --output defaults to
+outputs/<study filename without extension>, keeping temperatures separate.
+The new diffusion-tree-pilot.sbatch and diffusion-tree-formal.sbatch require an
+explicit isolated source snapshot. The formal script additionally requires the
+study, frozen data and registered output paths. They are launch templates, not
+submitted jobs. H200 formal and GH200 pilot identities must stay separate.
+New checkpoint diagnostics stay at the registered T>0 for ALL eleven methods,
+including AR, DFlash, DDTree, GBV and the atom control. They check the prefill,
+the first three captured speculative rounds (including compacted caches), and
+the first three AR sampling rows against an independent cached-AR reference.
+The fixed distribution-TV smoke threshold is 1e-3. Each unique tree node is
+replayed once using depth-first traversal and ordinary reference-cache cropping;
+the reference never uses the custom tree-cache compactor.
+
+Every observed probability row, even unselected leaves and rounds beyond the
+capture limit, must be finite, nonnegative and normalized. NaN, +inf and all--inf
+logit rows fail; individual -inf entries remain valid zero-probability tokens.
+Reference probabilities and TV errors are validated BEFORE Python max()
+aggregation. Diffusion methods additionally validate the retained proposal law
+and compare full-depth flow tensors against CPU FP64. All methods check repeated
+samples and forward-call counts, with an extra uncached-draft candidate check.
+
+Threshold failures and exceptions save failed checkpoint evidence, replacing
+any stale success; the formal diagnostics gate also records an exception as a
+failure. Formal timing cannot reuse a failed gate. These numerical checks do
+not constitute an unbiasedness proof or a novelty claim.
+
+### Local validation record, 2026-09-07
+
+`tests/gbv_paper`: **896 passed, 0 failed, 0 skipped**. Machine-readable evidence:
+`.artifacts/diffusion-theory-regression.xml`. The previous 849-case run is retained
+at `.artifacts/diffusion-tree-regression.xml`. The added 47-case theory audit checks
+exact-rational full joint laws against the production kernel, coverage upper
+bounds, the same-budget negative example, and conditional advantage bounds.
+These tests do not turn conditional superiority into universal superiority.
+The core diffusion test module has
+40 cases covering complete joint-law enumeration (not just token marginals),
+acceptance floors and denoiser cross-entropy bounds, zero masses and extreme
+positive temperatures, shared-prefix branching, snapshot replay, tiny-Qwen
+cache/EOS/cap behavior, and detection of corrupted later-round conditionals.
+The additional 59-case `test_diffusion_preflight.py` suite covers invalid unselected
+leaf rows (including the reproduced seeds 101 and 104), deliberately incorrect
+baseline conditionals, all eleven methods at all three temperatures, observer
+noninterference, and stale-success invalidation on both mismatches and exceptions.
+The formal-pipeline tests additionally exercise all three temperatures,
+whole-group resume, both-baseline speed decisions and tamper rejection using
+explicitly synthetic timings. These timings are not benchmark measurements.
+
+All three shell launchers passed `bash -n`; the Python modules passed
+`compileall`. Local environment: Python 3.13.5, PyTorch 2.7.1, Transformers
+4.57.1, CPU only. This isolated local test environment is outside the project's
+declared Python >=3.10,<3.12 deployment range and does not replace the frozen
+server environment gate. Integration uses randomly initialized tiny models,
+not a completed Qwen3-8B checkpoint validation. No GPU pilot, registration or
+formal performance run has been executed for this new candidate.
+
+scripts/diffusion-tree-pilot.sbatch runs three handwritten prompts at the three
+positive temperatures in an isolated source snapshot, explicitly labelled GH200.
+It does not launch the full H200 registrations. No new remote run was submitted
+as part of this local implementation.

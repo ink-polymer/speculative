@@ -62,6 +62,16 @@ class VanillaDFlashEngine:
         self.device = device
         self.dtype = dtype
         self.block_size = adapter.block_size
+        verify_length = self.block_size + 1
+        self._anchor_buffer = torch.empty(1, dtype=torch.long, device=device)
+        self._verify_ids = torch.empty((1, verify_length), dtype=torch.long, device=device)
+        self._verify_offsets = torch.arange(verify_length, dtype=torch.long, device=device)
+        self._cache_positions = torch.empty(verify_length, dtype=torch.long, device=device)
+        self._decision_buffer = torch.empty(
+            self.block_size + verify_length,
+            dtype=torch.long,
+            device=device,
+        )
 
     @torch.inference_mode()
     def _prefill(self, input_ids: torch.Tensor) -> tuple[int, object, torch.Tensor, float]:
@@ -74,6 +84,7 @@ class VanillaDFlashEngine:
                 past_key_values=cache,
                 use_cache=True,
                 output_hidden_states=True,
+                logits_to_keep=1,
                 return_dict=True,
             )
         anchor = int(output.logits[0, -1].argmax(dim=-1).item())
@@ -91,28 +102,6 @@ class VanillaDFlashEngine:
             for layer_id in self.adapter.target_layer_ids
         ]
         return torch.cat(selected, dim=-1)
-
-    def _build_causal_mask(
-        self,
-        past_length: int,
-        current_length: int,
-    ) -> torch.Tensor:
-        """标准因果 4D mask：current 各位置可看全部 past + 自身及之前的 current。"""
-        total = past_length + current_length
-        minimum = torch.finfo(self.dtype).min
-        mask = torch.full(
-            (1, 1, current_length, total),
-            minimum,
-            dtype=self.dtype,
-            device=self.device,
-        )
-        if past_length:
-            mask[..., :past_length] = 0
-        causal = torch.tril(
-            torch.ones(current_length, current_length, dtype=torch.bool, device=self.device)
-        )
-        mask[..., past_length:].masked_fill_(causal, 0)
-        return mask
 
     @torch.inference_mode()
     def generate(
@@ -140,33 +129,32 @@ class VanillaDFlashEngine:
         while len(generated) < max_new_tokens and anchor not in stop_token_tokens:
             # ── Draft: DFlash 官方 block forward，取 greedy top-1 线性链 ──────────
             with DeviceTimer(self.device) as draft_timer:
+                self._anchor_buffer.fill_(anchor)
                 logits, _hidden = self.adapter.draft_first_raw(
                     target_context=target_update,
-                    anchor_ids=torch.tensor([anchor], dtype=torch.long, device=self.device),
+                    anchor_ids=self._anchor_buffer,
                     draft_cache=draft_cache,
                     cache_prefix_length=int(cache.get_seq_length()),
                 )
-            draft_tokens: list[int] = logits[0].argmax(dim=-1).tolist()
+            # Keep draft choices on-device until target verification has also
+            # produced its choices.  The previous ``tolist`` forced a D2H
+            # synchronization before the target forward; one combined transfer
+            # below is sufficient for the Python acceptance/stop control flow.
+            draft_token_ids = logits[0].argmax(dim=-1)
 
             # ── Verify: 目标一次因果前向，接受最长匹配前缀 + bonus ────────────────
             with DeviceTimer(self.device) as verify_timer:
                 past_length = int(cache.get_seq_length())
                 verify_length = K + 1
-                current_ids = torch.tensor(
-                    [[anchor] + draft_tokens], dtype=torch.long, device=self.device
-                )
-                position_ids = torch.arange(
-                    past_length,
-                    past_length + verify_length,
-                    dtype=torch.long,
-                    device=self.device,
-                ).unsqueeze(0)
-                cache_position = position_ids.clone()
-                attention_mask = self._build_causal_mask(past_length, verify_length)
+                self._verify_ids[0, 0] = anchor
+                self._verify_ids[0, 1:].copy_(draft_token_ids)
+                current_ids = self._verify_ids
+                torch.add(self._verify_offsets, past_length, out=self._cache_positions)
+                cache_position = self._cache_positions
+                position_ids = cache_position.unsqueeze(0)
 
                 output = self.target(
                     input_ids=current_ids,
-                    attention_mask=attention_mask,
                     position_ids=position_ids,
                     cache_position=cache_position,
                     past_key_values=cache,
@@ -175,7 +163,13 @@ class VanillaDFlashEngine:
                     return_dict=True,
                 )
                 # target_logits[0, i, :] 是位置 i 之后的预测（即应该匹配 draft_tokens[i]）。
-                target_argmax: list[int] = output.logits[0].argmax(dim=-1).tolist()
+                target_argmax_ids = output.logits[0].argmax(dim=-1)
+                self._decision_buffer[:K].copy_(draft_token_ids)
+                self._decision_buffer[K:].copy_(target_argmax_ids)
+                decision_tokens: list[int] = self._decision_buffer.tolist()
+
+            draft_tokens = decision_tokens[:K]
+            target_argmax = decision_tokens[K:]
 
             accepted = 0
             for i in range(K):

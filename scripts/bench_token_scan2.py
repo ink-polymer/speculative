@@ -7,7 +7,6 @@ import time
 from pathlib import Path
 
 import torch
-import torch_npu
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
@@ -19,7 +18,7 @@ from dflash_specblock.config import ExperimentConfig
 
 def main():
     project = Path(__file__).resolve().parent.parent
-    config = ExperimentConfig.from_json(str(project / "configs/qwen3_4b_a2_tree15_float32.json"))
+    config = ExperimentConfig.from_json(str(project / "configs/qwen3_4b_cuda_tree15_float32.json"))
     device = resolve_device(config.device)
     dtype = torch.float32
 

@@ -1,0 +1,228 @@
+"""Production-checkpoint checks executed on the benchmark GPU before long runs."""
+from __future__ import annotations
+
+from dataclasses import replace
+import importlib.metadata
+import math
+from pathlib import Path
+import platform
+import subprocess
+
+from .common import digest, source_hashes, write_json
+from .config import Variant, build_variants
+
+
+BF16_NUMERICAL_LOGIT_ERROR_LIMIT = 0.5
+
+
+def classify_greedy_mismatch(mismatch, reference_trace, *, dtype,
+                             max_logit_error_limit=BF16_NUMERICAL_LOGIT_ERROR_LIMIT):
+    """Allow only a stable, bounded BF16 near-tie; all unexplained mismatches fail closed."""
+    index = mismatch["first_index"]
+    reference_point = next((point for point in reference_trace
+                            if point["generated_index"] == index), None)
+    audit_point = None
+    for round_ in mismatch.get("greedy_logit_audit", []):
+        offset = index - round_["generated_start_index"]
+        if 0 <= offset < len(round_["tree_token_ids"]):
+            audit_point = {
+                "tree_token_id": round_["tree_token_ids"][offset],
+                "sequential_token_id": round_["sequential_token_ids"][offset],
+                "max_absolute_logit_error": round_["max_absolute_logit_error"][offset],
+                "tree_top1_margin": round_["tree_top1_margin"][offset],
+                "sequential_top1_margin": round_["sequential_top1_margin"][offset],
+            }
+            break
+
+    evidence = {"reference_trace": reference_point, "tree_sequential_audit": audit_point}
+    conditions = {
+        "bf16_checkpoint": dtype == "bfloat16",
+        "different_tokens": mismatch.get("reference_token_id") is not None
+                            and mismatch.get("result_token_id") is not None
+                            and mismatch["reference_token_id"] != mismatch["result_token_id"],
+        "reference_repeat_stable": bool(mismatch.get("reference_repeat_equal")),
+        "candidate_repeat_stable": bool(mismatch.get("result_audit_repeat_equal")),
+        "reference_trace_present": reference_point is not None,
+        "tree_audit_present": audit_point is not None,
+    }
+    if reference_point is not None:
+        conditions["reference_trace_matches_output"] = (
+            reference_point["token_id"] == mismatch.get("reference_token_id")
+        )
+    if audit_point is not None:
+        error = float(audit_point["max_absolute_logit_error"])
+        ambiguity_bound = 2.0 * error
+        values = (error, float(reference_point["top1_margin"]) if reference_point else math.inf,
+                  float(audit_point["tree_top1_margin"]),
+                  float(audit_point["sequential_top1_margin"]))
+        evidence["ambiguity_margin_bound"] = ambiguity_bound
+        evidence["max_logit_error_limit"] = max_logit_error_limit
+        conditions.update({
+            "tree_trace_matches_output": audit_point["tree_token_id"] == mismatch.get("result_token_id"),
+            "finite_nonzero_error": all(math.isfinite(value) for value in values) and error > 0,
+            "bounded_logit_error": error <= max_logit_error_limit,
+            "reference_is_near_tie": reference_point is not None
+                                     and float(reference_point["top1_margin"]) <= ambiguity_bound,
+            "tree_is_near_tie": float(audit_point["tree_top1_margin"]) <= ambiguity_bound,
+            "sequential_replay_is_near_tie": (
+                float(audit_point["sequential_top1_margin"]) <= ambiguity_bound
+            ),
+        })
+    passed = all(conditions.values())
+    return {
+        "classification": "bounded_bf16_near_tie" if passed else "unexplained_greedy_mismatch",
+        "gate_passed": passed,
+        "conditions": conditions,
+        "failed_conditions": [name for name, value in conditions.items() if not value],
+        "evidence": evidence,
+    }
+
+
+def check_environment(cfg, code_backend="docker", device="cuda:0"):
+    import torch
+    import math_verify  # noqa: F401
+    from transformers import Qwen3ForCausalLM  # noqa: F401
+    if not torch.cuda.is_available() or torch.device(device).type != "cuda":
+        raise RuntimeError("CUDA is unavailable")
+    torch.cuda.set_device(device)
+    if cfg["model"].get("dtype", "bfloat16") == "bfloat16" and not torch.cuda.is_bf16_supported():
+        raise RuntimeError("The GPU does not support BF16")
+    image_id = None
+    if code_backend == "docker":
+        image_id = subprocess.check_output(["docker", "image", "inspect", "gbv-code-eval:py311",
+                                           "--format", "{{.Id}}"], text=True).strip()
+        subprocess.run(["docker", "run", "--rm", "--network=none", "gbv-code-eval:py311",
+                        "python", "-c", "import numpy, sympy; print('code evaluator ready')"], check=True)
+    versions = {name: importlib.metadata.version(name) for name in
+                ("torch", "transformers", "huggingface-hub", "datasets", "numpy", "math-verify")}
+    evaluator_checks = []
+    if "livecodebench" in cfg["datasets"]:
+        from .lcb import evaluate_lcb
+        # The chosen production backend must execute both LCB calling conventions.
+        for functional in (False, True):
+            evaluation = {"fn_name": "add" if functional else None, "tests": [
+                {"input": "1\n2" if functional else "1 2\n", "output": "3"},
+                {"input": "7\n9" if functional else "7 9\n", "output": "16"}]}
+            for correct in (False, True):
+                expression = "a+b" if correct else "3"
+                code = ("class Solution:\n    def add(self,a,b): return " + expression if functional else
+                        "import sys\na,b=map(int,sys.stdin.buffer.read().split())\nprint(" + expression + ")")
+                result = evaluate_lcb(code, evaluation, backend=code_backend, timeout=2)
+                if result["passed"] is not correct:
+                    raise RuntimeError(f"LiveCodeBench evaluator preflight failed: {result}")
+                evaluator_checks.append({"functional": functional, "expected_pass": correct, "result": result})
+    return {"versions": versions, "python": platform.python_version(), "cuda": torch.version.cuda,
+            "gpu": torch.cuda.get_device_name(device), "total_memory_bytes": torch.cuda.get_device_properties(device).total_memory,
+            "code_backend": code_backend, "code_image_id": image_id, "lcb_evaluator_checks": evaluator_checks}
+
+
+def check_model(cfg, output: Path, device="cuda:0", code_backend="docker", only_variants=None):
+    import torch
+    from .engine import load_models
+    from .runner import model_identity, stop_token_ids
+    from .tree import sampled_tree, compact_cache
+
+    environment = check_environment(cfg, code_backend, device)
+    model = model_identity(cfg["model"])
+    engine, tokenizer = load_models(model, device)
+    stop_ids = stop_token_ids(engine, tokenizer)
+    prompts = ["Compute 19 + 23. Give a brief explanation.",
+               "Write a Python function that reverses a list.",
+               "Explain why the sum of two even integers is even."]
+    from .config import select_variants
+    variants = [Variant(**e["variant"]) for e in select_variants(build_variants(cfg), only_variants)]
+    # Keep every structural variation; set T=0 solely for the equality gate.
+    unique = {}
+    for v in variants:
+        v = replace(v, temperature=0., draft_temperature=1.)
+        unique[tuple((k, value) for k, value in v.to_dict().items() if k != "name")] = v
+    checks = []
+    with torch.inference_mode():
+        for prompt in prompts:
+            ids = tokenizer.apply_chat_template([{"role": "user", "content": prompt}],
+                    tokenize=True, add_generation_prompt=True, enable_thinking=bool(model.get("enable_thinking", False)), return_tensors="pt").to(device)
+            reference = engine.generate(
+                ids, Variant(name="ar", method="target", paths=1, temperature=0),
+                64, stop_ids, seed=105, audit_greedy=True
+            )
+            for v in unique.values():
+                result = engine.generate(ids, v, 64, stop_ids, seed=105)
+                reference_ids = reference["generated_token_ids"]
+                result_ids = result["generated_token_ids"]
+                equal = result_ids == reference_ids
+                check = {"prompt_sha256": digest(prompt), "variant": v.to_dict(),
+                         "greedy_equal": equal, "gate_passed": equal}
+                if not equal:
+                    common = min(len(reference_ids), len(result_ids))
+                    first_mismatch = next((i for i in range(common) if reference_ids[i] != result_ids[i]), common)
+                    repeated_reference = engine.generate(
+                        ids, Variant(name="ar_repeat", method="target", paths=1, temperature=0),
+                        64, stop_ids, seed=105, audit_greedy=True
+                    )
+                    audited_result = engine.generate(ids, v, 64, stop_ids, seed=105, audit_greedy=True)
+                    mismatch = {
+                        "first_index": first_mismatch,
+                        "reference_token_id": reference_ids[first_mismatch] if first_mismatch < len(reference_ids) else None,
+                        "result_token_id": result_ids[first_mismatch] if first_mismatch < len(result_ids) else None,
+                        "reference_token_ids": reference_ids,
+                        "result_token_ids": result_ids,
+                        "reference_finish_reason": reference["finish_reason"],
+                        "result_finish_reason": result["finish_reason"],
+                        "repeated_reference_token_ids": repeated_reference["generated_token_ids"],
+                        "reference_repeat_equal": repeated_reference["generated_token_ids"] == reference_ids,
+                        "audited_result_token_ids": audited_result["generated_token_ids"],
+                        "result_audit_repeat_equal": audited_result["generated_token_ids"] == result_ids,
+                        "result_rounds": result["rounds"],
+                        "greedy_logit_audit": audited_result["greedy_audit"],
+                    }
+                    diagnosis = classify_greedy_mismatch(
+                        mismatch, reference["target_greedy_trace"], dtype=model.get("dtype", "bfloat16")
+                    )
+                    mismatch["numerical_diagnosis"] = diagnosis
+                    check["mismatch"] = mismatch
+                    check["numerical_ambiguity"] = diagnosis["gate_passed"]
+                    check["gate_passed"] = diagnosis["gate_passed"]
+                checks.append(check)
+            # Verify actual checkpoint logits and KV compaction on a branched tree.
+            future = reference["generated_token_ids"][:4]
+            paths = torch.tensor([future[1:4], [future[1], future[3], future[2]]], device=device)
+            tree = sampled_tree(paths)
+            prefix_length = ids.shape[1]
+            cache = engine.cache_factory()
+            engine.target_forward(ids, cache, hidden=False)
+            tree_out = engine.target_forward(torch.tensor([[future[0]] + tree.tokens], device=device), cache,
+                hidden=False, positions=(torch.tensor(tree.depths, device=device) + prefix_length)[None],
+                mask=tree.mask(prefix_length, next(engine.target.parameters()).dtype, device))
+            for path, nodes in zip(paths, tree.path_nodes):
+                sequence = torch.cat([ids, torch.tensor([[future[0]]], device=device), path[None]], 1)
+                sequential = engine.target(sequence).logits[:, prefix_length:]
+                actual = tree_out.logits[:, [0] + nodes]
+                equal = bool((actual.argmax(-1) == sequential.argmax(-1)).all())
+                checks.append({"check": "tree_argmax", "passed": equal,
+                               "max_absolute_logit_error": float((actual - sequential).abs().max())})
+            keep = [0] + tree.path_nodes[1][:2]
+            compact_cache(cache, prefix_length, keep, device)
+            token = future[-1]
+            actual = engine.target_forward(torch.tensor([[token]], device=device), cache, hidden=False).logits[:, -1]
+            sequence = torch.cat([ids, torch.tensor([[future[0], int(paths[1, 0]), int(paths[1, 1]), token]], device=device)], 1)
+            sequential = engine.target(sequence).logits[:, -1]
+            checks.append({"check": "compacted_cache_argmax", "passed": bool((actual.argmax(-1) == sequential.argmax(-1)).all()),
+                           "max_absolute_logit_error": float((actual - sequential).abs().max())})
+    generation_checks = [check for check in checks if "greedy_equal" in check]
+    passed = all(c.get("gate_passed", c.get("passed", False)) for c in checks)
+    greedy_exact_passed = all(check["greedy_equal"] for check in generation_checks)
+    numerical_ambiguities = sum(bool(check.get("numerical_ambiguity")) for check in generation_checks)
+    result = {"passed": passed, "greedy_exact_passed": greedy_exact_passed,
+              "numerical_ambiguities": numerical_ambiguities,
+              "numerical_policy": {
+                  "dtype": "bfloat16_only",
+                  "max_absolute_logit_error": BF16_NUMERICAL_LOGIT_ERROR_LIMIT,
+                  "required": "stable repeated outputs and top-1 margins <= 2 * measured error",
+              },
+              "scope": "checkpoint structural and bounded-numerical smoke gate, not full benchmark results",
+              "environment": environment, "model": model, "stop_token_ids": stop_ids,
+              "source_hashes": source_hashes(), "checks": checks}
+    write_json(output, result)
+    if not passed:
+        raise RuntimeError(f"GPU correctness gate failed; inspect {output}. Do not launch formal timing runs.")
+    return result

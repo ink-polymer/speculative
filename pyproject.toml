@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "dflash-specblock"
 version = "0.1.0"
-description = "DFlash diffusion drafting plus SpecBlock tree verification on Ascend NPU"
+description = "GPU-optimized DFlash diffusion drafting plus SpecBlock tree verification on NVIDIA CUDA"
 readme = "README.md"
 requires-python = ">=3.10,<3.12"
 license = {text = "MIT"}
