@@ -16,8 +16,10 @@ uploaded.
 | 2143068 | Qwen3-8B | fresh 10-dataset 350GB rerun | RUNNING on n555 |
 | 2144508 | Qwen3-4B | diffusion scaffold fixed-grid optimization | COMPLETED |
 | 2144509 | Qwen3-8B | diffusion scaffold fixed-grid optimization | COMPLETED |
-| 2145591 | Qwen3-4B | shared-probability scaffold optimization rerun | PENDING: Priority |
-| 2145624 | Qwen3-8B | shared-probability scaffold optimization rerun | PENDING: Priority |
+| 2145591 | Qwen3-4B | shared-probability scaffold optimization rerun | COMPLETED |
+| 2145624 | Qwen3-8B | shared-probability scaffold optimization rerun | COMPLETED |
+| 2146158 | Qwen3-4B | diffusion support-width 8/16/32/64 scan | RUNNING on n38 |
+| 2146157 | Qwen3-8B | diffusion support-width 8/16/32/64 scan | RUNNING on n38 |
 
 The pilots run the full `tests/gbv_paper` gate before loading checkpoints.
 Pilot metrics are diagnostic and use three fixed development prompts; they are
@@ -79,6 +81,13 @@ enumeration tests and the full `tests/gbv_paper` suite pass before the paired GP
 rerun. The rerun will determine whether removing the measured 6--7 ms of
 per-round `select_and_correct` overhead is sufficient to cross the DDTree TPOT
 baseline at T=0.6 and T=1.0.
+
+The shared-probability rerun improved the best Qwen3-4B result to 0.976x versus
+DDTree at T=0.6 and 0.987x at T=1.0; Qwen3-8B remained at 0.835x and 0.807x.
+Jobs 2146158 and 2146157 therefore run a focused third pass over proposal
+support widths 8, 16, 32, and 64. The hypothesis is that wider retained support
+will reduce early correction exits at higher temperatures, improving committed
+tokens per Target tree forward enough to offset the small sparse-transport cost.
 
 ## AdaptiveTree results available now
 
