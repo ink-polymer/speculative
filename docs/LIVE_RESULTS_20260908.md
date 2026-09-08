@@ -12,7 +12,8 @@ uploaded.
 | 2142137 | Qwen3-8B | diffusion scaffold pilot, T=0.3/0.6/1.0 | COMPLETED |
 | 2142850 | Qwen3-4B | AdaptiveTree 10-dataset matrix | RUNNING on n141 |
 | 2142851 | Qwen3-8B | first resume attempt | FAILED: shared prepare lock |
-| 2142956 | Qwen3-8B | AdaptiveTree resume from 7/10 datasets | RUNNING on n538 |
+| 2142956 | Qwen3-8B | second resume attempt | FAILED: locked GPU UUID differed |
+| 2143068 | Qwen3-8B | fresh 10-dataset 350GB rerun | RUNNING on n555 |
 
 The pilots run the full `tests/gbv_paper` gate before loading checkpoints.
 Pilot metrics are diagnostic and use three fixed development prompts; they are
@@ -76,5 +77,10 @@ stored method, 1,118 had at least one method mismatch, and 522/736 paired prompt
 had different SDPA and FlashAttention target-baseline tokens. Accordingly,
 `publication_gate_passed=false` and `strict_lossless_claim_eligible=false`.
 
-Missing AdaptiveTree work: Qwen3-8B SWE-bench, MT-Bench, and Alpaca; all Qwen3-4B
+The old Qwen3-8B run is retained unchanged. It cannot be resumed on an arbitrary
+GH200 because its immutable contract pins a physical GPU UUID. Job 2143068 uses
+a new result directory and will run all ten datasets on one consistently recorded
+GPU instead of weakening the hardware contract.
+
+Missing AdaptiveTree work: a complete fresh Qwen3-8B matrix and all Qwen3-4B
 datasets. The page will be updated when new validated artifacts are available.
