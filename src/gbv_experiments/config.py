@@ -40,6 +40,7 @@ class Variant:
     condition_features: str = "target"
     probability_dtype: str = "float64"
     tree_budget: int = 60
+    diffusion_support_size: int = 8
 
     def validate(self) -> None:
         if self.method not in {"target", "dflash", "token", "bv", "gbv", "tree_gbv",
@@ -61,7 +62,10 @@ class Variant:
             raise ValueError(f"Unknown method: {self.method}")
         if self.paths < 1 or self.length < 1 or self.temperature < 0:
             raise ValueError("paths/length must be positive and temperature nonnegative")
-        if not math.isfinite(self.temperature) or any(not isinstance(v, int) or isinstance(v, bool) for v in (self.paths, self.length, self.tree_budget)):
+        if not math.isfinite(self.temperature) or any(
+                not isinstance(v, int) or isinstance(v, bool)
+                for v in (self.paths, self.length, self.tree_budget,
+                          self.diffusion_support_size)):
             raise ValueError("Counts must be integers and temperature must be finite")
         if self.method in {"dflash", "token", "bv"} and self.paths != 1:
             raise ValueError("Single-path token/BV baselines require paths=1")
@@ -76,6 +80,8 @@ class Variant:
         if self.method in DIFFUSION_LAW_METHODS:
             if self.temperature <= 0 or self.probability_dtype != "float64":
                 raise ValueError("Diffusion tree verification requires T>0 and FP64 probabilities")
+            if not 1 <= self.diffusion_support_size <= 256:
+                raise ValueError("Diffusion support size must be in 1..256")
             if self.draft_attention != "bidirectional" or self.condition_features != "target":
                 raise ValueError("Diffusion theorem requires the one-step target-conditioned masked block")
             if self.paths * self.length > self.tree_budget:

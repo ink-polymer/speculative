@@ -27,6 +27,14 @@ SCAFFOLD_GRID = (
     (2, 12, 36),
     (2, 15, 45),
 )
+SUPPORT_SIZES = (8, 16, 32, 64)
+SUPPORT_GRID = (
+    (1, 12, 24),
+    (1, 12, 36),
+    (1, 15, 45),
+    (1, 15, 60),
+    (2, 15, 45),
+)
 
 
 def optimization_variants(temperature: float) -> list[Variant]:
@@ -52,6 +60,37 @@ def optimization_variants(temperature: float) -> list[Variant]:
         ))
     if len({variant.name for variant in variants}) != len(variants):
         raise AssertionError("Optimization variants must have unique names")
+    for variant in variants:
+        variant.validate()
+    return variants
+
+
+def support_optimization_variants(temperature: float) -> list[Variant]:
+    """Focused support-width grid for high-temperature acceptance losses."""
+    if temperature not in TEMPERATURES:
+        raise ValueError("Optimization temperature must be 0.3, 0.6 or 1.0")
+    base = Variant(
+        name="base", method="ddtree", paths=1, length=15,
+        temperature=temperature, draft_temperature=temperature,
+        tree_budget=45, probability_dtype="float64",
+    )
+    variants = [
+        replace(base, name=BASELINE_NAMES[0], method="dflash"),
+        replace(base, name=BASELINE_NAMES[1], method="ddtree"),
+    ]
+    for paths, length, budget in SUPPORT_GRID:
+        for support in SUPPORT_SIZES:
+            stem = f"k{paths}_l{length}_b{budget}_s{support}"
+            variants.extend((
+                replace(base, name=f"{stem}_terminal", method="diffusion_scaffold_bv",
+                        paths=paths, length=length, tree_budget=budget,
+                        diffusion_support_size=support),
+                replace(base, name=f"{stem}_ancestral", method="diffusion_scaffold_ancestral",
+                        paths=paths, length=length, tree_budget=budget,
+                        diffusion_support_size=support),
+            ))
+    if len({variant.name for variant in variants}) != len(variants):
+        raise AssertionError("Support optimization variants must have unique names")
     for variant in variants:
         variant.validate()
     return variants
@@ -93,7 +132,8 @@ def summarize(rows: list[dict]) -> dict:
         key = (row["temperature"], row["variant"])
         grouped[key].append(row)
         metadata[key] = {field: row[field] for field in
-                         ("method", "paths", "length", "tree_budget")}
+                         ("method", "paths", "length", "tree_budget",
+                          "diffusion_support_size")}
     per_temperature = []
     for temperature in sorted({key[0] for key in grouped}):
         baseline = {}
@@ -126,7 +166,9 @@ def summarize(rows: list[dict]) -> dict:
             continue
         overall.append({
             "variant": name,
-            **{field: records[0][field] for field in ("method", "paths", "length", "tree_budget")},
+            **{field: records[0][field] for field in
+               ("method", "paths", "length", "tree_budget",
+                "diffusion_support_size")},
             "temperatures": expected_temperatures,
             "geomean_speedup_vs_dflash": math.exp(sum(
                 math.log(record["speedup_vs_dflash"]) for record in records

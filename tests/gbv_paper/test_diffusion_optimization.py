@@ -1,7 +1,8 @@
 import pytest
 
 from gbv_experiments.diffusion_optimization import (
-    BASELINE_NAMES, TEMPERATURES, optimization_variants, profile_names, summarize,
+    BASELINE_NAMES, SUPPORT_SIZES, TEMPERATURES, optimization_variants,
+    profile_names, summarize, support_optimization_variants,
 )
 
 
@@ -21,6 +22,18 @@ def test_optimization_grid_is_valid_unique_and_keeps_controls(temperature):
                for variant in candidates)
 
 
+@pytest.mark.parametrize("temperature", TEMPERATURES)
+def test_support_grid_is_valid_unique_and_covers_widths(temperature):
+    variants = support_optimization_variants(temperature)
+    assert len(variants) == 42
+    assert [variant.name for variant in variants[:2]] == list(BASELINE_NAMES)
+    assert len({variant.name for variant in variants}) == len(variants)
+    candidates = variants[2:]
+    assert {variant.diffusion_support_size for variant in candidates} == set(SUPPORT_SIZES)
+    assert all((variant.paths + 1) * variant.length <= variant.tree_budget
+               for variant in candidates)
+
+
 def row(temperature, variant, decode_ms, sha, prompt=0, repeat=0):
     method = ("dflash" if variant == BASELINE_NAMES[0]
               else "ddtree" if variant == BASELINE_NAMES[1]
@@ -32,6 +45,7 @@ def row(temperature, variant, decode_ms, sha, prompt=0, repeat=0):
         "paths": 1,
         "length": 15,
         "tree_budget": 45,
+        "diffusion_support_size": 8,
         "prompt": prompt,
         "repeat": repeat,
         "generated_sha256": sha,

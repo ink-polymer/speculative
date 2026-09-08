@@ -36,4 +36,5 @@ srun --ntasks=1 "$DIFFUSION_OPT_PYTHON" scripts/optimize_diffusion_scaffold.py \
   --config "$DIFFUSION_OPT_CONFIG" \
   --output "$DIFFUSION_OPT_OUTPUT/scan" \
   --tokens "${DIFFUSION_OPT_TOKENS:-96}" \
-  --repeats "${DIFFUSION_OPT_REPEATS:-2}"
+  --repeats "${DIFFUSION_OPT_REPEATS:-2}" \
+  --grid "${DIFFUSION_OPT_GRID:-coarse}"

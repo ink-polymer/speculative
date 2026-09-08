@@ -12,8 +12,9 @@ from gbv_experiments.common import ROOT, digest, file_hash, write_json
 from gbv_experiments.config import load_config
 from gbv_experiments.conversation import encode_messages
 from gbv_experiments.diffusion_optimization import (
-    BASELINE_NAMES, SCAFFOLD_GRID, TEMPERATURES, optimization_variants,
-    profile_names, summarize,
+    BASELINE_NAMES, SCAFFOLD_GRID, SUPPORT_GRID, SUPPORT_SIZES, TEMPERATURES,
+    optimization_variants, profile_names, summarize,
+    support_optimization_variants,
 )
 from gbv_experiments.engine import load_models
 from gbv_experiments.runner import output_lock, stop_token_ids
@@ -28,6 +29,7 @@ def compact_result(result: dict, *, prompt: int, repeat: int, variant) -> dict:
         "paths": variant.paths,
         "length": variant.length,
         "tree_budget": variant.tree_budget,
+        "diffusion_support_size": variant.diffusion_support_size,
         "prompt": prompt,
         "repeat": repeat,
         "generated_sha256": digest(result["generated_token_ids"]),
@@ -44,10 +46,15 @@ def compact_result(result: dict, *, prompt: int, repeat: int, variant) -> dict:
 
 
 @torch.inference_mode()
-def run(config_path: Path, output: Path, device: str, tokens: int, repeats: int) -> dict:
+def run(config_path: Path, output: Path, device: str, tokens: int, repeats: int,
+        search_grid: str = "coarse") -> dict:
     if not 32 <= tokens <= 256 or repeats not in (1, 2, 3):
         raise ValueError("tokens must be 32..256 and repeats must be 1..3")
+    if search_grid not in {"coarse", "support"}:
+        raise ValueError("search_grid must be coarse or support")
     cfg = load_config(config_path)
+    variant_builder = (optimization_variants if search_grid == "coarse"
+                       else support_optimization_variants)
     with output_lock(output):
         if (output / "summary.json").exists() or (output / "scan.json").exists():
             raise ValueError("Optimization output already exists; choose a new directory")
@@ -61,9 +68,12 @@ def run(config_path: Path, output: Path, device: str, tokens: int, repeats: int)
             "model": cfg["model"],
             "device": device,
             "temperatures": list(TEMPERATURES),
+            "search_grid": search_grid,
             "baselines": list(BASELINE_NAMES),
             "grid": [{"paths": k, "length": length, "tree_budget": budget}
-                     for k, length, budget in SCAFFOLD_GRID],
+                     for k, length, budget in
+                     (SCAFFOLD_GRID if search_grid == "coarse" else SUPPORT_GRID)],
+            "support_sizes": ([8] if search_grid == "coarse" else list(SUPPORT_SIZES)),
             "continuation_backends": ["terminal", "ancestral"],
             "prompts_sha256": [digest(prompt) for prompt in DIAGNOSTIC_PROMPTS],
             "tokens": tokens,
@@ -84,7 +94,7 @@ def run(config_path: Path, output: Path, device: str, tokens: int, repeats: int)
                    for prompt in DIAGNOSTIC_PROMPTS]
         rows = []
         for temperature in TEMPERATURES:
-            variants = optimization_variants(temperature)
+            variants = variant_builder(temperature)
             by_name = {variant.name: variant for variant in variants}
             for variant in variants:
                 engine.generate(encoded[0], variant, 24, stops, seed=20260908)
@@ -111,7 +121,7 @@ def run(config_path: Path, output: Path, device: str, tokens: int, repeats: int)
         summary = summarize(rows)
         profiles = []
         for temperature in TEMPERATURES:
-            by_name = {variant.name: variant for variant in optimization_variants(temperature)}
+            by_name = {variant.name: variant for variant in variant_builder(temperature)}
             for name in profile_names(summary, temperature):
                 result = engine.generate(
                     encoded[0], by_name[name], min(tokens, 96), stops,
@@ -141,8 +151,10 @@ def main() -> None:
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--tokens", type=int, default=96)
     parser.add_argument("--repeats", type=int, default=2)
+    parser.add_argument("--grid", choices=["coarse", "support"], default="coarse")
     args = parser.parse_args()
-    run(args.config.resolve(), args.output.resolve(), args.device, args.tokens, args.repeats)
+    run(args.config.resolve(), args.output.resolve(), args.device, args.tokens,
+        args.repeats, args.grid)
 
 
 if __name__ == "__main__":

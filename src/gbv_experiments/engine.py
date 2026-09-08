@@ -290,7 +290,8 @@ class Engine:
                      else probabilities(logits, draft_temp, dtype))
                 if variant.method in DIFFUSION_TREE_METHODS:
                     diffusion_law = diffusion_tree_bv.DiffusionBlockLaw.from_logits(
-                        logits, noise_ids[0], draft_temp, int(self.draft.mask_token_id))
+                        logits, noise_ids[0], draft_temp, int(self.draft.mask_token_id),
+                        support_size=variant.diffusion_support_size)
                 draft_calls += 1
             with meter.measure("tree_build"):
                 if variant.method == "ddtree" or variant.method in TERMINAL_TREE_METHODS:
