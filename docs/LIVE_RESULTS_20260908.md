@@ -23,6 +23,11 @@ uploaded.
 | 2147349 | Qwen3-4B | terminal-mass tree-block kernel/shape scan | COMPLETED |
 | 2147350 | Qwen3-8B | terminal-mass tree-block kernel/shape scan | COMPLETED |
 | 2147882 | model-independent | terminal-mass exact-law/engine gate | COMPLETED |
+| 2148200 | Qwen3-8B partial | AdaptiveTree aggregate audit | COMPLETED |
+| 2149121 / 2149122 | Qwen3-4B / 8B | original same-tree verifier replay | COMPLETED |
+| 2150535 / 2150536 | Qwen3-4B / 8B | sparse-complement verifier replay | COMPLETED |
+| 2151204 / 2151205 | Qwen3-4B / 8B | joint-event verifier replay | COMPLETED |
+| 2151759 / 2151994 | Qwen3-4B / 8B | fused-CUDA verifier replay | COMPLETED |
 
 The pilots run the full `tests/gbv_paper` gate before loading checkpoints.
 Pilot metrics are diagnostic and use three fixed development prompts; they are
@@ -133,15 +138,25 @@ repeat-equal configuration that beats DDTree at every tested temperature:
 | Qwen3-4B | `tm_l15_b60_dense` | 1.509x | 1.021x | 1.145x | **1.208x** | **1.354x** |
 | Qwen3-8B | `tm_l15_b45_dense` | 1.153x | 1.043x | 1.040x | **1.077x** | **1.423x** |
 
-For Qwen3-8B, the winning configuration is also the strict same-tree L15/B45
-comparison: the DDTree proposal, Target/Draft models, temperatures, budget,
-attention backend, probability precision, and model forwards are unchanged;
-only the exact terminal-mass verification execution graph differs. For
-Qwen3-4B, the strict same-tree `tm_l15_b45_dense` candidate also wins in the
-three-temperature aggregate at 1.184x versus DDTree, although its T=0.6 point
-is 0.976x. The tuned L15/B60 single configuration above crosses DDTree at all
-three temperatures. Temperature-specific selection reaches 1.517x/1.044x/
-1.145x for 4B and 1.220x/1.087x/1.040x for 8B.
+For Qwen3-8B, the displayed configuration freezes the L15/B45 tree and model
+controls, but it does not couple the realized stochastic path to DDTree. For
+Qwen3-4B, the strict same-tree `tm_l15_b45_dense` observation has a 1.184x
+three-temperature aggregate but a 0.976x T=0.6 point; the displayed B60 row
+also changes proposal budget. Temperature-specific end-to-end selection reaches
+1.517x/1.044x/1.145x for 4B and 1.220x/1.087x/1.040x for 8B. These observations
+are reinterpreted by the fixed-state audit immediately below.
+
+**Superseding architecture audit:** these end-to-end rows do not establish a
+verifier-architecture speedup. The methods consume random numbers differently
+and took different realized acceptance paths; repeat equality only establishes
+within-method reproducibility. A 252-pair-per-model replay on identical real
+tree tensors found that the original terminal-mass verifier reaches only
+0.290x (4B) and 0.308x (8B) of DDTree verifier speed. Sparse complement, one
+joint terminal event draw, and a one-launch CUDA traversal improved the kernel,
+but the fastest completed version still reached only 0.614x and 0.667x. All
+three temperature gates failed. The prior architecture-win interpretation is
+therefore withdrawn; see the
+[full architecture and AdaptiveTree audit](ARCHITECTURE_ADAPTIVE_AUDIT_20260908.md).
 
 Sanitized complete summaries: [Qwen3-4B](../results/optimization/20260908/qwen3_4b_terminal_mass_summary.json)
 and [Qwen3-8B](../results/optimization/20260908/qwen3_8b_terminal_mass_summary.json).
@@ -168,13 +183,25 @@ decode TPOT, so values above 1 are faster.
 
 AdaptiveTree wins 3/7 datasets against DFlash and 6/7 against tuned DDTree.
 The `no_exploration` ablation wins all seven stored aggregate comparisons and is
-therefore retained in both the resumed 8B run and the new 4B run.
+therefore retained in both the resumed 8B run and the new 4B run. This variant
+only disables scheduled exploration; it still performs warmup, latency EWMA,
+acceptance calibration, and adaptive budget selection.
 
 These speed rows are diagnostic only. The run used
 `record-bf16-mismatches`: 354/1,472 backend responses were exact across every
 stored method, 1,118 had at least one method mismatch, and 522/736 paired prompts
 had different SDPA and FlashAttention target-baseline tokens. Accordingly,
 `publication_gate_passed=false` and `strict_lossless_claim_eligible=false`.
+
+The follow-up exact-output subset audit confirms the direction but not the
+original magnitude. On the five datasets with adequately populated identical
+Adaptive/`no_exploration` outputs, `no_exploration` is 1.099x faster by geometric
+mean. DDTree is 0.895x as fast as DFlash on the corresponding adequately
+populated exact-output subsets. Forced exploration is inefficient, the full
+controller often drifts away from B=128, and its global fixed-cost EWMA absorbs
+budget-dependent tree-build time. Detailed counts, stage evidence, limitations,
+and sanitized JSON are in the
+[audit report](ARCHITECTURE_ADAPTIVE_AUDIT_20260908.md).
 
 The old Qwen3-8B run is retained unchanged. It cannot be resumed on an arbitrary
 GH200 because its immutable contract pins a physical GPU UUID. Job 2143068 uses
