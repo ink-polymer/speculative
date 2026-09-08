@@ -1,0 +1,3442 @@
+{
+  "selection_scope": "diagnostic fixed-grid optimization; not a formal or held-out claim",
+  "baseline_names": [
+    "dflash_l15_b45",
+    "ddtree_l15_b45"
+  ],
+  "per_temperature": [
+    {
+      "records": 6,
+      "decode_tokens": 506,
+      "decode_ms_per_token": 6.720201930803294,
+      "e2e_ms_per_token": 7.056855716882637,
+      "mean_accepted_draft_tokens": 5.921052631578948,
+      "mean_committed_tokens": 6.657894736842105,
+      "mean_tree_nodes": 45.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_block",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 45,
+      "diffusion_support_size": 8,
+      "temperature": 0.3,
+      "variant": "tm_l15_b45_block",
+      "speedup_vs_dflash": 1.534501189694912,
+      "speedup_vs_ddtree": 1.5173422765385158
+    },
+    {
+      "records": 6,
+      "decode_tokens": 506,
+      "decode_ms_per_token": 6.734884917030199,
+      "e2e_ms_per_token": 7.071036902402739,
+      "mean_accepted_draft_tokens": 5.7368421052631575,
+      "mean_committed_tokens": 6.657894736842105,
+      "mean_tree_nodes": 36.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_dense",
+      "paths": 1,
+      "length": 12,
+      "tree_budget": 36,
+      "diffusion_support_size": 8,
+      "temperature": 0.3,
+      "variant": "tm_l12_b36_dense",
+      "speedup_vs_dflash": 1.5311557635872606,
+      "speedup_vs_ddtree": 1.514034259249077
+    },
+    {
+      "records": 6,
+      "decode_tokens": 506,
+      "decode_ms_per_token": 6.735423146360535,
+      "e2e_ms_per_token": 7.079322880940708,
+      "mean_accepted_draft_tokens": 5.7368421052631575,
+      "mean_committed_tokens": 6.657894736842105,
+      "mean_tree_nodes": 36.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_block",
+      "paths": 1,
+      "length": 12,
+      "tree_budget": 36,
+      "diffusion_support_size": 8,
+      "temperature": 0.3,
+      "variant": "tm_l12_b36_block",
+      "speedup_vs_dflash": 1.531033408551301,
+      "speedup_vs_ddtree": 1.513913272396766
+    },
+    {
+      "records": 6,
+      "decode_tokens": 506,
+      "decode_ms_per_token": 6.736522241244313,
+      "e2e_ms_per_token": 7.072833589859329,
+      "mean_accepted_draft_tokens": 5.921052631578948,
+      "mean_committed_tokens": 6.657894736842105,
+      "mean_tree_nodes": 45.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_dense",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 45,
+      "diffusion_support_size": 8,
+      "temperature": 0.3,
+      "variant": "tm_l15_b45_dense",
+      "speedup_vs_dflash": 1.530783613341552,
+      "speedup_vs_ddtree": 1.5136662704167254
+    },
+    {
+      "records": 6,
+      "decode_tokens": 506,
+      "decode_ms_per_token": 6.747431535662148,
+      "e2e_ms_per_token": 7.085198740355736,
+      "mean_accepted_draft_tokens": 5.7631578947368425,
+      "mean_committed_tokens": 6.657894736842105,
+      "mean_tree_nodes": 60.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_block",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 60,
+      "diffusion_support_size": 8,
+      "temperature": 0.3,
+      "variant": "tm_l15_b60_block",
+      "speedup_vs_dflash": 1.5283086317074772,
+      "speedup_vs_ddtree": 1.511218964222206
+    },
+    {
+      "records": 6,
+      "decode_tokens": 506,
+      "decode_ms_per_token": 6.757741415065165,
+      "e2e_ms_per_token": 7.100418076106507,
+      "mean_accepted_draft_tokens": 5.7631578947368425,
+      "mean_committed_tokens": 6.657894736842105,
+      "mean_tree_nodes": 60.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_dense",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 60,
+      "diffusion_support_size": 8,
+      "temperature": 0.3,
+      "variant": "tm_l15_b60_dense",
+      "speedup_vs_dflash": 1.5259769832001273,
+      "speedup_vs_ddtree": 1.5089133883920995
+    },
+    {
+      "records": 6,
+      "decode_tokens": 506,
+      "decode_ms_per_token": 7.076317715350899,
+      "e2e_ms_per_token": 7.4089416407332465,
+      "mean_accepted_draft_tokens": 5.425,
+      "mean_committed_tokens": 6.325,
+      "mean_tree_nodes": 30.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_block",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 30,
+      "diffusion_support_size": 8,
+      "temperature": 0.3,
+      "variant": "tm_l15_b30_block",
+      "speedup_vs_dflash": 1.4572773966094232,
+      "speedup_vs_ddtree": 1.4409820059892493
+    },
+    {
+      "records": 6,
+      "decode_tokens": 506,
+      "decode_ms_per_token": 7.084122747127629,
+      "e2e_ms_per_token": 7.421903910085348,
+      "mean_accepted_draft_tokens": 5.425,
+      "mean_committed_tokens": 6.325,
+      "mean_tree_nodes": 30.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_dense",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 30,
+      "diffusion_support_size": 8,
+      "temperature": 0.3,
+      "variant": "tm_l15_b30_dense",
+      "speedup_vs_dflash": 1.4556718207612833,
+      "speedup_vs_ddtree": 1.439394383816694
+    },
+    {
+      "records": 6,
+      "decode_tokens": 506,
+      "decode_ms_per_token": 7.2157255811257865,
+      "e2e_ms_per_token": 7.549970529453276,
+      "mean_accepted_draft_tokens": 5.921052631578948,
+      "mean_committed_tokens": 6.657894736842105,
+      "mean_tree_nodes": 45.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_serial",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 45,
+      "diffusion_support_size": 8,
+      "temperature": 0.3,
+      "variant": "tm_l15_b45_serial",
+      "speedup_vs_dflash": 1.429122787704298,
+      "speedup_vs_ddtree": 1.4131422241382832
+    },
+    {
+      "records": 6,
+      "decode_tokens": 506,
+      "decode_ms_per_token": 7.237483179951345,
+      "e2e_ms_per_token": 7.576843859510518,
+      "mean_accepted_draft_tokens": 5.2682926829268295,
+      "mean_committed_tokens": 6.170731707317073,
+      "mean_tree_nodes": 24.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_block",
+      "paths": 1,
+      "length": 12,
+      "tree_budget": 24,
+      "diffusion_support_size": 8,
+      "temperature": 0.3,
+      "variant": "tm_l12_b24_block",
+      "speedup_vs_dflash": 1.4248265041048462,
+      "speedup_vs_ddtree": 1.4088939819204043
+    },
+    {
+      "records": 6,
+      "decode_tokens": 506,
+      "decode_ms_per_token": 7.248603770824098,
+      "e2e_ms_per_token": 7.588166242157968,
+      "mean_accepted_draft_tokens": 5.2682926829268295,
+      "mean_committed_tokens": 6.170731707317073,
+      "mean_tree_nodes": 24.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_serial",
+      "paths": 1,
+      "length": 12,
+      "tree_budget": 24,
+      "diffusion_support_size": 8,
+      "temperature": 0.3,
+      "variant": "tm_l12_b24_serial",
+      "speedup_vs_dflash": 1.422640577943372,
+      "speedup_vs_ddtree": 1.4067324989574252
+    },
+    {
+      "records": 6,
+      "decode_tokens": 506,
+      "decode_ms_per_token": 8.627276804358901,
+      "e2e_ms_per_token": 8.941799169974729,
+      "mean_accepted_draft_tokens": 5.7368421052631575,
+      "mean_committed_tokens": 6.657894736842105,
+      "mean_tree_nodes": 36.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_serial",
+      "paths": 1,
+      "length": 12,
+      "tree_budget": 36,
+      "diffusion_support_size": 8,
+      "temperature": 0.3,
+      "variant": "tm_l12_b36_serial",
+      "speedup_vs_dflash": 1.1952969739648922,
+      "speedup_vs_ddtree": 1.1819310690636098
+    },
+    {
+      "records": 6,
+      "decode_tokens": 506,
+      "decode_ms_per_token": 8.750089721454183,
+      "e2e_ms_per_token": 9.068665084100758,
+      "mean_accepted_draft_tokens": 5.7631578947368425,
+      "mean_committed_tokens": 6.657894736842105,
+      "mean_tree_nodes": 60.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_serial",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 60,
+      "diffusion_support_size": 8,
+      "temperature": 0.3,
+      "variant": "tm_l15_b60_serial",
+      "speedup_vs_dflash": 1.1785202422008898,
+      "speedup_vs_ddtree": 1.1653419360354833
+    },
+    {
+      "records": 6,
+      "decode_tokens": 506,
+      "decode_ms_per_token": 8.78395619176387,
+      "e2e_ms_per_token": 9.098832279278213,
+      "mean_accepted_draft_tokens": 4.14,
+      "mean_committed_tokens": 5.06,
+      "mean_tree_nodes": 24.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_dense",
+      "paths": 1,
+      "length": 8,
+      "tree_budget": 24,
+      "diffusion_support_size": 8,
+      "temperature": 0.3,
+      "variant": "tm_l8_b24_dense",
+      "speedup_vs_dflash": 1.1739764671728123,
+      "speedup_vs_ddtree": 1.1608489698576254
+    },
+    {
+      "records": 6,
+      "decode_tokens": 506,
+      "decode_ms_per_token": 8.838646998030793,
+      "e2e_ms_per_token": 9.151524972708103,
+      "mean_accepted_draft_tokens": 4.14,
+      "mean_committed_tokens": 5.06,
+      "mean_tree_nodes": 24.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_block",
+      "paths": 1,
+      "length": 8,
+      "tree_budget": 24,
+      "diffusion_support_size": 8,
+      "temperature": 0.3,
+      "variant": "tm_l8_b24_block",
+      "speedup_vs_dflash": 1.1667122649094592,
+      "speedup_vs_ddtree": 1.1536659964760905
+    },
+    {
+      "records": 6,
+      "decode_tokens": 506,
+      "decode_ms_per_token": 8.959447899225937,
+      "e2e_ms_per_token": 9.276516244199229,
+      "mean_accepted_draft_tokens": 4.03921568627451,
+      "mean_committed_tokens": 4.96078431372549,
+      "mean_tree_nodes": 16.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_dense",
+      "paths": 1,
+      "length": 8,
+      "tree_budget": 16,
+      "diffusion_support_size": 8,
+      "temperature": 0.3,
+      "variant": "tm_l8_b16_dense",
+      "speedup_vs_dflash": 1.150981396822301,
+      "speedup_vs_ddtree": 1.138111032194804
+    },
+    {
+      "records": 6,
+      "decode_tokens": 506,
+      "decode_ms_per_token": 8.971010276467057,
+      "e2e_ms_per_token": 9.281578083800923,
+      "mean_accepted_draft_tokens": 4.03921568627451,
+      "mean_committed_tokens": 4.96078431372549,
+      "mean_tree_nodes": 16.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_block",
+      "paths": 1,
+      "length": 8,
+      "tree_budget": 16,
+      "diffusion_support_size": 8,
+      "temperature": 0.3,
+      "variant": "tm_l8_b16_block",
+      "speedup_vs_dflash": 1.149497942819079,
+      "speedup_vs_ddtree": 1.136644166291079
+    },
+    {
+      "records": 6,
+      "decode_tokens": 506,
+      "decode_ms_per_token": 9.25316582992949,
+      "e2e_ms_per_token": 9.56542721473852,
+      "mean_accepted_draft_tokens": 5.425,
+      "mean_committed_tokens": 6.325,
+      "mean_tree_nodes": 30.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_serial",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 30,
+      "diffusion_support_size": 8,
+      "temperature": 0.3,
+      "variant": "tm_l15_b30_serial",
+      "speedup_vs_dflash": 1.1144464551205693,
+      "speedup_vs_ddtree": 1.1019846270885758
+    },
+    {
+      "records": 6,
+      "decode_tokens": 554,
+      "decode_ms_per_token": 10.1968464964836,
+      "e2e_ms_per_token": 10.47425991959504,
+      "mean_accepted_draft_tokens": 4.9787234042553195,
+      "mean_committed_tokens": 5.8936170212765955,
+      "mean_tree_nodes": 45.0,
+      "repeat_equal": true,
+      "method": "ddtree",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 45,
+      "diffusion_support_size": 8,
+      "temperature": 0.3,
+      "variant": "ddtree_l15_b45",
+      "speedup_vs_dflash": 1.0113085316488646,
+      "speedup_vs_ddtree": 1.0
+    },
+    {
+      "records": 6,
+      "decode_tokens": 528,
+      "decode_ms_per_token": 10.3121578578077,
+      "e2e_ms_per_token": 10.599083850100943,
+      "mean_accepted_draft_tokens": 4.913043478260869,
+      "mean_committed_tokens": 5.739130434782608,
+      "mean_tree_nodes": 15.0,
+      "repeat_equal": true,
+      "method": "dflash",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 45,
+      "diffusion_support_size": 8,
+      "temperature": 0.3,
+      "variant": "dflash_l15_b45",
+      "speedup_vs_dflash": 1.0,
+      "speedup_vs_ddtree": 0.9888179212426628
+    },
+    {
+      "records": 6,
+      "decode_tokens": 506,
+      "decode_ms_per_token": 10.667095584873103,
+      "e2e_ms_per_token": 10.960650105516834,
+      "mean_accepted_draft_tokens": 4.14,
+      "mean_committed_tokens": 5.06,
+      "mean_tree_nodes": 24.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_serial",
+      "paths": 1,
+      "length": 8,
+      "tree_budget": 24,
+      "diffusion_support_size": 8,
+      "temperature": 0.3,
+      "variant": "tm_l8_b24_serial",
+      "speedup_vs_dflash": 0.9667259260741287,
+      "speedup_vs_ddtree": 0.955915920632008
+    },
+    {
+      "records": 6,
+      "decode_tokens": 506,
+      "decode_ms_per_token": 10.687816408973577,
+      "e2e_ms_per_token": 11.101884837671605,
+      "mean_accepted_draft_tokens": 5.2682926829268295,
+      "mean_committed_tokens": 6.170731707317073,
+      "mean_tree_nodes": 24.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_dense",
+      "paths": 1,
+      "length": 12,
+      "tree_budget": 24,
+      "diffusion_support_size": 8,
+      "temperature": 0.3,
+      "variant": "tm_l12_b24_dense",
+      "speedup_vs_dflash": 0.9648517024627714,
+      "speedup_vs_ddtree": 0.9540626547366818
+    },
+    {
+      "records": 6,
+      "decode_tokens": 506,
+      "decode_ms_per_token": 12.00603076089781,
+      "e2e_ms_per_token": 12.284062128969708,
+      "mean_accepted_draft_tokens": 4.03921568627451,
+      "mean_committed_tokens": 4.96078431372549,
+      "mean_tree_nodes": 16.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_serial",
+      "paths": 1,
+      "length": 8,
+      "tree_budget": 16,
+      "diffusion_support_size": 8,
+      "temperature": 0.3,
+      "variant": "tm_l8_b16_serial",
+      "speedup_vs_dflash": 0.8589148289868748,
+      "speedup_vs_ddtree": 0.8493103757232986
+    },
+    {
+      "records": 6,
+      "decode_tokens": 506,
+      "decode_ms_per_token": 7.07147262457633,
+      "e2e_ms_per_token": 7.412966767560647,
+      "mean_accepted_draft_tokens": 5.525,
+      "mean_committed_tokens": 6.325,
+      "mean_tree_nodes": 24.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_block",
+      "paths": 1,
+      "length": 12,
+      "tree_budget": 24,
+      "diffusion_support_size": 8,
+      "temperature": 0.6,
+      "variant": "tm_l12_b24_block",
+      "speedup_vs_dflash": 1.1253508272769956,
+      "speedup_vs_ddtree": 1.0444515374034096
+    },
+    {
+      "records": 6,
+      "decode_tokens": 506,
+      "decode_ms_per_token": 7.087373223386727,
+      "e2e_ms_per_token": 7.424029545063604,
+      "mean_accepted_draft_tokens": 5.525,
+      "mean_committed_tokens": 6.325,
+      "mean_tree_nodes": 24.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_serial",
+      "paths": 1,
+      "length": 12,
+      "tree_budget": 24,
+      "diffusion_support_size": 8,
+      "temperature": 0.6,
+      "variant": "tm_l12_b24_serial",
+      "speedup_vs_dflash": 1.1228260904723308,
+      "speedup_vs_ddtree": 1.042108299034312
+    },
+    {
+      "records": 6,
+      "decode_tokens": 544,
+      "decode_ms_per_token": 7.1023708142627795,
+      "e2e_ms_per_token": 7.418862301750448,
+      "mean_accepted_draft_tokens": 5.534883720930233,
+      "mean_committed_tokens": 6.325581395348837,
+      "mean_tree_nodes": 30.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_block",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 30,
+      "diffusion_support_size": 8,
+      "temperature": 0.6,
+      "variant": "tm_l15_b30_block",
+      "speedup_vs_dflash": 1.1204550953820656,
+      "speedup_vs_ddtree": 1.0399077501857403
+    },
+    {
+      "records": 6,
+      "decode_tokens": 544,
+      "decode_ms_per_token": 7.1098418825653535,
+      "e2e_ms_per_token": 7.428336860082874,
+      "mean_accepted_draft_tokens": 5.534883720930233,
+      "mean_committed_tokens": 6.325581395348837,
+      "mean_tree_nodes": 30.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_dense",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 30,
+      "diffusion_support_size": 8,
+      "temperature": 0.6,
+      "variant": "tm_l15_b30_dense",
+      "speedup_vs_dflash": 1.1192777138473096,
+      "speedup_vs_ddtree": 1.0388150083275753
+    },
+    {
+      "records": 6,
+      "decode_tokens": 548,
+      "decode_ms_per_token": 7.232200806296811,
+      "e2e_ms_per_token": 7.5424570270430715,
+      "mean_accepted_draft_tokens": 5.454545454545454,
+      "mean_committed_tokens": 6.2272727272727275,
+      "mean_tree_nodes": 60.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_dense",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 60,
+      "diffusion_support_size": 8,
+      "temperature": 0.6,
+      "variant": "tm_l15_b60_dense",
+      "speedup_vs_dflash": 1.1003410692364848,
+      "speedup_vs_ddtree": 1.021239682395754
+    },
+    {
+      "records": 6,
+      "decode_tokens": 506,
+      "decode_ms_per_token": 7.251465385167752,
+      "e2e_ms_per_token": 7.58719916791506,
+      "mean_accepted_draft_tokens": 5.525,
+      "mean_committed_tokens": 6.325,
+      "mean_tree_nodes": 24.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_dense",
+      "paths": 1,
+      "length": 12,
+      "tree_budget": 24,
+      "diffusion_support_size": 8,
+      "temperature": 0.6,
+      "variant": "tm_l12_b24_dense",
+      "speedup_vs_dflash": 1.0974178521779576,
+      "speedup_vs_ddtree": 1.0185266097459293
+    },
+    {
+      "records": 6,
+      "decode_tokens": 548,
+      "decode_ms_per_token": 7.270321341097206,
+      "e2e_ms_per_token": 7.578959310299545,
+      "mean_accepted_draft_tokens": 5.454545454545454,
+      "mean_committed_tokens": 6.2272727272727275,
+      "mean_tree_nodes": 60.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_serial",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 60,
+      "diffusion_support_size": 8,
+      "temperature": 0.6,
+      "variant": "tm_l15_b60_serial",
+      "speedup_vs_dflash": 1.094571641991911,
+      "speedup_vs_ddtree": 1.0158850080937738
+    },
+    {
+      "records": 6,
+      "decode_tokens": 548,
+      "decode_ms_per_token": 7.385810454444871,
+      "e2e_ms_per_token": 7.6960399298254565,
+      "mean_accepted_draft_tokens": 5.95,
+      "mean_committed_tokens": 6.85,
+      "mean_tree_nodes": 45.0,
+      "repeat_equal": true,
+      "method": "ddtree",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 45,
+      "diffusion_support_size": 8,
+      "temperature": 0.6,
+      "variant": "ddtree_l15_b45",
+      "speedup_vs_dflash": 1.0774562408847694,
+      "speedup_vs_ddtree": 1.0
+    },
+    {
+      "records": 6,
+      "decode_tokens": 558,
+      "decode_ms_per_token": 7.568555767022033,
+      "e2e_ms_per_token": 7.8726963829273915,
+      "mean_accepted_draft_tokens": 5.148936170212766,
+      "mean_committed_tokens": 5.9361702127659575,
+      "mean_tree_nodes": 45.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_dense",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 45,
+      "diffusion_support_size": 8,
+      "temperature": 0.6,
+      "variant": "tm_l15_b45_dense",
+      "speedup_vs_dflash": 1.051440699268938,
+      "speedup_vs_ddtree": 0.9758546652488939
+    },
+    {
+      "records": 6,
+      "decode_tokens": 558,
+      "decode_ms_per_token": 7.641990093149639,
+      "e2e_ms_per_token": 7.941957336729921,
+      "mean_accepted_draft_tokens": 5.148936170212766,
+      "mean_committed_tokens": 5.9361702127659575,
+      "mean_tree_nodes": 45.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_serial",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 45,
+      "diffusion_support_size": 8,
+      "temperature": 0.6,
+      "variant": "tm_l15_b45_serial",
+      "speedup_vs_dflash": 1.0413370694195399,
+      "speedup_vs_ddtree": 0.9664773657670127
+    },
+    {
+      "records": 6,
+      "decode_tokens": 554,
+      "decode_ms_per_token": 7.784227983810054,
+      "e2e_ms_per_token": 8.088436760694353,
+      "mean_accepted_draft_tokens": 4.875,
+      "mean_committed_tokens": 5.770833333333333,
+      "mean_tree_nodes": 36.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_dense",
+      "paths": 1,
+      "length": 12,
+      "tree_budget": 36,
+      "diffusion_support_size": 8,
+      "temperature": 0.6,
+      "variant": "tm_l12_b36_dense",
+      "speedup_vs_dflash": 1.022309159583292,
+      "speedup_vs_ddtree": 0.9488173354899384
+    },
+    {
+      "records": 6,
+      "decode_tokens": 554,
+      "decode_ms_per_token": 7.805655424299041,
+      "e2e_ms_per_token": 8.111893648310797,
+      "mean_accepted_draft_tokens": 4.875,
+      "mean_committed_tokens": 5.770833333333333,
+      "mean_tree_nodes": 36.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_block",
+      "paths": 1,
+      "length": 12,
+      "tree_budget": 36,
+      "diffusion_support_size": 8,
+      "temperature": 0.6,
+      "variant": "tm_l12_b36_block",
+      "speedup_vs_dflash": 1.0195028009256801,
+      "speedup_vs_ddtree": 0.9462127205170766
+    },
+    {
+      "records": 6,
+      "decode_tokens": 506,
+      "decode_ms_per_token": 7.906658956509547,
+      "e2e_ms_per_token": 8.236858503892108,
+      "mean_accepted_draft_tokens": 4.711111111111111,
+      "mean_committed_tokens": 5.622222222222222,
+      "mean_tree_nodes": 16.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_dense",
+      "paths": 1,
+      "length": 8,
+      "tree_budget": 16,
+      "diffusion_support_size": 8,
+      "temperature": 0.6,
+      "variant": "tm_l8_b16_dense",
+      "speedup_vs_dflash": 1.0064791730496834,
+      "speedup_vs_ddtree": 0.9341253360073332
+    },
+    {
+      "records": 6,
+      "decode_tokens": 506,
+      "decode_ms_per_token": 7.930895383331719,
+      "e2e_ms_per_token": 8.262163105428044,
+      "mean_accepted_draft_tokens": 4.711111111111111,
+      "mean_committed_tokens": 5.622222222222222,
+      "mean_tree_nodes": 16.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_serial",
+      "paths": 1,
+      "length": 8,
+      "tree_budget": 16,
+      "diffusion_support_size": 8,
+      "temperature": 0.6,
+      "variant": "tm_l8_b16_serial",
+      "speedup_vs_dflash": 1.0034034221228805,
+      "speedup_vs_ddtree": 0.9312706948533899
+    },
+    {
+      "records": 6,
+      "decode_tokens": 528,
+      "decode_ms_per_token": 7.957887568133601,
+      "e2e_ms_per_token": 8.270181043048247,
+      "mean_accepted_draft_tokens": 5.022222222222222,
+      "mean_committed_tokens": 5.866666666666666,
+      "mean_tree_nodes": 15.0,
+      "repeat_equal": true,
+      "method": "dflash",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 45,
+      "diffusion_support_size": 8,
+      "temperature": 0.6,
+      "variant": "dflash_l15_b45",
+      "speedup_vs_dflash": 1.0,
+      "speedup_vs_ddtree": 0.9281119381505787
+    },
+    {
+      "records": 6,
+      "decode_tokens": 548,
+      "decode_ms_per_token": 7.981622760926788,
+      "e2e_ms_per_token": 8.284434933166628,
+      "mean_accepted_draft_tokens": 5.454545454545454,
+      "mean_committed_tokens": 6.2272727272727275,
+      "mean_tree_nodes": 60.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_block",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 60,
+      "diffusion_support_size": 8,
+      "temperature": 0.6,
+      "variant": "tm_l15_b60_block",
+      "speedup_vs_dflash": 0.9970262697819571,
+      "speedup_vs_ddtree": 0.9253519836343739
+    },
+    {
+      "records": 6,
+      "decode_tokens": 558,
+      "decode_ms_per_token": 8.18303286206014,
+      "e2e_ms_per_token": 8.482327675368433,
+      "mean_accepted_draft_tokens": 5.148936170212766,
+      "mean_committed_tokens": 5.9361702127659575,
+      "mean_tree_nodes": 45.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_block",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 45,
+      "diffusion_support_size": 8,
+      "temperature": 0.6,
+      "variant": "tm_l15_b45_block",
+      "speedup_vs_dflash": 0.9724863265586524,
+      "speedup_vs_ddtree": 0.9025761693672875
+    },
+    {
+      "records": 6,
+      "decode_tokens": 506,
+      "decode_ms_per_token": 8.307910533741543,
+      "e2e_ms_per_token": 8.628664490402116,
+      "mean_accepted_draft_tokens": 4.723404255319149,
+      "mean_committed_tokens": 5.382978723404255,
+      "mean_tree_nodes": 24.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_block",
+      "paths": 1,
+      "length": 8,
+      "tree_budget": 24,
+      "diffusion_support_size": 8,
+      "temperature": 0.6,
+      "variant": "tm_l8_b24_block",
+      "speedup_vs_dflash": 0.9578687126942006,
+      "speedup_vs_ddtree": 0.8890093874324143
+    },
+    {
+      "records": 6,
+      "decode_tokens": 506,
+      "decode_ms_per_token": 8.323034006097306,
+      "e2e_ms_per_token": 8.64644890236832,
+      "mean_accepted_draft_tokens": 4.723404255319149,
+      "mean_committed_tokens": 5.382978723404255,
+      "mean_tree_nodes": 24.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_serial",
+      "paths": 1,
+      "length": 8,
+      "tree_budget": 24,
+      "diffusion_support_size": 8,
+      "temperature": 0.6,
+      "variant": "tm_l8_b24_serial",
+      "speedup_vs_dflash": 0.9561282054481328,
+      "speedup_vs_ddtree": 0.8873940018789013
+    },
+    {
+      "records": 6,
+      "decode_tokens": 506,
+      "decode_ms_per_token": 8.502226808106549,
+      "e2e_ms_per_token": 8.826241763472353,
+      "mean_accepted_draft_tokens": 4.711111111111111,
+      "mean_committed_tokens": 5.622222222222222,
+      "mean_tree_nodes": 16.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_block",
+      "paths": 1,
+      "length": 8,
+      "tree_budget": 16,
+      "diffusion_support_size": 8,
+      "temperature": 0.6,
+      "variant": "tm_l8_b16_block",
+      "speedup_vs_dflash": 0.9359768620317278,
+      "speedup_vs_ddtree": 0.8686912994843636
+    },
+    {
+      "records": 6,
+      "decode_tokens": 544,
+      "decode_ms_per_token": 8.654593078972539,
+      "e2e_ms_per_token": 8.951140643647788,
+      "mean_accepted_draft_tokens": 5.534883720930233,
+      "mean_committed_tokens": 6.325581395348837,
+      "mean_tree_nodes": 30.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_serial",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 30,
+      "diffusion_support_size": 8,
+      "temperature": 0.6,
+      "variant": "tm_l15_b30_serial",
+      "speedup_vs_dflash": 0.9194987558072863,
+      "speedup_vs_ddtree": 0.8533977723793461
+    },
+    {
+      "records": 6,
+      "decode_tokens": 506,
+      "decode_ms_per_token": 8.701937976353085,
+      "e2e_ms_per_token": 9.01903833596407,
+      "mean_accepted_draft_tokens": 4.723404255319149,
+      "mean_committed_tokens": 5.382978723404255,
+      "mean_tree_nodes": 24.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_dense",
+      "paths": 1,
+      "length": 8,
+      "tree_budget": 24,
+      "diffusion_support_size": 8,
+      "temperature": 0.6,
+      "variant": "tm_l8_b24_dense",
+      "speedup_vs_dflash": 0.9144960110907031,
+      "speedup_vs_ddtree": 0.8487546652843655
+    },
+    {
+      "records": 6,
+      "decode_tokens": 554,
+      "decode_ms_per_token": 8.714612458230732,
+      "e2e_ms_per_token": 9.007238671412258,
+      "mean_accepted_draft_tokens": 4.875,
+      "mean_committed_tokens": 5.770833333333333,
+      "mean_tree_nodes": 36.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_serial",
+      "paths": 1,
+      "length": 12,
+      "tree_budget": 36,
+      "diffusion_support_size": 8,
+      "temperature": 0.6,
+      "variant": "tm_l12_b36_serial",
+      "speedup_vs_dflash": 0.9131659733896229,
+      "speedup_vs_ddtree": 0.8475202414158026
+    },
+    {
+      "records": 6,
+      "decode_tokens": 530,
+      "decode_ms_per_token": 6.694416109503265,
+      "e2e_ms_per_token": 7.0292908918119466,
+      "mean_accepted_draft_tokens": 5.897435897435898,
+      "mean_committed_tokens": 6.794871794871795,
+      "mean_tree_nodes": 60.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_block",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 60,
+      "diffusion_support_size": 8,
+      "temperature": 1.0,
+      "variant": "tm_l15_b60_block",
+      "speedup_vs_dflash": 1.4800183567186838,
+      "speedup_vs_ddtree": 1.1452710560331154
+    },
+    {
+      "records": 6,
+      "decode_tokens": 530,
+      "decode_ms_per_token": 6.695054598121886,
+      "e2e_ms_per_token": 7.029639559718884,
+      "mean_accepted_draft_tokens": 5.897435897435898,
+      "mean_committed_tokens": 6.794871794871795,
+      "mean_tree_nodes": 60.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_dense",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 60,
+      "diffusion_support_size": 8,
+      "temperature": 1.0,
+      "variant": "tm_l15_b60_dense",
+      "speedup_vs_dflash": 1.4798772115103414,
+      "speedup_vs_ddtree": 1.1451618347379344
+    },
+    {
+      "records": 6,
+      "decode_tokens": 532,
+      "decode_ms_per_token": 6.818016041315308,
+      "e2e_ms_per_token": 7.1491616114638195,
+      "mean_accepted_draft_tokens": 5.675,
+      "mean_committed_tokens": 6.65,
+      "mean_tree_nodes": 45.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_dense",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 45,
+      "diffusion_support_size": 8,
+      "temperature": 1.0,
+      "variant": "tm_l15_b45_dense",
+      "speedup_vs_dflash": 1.4531879463966055,
+      "speedup_vs_ddtree": 1.1245090889778588
+    },
+    {
+      "records": 6,
+      "decode_tokens": 532,
+      "decode_ms_per_token": 6.885685168882426,
+      "e2e_ms_per_token": 7.221275717335957,
+      "mean_accepted_draft_tokens": 5.675,
+      "mean_committed_tokens": 6.65,
+      "mean_tree_nodes": 45.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_serial",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 45,
+      "diffusion_support_size": 8,
+      "temperature": 1.0,
+      "variant": "tm_l15_b45_serial",
+      "speedup_vs_dflash": 1.438906729914605,
+      "speedup_vs_ddtree": 1.1134579666674298
+    },
+    {
+      "records": 6,
+      "decode_tokens": 488,
+      "decode_ms_per_token": 7.05829618217664,
+      "e2e_ms_per_token": 7.41963147144267,
+      "mean_accepted_draft_tokens": 5.552631578947368,
+      "mean_committed_tokens": 6.421052631578948,
+      "mean_tree_nodes": 36.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_block",
+      "paths": 1,
+      "length": 12,
+      "tree_budget": 36,
+      "diffusion_support_size": 8,
+      "temperature": 1.0,
+      "variant": "tm_l12_b36_block",
+      "speedup_vs_dflash": 1.4037181883351793,
+      "speedup_vs_ddtree": 1.0862282921218496
+    },
+    {
+      "records": 6,
+      "decode_tokens": 488,
+      "decode_ms_per_token": 7.05935168864881,
+      "e2e_ms_per_token": 7.416767372678105,
+      "mean_accepted_draft_tokens": 5.552631578947368,
+      "mean_committed_tokens": 6.421052631578948,
+      "mean_tree_nodes": 36.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_dense",
+      "paths": 1,
+      "length": 12,
+      "tree_budget": 36,
+      "diffusion_support_size": 8,
+      "temperature": 1.0,
+      "variant": "tm_l12_b36_dense",
+      "speedup_vs_dflash": 1.4035083059411242,
+      "speedup_vs_ddtree": 1.086065880466622
+    },
+    {
+      "records": 6,
+      "decode_tokens": 488,
+      "decode_ms_per_token": 7.069127760363789,
+      "e2e_ms_per_token": 7.432480182202706,
+      "mean_accepted_draft_tokens": 5.552631578947368,
+      "mean_committed_tokens": 6.421052631578948,
+      "mean_tree_nodes": 30.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_block",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 30,
+      "diffusion_support_size": 8,
+      "temperature": 1.0,
+      "variant": "tm_l15_b30_block",
+      "speedup_vs_dflash": 1.4015673595731182,
+      "speedup_vs_ddtree": 1.0845639330843486
+    },
+    {
+      "records": 6,
+      "decode_tokens": 532,
+      "decode_ms_per_token": 7.093794890605018,
+      "e2e_ms_per_token": 7.42250162074654,
+      "mean_accepted_draft_tokens": 5.675,
+      "mean_committed_tokens": 6.65,
+      "mean_tree_nodes": 45.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_block",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 45,
+      "diffusion_support_size": 8,
+      "temperature": 1.0,
+      "variant": "tm_l15_b45_block",
+      "speedup_vs_dflash": 1.3966937136426114,
+      "speedup_vs_ddtree": 1.0807925976842
+    },
+    {
+      "records": 6,
+      "decode_tokens": 488,
+      "decode_ms_per_token": 7.104915676239618,
+      "e2e_ms_per_token": 7.462950834112717,
+      "mean_accepted_draft_tokens": 5.552631578947368,
+      "mean_committed_tokens": 6.421052631578948,
+      "mean_tree_nodes": 30.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_serial",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 30,
+      "diffusion_support_size": 8,
+      "temperature": 1.0,
+      "variant": "tm_l15_b30_serial",
+      "speedup_vs_dflash": 1.3945075749050952,
+      "speedup_vs_ddtree": 1.0791009150039252
+    },
+    {
+      "records": 6,
+      "decode_tokens": 488,
+      "decode_ms_per_token": 7.23977305949761,
+      "e2e_ms_per_token": 7.598928337999683,
+      "mean_accepted_draft_tokens": 5.358974358974359,
+      "mean_committed_tokens": 6.256410256410256,
+      "mean_tree_nodes": 24.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_block",
+      "paths": 1,
+      "length": 8,
+      "tree_budget": 24,
+      "diffusion_support_size": 8,
+      "temperature": 1.0,
+      "variant": "tm_l8_b24_block",
+      "speedup_vs_dflash": 1.3685316719396785,
+      "speedup_vs_ddtree": 1.0590001847085433
+    },
+    {
+      "records": 6,
+      "decode_tokens": 488,
+      "decode_ms_per_token": 7.246774794976608,
+      "e2e_ms_per_token": 7.606935026223097,
+      "mean_accepted_draft_tokens": 5.358974358974359,
+      "mean_committed_tokens": 6.256410256410256,
+      "mean_tree_nodes": 24.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_dense",
+      "paths": 1,
+      "length": 8,
+      "tree_budget": 24,
+      "diffusion_support_size": 8,
+      "temperature": 1.0,
+      "variant": "tm_l8_b24_dense",
+      "speedup_vs_dflash": 1.3672094152071808,
+      "speedup_vs_ddtree": 1.0579769930991283
+    },
+    {
+      "records": 6,
+      "decode_tokens": 488,
+      "decode_ms_per_token": 7.420237668022727,
+      "e2e_ms_per_token": 7.771678912846432,
+      "mean_accepted_draft_tokens": 5.325,
+      "mean_committed_tokens": 6.1,
+      "mean_tree_nodes": 24.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_serial",
+      "paths": 1,
+      "length": 12,
+      "tree_budget": 24,
+      "diffusion_support_size": 8,
+      "temperature": 1.0,
+      "variant": "tm_l12_b24_serial",
+      "speedup_vs_dflash": 1.3352481649308485,
+      "speedup_vs_ddtree": 1.0332446681992749
+    },
+    {
+      "records": 6,
+      "decode_tokens": 488,
+      "decode_ms_per_token": 7.4425404731539215,
+      "e2e_ms_per_token": 7.795870380696694,
+      "mean_accepted_draft_tokens": 5.325,
+      "mean_committed_tokens": 6.1,
+      "mean_tree_nodes": 24.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_dense",
+      "paths": 1,
+      "length": 12,
+      "tree_budget": 24,
+      "diffusion_support_size": 8,
+      "temperature": 1.0,
+      "variant": "tm_l12_b24_dense",
+      "speedup_vs_dflash": 1.3312468726662439,
+      "speedup_vs_ddtree": 1.0301483794292214
+    },
+    {
+      "records": 6,
+      "decode_tokens": 528,
+      "decode_ms_per_token": 7.48219665723754,
+      "e2e_ms_per_token": 7.813083415821348,
+      "mean_accepted_draft_tokens": 5.068181818181818,
+      "mean_committed_tokens": 6.0,
+      "mean_tree_nodes": 16.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_serial",
+      "paths": 1,
+      "length": 8,
+      "tree_budget": 16,
+      "diffusion_support_size": 8,
+      "temperature": 1.0,
+      "variant": "tm_l8_b16_serial",
+      "speedup_vs_dflash": 1.3241911678429648,
+      "speedup_vs_ddtree": 1.02468851842322
+    },
+    {
+      "records": 6,
+      "decode_tokens": 530,
+      "decode_ms_per_token": 7.4894495660939935,
+      "e2e_ms_per_token": 7.812216464619486,
+      "mean_accepted_draft_tokens": 5.897435897435898,
+      "mean_committed_tokens": 6.794871794871795,
+      "mean_tree_nodes": 60.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_serial",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 60,
+      "diffusion_support_size": 8,
+      "temperature": 1.0,
+      "variant": "tm_l15_b60_serial",
+      "speedup_vs_dflash": 1.3229087988565489,
+      "speedup_vs_ddtree": 1.0236961928371016
+    },
+    {
+      "records": 6,
+      "decode_tokens": 528,
+      "decode_ms_per_token": 7.516988615503633,
+      "e2e_ms_per_token": 7.843641322045081,
+      "mean_accepted_draft_tokens": 5.068181818181818,
+      "mean_committed_tokens": 6.0,
+      "mean_tree_nodes": 16.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_dense",
+      "paths": 1,
+      "length": 8,
+      "tree_budget": 16,
+      "diffusion_support_size": 8,
+      "temperature": 1.0,
+      "variant": "tm_l8_b16_dense",
+      "speedup_vs_dflash": 1.3180622236334576,
+      "speedup_vs_ddtree": 1.0199458053512331
+    },
+    {
+      "records": 6,
+      "decode_tokens": 488,
+      "decode_ms_per_token": 7.605119116798035,
+      "e2e_ms_per_token": 7.9605004453026735,
+      "mean_accepted_draft_tokens": 5.358974358974359,
+      "mean_committed_tokens": 6.256410256410256,
+      "mean_tree_nodes": 24.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_serial",
+      "paths": 1,
+      "length": 8,
+      "tree_budget": 24,
+      "diffusion_support_size": 8,
+      "temperature": 1.0,
+      "variant": "tm_l8_b24_serial",
+      "speedup_vs_dflash": 1.3027881059343074,
+      "speedup_vs_ddtree": 1.008126354039789
+    },
+    {
+      "records": 6,
+      "decode_tokens": 546,
+      "decode_ms_per_token": 7.666921007255904,
+      "e2e_ms_per_token": 7.982184787987785,
+      "mean_accepted_draft_tokens": 5.088888888888889,
+      "mean_committed_tokens": 6.066666666666666,
+      "mean_tree_nodes": 45.0,
+      "repeat_equal": true,
+      "method": "ddtree",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 45,
+      "diffusion_support_size": 8,
+      "temperature": 1.0,
+      "variant": "ddtree_l15_b45",
+      "speedup_vs_dflash": 1.292286528086229,
+      "speedup_vs_ddtree": 1.0
+    },
+    {
+      "records": 6,
+      "decode_tokens": 488,
+      "decode_ms_per_token": 7.782880860580261,
+      "e2e_ms_per_token": 8.130164028344268,
+      "mean_accepted_draft_tokens": 5.325,
+      "mean_committed_tokens": 6.1,
+      "mean_tree_nodes": 24.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_block",
+      "paths": 1,
+      "length": 12,
+      "tree_budget": 24,
+      "diffusion_support_size": 8,
+      "temperature": 1.0,
+      "variant": "tm_l12_b24_block",
+      "speedup_vs_dflash": 1.2730323009003912,
+      "speedup_vs_ddtree": 0.9851006516222437
+    },
+    {
+      "records": 6,
+      "decode_tokens": 488,
+      "decode_ms_per_token": 7.834306526494968,
+      "e2e_ms_per_token": 8.182417605235335,
+      "mean_accepted_draft_tokens": 5.552631578947368,
+      "mean_committed_tokens": 6.421052631578948,
+      "mean_tree_nodes": 30.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_dense",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 30,
+      "diffusion_support_size": 8,
+      "temperature": 1.0,
+      "variant": "tm_l15_b30_dense",
+      "speedup_vs_dflash": 1.2646759092295607,
+      "speedup_vs_ddtree": 0.9786342902625803
+    },
+    {
+      "records": 6,
+      "decode_tokens": 488,
+      "decode_ms_per_token": 7.86222089556729,
+      "e2e_ms_per_token": 8.211651955531375,
+      "mean_accepted_draft_tokens": 5.552631578947368,
+      "mean_committed_tokens": 6.421052631578948,
+      "mean_tree_nodes": 36.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_serial",
+      "paths": 1,
+      "length": 12,
+      "tree_budget": 36,
+      "diffusion_support_size": 8,
+      "temperature": 1.0,
+      "variant": "tm_l12_b36_serial",
+      "speedup_vs_dflash": 1.2601857491900468,
+      "speedup_vs_ddtree": 0.975159704757024
+    },
+    {
+      "records": 6,
+      "decode_tokens": 528,
+      "decode_ms_per_token": 8.383574036005568,
+      "e2e_ms_per_token": 8.696068657304018,
+      "mean_accepted_draft_tokens": 5.068181818181818,
+      "mean_committed_tokens": 6.0,
+      "mean_tree_nodes": 16.0,
+      "repeat_equal": true,
+      "method": "ddtree_terminal_block",
+      "paths": 1,
+      "length": 8,
+      "tree_budget": 16,
+      "diffusion_support_size": 8,
+      "temperature": 1.0,
+      "variant": "tm_l8_b16_block",
+      "speedup_vs_dflash": 1.1818180035180792,
+      "speedup_vs_ddtree": 0.9145170036464401
+    },
+    {
+      "records": 6,
+      "decode_tokens": 514,
+      "decode_ms_per_token": 9.907858729578106,
+      "e2e_ms_per_token": 10.216158115452764,
+      "mean_accepted_draft_tokens": 4.038461538461538,
+      "mean_committed_tokens": 4.9423076923076925,
+      "mean_tree_nodes": 15.0,
+      "repeat_equal": true,
+      "method": "dflash",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 45,
+      "diffusion_support_size": 8,
+      "temperature": 1.0,
+      "variant": "dflash_l15_b45",
+      "speedup_vs_dflash": 1.0,
+      "speedup_vs_ddtree": 0.773822196754553
+    }
+  ],
+  "overall_ranking": [
+    {
+      "variant": "tm_l15_b60_dense",
+      "method": "ddtree_terminal_dense",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 60,
+      "diffusion_support_size": 8,
+      "temperatures": [
+        0.3,
+        0.6,
+        1.0
+      ],
+      "geomean_speedup_vs_dflash": 1.3544625331753795,
+      "geomean_speedup_vs_ddtree": 1.2084247730502302,
+      "all_repeat_equal": true
+    },
+    {
+      "variant": "tm_l15_b45_dense",
+      "method": "ddtree_terminal_dense",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 45,
+      "diffusion_support_size": 8,
+      "temperatures": [
+        0.3,
+        0.6,
+        1.0
+      ],
+      "geomean_speedup_vs_dflash": 1.3274152164014776,
+      "geomean_speedup_vs_ddtree": 1.1842936901789345,
+      "all_repeat_equal": true
+    },
+    {
+      "variant": "tm_l15_b30_block",
+      "method": "ddtree_terminal_block",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 30,
+      "diffusion_support_size": 8,
+      "temperatures": [
+        0.3,
+        0.6,
+        1.0
+      ],
+      "geomean_speedup_vs_dflash": 1.3178021745374824,
+      "geomean_speedup_vs_ddtree": 1.1757171237193316,
+      "all_repeat_equal": true
+    },
+    {
+      "variant": "tm_l15_b60_block",
+      "method": "ddtree_terminal_block",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 60,
+      "diffusion_support_size": 8,
+      "temperatures": [
+        0.3,
+        0.6,
+        1.0
+      ],
+      "geomean_speedup_vs_dflash": 1.3113790956883917,
+      "geomean_speedup_vs_ddtree": 1.1699865793813504,
+      "all_repeat_equal": true
+    },
+    {
+      "variant": "tm_l12_b36_dense",
+      "method": "ddtree_terminal_dense",
+      "paths": 1,
+      "length": 12,
+      "tree_budget": 36,
+      "diffusion_support_size": 8,
+      "temperatures": [
+        0.3,
+        0.6,
+        1.0
+      ],
+      "geomean_speedup_vs_dflash": 1.2999865854605368,
+      "geomean_speedup_vs_ddtree": 1.159822406324239,
+      "all_repeat_equal": true
+    },
+    {
+      "variant": "tm_l12_b36_block",
+      "method": "ddtree_terminal_block",
+      "paths": 1,
+      "length": 12,
+      "tree_budget": 36,
+      "diffusion_support_size": 8,
+      "temperatures": [
+        0.3,
+        0.6,
+        1.0
+      ],
+      "geomean_speedup_vs_dflash": 1.2988260963441824,
+      "geomean_speedup_vs_ddtree": 1.158787040810089,
+      "all_repeat_equal": true
+    },
+    {
+      "variant": "tm_l15_b45_serial",
+      "method": "ddtree_terminal_serial",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 45,
+      "diffusion_support_size": 8,
+      "temperatures": [
+        0.3,
+        0.6,
+        1.0
+      ],
+      "geomean_speedup_vs_dflash": 1.2889354613836599,
+      "geomean_speedup_vs_ddtree": 1.1499628112616556,
+      "all_repeat_equal": true
+    },
+    {
+      "variant": "tm_l12_b24_serial",
+      "method": "ddtree_terminal_serial",
+      "paths": 1,
+      "length": 12,
+      "tree_budget": 24,
+      "diffusion_support_size": 8,
+      "temperatures": [
+        0.3,
+        0.6,
+        1.0
+      ],
+      "geomean_speedup_vs_dflash": 1.2872312041359042,
+      "geomean_speedup_vs_ddtree": 1.1484423065393803,
+      "all_repeat_equal": true
+    },
+    {
+      "variant": "tm_l15_b45_block",
+      "method": "ddtree_terminal_block",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 45,
+      "diffusion_support_size": 8,
+      "temperatures": [
+        0.3,
+        0.6,
+        1.0
+      ],
+      "geomean_speedup_vs_dflash": 1.2773717402697988,
+      "geomean_speedup_vs_ddtree": 1.139645887226944,
+      "all_repeat_equal": true
+    },
+    {
+      "variant": "tm_l15_b30_dense",
+      "method": "ddtree_terminal_dense",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 30,
+      "diffusion_support_size": 8,
+      "temperatures": [
+        0.3,
+        0.6,
+        1.0
+      ],
+      "geomean_speedup_vs_dflash": 1.2725070362020685,
+      "geomean_speedup_vs_ddtree": 1.1353056941503425,
+      "all_repeat_equal": true
+    },
+    {
+      "variant": "tm_l12_b24_block",
+      "method": "ddtree_terminal_block",
+      "paths": 1,
+      "length": 12,
+      "tree_budget": 24,
+      "diffusion_support_size": 8,
+      "temperatures": [
+        0.3,
+        0.6,
+        1.0
+      ],
+      "geomean_speedup_vs_dflash": 1.2685174552031968,
+      "geomean_speedup_vs_ddtree": 1.1317462686254265,
+      "all_repeat_equal": true
+    },
+    {
+      "variant": "tm_l15_b60_serial",
+      "method": "ddtree_terminal_serial",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 60,
+      "diffusion_support_size": 8,
+      "temperatures": [
+        0.3,
+        0.6,
+        1.0
+      ],
+      "geomean_speedup_vs_dflash": 1.195006812791649,
+      "geomean_speedup_vs_ddtree": 1.066161522501298,
+      "all_repeat_equal": true
+    },
+    {
+      "variant": "tm_l8_b24_block",
+      "method": "ddtree_terminal_block",
+      "paths": 1,
+      "length": 8,
+      "tree_budget": 24,
+      "diffusion_support_size": 8,
+      "temperatures": [
+        0.3,
+        0.6,
+        1.0
+      ],
+      "geomean_speedup_vs_dflash": 1.1521478171136934,
+      "geomean_speedup_vs_ddtree": 1.027923571390259,
+      "all_repeat_equal": true
+    },
+    {
+      "variant": "tm_l8_b16_dense",
+      "method": "ddtree_terminal_dense",
+      "paths": 1,
+      "length": 8,
+      "tree_budget": 16,
+      "diffusion_support_size": 8,
+      "temperatures": [
+        0.3,
+        0.6,
+        1.0
+      ],
+      "geomean_speedup_vs_dflash": 1.1515151865424373,
+      "geomean_speedup_vs_ddtree": 1.0273591508649436,
+      "all_repeat_equal": true
+    },
+    {
+      "variant": "tm_l8_b24_dense",
+      "method": "ddtree_terminal_dense",
+      "paths": 1,
+      "length": 8,
+      "tree_budget": 24,
+      "diffusion_support_size": 8,
+      "temperatures": [
+        0.3,
+        0.6,
+        1.0
+      ],
+      "geomean_speedup_vs_dflash": 1.1364720233330252,
+      "geomean_speedup_vs_ddtree": 1.013937937179044,
+      "all_repeat_equal": true
+    },
+    {
+      "variant": "tm_l15_b30_serial",
+      "method": "ddtree_terminal_serial",
+      "paths": 1,
+      "length": 15,
+      "tree_budget": 30,
+      "diffusion_support_size": 8,
+      "temperatures": [
+        0.3,
+        0.6,
+        1.0
+      ],
+      "geomean_speedup_vs_dflash": 1.1263596311356265,
+      "geomean_speedup_vs_ddtree": 1.0049158601951294,
+      "all_repeat_equal": true
+    },
+    {
+      "variant": "tm_l12_b24_dense",
+      "method": "ddtree_terminal_dense",
+      "paths": 1,
+      "length": 12,
+      "tree_budget": 24,
+      "diffusion_support_size": 8,
+      "temperatures": [
+        0.3,
+        0.6,
+        1.0
+      ],
+      "geomean_speedup_vs_dflash": 1.121236076286764,
+      "geomean_speedup_vs_ddtree": 1.0003447255540463,
+      "all_repeat_equal": true
+    },
+    {
+      "variant": "tm_l12_b36_serial",
+      "method": "ddtree_terminal_serial",
+      "paths": 1,
+      "length": 12,
+      "tree_budget": 36,
+      "diffusion_support_size": 8,
+      "temperatures": [
+        0.3,
+        0.6,
+        1.0
+      ],
+      "geomean_speedup_vs_dflash": 1.1121243971379517,
+      "geomean_speedup_vs_ddtree": 0.9922154650261108,
+      "all_repeat_equal": true
+    },
+    {
+      "variant": "tm_l8_b16_block",
+      "method": "ddtree_terminal_block",
+      "paths": 1,
+      "length": 8,
+      "tree_budget": 16,
+      "diffusion_support_size": 8,
+      "temperatures": [
+        0.3,
+        0.6,
+        1.0
+      ],
+      "geomean_speedup_vs_dflash": 1.0833645928259816,
+      "geomean_speedup_vs_ddtree": 0.9665565345297579,
+      "all_repeat_equal": true
+    },
+    {
+      "variant": "tm_l8_b24_serial",
+      "method": "ddtree_terminal_serial",
+      "paths": 1,
+      "length": 8,
+      "tree_budget": 24,
+      "diffusion_support_size": 8,
+      "temperatures": [
+        0.3,
+        0.6,
+        1.0
+      ],
+      "geomean_speedup_vs_dflash": 1.0638925316666759,
+      "geomean_speedup_vs_ddtree": 0.9491839453950184,
+      "all_repeat_equal": true
+    },
+    {
+      "variant": "tm_l8_b16_serial",
+      "method": "ddtree_terminal_serial",
+      "paths": 1,
+      "length": 8,
+      "tree_budget": 16,
+      "diffusion_support_size": 8,
+      "temperatures": [
+        0.3,
+        0.6,
+        1.0
+      ],
+      "geomean_speedup_vs_dflash": 1.045022052432834,
+      "geomean_speedup_vs_ddtree": 0.9323480757958466,
+      "all_repeat_equal": true
+    }
+  ],
+  "formal_complete": false,
+  "checkpoint_gate": "separate_required",
+  "profiles": [
+    {
+      "temperature": 0.3,
+      "variant": "dflash_l15_b45",
+      "decode_ms_per_token": 9.005131500433325,
+      "stages": {
+        "host_ms": {
+          "prefill": 36.904738983139396,
+          "draft": 86.06604597298428,
+          "tree_build": 6.7396589438430965,
+          "verify": 540.8410908421502,
+          "select_and_correct": 8.742791076656431,
+          "commit": 23.577519110403955
+        },
+        "cuda_event_ms": {
+          "prefill": 36.69375991821289,
+          "draft": 88.05974388122559,
+          "tree_build": 4.541407972574234,
+          "verify": 543.9881973266602,
+          "select_and_correct": 5.432639986276627,
+          "commit": 23.31436800956726
+        }
+      },
+      "rounds": [
+        {
+          "accepted_draft_tokens": 7,
+          "committed_tokens": 8,
+          "committed_draft_tokens": 7,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 5,
+          "committed_tokens": 6,
+          "committed_draft_tokens": 5,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 6,
+          "committed_tokens": 7,
+          "committed_draft_tokens": 6,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 1,
+          "committed_tokens": 2,
+          "committed_draft_tokens": 1,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 6,
+          "committed_tokens": 7,
+          "committed_draft_tokens": 6,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 1,
+          "committed_tokens": 2,
+          "committed_draft_tokens": 1,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 4,
+          "committed_tokens": 5,
+          "committed_draft_tokens": 4,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 13,
+          "committed_tokens": 14,
+          "committed_draft_tokens": 13,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 1,
+          "committed_tokens": 2,
+          "committed_draft_tokens": 1,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 8,
+          "committed_tokens": 9,
+          "committed_draft_tokens": 8,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 6,
+          "committed_tokens": 7,
+          "committed_draft_tokens": 6,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 2,
+          "committed_tokens": 2,
+          "committed_draft_tokens": 2,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        }
+      ]
+    },
+    {
+      "temperature": 0.3,
+      "variant": "ddtree_l15_b45",
+      "decode_ms_per_token": 11.338969919397014,
+      "stages": {
+        "host_ms": {
+          "prefill": 35.462416999507695,
+          "draft": 127.9636489925906,
+          "tree_build": 19.222198927309364,
+          "verify": 789.968863944523,
+          "select_and_correct": 13.754312822129577,
+          "commit": 34.96960207121447
+        },
+        "cuda_event_ms": {
+          "prefill": 35.43926239013672,
+          "draft": 132.65040063858032,
+          "tree_build": 14.243743896484375,
+          "verify": 797.617504119873,
+          "select_and_correct": 5.881759971380234,
+          "commit": 34.604480147361755
+        }
+      },
+      "rounds": [
+        {
+          "accepted_draft_tokens": 7,
+          "committed_tokens": 8,
+          "committed_draft_tokens": 7,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 5,
+          "committed_tokens": 6,
+          "committed_draft_tokens": 5,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 1,
+          "committed_tokens": 2,
+          "committed_draft_tokens": 1,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 2,
+          "committed_tokens": 3,
+          "committed_draft_tokens": 2,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 8,
+          "committed_tokens": 9,
+          "committed_draft_tokens": 8,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 1,
+          "committed_tokens": 2,
+          "committed_draft_tokens": 1,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 2,
+          "committed_tokens": 3,
+          "committed_draft_tokens": 2,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 2,
+          "committed_tokens": 3,
+          "committed_draft_tokens": 2,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 3,
+          "committed_tokens": 4,
+          "committed_draft_tokens": 3,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 1,
+          "committed_tokens": 2,
+          "committed_draft_tokens": 1,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 3,
+          "committed_tokens": 4,
+          "committed_draft_tokens": 3,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 2,
+          "committed_tokens": 3,
+          "committed_draft_tokens": 2,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 2,
+          "committed_tokens": 3,
+          "committed_draft_tokens": 2,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 3,
+          "committed_tokens": 4,
+          "committed_draft_tokens": 3,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 9,
+          "committed_tokens": 10,
+          "committed_draft_tokens": 9,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 2,
+          "committed_tokens": 3,
+          "committed_draft_tokens": 2,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 3,
+          "committed_tokens": 4,
+          "committed_draft_tokens": 3,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 4,
+          "committed_tokens": 5,
+          "committed_draft_tokens": 4,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 7,
+          "committed_tokens": 6,
+          "committed_draft_tokens": 6,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        }
+      ]
+    },
+    {
+      "temperature": 0.3,
+      "variant": "tm_l15_b45_block",
+      "decode_ms_per_token": 10.102822856482355,
+      "stages": {
+        "host_ms": {
+          "prefill": 36.35883599054068,
+          "draft": 82.48852606629953,
+          "tree_build": 12.244053825270385,
+          "verify": 501.3746760087088,
+          "select_and_correct": 18.030495091807097,
+          "commit": 21.949570043943822
+        },
+        "cuda_event_ms": {
+          "prefill": 36.335201263427734,
+          "draft": 85.47024011611938,
+          "tree_build": 9.081088066101074,
+          "verify": 506.22431564331055,
+          "select_and_correct": 13.026752054691315,
+          "commit": 21.699904084205627
+        }
+      },
+      "rounds": [
+        {
+          "accepted_draft_tokens": 7,
+          "committed_tokens": 8,
+          "committed_draft_tokens": 7,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 5,
+          "committed_tokens": 6,
+          "committed_draft_tokens": 5,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 1,
+          "committed_tokens": 2,
+          "committed_draft_tokens": 1,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 2,
+          "committed_tokens": 3,
+          "committed_draft_tokens": 2,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 6,
+          "committed_tokens": 7,
+          "committed_draft_tokens": 6,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 7,
+          "committed_tokens": 8,
+          "committed_draft_tokens": 7,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 3,
+          "committed_tokens": 4,
+          "committed_draft_tokens": 3,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 6,
+          "committed_tokens": 7,
+          "committed_draft_tokens": 6,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 2,
+          "committed_tokens": 3,
+          "committed_draft_tokens": 2,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 12,
+          "committed_tokens": 11,
+          "committed_draft_tokens": 11,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        }
+      ]
+    },
+    {
+      "temperature": 0.3,
+      "variant": "tm_l12_b36_dense",
+      "decode_ms_per_token": 10.121530078957596,
+      "stages": {
+        "host_ms": {
+          "prefill": 34.87363498425111,
+          "draft": 81.65434194961563,
+          "tree_build": 11.452240927610546,
+          "verify": 504.9692849861458,
+          "select_and_correct": 17.220087989699095,
+          "commit": 21.956895070616156
+        },
+        "cuda_event_ms": {
+          "prefill": 34.84979248046875,
+          "draft": 84.53155136108398,
+          "tree_build": 8.392832040786743,
+          "verify": 509.31212615966797,
+          "select_and_correct": 12.72463995218277,
+          "commit": 21.704895853996277
+        }
+      },
+      "rounds": [
+        {
+          "accepted_draft_tokens": 7,
+          "committed_tokens": 8,
+          "committed_draft_tokens": 7,
+          "proposed_tokens": 36,
+          "tree_nodes": 36,
+          "verify_tokens": 37
+        },
+        {
+          "accepted_draft_tokens": 5,
+          "committed_tokens": 6,
+          "committed_draft_tokens": 5,
+          "proposed_tokens": 36,
+          "tree_nodes": 36,
+          "verify_tokens": 37
+        },
+        {
+          "accepted_draft_tokens": 1,
+          "committed_tokens": 2,
+          "committed_draft_tokens": 1,
+          "proposed_tokens": 36,
+          "tree_nodes": 36,
+          "verify_tokens": 37
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 36,
+          "tree_nodes": 36,
+          "verify_tokens": 37
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 36,
+          "tree_nodes": 36,
+          "verify_tokens": 37
+        },
+        {
+          "accepted_draft_tokens": 2,
+          "committed_tokens": 3,
+          "committed_draft_tokens": 2,
+          "proposed_tokens": 36,
+          "tree_nodes": 36,
+          "verify_tokens": 37
+        },
+        {
+          "accepted_draft_tokens": 6,
+          "committed_tokens": 7,
+          "committed_draft_tokens": 6,
+          "proposed_tokens": 36,
+          "tree_nodes": 36,
+          "verify_tokens": 37
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 36,
+          "tree_nodes": 36,
+          "verify_tokens": 37
+        },
+        {
+          "accepted_draft_tokens": 7,
+          "committed_tokens": 8,
+          "committed_draft_tokens": 7,
+          "proposed_tokens": 36,
+          "tree_nodes": 36,
+          "verify_tokens": 37
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 36,
+          "tree_nodes": 36,
+          "verify_tokens": 37
+        },
+        {
+          "accepted_draft_tokens": 3,
+          "committed_tokens": 4,
+          "committed_draft_tokens": 3,
+          "proposed_tokens": 36,
+          "tree_nodes": 36,
+          "verify_tokens": 37
+        },
+        {
+          "accepted_draft_tokens": 6,
+          "committed_tokens": 7,
+          "committed_draft_tokens": 6,
+          "proposed_tokens": 36,
+          "tree_nodes": 36,
+          "verify_tokens": 37
+        },
+        {
+          "accepted_draft_tokens": 2,
+          "committed_tokens": 3,
+          "committed_draft_tokens": 2,
+          "proposed_tokens": 36,
+          "tree_nodes": 36,
+          "verify_tokens": 37
+        },
+        {
+          "accepted_draft_tokens": 12,
+          "committed_tokens": 11,
+          "committed_draft_tokens": 11,
+          "proposed_tokens": 36,
+          "tree_nodes": 36,
+          "verify_tokens": 37
+        }
+      ]
+    },
+    {
+      "temperature": 0.6,
+      "variant": "dflash_l15_b45",
+      "decode_ms_per_token": 8.983460418577936,
+      "stages": {
+        "host_ms": {
+          "prefill": 35.544109996408224,
+          "draft": 85.90691490098834,
+          "tree_build": 6.86704384861514,
+          "verify": 539.4667970249429,
+          "select_and_correct": 8.653418975882232,
+          "commit": 23.439599957782775
+        },
+        "cuda_event_ms": {
+          "prefill": 35.52009582519531,
+          "draft": 87.90275192260742,
+          "tree_build": 4.673727959394455,
+          "verify": 542.6607627868652,
+          "select_and_correct": 5.309151977300644,
+          "commit": 23.17900812625885
+        }
+      },
+      "rounds": [
+        {
+          "accepted_draft_tokens": 7,
+          "committed_tokens": 8,
+          "committed_draft_tokens": 7,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 5,
+          "committed_tokens": 6,
+          "committed_draft_tokens": 5,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 6,
+          "committed_tokens": 7,
+          "committed_draft_tokens": 6,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 1,
+          "committed_tokens": 2,
+          "committed_draft_tokens": 1,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 6,
+          "committed_tokens": 7,
+          "committed_draft_tokens": 6,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 1,
+          "committed_tokens": 2,
+          "committed_draft_tokens": 1,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 4,
+          "committed_tokens": 5,
+          "committed_draft_tokens": 4,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 13,
+          "committed_tokens": 14,
+          "committed_draft_tokens": 13,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 1,
+          "committed_tokens": 2,
+          "committed_draft_tokens": 1,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 8,
+          "committed_tokens": 9,
+          "committed_draft_tokens": 8,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 6,
+          "committed_tokens": 7,
+          "committed_draft_tokens": 6,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 2,
+          "committed_tokens": 2,
+          "committed_draft_tokens": 2,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        }
+      ]
+    },
+    {
+      "temperature": 0.6,
+      "variant": "ddtree_l15_b45",
+      "decode_ms_per_token": 9.065932737680019,
+      "stages": {
+        "host_ms": {
+          "prefill": 35.50014499342069,
+          "draft": 99.05778901884332,
+          "tree_build": 14.87945724511519,
+          "verify": 609.5619020634331,
+          "select_and_correct": 10.68746589589864,
+          "commit": 26.84624510584399
+        },
+        "cuda_event_ms": {
+          "prefill": 35.47625732421875,
+          "draft": 102.65580797195435,
+          "tree_build": 11.058528065681458,
+          "verify": 615.4787788391113,
+          "select_and_correct": 4.588032007217407,
+          "commit": 26.56598389148712
+        }
+      },
+      "rounds": [
+        {
+          "accepted_draft_tokens": 8,
+          "committed_tokens": 9,
+          "committed_draft_tokens": 8,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 4,
+          "committed_tokens": 5,
+          "committed_draft_tokens": 4,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 2,
+          "committed_tokens": 3,
+          "committed_draft_tokens": 2,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 2,
+          "committed_tokens": 3,
+          "committed_draft_tokens": 2,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 6,
+          "committed_tokens": 7,
+          "committed_draft_tokens": 6,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 1,
+          "committed_tokens": 2,
+          "committed_draft_tokens": 1,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 2,
+          "committed_tokens": 3,
+          "committed_draft_tokens": 2,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 3,
+          "committed_tokens": 4,
+          "committed_draft_tokens": 3,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 7,
+          "committed_tokens": 8,
+          "committed_draft_tokens": 7,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 1,
+          "committed_tokens": 2,
+          "committed_draft_tokens": 1,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 3,
+          "committed_tokens": 4,
+          "committed_draft_tokens": 3,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 9,
+          "committed_tokens": 10,
+          "committed_draft_tokens": 9,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 6,
+          "committed_tokens": 7,
+          "committed_draft_tokens": 6,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 4,
+          "committed_tokens": 5,
+          "committed_draft_tokens": 4,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 5,
+          "committed_tokens": 6,
+          "committed_draft_tokens": 5,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 6,
+          "committed_tokens": 5,
+          "committed_draft_tokens": 5,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        }
+      ]
+    },
+    {
+      "temperature": 0.6,
+      "variant": "tm_l12_b24_block",
+      "decode_ms_per_token": 10.205270888816033,
+      "stages": {
+        "host_ms": {
+          "prefill": 35.3087589610368,
+          "draft": 83.17532006185502,
+          "tree_build": 10.522607015445828,
+          "verify": 510.25660312734544,
+          "select_and_correct": 16.206424799747765,
+          "commit": 22.344210068695247
+        },
+        "cuda_event_ms": {
+          "prefill": 35.284446716308594,
+          "draft": 86.02108907699585,
+          "tree_build": 7.489823997020721,
+          "verify": 513.7851829528809,
+          "select_and_correct": 12.529376029968262,
+          "commit": 22.094624042510986
+        }
+      },
+      "rounds": [
+        {
+          "accepted_draft_tokens": 8,
+          "committed_tokens": 9,
+          "committed_draft_tokens": 8,
+          "proposed_tokens": 24,
+          "tree_nodes": 24,
+          "verify_tokens": 25
+        },
+        {
+          "accepted_draft_tokens": 4,
+          "committed_tokens": 5,
+          "committed_draft_tokens": 4,
+          "proposed_tokens": 24,
+          "tree_nodes": 24,
+          "verify_tokens": 25
+        },
+        {
+          "accepted_draft_tokens": 1,
+          "committed_tokens": 2,
+          "committed_draft_tokens": 1,
+          "proposed_tokens": 24,
+          "tree_nodes": 24,
+          "verify_tokens": 25
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 24,
+          "tree_nodes": 24,
+          "verify_tokens": 25
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 24,
+          "tree_nodes": 24,
+          "verify_tokens": 25
+        },
+        {
+          "accepted_draft_tokens": 2,
+          "committed_tokens": 3,
+          "committed_draft_tokens": 2,
+          "proposed_tokens": 24,
+          "tree_nodes": 24,
+          "verify_tokens": 25
+        },
+        {
+          "accepted_draft_tokens": 6,
+          "committed_tokens": 7,
+          "committed_draft_tokens": 6,
+          "proposed_tokens": 24,
+          "tree_nodes": 24,
+          "verify_tokens": 25
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 24,
+          "tree_nodes": 24,
+          "verify_tokens": 25
+        },
+        {
+          "accepted_draft_tokens": 7,
+          "committed_tokens": 8,
+          "committed_draft_tokens": 7,
+          "proposed_tokens": 24,
+          "tree_nodes": 24,
+          "verify_tokens": 25
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 24,
+          "tree_nodes": 24,
+          "verify_tokens": 25
+        },
+        {
+          "accepted_draft_tokens": 3,
+          "committed_tokens": 4,
+          "committed_draft_tokens": 3,
+          "proposed_tokens": 24,
+          "tree_nodes": 24,
+          "verify_tokens": 25
+        },
+        {
+          "accepted_draft_tokens": 6,
+          "committed_tokens": 7,
+          "committed_draft_tokens": 6,
+          "proposed_tokens": 24,
+          "tree_nodes": 24,
+          "verify_tokens": 25
+        },
+        {
+          "accepted_draft_tokens": 2,
+          "committed_tokens": 3,
+          "committed_draft_tokens": 2,
+          "proposed_tokens": 24,
+          "tree_nodes": 24,
+          "verify_tokens": 25
+        },
+        {
+          "accepted_draft_tokens": 12,
+          "committed_tokens": 11,
+          "committed_draft_tokens": 11,
+          "proposed_tokens": 24,
+          "tree_nodes": 24,
+          "verify_tokens": 25
+        }
+      ]
+    },
+    {
+      "temperature": 0.6,
+      "variant": "tm_l12_b24_serial",
+      "decode_ms_per_token": 10.20300709587034,
+      "stages": {
+        "host_ms": {
+          "prefill": 35.902337986044586,
+          "draft": 82.50260795466602,
+          "tree_build": 10.53140708245337,
+          "verify": 509.56571009010077,
+          "select_and_correct": 17.75434397859499,
+          "commit": 22.01638405676931
+        },
+        "cuda_event_ms": {
+          "prefill": 35.87891387939453,
+          "draft": 85.3244481086731,
+          "tree_build": 7.522112011909485,
+          "verify": 513.0740089416504,
+          "select_and_correct": 14.098624050617218,
+          "commit": 21.765376091003418
+        }
+      },
+      "rounds": [
+        {
+          "accepted_draft_tokens": 8,
+          "committed_tokens": 9,
+          "committed_draft_tokens": 8,
+          "proposed_tokens": 24,
+          "tree_nodes": 24,
+          "verify_tokens": 25
+        },
+        {
+          "accepted_draft_tokens": 4,
+          "committed_tokens": 5,
+          "committed_draft_tokens": 4,
+          "proposed_tokens": 24,
+          "tree_nodes": 24,
+          "verify_tokens": 25
+        },
+        {
+          "accepted_draft_tokens": 1,
+          "committed_tokens": 2,
+          "committed_draft_tokens": 1,
+          "proposed_tokens": 24,
+          "tree_nodes": 24,
+          "verify_tokens": 25
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 24,
+          "tree_nodes": 24,
+          "verify_tokens": 25
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 24,
+          "tree_nodes": 24,
+          "verify_tokens": 25
+        },
+        {
+          "accepted_draft_tokens": 2,
+          "committed_tokens": 3,
+          "committed_draft_tokens": 2,
+          "proposed_tokens": 24,
+          "tree_nodes": 24,
+          "verify_tokens": 25
+        },
+        {
+          "accepted_draft_tokens": 6,
+          "committed_tokens": 7,
+          "committed_draft_tokens": 6,
+          "proposed_tokens": 24,
+          "tree_nodes": 24,
+          "verify_tokens": 25
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 24,
+          "tree_nodes": 24,
+          "verify_tokens": 25
+        },
+        {
+          "accepted_draft_tokens": 7,
+          "committed_tokens": 8,
+          "committed_draft_tokens": 7,
+          "proposed_tokens": 24,
+          "tree_nodes": 24,
+          "verify_tokens": 25
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 24,
+          "tree_nodes": 24,
+          "verify_tokens": 25
+        },
+        {
+          "accepted_draft_tokens": 3,
+          "committed_tokens": 4,
+          "committed_draft_tokens": 3,
+          "proposed_tokens": 24,
+          "tree_nodes": 24,
+          "verify_tokens": 25
+        },
+        {
+          "accepted_draft_tokens": 6,
+          "committed_tokens": 7,
+          "committed_draft_tokens": 6,
+          "proposed_tokens": 24,
+          "tree_nodes": 24,
+          "verify_tokens": 25
+        },
+        {
+          "accepted_draft_tokens": 2,
+          "committed_tokens": 3,
+          "committed_draft_tokens": 2,
+          "proposed_tokens": 24,
+          "tree_nodes": 24,
+          "verify_tokens": 25
+        },
+        {
+          "accepted_draft_tokens": 12,
+          "committed_tokens": 11,
+          "committed_draft_tokens": 11,
+          "proposed_tokens": 24,
+          "tree_nodes": 24,
+          "verify_tokens": 25
+        }
+      ]
+    },
+    {
+      "temperature": 1.0,
+      "variant": "dflash_l15_b45",
+      "decode_ms_per_token": 10.652337805368006,
+      "stages": {
+        "host_ms": {
+          "prefill": 35.878275986760855,
+          "draft": 92.27234503487125,
+          "tree_build": 7.254710071720183,
+          "verify": 579.0419179247692,
+          "select_and_correct": 9.488525916822255,
+          "commit": 25.183865102007985
+        },
+        "cuda_event_ms": {
+          "prefill": 35.854591369628906,
+          "draft": 94.40316772460938,
+          "tree_build": 4.919071972370148,
+          "verify": 582.6355247497559,
+          "select_and_correct": 5.727008014917374,
+          "commit": 24.903168201446533
+        }
+      },
+      "rounds": [
+        {
+          "accepted_draft_tokens": 7,
+          "committed_tokens": 8,
+          "committed_draft_tokens": 7,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 5,
+          "committed_tokens": 6,
+          "committed_draft_tokens": 5,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 6,
+          "committed_tokens": 7,
+          "committed_draft_tokens": 6,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 1,
+          "committed_tokens": 2,
+          "committed_draft_tokens": 1,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 6,
+          "committed_tokens": 7,
+          "committed_draft_tokens": 6,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 2,
+          "committed_tokens": 3,
+          "committed_draft_tokens": 2,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 4,
+          "committed_tokens": 5,
+          "committed_draft_tokens": 4,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 8,
+          "committed_tokens": 9,
+          "committed_draft_tokens": 8,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 5,
+          "committed_tokens": 6,
+          "committed_draft_tokens": 5,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 2,
+          "committed_tokens": 3,
+          "committed_draft_tokens": 2,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 1,
+          "committed_tokens": 2,
+          "committed_draft_tokens": 1,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        },
+        {
+          "accepted_draft_tokens": 6,
+          "committed_tokens": 5,
+          "committed_draft_tokens": 5,
+          "proposed_tokens": 15,
+          "tree_nodes": 15,
+          "verify_tokens": 16
+        }
+      ]
+    },
+    {
+      "temperature": 1.0,
+      "variant": "ddtree_l15_b45",
+      "decode_ms_per_token": 10.873686541881726,
+      "stages": {
+        "host_ms": {
+          "prefill": 35.8061509905383,
+          "draft": 116.79405072936788,
+          "tree_build": 17.674251925200224,
+          "verify": 723.7491259584203,
+          "select_and_correct": 12.05820607719943,
+          "commit": 31.659691128879786
+        },
+        "cuda_event_ms": {
+          "prefill": 35.782657623291016,
+          "draft": 121.2192006111145,
+          "tree_build": 12.992095947265625,
+          "verify": 730.1791000366211,
+          "select_and_correct": 5.402464121580124,
+          "commit": 31.328479886054993
+        }
+      },
+      "rounds": [
+        {
+          "accepted_draft_tokens": 8,
+          "committed_tokens": 9,
+          "committed_draft_tokens": 8,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 4,
+          "committed_tokens": 5,
+          "committed_draft_tokens": 4,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 2,
+          "committed_tokens": 3,
+          "committed_draft_tokens": 2,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 2,
+          "committed_tokens": 3,
+          "committed_draft_tokens": 2,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 6,
+          "committed_tokens": 7,
+          "committed_draft_tokens": 6,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 2,
+          "committed_tokens": 3,
+          "committed_draft_tokens": 2,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 3,
+          "committed_tokens": 4,
+          "committed_draft_tokens": 3,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 5,
+          "committed_tokens": 6,
+          "committed_draft_tokens": 5,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 2,
+          "committed_tokens": 3,
+          "committed_draft_tokens": 2,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 1,
+          "committed_tokens": 2,
+          "committed_draft_tokens": 1,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 3,
+          "committed_tokens": 4,
+          "committed_draft_tokens": 3,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 2,
+          "committed_tokens": 3,
+          "committed_draft_tokens": 2,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 8,
+          "committed_tokens": 9,
+          "committed_draft_tokens": 8,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 2,
+          "committed_tokens": 3,
+          "committed_draft_tokens": 2,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 1,
+          "committed_tokens": 2,
+          "committed_draft_tokens": 1,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 5,
+          "committed_tokens": 6,
+          "committed_draft_tokens": 5,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        },
+        {
+          "accepted_draft_tokens": 7,
+          "committed_tokens": 8,
+          "committed_draft_tokens": 7,
+          "proposed_tokens": 45,
+          "tree_nodes": 45,
+          "verify_tokens": 46
+        }
+      ]
+    },
+    {
+      "temperature": 1.0,
+      "variant": "tm_l15_b60_block",
+      "decode_ms_per_token": 7.341421826276928,
+      "stages": {
+        "host_ms": {
+          "prefill": 35.688169999048114,
+          "draft": 70.34629612462595,
+          "tree_build": 11.472113896161318,
+          "verify": 433.75949119217694,
+          "select_and_correct": 15.67424787208438,
+          "commit": 18.99161486653611
+        },
+        "cuda_event_ms": {
+          "prefill": 35.66425704956055,
+          "draft": 73.00479936599731,
+          "tree_build": 8.655200064182281,
+          "verify": 437.93286895751953,
+          "select_and_correct": 11.369568049907684,
+          "commit": 18.7739200592041
+        }
+      },
+      "rounds": [
+        {
+          "accepted_draft_tokens": 8,
+          "committed_tokens": 9,
+          "committed_draft_tokens": 8,
+          "proposed_tokens": 60,
+          "tree_nodes": 60,
+          "verify_tokens": 61
+        },
+        {
+          "accepted_draft_tokens": 4,
+          "committed_tokens": 5,
+          "committed_draft_tokens": 4,
+          "proposed_tokens": 60,
+          "tree_nodes": 60,
+          "verify_tokens": 61
+        },
+        {
+          "accepted_draft_tokens": 2,
+          "committed_tokens": 3,
+          "committed_draft_tokens": 2,
+          "proposed_tokens": 60,
+          "tree_nodes": 60,
+          "verify_tokens": 61
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 60,
+          "tree_nodes": 60,
+          "verify_tokens": 61
+        },
+        {
+          "accepted_draft_tokens": 7,
+          "committed_tokens": 8,
+          "committed_draft_tokens": 7,
+          "proposed_tokens": 60,
+          "tree_nodes": 60,
+          "verify_tokens": 61
+        },
+        {
+          "accepted_draft_tokens": 7,
+          "committed_tokens": 8,
+          "committed_draft_tokens": 7,
+          "proposed_tokens": 60,
+          "tree_nodes": 60,
+          "verify_tokens": 61
+        },
+        {
+          "accepted_draft_tokens": 1,
+          "committed_tokens": 2,
+          "committed_draft_tokens": 1,
+          "proposed_tokens": 60,
+          "tree_nodes": 60,
+          "verify_tokens": 61
+        },
+        {
+          "accepted_draft_tokens": 5,
+          "committed_tokens": 6,
+          "committed_draft_tokens": 5,
+          "proposed_tokens": 60,
+          "tree_nodes": 60,
+          "verify_tokens": 61
+        },
+        {
+          "accepted_draft_tokens": 14,
+          "committed_tokens": 15,
+          "committed_draft_tokens": 14,
+          "proposed_tokens": 60,
+          "tree_nodes": 60,
+          "verify_tokens": 61
+        },
+        {
+          "accepted_draft_tokens": 5,
+          "committed_tokens": 6,
+          "committed_draft_tokens": 5,
+          "proposed_tokens": 60,
+          "tree_nodes": 60,
+          "verify_tokens": 61
+        },
+        {
+          "accepted_draft_tokens": 9,
+          "committed_tokens": 10,
+          "committed_draft_tokens": 9,
+          "proposed_tokens": 60,
+          "tree_nodes": 60,
+          "verify_tokens": 61
+        },
+        {
+          "accepted_draft_tokens": 3,
+          "committed_tokens": 2,
+          "committed_draft_tokens": 2,
+          "proposed_tokens": 60,
+          "tree_nodes": 60,
+          "verify_tokens": 61
+        }
+      ]
+    },
+    {
+      "temperature": 1.0,
+      "variant": "tm_l15_b60_dense",
+      "decode_ms_per_token": 7.371436000491182,
+      "stages": {
+        "host_ms": {
+          "prefill": 35.73079197667539,
+          "draft": 70.28491894016042,
+          "tree_build": 11.476786981802434,
+          "verify": 436.1849891138263,
+          "select_and_correct": 15.762341965455562,
+          "commit": 18.788422865327448
+        },
+        "cuda_event_ms": {
+          "prefill": 35.70832061767578,
+          "draft": 72.93091154098511,
+          "tree_build": 8.680223941802979,
+          "verify": 440.3369903564453,
+          "select_and_correct": 11.475583970546722,
+          "commit": 18.5699520111084
+        }
+      },
+      "rounds": [
+        {
+          "accepted_draft_tokens": 8,
+          "committed_tokens": 9,
+          "committed_draft_tokens": 8,
+          "proposed_tokens": 60,
+          "tree_nodes": 60,
+          "verify_tokens": 61
+        },
+        {
+          "accepted_draft_tokens": 4,
+          "committed_tokens": 5,
+          "committed_draft_tokens": 4,
+          "proposed_tokens": 60,
+          "tree_nodes": 60,
+          "verify_tokens": 61
+        },
+        {
+          "accepted_draft_tokens": 2,
+          "committed_tokens": 3,
+          "committed_draft_tokens": 2,
+          "proposed_tokens": 60,
+          "tree_nodes": 60,
+          "verify_tokens": 61
+        },
+        {
+          "accepted_draft_tokens": 0,
+          "committed_tokens": 1,
+          "committed_draft_tokens": 0,
+          "proposed_tokens": 60,
+          "tree_nodes": 60,
+          "verify_tokens": 61
+        },
+        {
+          "accepted_draft_tokens": 7,
+          "committed_tokens": 8,
+          "committed_draft_tokens": 7,
+          "proposed_tokens": 60,
+          "tree_nodes": 60,
+          "verify_tokens": 61
+        },
+        {
+          "accepted_draft_tokens": 7,
+          "committed_tokens": 8,
+          "committed_draft_tokens": 7,
+          "proposed_tokens": 60,
+          "tree_nodes": 60,
+          "verify_tokens": 61
+        },
+        {
+          "accepted_draft_tokens": 1,
+          "committed_tokens": 2,
+          "committed_draft_tokens": 1,
+          "proposed_tokens": 60,
+          "tree_nodes": 60,
+          "verify_tokens": 61
+        },
+        {
+          "accepted_draft_tokens": 5,
+          "committed_tokens": 6,
+          "committed_draft_tokens": 5,
+          "proposed_tokens": 60,
+          "tree_nodes": 60,
+          "verify_tokens": 61
+        },
+        {
+          "accepted_draft_tokens": 14,
+          "committed_tokens": 15,
+          "committed_draft_tokens": 14,
+          "proposed_tokens": 60,
+          "tree_nodes": 60,
+          "verify_tokens": 61
+        },
+        {
+          "accepted_draft_tokens": 5,
+          "committed_tokens": 6,
+          "committed_draft_tokens": 5,
+          "proposed_tokens": 60,
+          "tree_nodes": 60,
+          "verify_tokens": 61
+        },
+        {
+          "accepted_draft_tokens": 9,
+          "committed_tokens": 10,
+          "committed_draft_tokens": 9,
+          "proposed_tokens": 60,
+          "tree_nodes": 60,
+          "verify_tokens": 61
+        },
+        {
+          "accepted_draft_tokens": 3,
+          "committed_tokens": 2,
+          "committed_draft_tokens": 2,
+          "proposed_tokens": 60,
+          "tree_nodes": 60,
+          "verify_tokens": 61
+        }
+      ]
+    }
+  ]
+}

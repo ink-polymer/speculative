@@ -20,8 +20,8 @@ uploaded.
 | 2145624 | Qwen3-8B | shared-probability scaffold optimization rerun | COMPLETED |
 | 2146158 | Qwen3-4B | diffusion support-width 8/16/32/64 scan | COMPLETED |
 | 2146157 | Qwen3-8B | diffusion support-width 8/16/32/64 scan | COMPLETED |
-| 2147349 | Qwen3-4B | terminal-mass tree-block kernel/shape scan | SUBMITTED |
-| 2147350 | Qwen3-8B | terminal-mass tree-block kernel/shape scan | SUBMITTED |
+| 2147349 | Qwen3-4B | terminal-mass tree-block kernel/shape scan | COMPLETED |
+| 2147350 | Qwen3-8B | terminal-mass tree-block kernel/shape scan | COMPLETED |
 
 The pilots run the full `tests/gbv_paper` gate before loading checkpoints.
 Pilot metrics are diagnostic and use three fixed development prompts; they are
@@ -119,6 +119,30 @@ the official batched ancestral posterior to a terminal-mass block draw. The
 other shapes are an explicitly diagnostic throughput search. Each job runs the
 relevant exact-law tests before loading checkpoints; speed measurements remain
 development-prompt results until a frozen held-out run passes all gates.
+
+Both terminal-mass jobs completed successfully and both models now have one
+repeat-equal configuration that beats DDTree at every tested temperature:
+
+| Model | Single configuration | T=0.3 vs DDTree | T=0.6 vs DDTree | T=1.0 vs DDTree | 3-T geomean vs DDTree | 3-T geomean vs DFlash |
+|---|---|---:|---:|---:|---:|---:|
+| Qwen3-4B | `tm_l15_b60_dense` | 1.509x | 1.021x | 1.145x | **1.208x** | **1.354x** |
+| Qwen3-8B | `tm_l15_b45_dense` | 1.153x | 1.043x | 1.040x | **1.077x** | **1.423x** |
+
+For Qwen3-8B, the winning configuration is also the strict same-tree L15/B45
+comparison: the DDTree proposal, Target/Draft models, temperatures, budget,
+attention backend, probability precision, and model forwards are unchanged;
+only the exact terminal-mass verification execution graph differs. For
+Qwen3-4B, the strict same-tree `tm_l15_b45_dense` candidate also wins in the
+three-temperature aggregate at 1.184x versus DDTree, although its T=0.6 point
+is 0.976x. The tuned L15/B60 single configuration above crosses DDTree at all
+three temperatures. Temperature-specific selection reaches 1.517x/1.044x/
+1.145x for 4B and 1.220x/1.087x/1.040x for 8B.
+
+Sanitized complete summaries: [Qwen3-4B](../results/optimization/20260908/qwen3_4b_terminal_mass_summary.json)
+and [Qwen3-8B](../results/optimization/20260908/qwen3_8b_terminal_mass_summary.json).
+These are still diagnostic development-prompt measurements, not a held-out or
+formal speed claim. The strict checkpoint-equivalence and frozen-dataset gates
+remain required before publication.
 
 ## AdaptiveTree results available now
 
