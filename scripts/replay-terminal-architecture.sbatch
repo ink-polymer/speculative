@@ -25,6 +25,9 @@ esac
 cd "$TERMINAL_REPLAY_SOURCE"
 export PYTHONPATH="$PWD/src"
 export HF_HUB_OFFLINE=1 HF_DATASETS_OFFLINE=1
+export PATH="$FUYILE_ROOT/envs/adaptive/bin:$PATH"
+# Inline CUDA builds are not concurrency-safe when jobs share one cache path.
+export TORCH_EXTENSIONS_DIR="$FUYILE_ROOT/cache/torch_extensions/$SLURM_JOB_ID"
 TERMINAL_REPLAY_PYTHON="$FUYILE_ROOT/envs/gbv/bin/python"
 TERMINAL_REPLAY_OUTPUT="$FUYILE_ROOT/logs/terminal-architecture-${TERMINAL_REPLAY_MODEL}-${SLURM_JOB_ID}.json"
 
