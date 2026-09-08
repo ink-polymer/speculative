@@ -64,6 +64,14 @@ def test_worker_cli_checks_before_entering_model_loader(tmp_path,monkeypatch):
     assert entered == [1]
 
 
+def test_worker_contract_rejects_changed_greedy_audit_policy(tmp_path,monkeypatch):
+    args, config = worker_fixture(tmp_path,monkeypatch)
+    official_audit.validate_worker_contract(args,config)
+    args.greedy_audit_policy = "record-bf16-mismatches"
+    with pytest.raises(ValueError,match="parent contract"):
+        official_audit.validate_worker_contract(args,config)
+
+
 @pytest.mark.parametrize("field,value",[("uuid","different-gpu"),("gpu","different-card"),
                                         ("flash_attn","different-library")])
 def test_result_validator_rejects_different_gpu_or_library(field,value):

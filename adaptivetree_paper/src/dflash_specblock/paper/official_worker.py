@@ -31,17 +31,37 @@ def response_tokens(result):
     return result.output_ids[0, result.num_input_tokens:].tolist()
 
 
-def audit_response(response, *, index, turn, input_ids, diagnostic_path):
+def _first_difference(reference, candidate):
+    common = min(len(reference), len(candidate))
+    for position in range(common):
+        if reference[position] != candidate[position]:
+            return position
+    return common if len(reference) != len(candidate) else None
+
+
+def audit_response(response, *, index, turn, input_ids, diagnostic_path, policy="strict"):
+    if policy not in {"strict", "record-bf16-mismatches"}:
+        raise ValueError("Unknown greedy audit policy")
     reference = response_tokens(response["baseline"])
     mismatches = {name: response_tokens(value) for name, value in response.items()
                   if response_tokens(value) != reference}
+    first_differences = {name:_first_difference(reference, tokens)
+                         for name,tokens in mismatches.items()}
     if mismatches:
         atomic_json(diagnostic_path, {"index": index, "turn": turn,
             "baseline_tokens": reference, "mismatching_tokens": mismatches,
-            "message": "Official greedy token mismatch; no successful-run marker is written."})
-        raise RuntimeError(f"Greedy mismatch; diagnostic saved to {diagnostic_path}")
+            "first_mismatch_indices":first_differences,
+            "greedy_audit_policy":policy,
+            "message":("Official greedy token mismatch; no successful-run marker is written."
+                       if policy == "strict" else
+                       "BF16 greedy mismatch recorded; timings are not eligible for a strict lossless claim.")})
+        if policy == "strict":
+            raise RuntimeError(f"Greedy mismatch; diagnostic saved to {diagnostic_path}")
     return {"index": index, "turn": turn,
-            "input_sha256": digest(input_ids.detach().cpu().tolist()), "exact_match": True}
+            "input_sha256": digest(input_ids.detach().cpu().tolist()),
+            "exact_match":not mismatches, "greedy_audit_policy":policy,
+            "mismatching_methods":sorted(mismatches),
+            "first_mismatch_indices":first_differences}
 
 
 def worker(args, config):
@@ -90,6 +110,7 @@ def worker(args, config):
     methods = method_names(args.backend, config["variants"])
     controllers = {name: PaperAdaptiveBuilder(config["adaptive"], name)
                    for name in config["variants"]} if args.backend == "sdpa" else {}
+    audit_policy = getattr(args, "greedy_audit_policy", "strict")
 
     def generate(ids, method, max_tokens):
         kwargs = dict(model=draft, target=target, input_ids=ids,
@@ -122,7 +143,8 @@ def worker(args, config):
             for method in methods:
                 response[method] = generate(ids, method, maximum)
             audit = audit_response(response, index=idx, turn=turn, input_ids=ids,
-                diagnostic_path=args.output.with_name(args.output.stem + f".rank{rank}.mismatch.json"))
+                diagnostic_path=args.output.with_name(args.output.stem + f".rank{rank}.mismatch.json"),
+                policy=audit_policy)
             # Adding ablations must NOT change the official multi-turn conditioning:
             # SDPA uses the last original DDTree budget (1024); FA2 uses DFlash.
             history_method = "ddtree_tb1024" if args.backend == "sdpa" else "dflash"
@@ -149,6 +171,7 @@ def worker(args, config):
                 "protocol_identity":args.identity, "source_lock":lock,
                 "world_size":world, "hardware":hardware,
                 "smoke":bool(args.smoke_count), "methods":methods,
+                "greedy_audit_policy":audit_policy,
                 "adaptive_timing":"proposal+build; compile+verify+KV/commit; all controller overhead included in official decode timer",
                 "substage_note":"Adaptive fine-grained tree_build_* attribution unavailable; use aggregate tree_build"}
     expected_turns = sum(len(r["turns"]) for r in rows)
@@ -162,4 +185,5 @@ def worker(args, config):
     temp.replace(args.output)
     atomic_json(args.output.with_suffix(".complete.json"), {
         "identity":args.identity, "sha256":file_hash(args.output), "turns":expected_turns,
-        "cases":len(rows), "methods":methods, "smoke":bool(args.smoke_count)})
+        "cases":len(rows), "methods":methods, "smoke":bool(args.smoke_count),
+        "greedy_audit_policy":audit_policy})

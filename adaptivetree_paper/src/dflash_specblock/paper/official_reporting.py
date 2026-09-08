@@ -29,12 +29,15 @@ def load_completed(path, identity):
     run = torch.load(path, weights_only=False, map_location="cpu")
     if (run["protocol_identity"] != identity or len(run["responses"]) != completion["turns"]
             or run["methods"] != completion["methods"] or run["smoke"] != completion["smoke"]
+            or run.get("greedy_audit_policy", "strict")
+               != completion.get("greedy_audit_policy", "strict")
             or len({r["_audit"]["index"] for r in run["responses"]}) != completion["cases"]):
         raise ValueError("Run response identity/count mismatch")
     return run
 
 
-def validate_run_contract(run, source_lock, nproc, smoke_count, environment):
+def validate_run_contract(run, source_lock, nproc, smoke_count, environment,
+                          greedy_audit_policy="strict"):
     maximum = 32 if smoke_count else 2048
     args = run["args"]
     if (run["source_lock"] != source_lock or run["world_size"] != nproc
@@ -42,13 +45,15 @@ def validate_run_contract(run, source_lock, nproc, smoke_count, environment):
             or args["max_new_tokens"] != maximum or args["max_samples"] != LIMITS[args["dataset"]]
             or args["tree_budget"] != ",".join(map(str, BUDGETS))
             or args["flash_attn"] != (run["target_attn_implementation"] == "flash_attention_2")
+            or run.get("greedy_audit_policy", "strict") != greedy_audit_policy
             or len(run["hardware"]) != nproc
             or {h["rank"] for h in run["hardware"]} != set(range(nproc))):
         raise ValueError("Run source, hardware or generation settings differ from contract")
     validate_hardware(run["hardware"], environment, nproc)
 
 
-def validate_pair(sdpa, flash, dataset, model_index, variants, expected_rows):
+def validate_pair(sdpa, flash, dataset, model_index, variants, expected_rows,
+                  greedy_audit_policy="strict"):
     expected_keys = {(r["index"], t) for r in expected_rows for t in range(len(r["turns"]))}
     indexed = []
     for backend, run in (("sdpa", sdpa), ("flash_attention_2", flash)):
@@ -65,25 +70,49 @@ def validate_pair(sdpa, flash, dataset, model_index, variants, expected_rows):
         for response in run["responses"]:
             audit = response["_audit"]
             key = audit["index"], audit["turn"]
-            if key in rows or audit["exact_match"] is not True or set(response) != {*methods, "_audit"}:
+            if (key in rows or type(audit.get("exact_match")) is not bool
+                    or set(response) != {*methods, "_audit"}):
                 raise ValueError("Duplicate, failed or incomplete response")
             reference = response_tokens(response["baseline"])
+            mismatching_methods = set()
             for method in methods:
                 value = response[method]
-                if (response_tokens(value) != reference or not reference
-                        or len(reference) != value.num_output_tokens
+                tokens = response_tokens(value)
+                if tokens != reference:
+                    mismatching_methods.add(method)
+                if (not reference or len(tokens) != value.num_output_tokens
                         or not math.isfinite(value.time_per_output_token) or value.time_per_output_token <= 0
                         or not value.acceptance_lengths):
+                    raise ValueError("Invalid official timing/acceptance artifact")
+            if greedy_audit_policy == "strict":
+                if mismatching_methods:
                     raise ValueError("Invalid official tokens/timing/acceptance")
+                if audit["exact_match"] is not True:
+                    raise ValueError("Greedy audit does not match stored response tokens")
+            elif (greedy_audit_policy != "record-bf16-mismatches"
+                    or audit["exact_match"] != (not mismatching_methods)
+                    or set(audit.get("mismatching_methods", [])) != mismatching_methods
+                    or audit.get("greedy_audit_policy") != greedy_audit_policy):
+                raise ValueError("Invalid BF16 mismatch-recording audit")
             rows[key] = response
         if set(rows) != expected_keys:
             raise ValueError("Incomplete official sampled dataset or missing MT-Bench turn")
         indexed.append(rows)
     for key in expected_keys:
         left, right = indexed[0][key], indexed[1][key]
-        if (left["_audit"]["input_sha256"] != right["_audit"]["input_sha256"]
-                or response_tokens(left["baseline"]) != response_tokens(right["baseline"])):
+        if left["_audit"]["input_sha256"] != right["_audit"]["input_sha256"]:
             raise ValueError("SDPA/FA2 inputs or greedy outputs differ; no lossless comparative table")
+        if (greedy_audit_policy == "strict"
+                and response_tokens(left["baseline"]) != response_tokens(right["baseline"])):
+            raise ValueError("SDPA/FA2 inputs or greedy outputs differ; no lossless comparative table")
+    total = sum(len(values) for values in indexed)
+    exact = sum(response["_audit"]["exact_match"] for values in indexed for response in values.values())
+    cross_backend = sum(response_tokens(indexed[0][key]["baseline"])
+                        != response_tokens(indexed[1][key]["baseline"])
+                        for key in expected_keys)
+    return {"responses":total, "exact_responses":exact,
+            "mismatching_responses":total-exact,
+            "cross_backend_baseline_mismatches":cross_backend}
 
 
 def official_rows(sdpa, flash, variants):
@@ -124,6 +153,8 @@ def summarize(directory, data_dir, config, identity, model_indices, datasets, sm
         raise ValueError("Missing or inconsistent GPU environment record")
     source_lock = load_json(data_dir / "source_revisions.json")
     rows = []
+    audit_policy = metadata.get("greedy_audit_policy", "strict")
+    audit_stats = []
     for dataset in datasets:
         expected = load_json(data_dir / f"{dataset}.json")
         if smoke_count:
@@ -132,18 +163,29 @@ def summarize(directory, data_dir, config, identity, model_indices, datasets, sm
             runs = [load_completed(directory / (run_stem(dataset, model_index, backend)+".pt"), identity)
                     for backend in ("sdpa", "flash_attention_2")]
             for run in runs:
-                validate_run_contract(run, source_lock, metadata["nproc_per_node"], smoke_count, environment)
-            validate_pair(*runs, dataset, model_index, config["variants"], expected)
+                validate_run_contract(run, source_lock, metadata["nproc_per_node"], smoke_count,
+                                      environment, audit_policy)
+            audit_stats.append(validate_pair(*runs, dataset, model_index, config["variants"],
+                                             expected, audit_policy))
             for row in official_rows(*runs, config["variants"]):
                 rows.append({"dataset":dataset, "model":MODELS[model_index][0],
                              "cases":len(expected), "turns":sum(len(r["turns"]) for r in expected), **row})
     report = {"protocol":"ddtree_official_t0", "training":False, "full_split":False,
               "protocol_identity":identity, "environment_sha256":file_hash(directory / "environment.json"),
-              "official_samples":not bool(smoke_count), "publication_gate_passed":not bool(smoke_count),
+              "official_samples":not bool(smoke_count),
+              "greedy_audit_policy":audit_policy,
+              "publication_gate_passed":not bool(smoke_count) and audit_policy == "strict",
+              "strict_lossless_claim_eligible":audit_policy == "strict",
+              "numerical_audit":{"responses":sum(s["responses"] for s in audit_stats),
+                  "exact_responses":sum(s["exact_responses"] for s in audit_stats),
+                  "mismatching_responses":sum(s["mismatching_responses"] for s in audit_stats),
+                  "cross_backend_baseline_mismatches":sum(s["cross_backend_baseline_mismatches"] for s in audit_stats)},
               "full_official_t0_model_dataset_matrix":model_indices==list(range(3)) and datasets==list(LIMITS),
               "metric":"mean(per-response decode time/output tokens) ratio; excludes target prefill and first speculative draft",
               "baseline":"best mean-TPOT AR/DFlash backend independently; best DDTree budget, as upstream",
-              "accuracy_scope":"exact agreement with official target-only baseline, not task grading or a BF16 mathematical guarantee",
+              "accuracy_scope":("exact agreement with official target-only baseline, not task grading or a BF16 mathematical guarantee"
+                  if audit_policy == "strict" else
+                  "BF16 token mismatches are retained and counted; speed rows are not a strict lossless claim"),
               "rows":rows}
     atomic_json(directory / "tables.json", report)
     with (directory / "tables.csv").open("w", encoding="utf-8", newline="") as stream:
@@ -156,5 +198,7 @@ def summarize(directory, data_dir, config, identity, model_indices, datasets, sm
              "|---|---|---|---:|---:|---:|"]
     if smoke_count:
         lines[0] = "# SMOKE ONLY：不可用于论文"
+    elif audit_policy != "strict":
+        lines[0] = "# BF16 mismatch-recording benchmark：不可声称严格无损"
     lines += [f"| {r['model']} | {r['dataset']} | {r['method']} | {r['speedup_vs_target']:.4f}× | {r['speedup_vs_best_ddtree']:.4f}× | {r['mean_acceptance_length']:.3f} |" for r in rows]
     (directory / "tables.md").write_text("\n".join(lines)+"\n", encoding="utf-8")

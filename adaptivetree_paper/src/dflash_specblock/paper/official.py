@@ -64,6 +64,8 @@ def main(argv=None):
     parser.add_argument("--backend", choices=["sdpa","flash_attention_2"])
     parser.add_argument("--output", type=Path)
     parser.add_argument("--identity")
+    parser.add_argument("--greedy-audit-policy", choices=["strict", "record-bf16-mismatches"],
+                        default="strict")
     args = parser.parse_args(argv)
     config = load_config(args.config)
     if args.nproc_per_node < 1 or args.smoke_count < 0:
@@ -91,11 +93,13 @@ def main(argv=None):
         if args.stage == "prepare":
             print(json.dumps(check_manifest(args.data_dir),ensure_ascii=False,indent=2))
             return
+    audit_policy = args.greedy_audit_policy
     manifest = check_manifest(args.data_dir)
     metadata = {"version":4, "config":config, "source_manifest":verify_sources(),
                 "dataset_manifest":manifest, "code_identity":code_identity(),
                 "nproc_per_node":args.nproc_per_node, "model_indices":models, "datasets":datasets,
-                "smoke_count":args.smoke_count, "max_new_tokens":32 if args.smoke_count else 2048}
+                "smoke_count":args.smoke_count, "max_new_tokens":32 if args.smoke_count else 2048,
+                "greedy_audit_policy":audit_policy}
     with run_lock(args.run_dir):
         identity = contract(args.run_dir, metadata)
     from .official_reporting import load_completed, run_stem, summarize, validate_run_contract
@@ -116,17 +120,22 @@ def main(argv=None):
                     if output.with_suffix(".complete.json").exists():
                         run = load_completed(output,identity)
                         validate_run_contract(run, load_json(args.data_dir/"source_revisions.json"),
-                                              args.nproc_per_node,args.smoke_count,env)
+                                              args.nproc_per_node,args.smoke_count,env,audit_policy)
                         continue
                     if output.exists():
                         raise FileExistsError("Incomplete artifact exists; use a new run directory, not silent overwrite")
-                    command = [sys.executable,"-m","torch.distributed.run",
-                        "--nproc_per_node",str(args.nproc_per_node),"--master_port",str(args.master_port),
-                        "-m","dflash_specblock.paper","worker","--config",str(args.config.resolve()),
+                    worker_args = ["-m","dflash_specblock.paper","worker","--config",str(args.config.resolve()),
                         "--data-dir",str(args.data_dir.resolve()),"--run-dir",str(args.run_dir.resolve()),
                         "--model-index",str(model_index),"--dataset",dataset,"--backend",backend,
                         "--output",str(output.resolve()),"--identity",identity,
-                        "--nproc-per-node",str(args.nproc_per_node),"--smoke-count",str(args.smoke_count)]
+                        "--nproc-per-node",str(args.nproc_per_node),"--smoke-count",str(args.smoke_count),
+                        "--greedy-audit-policy",audit_policy]
+                    if args.nproc_per_node == 1:
+                        command = [sys.executable,*worker_args]
+                    else:
+                        command = [sys.executable,"-m","torch.distributed.run",
+                            "--nproc_per_node",str(args.nproc_per_node),"--master_port",str(args.master_port),
+                            *worker_args]
                     subprocess.run(command,check=True)
         if args.stage == "all":
             summarize(args.run_dir,args.data_dir,config,identity,models,datasets,args.smoke_count)

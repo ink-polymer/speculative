@@ -161,6 +161,18 @@ def test_mismatch_audit_is_fail_closed(tmp_path):
     assert load_json(tmp_path/"failed.json")["mismatching_tokens"] == {"adaptive":[8]}
 
 
+def test_mismatch_record_policy_is_explicit_and_non_lossless(tmp_path):
+    audit = audit_response({"baseline":response(1,7),"adaptive":response(.5,8)},
+        index=0,turn=0,input_ids=torch.tensor([[1]]),diagnostic_path=tmp_path/"recorded.json",
+        policy="record-bf16-mismatches")
+    assert audit["exact_match"] is False
+    assert audit["mismatching_methods"] == ["adaptive"]
+    assert audit["first_mismatch_indices"] == {"adaptive":0}
+    diagnostic = load_json(tmp_path/"recorded.json")
+    assert diagnostic["greedy_audit_policy"] == "record-bf16-mismatches"
+    assert "not eligible" in diagnostic["message"]
+
+
 def test_official_method_order_and_no_t1_support():
     assert method_names("sdpa",VARIANTS)[:9] == ["baseline","dflash"]+[f"ddtree_tb{b}" for b in BUDGETS]
     assert method_names("flash_attention_2",VARIANTS) == ["baseline","dflash"]
@@ -212,6 +224,23 @@ def test_cross_backend_tokens_inputs_and_missing_turn_are_fail_closed():
     with pytest.raises(ValueError,match="Incomplete official sampled"):
         validate_pair(sdpa,synthetic_run("flash_attention_2"),"gsm8k",0,VARIANTS,
                       [{"index":0,"turns":["first","second"]}])
+
+
+def test_record_policy_validates_mismatches_without_lossless_gate():
+    expected = [{"index":0,"turns":["synthetic prompt"]}]
+    policy = "record-bf16-mismatches"
+    sdpa, fa = synthetic_run(),synthetic_run("flash_attention_2")
+    for run in (sdpa, fa):
+        run["greedy_audit_policy"] = policy
+        audit = run["responses"][0]["_audit"]
+        audit.update({"greedy_audit_policy":policy,"mismatching_methods":[],
+                      "first_mismatch_indices":{}})
+    sdpa["responses"][0]["adaptive"] = response(1.,8)
+    sdpa["responses"][0]["_audit"].update({"exact_match":False,
+        "mismatching_methods":["adaptive"],"first_mismatch_indices":{"adaptive":0}})
+    stats = validate_pair(sdpa,fa,"gsm8k",0,VARIANTS,expected,policy)
+    assert stats == {"responses":2,"exact_responses":1,"mismatching_responses":1,
+                     "cross_backend_baseline_mismatches":0}
 
 
 def test_summary_checks_contract_completion_environment_and_artifact_hash(tmp_path,monkeypatch):

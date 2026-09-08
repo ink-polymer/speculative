@@ -21,6 +21,8 @@ def validate_worker_contract(args, config):
             or args.nproc_per_node != metadata["nproc_per_node"]
             or args.smoke_count != metadata["smoke_count"]
             or metadata["max_new_tokens"] != (32 if args.smoke_count else 2048)
+            or metadata.get("greedy_audit_policy", "strict")
+               != getattr(args, "greedy_audit_policy", "strict")
             or int(os.environ.get("WORLD_SIZE", "1")) != args.nproc_per_node):
         raise ValueError("Worker code/data/model scope differs from the parent contract")
     from .official_reporting import run_stem

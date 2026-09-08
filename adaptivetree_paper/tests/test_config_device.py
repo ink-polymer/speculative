@@ -53,14 +53,17 @@ def test_cuda_device_resolution_is_explicit(monkeypatch) -> None:
 def test_cuda_runtime_configures_tf32(monkeypatch) -> None:
     precisions: list[str] = []
     monkeypatch.setattr(torch, "set_float32_matmul_precision", precisions.append)
-    monkeypatch.setattr(torch.backends.cuda.matmul, "allow_tf32", False)
-    monkeypatch.setattr(torch.backends.cudnn, "allow_tf32", False)
 
     configure_cuda_runtime(torch.device("cuda:0"), allow_tf32=True)
 
-    assert precisions == ["high"]
-    assert torch.backends.cuda.matmul.allow_tf32 is True
-    assert torch.backends.cudnn.allow_tf32 is True
+    if hasattr(torch.backends.cuda.matmul, "fp32_precision"):
+        assert precisions == []
+        assert torch.backends.cuda.matmul.fp32_precision == "tf32"
+        assert torch.backends.cudnn.fp32_precision == "tf32"
+    else:
+        assert precisions == ["high"]
+        assert torch.backends.cuda.matmul.allow_tf32 is True
+        assert torch.backends.cudnn.allow_tf32 is True
 
 
 def test_target_flash_attention_and_nested_cuda_graphs_are_rejected() -> None:
