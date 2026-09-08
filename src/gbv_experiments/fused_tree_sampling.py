@@ -30,7 +30,11 @@ CUDA_SOURCE = r"""
 #include <c10/cuda/CUDAException.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
+#include <cooperative_groups.h>
+#include <algorithm>
 #include <climits>
+
+namespace cg = cooperative_groups;
 
 template <typename scalar_t>
 __global__ void fused_tree_sample_kernel(
@@ -165,129 +169,126 @@ torch::Tensor fused_tree_sample_cuda(
 }
 
 template <typename scalar_t>
-__global__ void probability_chunk_sums_kernel(
-    const scalar_t* __restrict__ probabilities,
-    const int64_t* __restrict__ state,
-    double* __restrict__ block_sums,
-    int vocabulary,
-    int max_depth) {
-  if (state[max_depth + 3]) {
-    return;
-  }
-  extern __shared__ double values[];
-  const int row = static_cast<int>(state[max_depth + 2]);
-  const int block_chunk = (vocabulary + gridDim.x - 1) / gridDim.x;
-  const int begin = blockIdx.x * block_chunk;
-  const int end = min(begin + block_chunk, vocabulary);
-  double local = 0.0;
-  for (int token = begin + threadIdx.x; token < end; token += blockDim.x) {
-    local += static_cast<double>(probabilities[row * vocabulary + token]);
-  }
-  values[threadIdx.x] = local;
-  __syncthreads();
-  for (int offset = blockDim.x / 2; offset > 0; offset >>= 1) {
-    if (threadIdx.x < offset) {
-      values[threadIdx.x] += values[threadIdx.x + offset];
-    }
-    __syncthreads();
-  }
-  if (threadIdx.x == 0) {
-    block_sums[blockIdx.x] = values[0];
-  }
-}
-
-template <typename scalar_t>
-__global__ void select_tree_step_kernel(
+__global__ void fused_tree_sample_cooperative_kernel(
     const scalar_t* __restrict__ probabilities,
     const int64_t* __restrict__ edge_parents,
     const int64_t* __restrict__ edge_tokens,
     const double* __restrict__ uniforms,
-    const double* __restrict__ block_sums,
     int64_t* __restrict__ state,
+    double* __restrict__ workspace,
     int node_count,
     int vocabulary,
-    int max_depth,
-    int depth,
-    int reduction_blocks) {
-  if (state[max_depth + 3]) {
-    return;
-  }
+    int max_depth) {
+  cg::grid_group grid = cg::this_grid();
   extern __shared__ double lane_sums[];
-  __shared__ int selected_block;
-  __shared__ double local_threshold;
-  const int row = static_cast<int>(state[max_depth + 2]);
-  const int block_chunk = (vocabulary + reduction_blocks - 1) / reduction_blocks;
+  const int block_chunk = (vocabulary + gridDim.x - 1) / gridDim.x;
 
-  if (threadIdx.x == 0) {
-    double total = 0.0;
-    for (int block = 0; block < reduction_blocks; ++block) {
-      total += block_sums[block];
+  for (int depth = 0; depth <= max_depth; ++depth) {
+    if (state[max_depth + 3]) {
+      break;
     }
-    const double threshold = uniforms[depth] * total;
-    double prefix = 0.0;
-    selected_block = reduction_blocks - 1;
-    for (int block = 0; block < reduction_blocks; ++block) {
-      const double next = prefix + block_sums[block];
-      if (threshold < next || block == reduction_blocks - 1) {
-        selected_block = block;
-        local_threshold = threshold - prefix;
-        break;
+    const int row = static_cast<int>(state[max_depth + 2]);
+    const int begin = blockIdx.x * block_chunk;
+    const int end = min(begin + block_chunk, vocabulary);
+    double local = 0.0;
+    for (int token = begin + threadIdx.x; token < end; token += blockDim.x) {
+      local += static_cast<double>(probabilities[row * vocabulary + token]);
+    }
+    lane_sums[threadIdx.x] = local;
+    __syncthreads();
+    for (int offset = blockDim.x / 2; offset > 0; offset >>= 1) {
+      if (threadIdx.x < offset) {
+        lane_sums[threadIdx.x] += lane_sums[threadIdx.x + offset];
       }
-      prefix = next;
+      __syncthreads();
     }
-  }
-  __syncthreads();
+    if (threadIdx.x == 0) {
+      workspace[blockIdx.x] = lane_sums[0];
+    }
+    grid.sync();
 
-  const int selected_begin = selected_block * block_chunk;
-  const int selected_end = min(selected_begin + block_chunk, vocabulary);
-  const int lane_chunk = (selected_end - selected_begin + blockDim.x - 1) / blockDim.x;
-  const int lane_begin = selected_begin + threadIdx.x * lane_chunk;
-  const int lane_end = min(lane_begin + lane_chunk, selected_end);
-  double local = 0.0;
-  for (int token = lane_begin; token < lane_end; ++token) {
-    local += static_cast<double>(probabilities[row * vocabulary + token]);
-  }
-  lane_sums[threadIdx.x] = local;
-  __syncthreads();
+    // One thread chooses the vocabulary partition.  Its residual threshold is
+    // then consumed by that partition's block, so no second kernel launch or
+    // host decision is needed between tree depths.
+    if (blockIdx.x == 0 && threadIdx.x == 0) {
+      double total = 0.0;
+      for (int block = 0; block < gridDim.x; ++block) {
+        total += workspace[block];
+      }
+      const double threshold = uniforms[depth] * total;
+      double prefix = 0.0;
+      int selected_block = gridDim.x - 1;
+      for (int block = 0; block < gridDim.x; ++block) {
+        const double next = prefix + workspace[block];
+        if (threshold < next || block == gridDim.x - 1) {
+          selected_block = block;
+          workspace[gridDim.x] = threshold - prefix;
+          break;
+        }
+        prefix = next;
+      }
+      state[max_depth + 4] = selected_block;
+    }
+    grid.sync();
 
-  if (threadIdx.x == 0) {
-    double prefix = 0.0;
-    int selected_lane = blockDim.x - 1;
-    for (int lane = 0; lane < blockDim.x; ++lane) {
-      const double next = prefix + lane_sums[lane];
-      if (local_threshold < next || lane == blockDim.x - 1) {
-        selected_lane = lane;
-        break;
+    const int selected_block = static_cast<int>(state[max_depth + 4]);
+    if (blockIdx.x == selected_block) {
+      const int selected_begin = selected_block * block_chunk;
+      const int selected_end = min(selected_begin + block_chunk, vocabulary);
+      const int lane_chunk =
+          (selected_end - selected_begin + blockDim.x - 1) / blockDim.x;
+      const int lane_begin = selected_begin + threadIdx.x * lane_chunk;
+      const int lane_end = min(lane_begin + lane_chunk, selected_end);
+      double selected_local = 0.0;
+      for (int token = lane_begin; token < lane_end; ++token) {
+        selected_local +=
+            static_cast<double>(probabilities[row * vocabulary + token]);
       }
-      prefix = next;
-    }
-    int selected_token = min(selected_begin + selected_lane * lane_chunk,
-                             vocabulary - 1);
-    const int token_end = min(selected_token + lane_chunk, selected_end);
-    for (int token = selected_token; token < token_end; ++token) {
-      prefix += static_cast<double>(probabilities[row * vocabulary + token]);
-      selected_token = token;
-      if (local_threshold < prefix) {
-        break;
-      }
-    }
+      lane_sums[threadIdx.x] = selected_local;
+      __syncthreads();
 
-    int child = -1;
-    for (int edge = 0; edge < node_count - 1; ++edge) {
-      if (edge_parents[edge] == row && edge_tokens[edge] == selected_token) {
-        child = edge + 1;
-        break;
+      if (threadIdx.x == 0) {
+        const double local_threshold = workspace[gridDim.x];
+        double prefix = 0.0;
+        int selected_lane = blockDim.x - 1;
+        for (int lane = 0; lane < blockDim.x; ++lane) {
+          const double next = prefix + lane_sums[lane];
+          if (local_threshold < next || lane == blockDim.x - 1) {
+            selected_lane = lane;
+            break;
+          }
+          prefix = next;
+        }
+        int selected_token = min(
+            selected_begin + selected_lane * lane_chunk, vocabulary - 1);
+        const int token_end = min(selected_token + lane_chunk, selected_end);
+        for (int token = selected_token; token < token_end; ++token) {
+          prefix += static_cast<double>(probabilities[row * vocabulary + token]);
+          selected_token = token;
+          if (local_threshold < prefix) {
+            break;
+          }
+        }
+
+        int child = -1;
+        for (int edge = 0; edge < node_count - 1; ++edge) {
+          if (edge_parents[edge] == row && edge_tokens[edge] == selected_token) {
+            child = edge + 1;
+            break;
+          }
+        }
+        const int accepted = static_cast<int>(state[max_depth]);
+        if (child >= 0 && depth < max_depth) {
+          state[accepted] = child;
+          state[max_depth] = accepted + 1;
+          state[max_depth + 2] = child;
+        } else {
+          state[max_depth + 1] = selected_token;
+          state[max_depth + 3] = 1;
+        }
       }
     }
-    const int accepted = static_cast<int>(state[max_depth]);
-    if (child >= 0 && depth < max_depth) {
-      state[accepted] = child;
-      state[max_depth] = accepted + 1;
-      state[max_depth + 2] = child;
-    } else {
-      state[max_depth + 1] = selected_token;
-      state[max_depth + 3] = 1;
-    }
+    grid.sync();
   }
 }
 
@@ -316,31 +317,46 @@ torch::Tensor fused_tree_sample_parallel_cuda(
 
   c10::cuda::CUDAGuard device_guard(probabilities.device());
   auto state = torch::zeros(
-      {max_depth + 4},
+      {max_depth + 5},
       torch::TensorOptions().dtype(torch::kLong).device(probabilities.device()));
-  constexpr int reduction_blocks = 64;
-  constexpr int reduction_threads = 256;
-  constexpr int selection_threads = 256;
-  auto block_sums = torch::empty(
-      {reduction_blocks},
-      torch::TensorOptions().dtype(torch::kFloat64).device(probabilities.device()));
+  constexpr int requested_blocks = 64;
+  constexpr int threads = 256;
   auto stream = at::cuda::getCurrentCUDAStream();
   AT_DISPATCH_FLOATING_TYPES(probabilities.scalar_type(), "fused_tree_sample_parallel_cuda", [&] {
-    for (int depth = 0; depth <= max_depth; ++depth) {
-      probability_chunk_sums_kernel<scalar_t><<<
-          reduction_blocks, reduction_threads,
-          reduction_threads * sizeof(double), stream>>>(
-          probabilities.data_ptr<scalar_t>(), state.data_ptr<int64_t>(),
-          block_sums.data_ptr<double>(), static_cast<int>(vocabulary),
-          static_cast<int>(max_depth));
-      select_tree_step_kernel<scalar_t><<<
-          1, selection_threads, selection_threads * sizeof(double), stream>>>(
-          probabilities.data_ptr<scalar_t>(), edge_parents.data_ptr<int64_t>(),
-          edge_tokens.data_ptr<int64_t>(), uniforms.data_ptr<double>(),
-          block_sums.data_ptr<double>(), state.data_ptr<int64_t>(),
-          static_cast<int>(node_count), static_cast<int>(vocabulary),
-          static_cast<int>(max_depth), depth, reduction_blocks);
-    }
+    int device = 0;
+    C10_CUDA_CHECK(cudaGetDevice(&device));
+    int cooperative = 0;
+    C10_CUDA_CHECK(cudaDeviceGetAttribute(
+        &cooperative, cudaDevAttrCooperativeLaunch, device));
+    TORCH_CHECK(cooperative, "GPU does not support cooperative launch");
+    int blocks_per_sm = 0;
+    C10_CUDA_CHECK(cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+        &blocks_per_sm, fused_tree_sample_cooperative_kernel<scalar_t>,
+        threads, threads * sizeof(double)));
+    cudaDeviceProp properties;
+    C10_CUDA_CHECK(cudaGetDeviceProperties(&properties, device));
+    const int blocks = std::min(
+        requested_blocks, blocks_per_sm * properties.multiProcessorCount);
+    TORCH_CHECK(blocks > 0, "No cooperative kernel occupancy available");
+    auto workspace = torch::empty(
+        {blocks + 1},
+        torch::TensorOptions().dtype(torch::kFloat64).device(probabilities.device()));
+    const scalar_t* probability_ptr = probabilities.data_ptr<scalar_t>();
+    const int64_t* parent_ptr = edge_parents.data_ptr<int64_t>();
+    const int64_t* token_ptr = edge_tokens.data_ptr<int64_t>();
+    const double* uniform_ptr = uniforms.data_ptr<double>();
+    int64_t* state_ptr = state.data_ptr<int64_t>();
+    double* workspace_ptr = workspace.data_ptr<double>();
+    const int nodes = static_cast<int>(node_count);
+    const int vocab = static_cast<int>(vocabulary);
+    const int depth = static_cast<int>(max_depth);
+    void* arguments[] = {
+        &probability_ptr, &parent_ptr, &token_ptr, &uniform_ptr,
+        &state_ptr, &workspace_ptr, &nodes, &vocab, &depth};
+    C10_CUDA_CHECK(cudaLaunchCooperativeKernel(
+        reinterpret_cast<void*>(fused_tree_sample_cooperative_kernel<scalar_t>),
+        dim3(blocks), dim3(threads), arguments,
+        threads * sizeof(double), stream));
   });
   C10_CUDA_KERNEL_LAUNCH_CHECK();
   return state;
@@ -355,7 +371,7 @@ def load_fused_tree_sampler():
     from torch.utils.cpp_extension import load_inline
 
     return load_inline(
-        name="gbv_fused_tree_sampler_v2",
+        name="gbv_fused_tree_sampler_v3",
         cpp_sources=[CPP_SOURCE],
         cuda_sources=[CUDA_SOURCE],
         functions=["fused_tree_sample_cuda", "fused_tree_sample_parallel_cuda"],
