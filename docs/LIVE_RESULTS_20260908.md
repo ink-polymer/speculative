@@ -14,8 +14,10 @@ uploaded.
 | 2142851 | Qwen3-8B | first resume attempt | FAILED: shared prepare lock |
 | 2142956 | Qwen3-8B | second resume attempt | FAILED: locked GPU UUID differed |
 | 2143068 | Qwen3-8B | fresh 10-dataset 350GB rerun | RUNNING on n555 |
-| 2144508 | Qwen3-4B | diffusion scaffold fixed-grid optimization | RUNNING on n495 |
-| 2144509 | Qwen3-8B | diffusion scaffold fixed-grid optimization | RUNNING on n66 |
+| 2144508 | Qwen3-4B | diffusion scaffold fixed-grid optimization | COMPLETED |
+| 2144509 | Qwen3-8B | diffusion scaffold fixed-grid optimization | COMPLETED |
+| 2145591 | Qwen3-4B | shared-probability scaffold optimization rerun | PENDING: Priority |
+| 2145624 | Qwen3-8B | shared-probability scaffold optimization rerun | PENDING: Priority |
 
 The pilots run the full `tests/gbv_paper` gate before loading checkpoints.
 Pilot metrics are diagnostic and use three fixed development prompts; they are
@@ -68,6 +70,15 @@ use the same three development prompts, so this is explicitly a diagnostic
 optimization rather than a held-out or formal result. The strict checkpoint
 equivalence audit remains a separate mandatory gate and is not weakened by the
 optimizer.
+
+The second pass in jobs 2145591 and 2145624 removes a measured implementation
+bottleneck without changing the sampling law: the diffusion block verifier and
+its Target-only continuation now reuse one normalized FP64 Target-probability
+tensor instead of normalizing the same tree rows again. Exact finite-law
+enumeration tests and the full `tests/gbv_paper` suite pass before the paired GPU
+rerun. The rerun will determine whether removing the measured 6--7 ms of
+per-round `select_and_correct` overhead is sufficient to cross the DDTree TPOT
+baseline at T=0.6 and T=1.0.
 
 ## AdaptiveTree results available now
 
