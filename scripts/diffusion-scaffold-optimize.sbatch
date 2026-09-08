@@ -20,6 +20,7 @@ export HF_HUB_OFFLINE=1 HF_DATASETS_OFFLINE=1
 export PATH="$FUYILE_ROOT/envs/gbv/bin:$PATH"
 DIFFUSION_OPT_PYTHON="$FUYILE_ROOT/envs/gbv/bin/python"
 DIFFUSION_OPT_MODEL="${DIFFUSION_OPT_MODEL:-qwen3_8b}"
+DIFFUSION_OPT_GRID="${DIFFUSION_OPT_GRID:-coarse}"
 case "$DIFFUSION_OPT_MODEL" in
   qwen3_4b) DIFFUSION_OPT_CONFIG="configs/gbv_paper_ddtree_counts.json" ;;
   qwen3_8b) DIFFUSION_OPT_CONFIG="configs/gbv_paper_qwen3_8b.json" ;;
@@ -27,14 +28,27 @@ case "$DIFFUSION_OPT_MODEL" in
 esac
 DIFFUSION_OPT_OUTPUT="$FUYILE_ROOT/runs/diffusion-scaffold-opt-${DIFFUSION_OPT_MODEL}-${SLURM_JOB_ID}"
 mkdir -p "$DIFFUSION_OPT_OUTPUT"
+if [[ "$DIFFUSION_OPT_GRID" == terminal ]]; then
+  DIFFUSION_OPT_TESTS=(
+    tests/gbv_paper/test_diffusion_optimization.py
+    tests/gbv_paper/test_terminal_mass.py
+    tests/gbv_paper/test_probability_law.py
+    tests/gbv_paper/test_fairness.py
+    tests/gbv_paper/test_engine.py
+  )
+else
+  DIFFUSION_OPT_TESTS=(
+    tests/gbv_paper/test_diffusion_optimization.py
+    tests/gbv_paper/test_diffusion_scaffold.py
+    tests/gbv_paper/test_diffusion_preflight.py
+  )
+fi
 srun --ntasks=1 "$DIFFUSION_OPT_PYTHON" -m pytest \
-  tests/gbv_paper/test_diffusion_optimization.py \
-  tests/gbv_paper/test_diffusion_scaffold.py \
-  tests/gbv_paper/test_diffusion_preflight.py -q --tb=short \
+  "${DIFFUSION_OPT_TESTS[@]}" -q --tb=short \
   --junitxml="$DIFFUSION_OPT_OUTPUT/unit_tests.xml"
 srun --ntasks=1 "$DIFFUSION_OPT_PYTHON" scripts/optimize_diffusion_scaffold.py \
   --config "$DIFFUSION_OPT_CONFIG" \
   --output "$DIFFUSION_OPT_OUTPUT/scan" \
   --tokens "${DIFFUSION_OPT_TOKENS:-96}" \
   --repeats "${DIFFUSION_OPT_REPEATS:-2}" \
-  --grid "${DIFFUSION_OPT_GRID:-coarse}"
+  --grid "$DIFFUSION_OPT_GRID"
