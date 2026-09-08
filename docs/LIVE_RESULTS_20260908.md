@@ -20,6 +20,8 @@ uploaded.
 | 2145624 | Qwen3-8B | shared-probability scaffold optimization rerun | COMPLETED |
 | 2146158 | Qwen3-4B | diffusion support-width 8/16/32/64 scan | RUNNING on n38 |
 | 2146157 | Qwen3-8B | diffusion support-width 8/16/32/64 scan | RUNNING on n38 |
+| 2147349 | Qwen3-4B | terminal-mass tree-block kernel/shape scan | SUBMITTED |
+| 2147350 | Qwen3-8B | terminal-mass tree-block kernel/shape scan | SUBMITTED |
 
 The pilots run the full `tests/gbv_paper` gate before loading checkpoints.
 Pilot metrics are diagnostic and use three fixed development prompts; they are
@@ -88,6 +90,15 @@ Jobs 2146158 and 2146157 therefore run a focused third pass over proposal
 support widths 8, 16, 32, and 64. The hypothesis is that wider retained support
 will reduce early correction exits at higher temperatures, improving committed
 tokens per Target tree forward enough to offset the small sparse-transport cost.
+
+Jobs 2147349 and 2147350 add the requested direct tree-block path for both
+models. They compare canonical DFlash and DDTree with seven terminal-mass tree
+shapes and three exact verification kernels. In particular, L=15/B=45 keeps the
+DDTree probability tree and model work fixed and changes only the sampler from
+the official batched ancestral posterior to a terminal-mass block draw. The
+other shapes are an explicitly diagnostic throughput search. Each job runs the
+relevant exact-law tests before loading checkpoints; speed measurements remain
+development-prompt results until a frozen held-out run passes all gates.
 
 ## AdaptiveTree results available now
 
