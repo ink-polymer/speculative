@@ -4,16 +4,50 @@ This page contains sanitized metrics and scheduler identifiers only. Model
 weights, prompts, caches, mismatch token dumps, and large tensor captures are not
 uploaded.
 
-## Running jobs
+## Scheduler snapshot
 
-| Job | Model | Experiment | Temperatures | State at submission |
-|---:|---|---|---|---|
-| 2142136 | Qwen3-4B | diffusion scaffold tree block-verification pilot | 0.3, 0.6, 1.0 | PENDING (Priority) |
-| 2142137 | Qwen3-8B | diffusion scaffold tree block-verification pilot | 0.3, 0.6, 1.0 | PENDING (Priority) |
+| Job | Model | Experiment | State |
+|---:|---|---|---|
+| 2142136 | Qwen3-4B | diffusion scaffold pilot, T=0.3/0.6/1.0 | COMPLETED |
+| 2142137 | Qwen3-8B | diffusion scaffold pilot, T=0.3/0.6/1.0 | COMPLETED |
+| 2142850 | Qwen3-4B | AdaptiveTree 10-dataset matrix | RUNNING on n141 |
+| 2142851 | Qwen3-8B | first resume attempt | FAILED: shared prepare lock |
+| 2142956 | Qwen3-8B | AdaptiveTree resume from 7/10 datasets | RUNNING on n538 |
 
 The pilots run the full `tests/gbv_paper` gate before loading checkpoints.
 Pilot metrics are diagnostic and use three fixed development prompts; they are
 not formal benchmark claims.
+
+## Diffusion scaffold pilot results
+
+Speedup is baseline decode TPOT divided by `diffusion_full` decode TPOT.
+Values above 1 are faster. Each cell uses 9 timing records from three fixed
+development prompts and three repeats on one NVIDIA GH200 120GB.
+
+| Model | T | diffusion_full TPOT (ms) | vs DFlash | vs DDTree | Checkpoint gate |
+|---|---:|---:|---:|---:|---|
+| Qwen3-4B | 0.3 | 13.367 | 1.095x | 0.748x | FAIL: DFlash TV=0.1441 |
+| Qwen3-4B | 0.6 | 10.787 | 1.383x | 0.854x | FAIL: DFlash TV=0.0944 |
+| Qwen3-4B | 1.0 | 10.504 | 1.181x | 1.006x | FAIL: DFlash TV=0.0603 |
+| Qwen3-8B | 0.3 | 12.976 | 1.002x | 0.808x | FAIL: DDTree TV=0.1446 |
+| Qwen3-8B | 0.6 | 10.116 | 1.191x | 0.845x | FAIL: DDTree TV=0.0966 |
+| Qwen3-8B | 1.0 | 13.649 | 0.845x | 0.597x | FAIL: DDTree TV=0.0619 |
+
+All six runs have `pilot_complete=true`,
+`within_method_repeat_equal=true`, and `formal_complete=false`. The complete
+unit-test directory passed before GPU execution. The checkpoint gate correctly
+failed because a positive-temperature baseline check failed before the candidate:
+DFlash for 4B and DDTree for 8B. These numbers must not be presented as validated
+speed superiority.
+
+Complete per-method pilot metrics:
+
+- [Qwen3-4B T=0.3](../results/pilots/20260908/qwen3_4b_t03.json)
+- [Qwen3-4B T=0.6](../results/pilots/20260908/qwen3_4b_t06.json)
+- [Qwen3-4B T=1.0](../results/pilots/20260908/qwen3_4b_t10.json)
+- [Qwen3-8B T=0.3](../results/pilots/20260908/qwen3_8b_t03.json)
+- [Qwen3-8B T=0.6](../results/pilots/20260908/qwen3_8b_t06.json)
+- [Qwen3-8B T=1.0](../results/pilots/20260908/qwen3_8b_t10.json)
 
 ## AdaptiveTree results available now
 

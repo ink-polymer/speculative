@@ -1,0 +1,66 @@
+{
+  "pilot_complete": true,
+  "formal_complete": false,
+  "gpu": "NVIDIA GH200 120GB",
+  "checkpoint_gate": false,
+  "greedy_exact_gate": null,
+  "temperature_scope": "positive_only",
+  "within_method_repeat_equal": true,
+  "metrics": {
+    "target_sample": {
+      "decode_ms_per_token": 50.19749353379956,
+      "e2e_ms_per_token": 50.20319135971434,
+      "records": 9
+    },
+    "dflash_match": {
+      "decode_ms_per_token": 14.914054108658405,
+      "e2e_ms_per_token": 15.361430172191373,
+      "records": 9
+    },
+    "ddtree": {
+      "decode_ms_per_token": 9.212465149940583,
+      "e2e_ms_per_token": 9.768195805933189,
+      "records": 9
+    },
+    "diffusion_full": {
+      "decode_ms_per_token": 10.786895794567572,
+      "e2e_ms_per_token": 11.320219645156236,
+      "records": 9
+    },
+    "diffusion_old": {
+      "decode_ms_per_token": 12.497691370654493,
+      "e2e_ms_per_token": 12.968005186843651,
+      "records": 9
+    },
+    "diffusion_two_paths": {
+      "decode_ms_per_token": 12.88312021114395,
+      "e2e_ms_per_token": 13.27966156497655,
+      "records": 9
+    },
+    "diffusion_no_fill": {
+      "decode_ms_per_token": 13.263481552420851,
+      "e2e_ms_per_token": 13.70523469764947,
+      "records": 9
+    },
+    "diffusion_no_recycle": {
+      "decode_ms_per_token": 14.358455401514846,
+      "e2e_ms_per_token": 14.715723322178894,
+      "records": 9
+    },
+    "diffusion_ancestral_recycle": {
+      "decode_ms_per_token": 14.1665707640615,
+      "e2e_ms_per_token": 14.540827514340297,
+      "records": 9
+    },
+    "diffusion_single": {
+      "decode_ms_per_token": 13.694458147816624,
+      "e2e_ms_per_token": 14.061703745185046,
+      "records": 9
+    }
+  },
+  "limitations": [
+    "Development prompts only; no benchmark or novelty claim",
+    "Unbiasedness theorem assumes exact arithmetic and valid target conditionals",
+    "No confidence intervals or formal evaluation quality scores in this pilot"
+  ]
+}
