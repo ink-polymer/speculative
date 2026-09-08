@@ -35,6 +35,20 @@ SUPPORT_GRID = (
     (1, 15, 60),
     (2, 15, 45),
 )
+TERMINAL_GRID = (
+    (8, 16),
+    (8, 24),
+    (12, 24),
+    (12, 36),
+    (15, 30),
+    (15, 45),
+    (15, 60),
+)
+TERMINAL_BACKENDS = (
+    ("block", "ddtree_terminal_block"),
+    ("serial", "ddtree_terminal_serial"),
+    ("dense", "ddtree_terminal_dense"),
+)
 
 
 def optimization_variants(temperature: float) -> list[Variant]:
@@ -91,6 +105,33 @@ def support_optimization_variants(temperature: float) -> list[Variant]:
             ))
     if len({variant.name for variant in variants}) != len(variants):
         raise AssertionError("Support optimization variants must have unique names")
+    for variant in variants:
+        variant.validate()
+    return variants
+
+
+def terminal_optimization_variants(temperature: float) -> list[Variant]:
+    """Tune exact terminal-mass DDTree execution without changing its model."""
+    if temperature not in TEMPERATURES:
+        raise ValueError("Optimization temperature must be 0.3, 0.6 or 1.0")
+    base = Variant(
+        name="base", method="ddtree", paths=1, length=15,
+        temperature=temperature, draft_temperature=temperature,
+        tree_budget=45, probability_dtype="float64",
+    )
+    variants = [
+        replace(base, name=BASELINE_NAMES[0], method="dflash"),
+        replace(base, name=BASELINE_NAMES[1], method="ddtree"),
+    ]
+    for length, budget in TERMINAL_GRID:
+        stem = f"tm_l{length}_b{budget}"
+        variants.extend(
+            replace(base, name=f"{stem}_{suffix}", method=method,
+                    length=length, tree_budget=budget)
+            for suffix, method in TERMINAL_BACKENDS
+        )
+    if len({variant.name for variant in variants}) != len(variants):
+        raise AssertionError("Terminal optimization variants must have unique names")
     for variant in variants:
         variant.validate()
     return variants

@@ -1,8 +1,10 @@
 import pytest
 
 from gbv_experiments.diffusion_optimization import (
-    BASELINE_NAMES, SUPPORT_SIZES, TEMPERATURES, optimization_variants,
+    BASELINE_NAMES, SUPPORT_SIZES, TEMPERATURES, TERMINAL_BACKENDS, TERMINAL_GRID,
+    optimization_variants,
     profile_names, summarize, support_optimization_variants,
+    terminal_optimization_variants,
 )
 
 
@@ -31,6 +33,23 @@ def test_support_grid_is_valid_unique_and_covers_widths(temperature):
     candidates = variants[2:]
     assert {variant.diffusion_support_size for variant in candidates} == set(SUPPORT_SIZES)
     assert all((variant.paths + 1) * variant.length <= variant.tree_budget
+               for variant in candidates)
+
+
+@pytest.mark.parametrize("temperature", TEMPERATURES)
+def test_terminal_grid_is_valid_unique_and_has_same_tree_control(temperature):
+    variants = terminal_optimization_variants(temperature)
+    assert len(variants) == 2 + len(TERMINAL_GRID) * len(TERMINAL_BACKENDS)
+    assert [variant.name for variant in variants[:2]] == list(BASELINE_NAMES)
+    assert len({variant.name for variant in variants}) == len(variants)
+    candidates = variants[2:]
+    assert {variant.method for variant in candidates} == {
+        "ddtree_terminal_block", "ddtree_terminal_serial", "ddtree_terminal_dense",
+    }
+    same_tree = [variant for variant in candidates
+                 if variant.length == 15 and variant.tree_budget == 45]
+    assert len(same_tree) == len(TERMINAL_BACKENDS)
+    assert all(variant.paths == 1 and variant.temperature == temperature
                for variant in candidates)
 
 

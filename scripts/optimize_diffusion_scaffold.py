@@ -13,8 +13,9 @@ from gbv_experiments.config import load_config
 from gbv_experiments.conversation import encode_messages
 from gbv_experiments.diffusion_optimization import (
     BASELINE_NAMES, SCAFFOLD_GRID, SUPPORT_GRID, SUPPORT_SIZES, TEMPERATURES,
+    TERMINAL_BACKENDS, TERMINAL_GRID,
     optimization_variants, profile_names, summarize,
-    support_optimization_variants,
+    support_optimization_variants, terminal_optimization_variants,
 )
 from gbv_experiments.engine import load_models
 from gbv_experiments.runner import output_lock, stop_token_ids
@@ -50,16 +51,20 @@ def run(config_path: Path, output: Path, device: str, tokens: int, repeats: int,
         search_grid: str = "coarse") -> dict:
     if not 32 <= tokens <= 256 or repeats not in (1, 2, 3):
         raise ValueError("tokens must be 32..256 and repeats must be 1..3")
-    if search_grid not in {"coarse", "support"}:
-        raise ValueError("search_grid must be coarse or support")
+    if search_grid not in {"coarse", "support", "terminal"}:
+        raise ValueError("search_grid must be coarse, support or terminal")
     cfg = load_config(config_path)
-    variant_builder = (optimization_variants if search_grid == "coarse"
-                       else support_optimization_variants)
+    variant_builder = {
+        "coarse": optimization_variants,
+        "support": support_optimization_variants,
+        "terminal": terminal_optimization_variants,
+    }[search_grid]
     with output_lock(output):
         if (output / "summary.json").exists() or (output / "scan.json").exists():
             raise ValueError("Optimization output already exists; choose a new directory")
         manifest = {
-            "kind": "diagnostic_diffusion_scaffold_optimization",
+            "kind": ("diagnostic_terminal_mass_optimization" if search_grid == "terminal"
+                     else "diagnostic_diffusion_scaffold_optimization"),
             "formal_complete": False,
             "selection_fixed_before_timing": True,
             "created_at_utc": datetime.now(timezone.utc).isoformat(),
@@ -70,11 +75,22 @@ def run(config_path: Path, output: Path, device: str, tokens: int, repeats: int,
             "temperatures": list(TEMPERATURES),
             "search_grid": search_grid,
             "baselines": list(BASELINE_NAMES),
-            "grid": [{"paths": k, "length": length, "tree_budget": budget}
-                     for k, length, budget in
-                     (SCAFFOLD_GRID if search_grid == "coarse" else SUPPORT_GRID)],
-            "support_sizes": ([8] if search_grid == "coarse" else list(SUPPORT_SIZES)),
-            "continuation_backends": ["terminal", "ancestral"],
+            "grid": (
+                [{"paths": k, "length": length, "tree_budget": budget}
+                 for k, length, budget in
+                 (SCAFFOLD_GRID if search_grid == "coarse" else SUPPORT_GRID)]
+                if search_grid != "terminal" else
+                [{"paths": 1, "length": length, "tree_budget": budget}
+                 for length, budget in TERMINAL_GRID]
+            ),
+            "support_sizes": (
+                list(SUPPORT_SIZES) if search_grid == "support"
+                else [8] if search_grid == "coarse" else []
+            ),
+            "continuation_backends": (
+                [suffix for suffix, _ in TERMINAL_BACKENDS]
+                if search_grid == "terminal" else ["terminal", "ancestral"]
+            ),
             "prompts_sha256": [digest(prompt) for prompt in DIAGNOSTIC_PROMPTS],
             "tokens": tokens,
             "repeats": repeats,
@@ -151,7 +167,7 @@ def main() -> None:
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--tokens", type=int, default=96)
     parser.add_argument("--repeats", type=int, default=2)
-    parser.add_argument("--grid", choices=["coarse", "support"], default="coarse")
+    parser.add_argument("--grid", choices=["coarse", "support", "terminal"], default="coarse")
     args = parser.parse_args()
     run(args.config.resolve(), args.output.resolve(), args.device, args.tokens,
         args.repeats, args.grid)
