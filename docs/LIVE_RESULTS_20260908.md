@@ -18,8 +18,8 @@ uploaded.
 | 2144509 | Qwen3-8B | diffusion scaffold fixed-grid optimization | COMPLETED |
 | 2145591 | Qwen3-4B | shared-probability scaffold optimization rerun | COMPLETED |
 | 2145624 | Qwen3-8B | shared-probability scaffold optimization rerun | COMPLETED |
-| 2146158 | Qwen3-4B | diffusion support-width 8/16/32/64 scan | RUNNING on n38 |
-| 2146157 | Qwen3-8B | diffusion support-width 8/16/32/64 scan | RUNNING on n38 |
+| 2146158 | Qwen3-4B | diffusion support-width 8/16/32/64 scan | COMPLETED |
+| 2146157 | Qwen3-8B | diffusion support-width 8/16/32/64 scan | COMPLETED |
 | 2147349 | Qwen3-4B | terminal-mass tree-block kernel/shape scan | SUBMITTED |
 | 2147350 | Qwen3-8B | terminal-mass tree-block kernel/shape scan | SUBMITTED |
 
@@ -90,6 +90,26 @@ Jobs 2146158 and 2146157 therefore run a focused third pass over proposal
 support widths 8, 16, 32, and 64. The hypothesis is that wider retained support
 will reduce early correction exits at higher temperatures, improving committed
 tokens per Target tree forward enough to offset the small sparse-transport cost.
+
+Qwen3-4B job 2146158 completed successfully. Its best single configuration
+across all three temperatures is `k1_l15_b60_s64_ancestral`: **1.244x versus
+DFlash and 1.042x versus DDTree** by three-temperature geometric mean, with
+repeat equality at every temperature. This is the first scanned diffusion
+configuration to exceed both controls on the aggregate development metric.
+Its per-temperature DDTree speedups are 1.212x at T=0.3, 0.874x at T=0.6, and
+1.068x at T=1.0. Temperature-specific selection raises the best observed
+DDTree ratios to 1.291x, 0.986x, and 1.079x respectively; T=0.6 has therefore
+not crossed yet. The sanitized complete summary is
+[available here](../results/optimization/20260908/qwen3_4b_support_summary.json).
+
+Qwen3-8B job 2146157 also completed successfully. The fastest candidates by
+temperature reach 1.052x, 0.898x, and 0.828x versus DDTree at T=0.3, 0.6, and
+1.0. The best single configuration across all temperatures is
+`k1_l15_b45_s64_terminal`, at 1.250x versus DFlash but only 0.889x versus
+DDTree. Wider proposal support is therefore not sufficient to remove the 8B
+high-temperature gap, and the next active test is the direct terminal-mass
+DDTree execution optimization in job 2147350. The sanitized complete summary
+is [available here](../results/optimization/20260908/qwen3_8b_support_summary.json).
 
 Jobs 2147349 and 2147350 add the requested direct tree-block path for both
 models. They compare canonical DFlash and DDTree with seven terminal-mass tree
