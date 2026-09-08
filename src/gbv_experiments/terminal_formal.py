@@ -279,6 +279,7 @@ def capture_states(study, engine, ids, seed, *, limit=None, tokens=None):
 def replay_functions(state):
     """Same-state verifier calls; tensor transfer and tree construction excluded."""
     from . import protected_tree_bv, root_marginalized_bv as rm, sampling
+    from .fused_tree_sampling import tree_verify_ancestral_fused
     parents, tokens, p = state["parents"], state["tokens"], state["all_p"]
     ancestral = lambda g: sampling.tree_verify_ancestral_batched(parents, tokens, p, g, validate=False)
     if state.get("kind") in {"one_step_diffusion_trie", "scaffold_diffusion_trie"}:
@@ -329,6 +330,8 @@ def replay_functions(state):
                 parents, tokens, p, g, validate=False, exit_mode="complement"),
             "tm_joint": lambda g: sampling.tree_block_verify_terminal_mass(
                 parents, tokens, p, g, validate=False, exit_mode="joint"),
+            "fused_ancestral": lambda g: tree_verify_ancestral_fused(
+                parents, tokens, p, g, validate=False),
         }
     paths, q = state["paths"], state["q"]
     args = (paths[:, 0], p[0], paths[0, 1:], p[1:].view(*paths.shape, -1), q[1:])

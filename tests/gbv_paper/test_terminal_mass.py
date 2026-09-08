@@ -7,10 +7,46 @@ import pytest
 import torch
 
 from gbv_experiments import sampling
+from gbv_experiments.fused_tree_sampling import tree_verify_ancestral_fused
 
 
 class ZeroMass(Exception):
     pass
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA extension test")
+def test_fused_tree_sampler_matches_inverse_cdf_paths():
+    parents = [-1, 0, 0, 1]
+    tokens = [0, 1, 2]
+    p = torch.tensor(
+        [[0.2, 0.3, 0.5], [0.4, 0.1, 0.5],
+         [0.3, 0.6, 0.1], [0.7, 0.2, 0.1]],
+        dtype=torch.float64, device="cuda",
+    )
+    for seed in range(32):
+        first = torch.Generator(device="cuda").manual_seed(seed)
+        second = torch.Generator(device="cuda").manual_seed(seed)
+        uniforms = torch.rand(4, dtype=torch.float64, device="cuda", generator=first)
+        expected_nodes, node = [], 0
+        children = {(parent, tokens[index - 1]): index
+                    for index, parent in enumerate(parents[1:], 1)}
+        expected_bonus = None
+        for uniform in uniforms.cpu().tolist():
+            row = p[node].cpu()
+            expected_bonus = int(torch.searchsorted(row.cumsum(0), uniform))
+            child = children.get((node, expected_bonus))
+            if child is None:
+                break
+            expected_nodes.append(child)
+            node = child
+        result = tree_verify_ancestral_fused(
+            parents, tokens, p, second, validate=True
+        )
+        assert result == (
+            expected_nodes,
+            [tokens[index - 1] for index in expected_nodes],
+            expected_bonus,
+        )
 
 
 def test_official_ddtree_batched_posterior_has_exact_ancestral_law(monkeypatch):
