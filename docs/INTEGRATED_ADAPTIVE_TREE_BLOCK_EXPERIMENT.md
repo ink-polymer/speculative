@@ -13,6 +13,8 @@
 树状块验证固定使用 `ddtree_fused_scan`，与 DDTree 共用同一棵 `probability_tree`
 及全部 Target 概率行，仅替换祖先采样验证器。T=0 与 T=1 使用不同采样律，禁止
 合并加速比或置信区间。30B 不属于本轮正式矩阵。
+每个真实模型的 GPU preflight 还会记录 T=1 同树 witness；正式报告必须
+重验两种方法的 parents、tree tokens 和 Target FP64 概率张量哈希全部相同。
 
 ## 公平性与失败即停止门禁
 
