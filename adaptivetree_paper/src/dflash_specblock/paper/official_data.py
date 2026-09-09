@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import contextlib
 import copy
+import os
 import re
 from pathlib import Path
 
@@ -35,7 +36,15 @@ def frozen_loader(utils, lock):
             if (len(files) != 6 or any(not url.startswith(prefix) for url in files)):
                 raise ValueError("Unexpected upstream raw JSON file layout")
             sha = lock["datasets"]["livecodebench/code_generation_lite"]
-            kwargs["data_files"]["test"] = [url.replace("/resolve/main/", f"/resolve/{sha}/") for url in files]
+            endpoint = os.environ.get("HF_ENDPOINT", "https://huggingface.co").rstrip("/")
+            if not endpoint.startswith("https://"):
+                raise ValueError("HF_ENDPOINT must use HTTPS")
+            kwargs["data_files"]["test"] = [
+                endpoint + url.replace("/resolve/main/", f"/resolve/{sha}/").removeprefix(
+                    "https://huggingface.co"
+                )
+                for url in files
+            ]
         else:
             if path not in lock["datasets"]:
                 raise ValueError(f"Unrecorded dataset source: {path}")

@@ -90,6 +90,7 @@ def test_prepare_executes_official_prompts_and_freezes_all_sources(tmp_path, mon
             "input":f"input{i}" if i%2 else ""} for i in range(n)])
         return {"test":result} if path=="json" else result
     monkeypatch.setattr(u,"load_dataset",loader)
+    monkeypatch.setenv("HF_ENDPOINT", "https://hf-mirror.test")
     monkeypatch.setattr("huggingface_hub.HfApi",lambda:SimpleNamespace(
         dataset_info=lambda _:SimpleNamespace(sha="a"*40),
         model_info=lambda _:SimpleNamespace(sha="b"*40)))
@@ -100,7 +101,10 @@ def test_prepare_executes_official_prompts_and_freezes_all_sources(tmp_path, mon
     assert ("google-research-datasets/mbpp",("sanitized",),{"split":"test","revision":"a"*40}) in calls
     assert any(p=="HuggingFaceH4/mt_bench_prompts" and k["split"]=="train" for p,a,k in calls)
     lcb = next(k for p,a,k in calls if p=="json")
-    assert len(lcb["data_files"]["test"])==6 and all("/resolve/"+("a"*40)+"/" in url for url in lcb["data_files"]["test"])
+    assert len(lcb["data_files"]["test"])==6
+    assert all(url.startswith("https://hf-mirror.test/datasets/")
+               and "/resolve/"+("a"*40)+"/" in url
+               for url in lcb["data_files"]["test"])
     rows = load_json(tmp_path/"livecodebench.json")
     assert rows[0]["turns"][0].startswith("You are an expert Python programmer. You will be given a question")
     assert rows[0]["turns"][0].endswith("### Answer: (use the provided format with backticks)")
