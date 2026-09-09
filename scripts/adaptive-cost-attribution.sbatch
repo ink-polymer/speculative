@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH --job-name=adaptive-cost
+#SBATCH --job-name=adaptive-b256
 #SBATCH --account=naiss2026-3-658-gpu
 #SBATCH --partition=gpu
 #SBATCH --nodes=1
@@ -8,8 +8,8 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=300G
 #SBATCH --time=3-00:00:00
-#SBATCH --output=/nobackup/proj/disk/naiss2026-3-658/personal/jiage91/fuyile/logs/adaptive-cost-%j.out
-#SBATCH --error=/nobackup/proj/disk/naiss2026-3-658/personal/jiage91/fuyile/logs/adaptive-cost-%j.err
+#SBATCH --output=/nobackup/proj/disk/naiss2026-3-658/personal/jiage91/fuyile/logs/adaptive-b256-%j.out
+#SBATCH --error=/nobackup/proj/disk/naiss2026-3-658/personal/jiage91/fuyile/logs/adaptive-b256-%j.err
 set -euo pipefail
 
 source /nobackup/proj/disk/naiss2026-3-658/personal/jiage91/fuyile/scripts/common_env.sh
@@ -32,16 +32,17 @@ RUN_KIND=diagnostic
 if (( ADAPTIVE_SMOKE_COUNT > 0 )); then
   RUN_KIND=diagnostic-smoke
 fi
-RUN_DIR="$FUYILE_ROOT/runs/adaptive-cost-${MODEL_TAG}-${RUN_KIND}-${SLURM_JOB_ID}"
+RUN_DIR="$FUYILE_ROOT/runs/adaptive-b256-${MODEL_TAG}-${RUN_KIND}-${SLURM_JOB_ID}"
 cd "$ADAPTIVE_SOURCE/adaptivetree_paper"
 export PATH="$FUYILE_ROOT/envs/adaptive/bin:$PATH"
 export PAPER_PYTHON="$FUYILE_ROOT/envs/adaptive/bin/python"
 export PYTHONPATH="$PWD/src"
-trap 'rc=$?; printf "%s model=%s run_dir=%s exit_code=%s\n" "$(date -Is)" "$MODEL_TAG" "$RUN_DIR" "$rc" > "$FUYILE_ROOT/logs/adaptive-cost-${SLURM_JOB_ID}.status"' EXIT
+trap 'rc=$?; printf "%s model=%s run_dir=%s exit_code=%s\n" "$(date -Is)" "$MODEL_TAG" "$RUN_DIR" "$rc" > "$FUYILE_ROOT/logs/adaptive-b256-${SLURM_JOB_ID}.status"' EXIT
 
 arguments=(
   all
   --experimental-cost-attribution
+  --experimental-extended-budgets
   --model-index "$ADAPTIVE_MODEL_INDEX"
   --nproc-per-node 1
   --greedy-audit-policy record-bf16-mismatches

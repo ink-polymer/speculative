@@ -7,14 +7,15 @@ import numpy as np
 import torch
 
 from .common import atomic_json, digest, file_hash, load_json
-from .controller import COST_ATTRIBUTED_VARIANT, make_paper_builder
+from .controller import (DIAGNOSTIC_VARIANTS, make_paper_builder,
+                         selected_diagnostic_variants)
 from .official_data import check_manifest
 from .official_spec import BUDGETS, LIMITS, MODELS, upstream
 from .official_audit import gpu_identity, validate_hardware
 
 
 def method_names(backend, variants, diagnostic_variants=()):
-    if set(diagnostic_variants) - {COST_ATTRIBUTED_VARIANT}:
+    if set(diagnostic_variants) - set(DIAGNOSTIC_VARIANTS):
         raise ValueError("Unknown diagnostic AdaptiveTree variant")
     names = ["baseline", "dflash"]
     if backend == "sdpa":
@@ -105,8 +106,10 @@ def worker(args, config):
     rows = load_json(args.data_dir / f"{args.dataset}.json")
     if args.smoke_count:
         rows = rows[:args.smoke_count]
-    diagnostic_variants = ((COST_ATTRIBUTED_VARIANT,)
-        if getattr(args, "experimental_cost_attribution", False) else ())
+    diagnostic_variants = selected_diagnostic_variants(
+        cost_attribution=getattr(args, "experimental_cost_attribution", False),
+        extended_budgets=getattr(args, "experimental_extended_budgets", False),
+    )
     controller_names = (*config["variants"], *diagnostic_variants)
     methods = method_names(args.backend, config["variants"], diagnostic_variants)
     controllers = {name: make_paper_builder(config["adaptive"], name)
@@ -178,9 +181,20 @@ def worker(args, config):
                 "substage_note":"Adaptive fine-grained tree_build_* attribution unavailable; use aggregate tree_build"}
     if diagnostic_variants:
         run_data["diagnostic_variants"] = list(diagnostic_variants)
+        diagnostic_builders = {
+            name:controllers.get(name) or make_paper_builder(config["adaptive"], name)
+            for name in diagnostic_variants
+        }
+        run_data["diagnostic_controllers"] = {
+            name:{"budget_candidates":list(builder.budget_candidates),
+                  "maximum_draft_nodes":builder.tree_budget,
+                  "timing_partition":builder.timing_partition,
+                  "controller_variant":builder.variant}
+            for name,builder in diagnostic_builders.items()
+        }
         run_data["diagnostic_timing"] = (
-            "cost_attributed_no_exploration: proposal; "
-            "build+compile+verify+KV/commit per selected budget"
+            "proposal is fixed; build+compile+verify+KV/commit is attributed "
+            "to the selected budget"
         )
     expected_turns = sum(len(r["turns"]) for r in rows)
     if len(responses) != expected_turns:

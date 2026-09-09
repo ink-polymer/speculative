@@ -14,7 +14,8 @@ import torch
 from dflash_specblock.ddtree_builder import DDTreeBuilder
 from dflash_specblock.paper.common import ROOT, VARIANTS, atomic_json, load_json
 from dflash_specblock.paper.controller import (COST_ATTRIBUTED_VARIANT,
-    PaperAdaptiveBuilder, make_paper_builder)
+    EXTENDED_BUDGETS, EXTENDED_BUDGET_VARIANT, PaperAdaptiveBuilder,
+    make_paper_builder, selected_diagnostic_variants)
 from dflash_specblock.paper.official import main
 from dflash_specblock.paper.official_spec import BUDGETS, COMMIT, LIMITS, MODELS, UPSTREAM, data_utils, load_config, upstream, verify_sources
 from dflash_specblock.paper.official_data import check_manifest, prepare, select_official
@@ -48,6 +49,12 @@ def test_official_matrix_is_extracted_from_pinned_script_and_cli(capsys):
     diagnostic = json.loads(capsys.readouterr().out)
     assert diagnostic["generation_calls"] == 58752
     assert diagnostic["diagnostic_variants"] == [COST_ATTRIBUTED_VARIANT]
+    main(["plan", "--experimental-extended-budgets", "--run-dir",
+          "outputs/extended-budget-diagnostic"])
+    extended = json.loads(capsys.readouterr().out)
+    assert extended["generation_calls"] == 62208
+    assert extended["diagnostic_variants"] == [
+        COST_ATTRIBUTED_VARIANT, EXTENDED_BUDGET_VARIANT]
 
 
 def test_source_integrity_and_original_builder_byte_identity():
@@ -187,6 +194,11 @@ def test_official_method_order_and_no_t1_support():
     assert method_names("flash_attention_2", VARIANTS, diagnostics) == ["baseline", "dflash"]
     builder = make_paper_builder(cfg()["adaptive"], COST_ATTRIBUTED_VARIANT)
     assert builder.variant == "no_exploration" and builder.timing_partition == "budget_aware"
+    extended = make_paper_builder(cfg()["adaptive"], EXTENDED_BUDGET_VARIANT)
+    assert extended.budget_candidates == EXTENDED_BUDGETS
+    assert extended.tree_budget == 256
+    assert selected_diagnostic_variants(extended_budgets=True) == (
+        COST_ATTRIBUTED_VARIANT, EXTENDED_BUDGET_VARIANT)
     with pytest.raises(ValueError, match="Unknown diagnostic"):
         method_names("sdpa", VARIANTS, ("unlabelled_experiment",))
 
@@ -198,16 +210,33 @@ def synthetic_environment():
 
 def synthetic_run(backend="sdpa", diagnostic_variants=()):
     methods = method_names(backend, VARIANTS, diagnostic_variants)
+    method_results = {m:response(2. if m=="baseline" else 1.) for m in methods}
+    for method in diagnostic_variants:
+        if method in method_results:
+            selected = 256 if method == EXTENDED_BUDGET_VARIANT else 128
+            method_results[method].adaptive_decisions = [
+                {"decision":{"budget":selected}},
+                {"decision":{"budget":selected}},
+            ]
     result = {"target_attn_implementation":backend, "draft_attn_implementation":"flash_attention_2",
         "args":{"dataset":"gsm8k", "model_name_or_path":MODELS[0][0], "draft_name_or_path":MODELS[0][1],
                 "temperature":0., "max_samples":128, "max_new_tokens":2048,
                 "tree_budget":",".join(map(str,BUDGETS)), "flash_attn":backend!="sdpa"},
         "methods":methods, "block_size":16, "smoke":False, "source_lock":{"test_only":True},
         "hardware":[{"rank":0,"gpu":"synthetic","uuid":"synthetic","flash_attn":"test-only"}], "world_size":1,
-        "responses":[{**{m:response(2. if m=="baseline" else 1.) for m in methods},
+        "responses":[{**method_results,
                       "_audit":{"index":0,"turn":0,"exact_match":True,"input_sha256":"synthetic"}}]}
     if diagnostic_variants:
         result["diagnostic_variants"] = list(diagnostic_variants)
+        result["diagnostic_controllers"] = {}
+        for method in diagnostic_variants:
+            builder = make_paper_builder(cfg()["adaptive"], method)
+            result["diagnostic_controllers"][method] = {
+                "budget_candidates":list(builder.budget_candidates),
+                "maximum_draft_nodes":builder.tree_budget,
+                "timing_partition":builder.timing_partition,
+                "controller_variant":builder.variant,
+            }
     return result
 
 
@@ -324,12 +353,34 @@ def test_cost_attribution_summary_is_explicitly_diagnostic(tmp_path, monkeypatch
     assert not report["publication_gate_passed"]
     assert not report["full_official_t0_model_dataset_matrix"]
     assert any(row["method"] == COST_ATTRIBUTED_VARIANT for row in report["rows"])
+    assert report["diagnostic_budget_usage"][0]["selected_budget_counts"] == {"128":2}
+
+
+def test_extended_budget_usage_reports_cap_and_above_128():
+    diagnostics = (COST_ATTRIBUTED_VARIANT, EXTENDED_BUDGET_VARIANT)
+    run = synthetic_run("sdpa", diagnostics)
+    first = run["responses"][0]
+    first[EXTENDED_BUDGET_VARIANT].adaptive_decisions = [
+        {"decision":{"budget":128}, "tree_nodes":128}]
+    second = copy.deepcopy(first)
+    second["_audit"]["index"] = 1
+    second[EXTENDED_BUDGET_VARIANT].adaptive_decisions.append(
+        {"decision":{"budget":256}, "tree_nodes":256})
+    run["responses"].append(second)
+    from dflash_specblock.paper.official_reporting import diagnostic_budget_usage
+    usage = diagnostic_budget_usage(run, EXTENDED_BUDGET_VARIANT)
+    assert usage["candidate_budgets"] == list(EXTENDED_BUDGETS)
+    assert usage["rounds"] == 3 and usage["max_selected_budget"] == 256
+    assert usage["selected_budget_counts"] == {"128":2, "256":1}
+    assert usage["share_rounds_above_128"] == pytest.approx(1/3)
+    assert usage["share_rounds_at_candidate_cap"] == pytest.approx(1/3)
 
 
 @pytest.mark.parametrize("model_index", [0, 1])
-@pytest.mark.parametrize("experimental", [False, True])
+@pytest.mark.parametrize("experimental_cost,experimental_extended", [
+    (False, False), (True, False), (False, True)])
 def test_worker_multiturn_keeps_official_history_method_and_run_completion(
-        tmp_path, monkeypatch, model_index, experimental):
+        tmp_path, monkeypatch, model_index, experimental_cost, experimental_extended):
     transformers = SimpleNamespace(DynamicCache=object)
     monkeypatch.setitem(sys.modules, "transformers", transformers)
     from dflash_specblock.paper import official_worker as worker_module, adaptive_official
@@ -381,7 +432,8 @@ def test_worker_multiturn_keeps_official_history_method_and_run_completion(
     atomic_json(tmp_path/"environment.json",synthetic_environment())
     args = SimpleNamespace(data_dir=tmp_path,model_index=model_index,backend="sdpa",dataset="mt-bench",
                            smoke_count=1,output=tmp_path/"case.pt",identity="synthetic",run_dir=tmp_path,
-                           experimental_cost_attribution=experimental)
+                           experimental_cost_attribution=experimental_cost,
+                           experimental_extended_budgets=experimental_extended)
     worker_module.worker(args,cfg())
     assert loaded == [(name,"a"*40) for name in MODELS[model_index]]
     assert seen[0] == [{"role":"user","content":"Warmup"}]
@@ -389,8 +441,12 @@ def test_worker_multiturn_keeps_official_history_method_and_run_completion(
     assert all("token-999" not in str(m) for m in seen)
     saved = torch.load(args.output,weights_only=False)
     assert len(saved["responses"]) == 2 and saved["smoke"]
-    assert saved.get("diagnostic_variants", []) == (
-        [COST_ATTRIBUTED_VARIANT] if experimental else []
-    )
-    assert ("diagnostic_timing" in saved) is experimental
+    expected_diagnostics = list(selected_diagnostic_variants(
+        cost_attribution=experimental_cost,
+        extended_budgets=experimental_extended))
+    assert saved.get("diagnostic_variants", []) == expected_diagnostics
+    assert ("diagnostic_timing" in saved) is bool(expected_diagnostics)
+    if experimental_extended:
+        assert saved["diagnostic_controllers"][EXTENDED_BUDGET_VARIANT][
+            "maximum_draft_nodes"] == 256
     assert args.output.with_suffix(".complete.json").exists()

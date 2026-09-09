@@ -13,6 +13,9 @@ from .common import BASELINES, K, VARIANTS, digest
 
 TIMING_PARTITIONS = ("legacy", "budget_aware")
 COST_ATTRIBUTED_VARIANT = "cost_attributed_no_exploration"
+EXTENDED_BUDGET_VARIANT = "cost_attributed_no_exploration_b256"
+EXTENDED_BUDGETS = (30, 45, 60, 80, 100, 128, 160, 192, 256)
+DIAGNOSTIC_VARIANTS = (COST_ATTRIBUTED_VARIANT, EXTENDED_BUDGET_VARIANT)
 
 
 class FixedBudgetBuilder(DDTreeBuilder):
@@ -155,4 +158,28 @@ def make_paper_builder(cfg, method):
         return PaperAdaptiveBuilder(
             cfg, "no_exploration", timing_partition="budget_aware"
         )
+    if method == EXTENDED_BUDGET_VARIANT:
+        official_budgets = tuple(cfg["budget_candidates"])
+        if official_budgets != EXTENDED_BUDGETS[:6]:
+            raise ValueError("Extended-budget diagnostic requires the official budget candidates")
+        extended_cfg = {**cfg, "budget_candidates": list(EXTENDED_BUDGETS)}
+        return PaperAdaptiveBuilder(
+            extended_cfg, "no_exploration", timing_partition="budget_aware"
+        )
     raise ValueError(f"Unknown paper controller: {method}")
+
+
+def selected_diagnostic_variants(*, cost_attribution=False,
+                                 extended_budgets=False):
+    """Return a stable diagnostic method list for a pair of CLI feature flags.
+
+    The B=256 experiment always includes its otherwise-identical B=128 control,
+    so a larger-budget result cannot be interpreted without the cost-attributed
+    reference in the same process and hardware contract.
+    """
+    result = []
+    if cost_attribution or extended_budgets:
+        result.append(COST_ATTRIBUTED_VARIANT)
+    if extended_budgets:
+        result.append(EXTENDED_BUDGET_VARIANT)
+    return tuple(result)

@@ -53,6 +53,22 @@ CUDA_VISIBLE_DEVICES=0 bash scripts/run_paper_t0_full.sh all \
 该方法在结果中明确命名为 `cost_attributed_no_exploration`；带此方法的汇总会标为
 diagnostic 且不能通过冻结官方矩阵的 publication gate。
 
+原候选预算只有 `30/45/60/80/100/128`，所以先前结果大量选择 128 时，不能区分
+“128 真是最优”与“控制器撞到搜索上限”。扩展预算诊断保留同一个 `no_exploration`
+控制器和正确的成本归因，仅追加 `160/192/256`，并自动同时运行 B=128 上限的对照：
+
+```bash
+CUDA_VISIBLE_DEVICES=0 bash scripts/run_paper_t0_full.sh all \
+  --experimental-extended-budgets --nproc-per-node 1 --model-index 0 \
+  --dataset gsm8k --smoke-count 2 \
+  --run-dir outputs/extended_budget_diagnostic_smoke
+```
+
+新方法名为 `cost_attributed_no_exploration_b256`。运行时缓冲区按控制器最大预算
+自动扩成 anchor + 256 个草稿节点；汇总的 `diagnostic_budget_usage` 会逐模型/数据集
+记录各预算选择次数、`>128` 占比和命中候选上限的占比。只有当更大的接受收益覆盖
+额外构树、编译、Target 验证与 KV/commit 成本时，控制器才会持续选择更大预算。
+
 ## 本地检查与历史结果
 
 ```bash

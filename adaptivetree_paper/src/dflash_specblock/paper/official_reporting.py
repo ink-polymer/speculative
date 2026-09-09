@@ -11,6 +11,7 @@ from .official_data import check_manifest
 from .official_spec import BUDGETS, LIMITS, MODELS, UPSTREAM, load_source, verify_sources
 from .official_worker import method_names, response_tokens
 from .official_audit import validate_hardware
+from .controller import COST_ATTRIBUTED_VARIANT
 
 
 def run_stem(dataset, model_index, backend):
@@ -137,6 +138,38 @@ def official_rows(sdpa, flash, variants):
     return results
 
 
+def diagnostic_budget_usage(run, method):
+    """Summarize the per-response traces reset by ``adaptive_generate``."""
+    candidates = run["diagnostic_controllers"][method]["budget_candidates"]
+    budgets = []
+    for response in run["responses"]:
+        result = response[method]
+        trace = getattr(result, "adaptive_decisions", None)
+        if not isinstance(trace, list):
+            raise ValueError(f"Missing AdaptiveTree decision trace for {method}")
+        for observation in trace:
+            decision = observation.get("decision") if isinstance(observation, dict) else None
+            budget = decision.get("budget") if isinstance(decision, dict) else None
+            if (type(budget) is not int or budget not in candidates
+                    or observation.get("tree_nodes") not in (None, budget)):
+                raise ValueError(f"Invalid AdaptiveTree budget decision for {method}")
+            budgets.append(budget)
+    if not budgets:
+        raise ValueError(f"Empty AdaptiveTree decision trace for {method}")
+    counts = {str(budget):budgets.count(budget) for budget in sorted(set(budgets))}
+    maximum = run["diagnostic_controllers"][method]["maximum_draft_nodes"]
+    above_128 = sum(budget > 128 for budget in budgets)
+    at_cap = sum(budget == maximum for budget in budgets)
+    return {"method":method,
+            "candidate_budgets":candidates,
+            "rounds":len(budgets), "selected_budget_counts":counts,
+            "max_selected_budget":max(budgets),
+            "rounds_above_128":above_128,
+            "share_rounds_above_128":above_128/len(budgets),
+            "rounds_at_candidate_cap":at_cap,
+            "share_rounds_at_candidate_cap":at_cap/len(budgets)}
+
+
 def summarize(directory, data_dir, config, identity, model_indices, datasets, smoke_count=0):
     recorded = load_json(directory / "contract.json")
     metadata = recorded["metadata"]
@@ -156,6 +189,7 @@ def summarize(directory, data_dir, config, identity, model_indices, datasets, sm
     diagnostic_variants = tuple(metadata.get("diagnostic_variants", ()))
     variants = (*config["variants"], *diagnostic_variants)
     audit_stats = []
+    budget_usage = []
     for dataset in datasets:
         expected = load_json(data_dir / f"{dataset}.json")
         if smoke_count:
@@ -168,11 +202,16 @@ def summarize(directory, data_dir, config, identity, model_indices, datasets, sm
                                       environment, audit_policy, diagnostic_variants)
             audit_stats.append(validate_pair(*runs, dataset, model_index, variants,
                                              expected, audit_policy))
+            for method in diagnostic_variants:
+                budget_usage.append({"dataset":dataset, "model":MODELS[model_index][0],
+                                     **diagnostic_budget_usage(runs[0], method)})
             for row in official_rows(*runs, variants):
                 rows.append({"dataset":dataset, "model":MODELS[model_index][0],
                              "cases":len(expected), "turns":sum(len(r["turns"]) for r in expected), **row})
-    report = {"protocol":("ddtree_official_t0_diagnostic_cost_attribution"
-                          if diagnostic_variants else "ddtree_official_t0"),
+    diagnostic_protocol = ("ddtree_official_t0_diagnostic_cost_attribution"
+        if diagnostic_variants == (COST_ATTRIBUTED_VARIANT,)
+        else "ddtree_official_t0_diagnostic_extended_budget")
+    report = {"protocol":(diagnostic_protocol if diagnostic_variants else "ddtree_official_t0"),
               "training":False, "full_split":False,
               "protocol_identity":identity, "environment_sha256":file_hash(directory / "environment.json"),
               "official_samples":not bool(smoke_count),
@@ -192,6 +231,8 @@ def summarize(directory, data_dir, config, identity, model_indices, datasets, sm
                   if audit_policy == "strict" else
                   "BF16 token mismatches are retained and counted; speed rows are not a strict lossless claim"),
               "rows":rows}
+    if diagnostic_variants:
+        report["diagnostic_budget_usage"] = budget_usage
     atomic_json(directory / "tables.json", report)
     with (directory / "tables.csv").open("w", encoding="utf-8", newline="") as stream:
         writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
@@ -204,8 +245,16 @@ def summarize(directory, data_dir, config, identity, model_indices, datasets, sm
     if smoke_count:
         lines[0] = "# SMOKE ONLY：不可用于论文"
     elif diagnostic_variants:
-        lines[0] = "# DIAGNOSTIC：成本归因实验，不属于冻结官方矩阵"
+        lines[0] = "# DIAGNOSTIC：成本归因/扩展预算实验，不属于冻结官方矩阵"
     elif audit_policy != "strict":
         lines[0] = "# BF16 mismatch-recording benchmark：不可声称严格无损"
     lines += [f"| {r['model']} | {r['dataset']} | {r['method']} | {r['speedup_vs_target']:.4f}× | {r['speedup_vs_best_ddtree']:.4f}× | {r['mean_acceptance_length']:.3f} |" for r in rows]
+    if budget_usage:
+        lines += ["", "## 诊断预算使用", "",
+                  "| 模型 | 数据集 | 方法 | 轮数 | >128 占比 | 上限占比 | 选择计数 |",
+                  "|---|---|---|---:|---:|---:|---|"]
+        lines += [f"| {item['model']} | {item['dataset']} | {item['method']} | "
+                  f"{item['rounds']} | {item['share_rounds_above_128']:.2%} | "
+                  f"{item['share_rounds_at_candidate_cap']:.2%} | "
+                  f"{item['selected_budget_counts']} |" for item in budget_usage]
     (directory / "tables.md").write_text("\n".join(lines)+"\n", encoding="utf-8")

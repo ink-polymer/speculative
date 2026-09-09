@@ -13,7 +13,8 @@ import torch
 from dflash_specblock.ddtree_builder import DDTreeBuilder, LatencyAwareDDTreeBuilder
 from dflash_specblock.paper.common import BASELINES, ROOT, VARIANTS, atomic_json, contract, load_config, load_json
 from dflash_specblock.paper.controller import (COST_ATTRIBUTED_VARIANT,
-    FixedBudgetBuilder, PaperAdaptiveBuilder, make_builder, make_paper_builder)
+    EXTENDED_BUDGETS, EXTENDED_BUDGET_VARIANT, FixedBudgetBuilder,
+    PaperAdaptiveBuilder, make_builder, make_paper_builder)
 from dflash_specblock.paper.data import make_row
 from dflash_specblock.paper.evaluation import evaluate, paired_bootstrap, summarize, validate_states
 from dflash_specblock.paper.runtime import PaperRuntime, commit
@@ -110,6 +111,27 @@ def test_budget_aware_stage_attribution_is_isolated_and_exact():
     factory = make_paper_builder(cfg(), COST_ATTRIBUTED_VARIANT)
     assert factory.variant == "no_exploration"
     assert factory.timing_partition == "budget_aware"
+
+
+def test_extended_budget_diagnostic_builds_all_256_nodes():
+    builder = make_paper_builder(cfg(), EXTENDED_BUDGET_VARIANT)
+    assert builder.budget_candidates == EXTENDED_BUDGETS
+    assert builder.tree_budget == 256
+    logits = torch.randn(15, 320, generator=torch.Generator().manual_seed(91))
+    selected = []
+    for _ in EXTENDED_BUDGETS:
+        tree = builder.build_from_logits(logits)
+        selected.append(len(tree.nodes))
+        builder.observe(tree_nodes=len(tree.nodes), draft_ms=1, verify_ms=1,
+                        accepted_draft_tokens=1)
+    assert set(selected) == set(EXTENDED_BUDGETS)
+    assert selected[-1] == 256
+    restored = make_paper_builder(cfg(), EXTENDED_BUDGET_VARIANT)
+    restored.load_state_dict(builder.state_dict())
+    assert restored.state_dict() == builder.state_dict()
+    with pytest.raises(ValueError, match="identity/schema mismatch"):
+        make_paper_builder(cfg(), COST_ATTRIBUTED_VARIANT).load_state_dict(
+            builder.state_dict())
 
 
 @pytest.mark.parametrize("seed", range(6))

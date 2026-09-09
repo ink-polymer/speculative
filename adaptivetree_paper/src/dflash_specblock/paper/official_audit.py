@@ -6,7 +6,7 @@ import os
 from .common import code_identity, digest, load_json
 from .official_data import check_manifest
 from .official_spec import verify_sources
-from .controller import COST_ATTRIBUTED_VARIANT
+from .controller import selected_diagnostic_variants
 
 
 def validate_worker_contract(args, config):
@@ -14,8 +14,10 @@ def validate_worker_contract(args, config):
     metadata = recorded["metadata"]
     if recorded["identity"] != args.identity or digest(metadata) != args.identity:
         raise ValueError("Worker contract hash/identity mismatch")
-    expected_diagnostics = ([COST_ATTRIBUTED_VARIANT]
-        if getattr(args, "experimental_cost_attribution", False) else [])
+    expected_diagnostics = list(selected_diagnostic_variants(
+        cost_attribution=getattr(args, "experimental_cost_attribution", False),
+        extended_budgets=getattr(args, "experimental_extended_budgets", False),
+    ))
     if (metadata["config"] != config or metadata["code_identity"] != code_identity()
             or metadata["source_manifest"] != verify_sources()
             or metadata["dataset_manifest"] != check_manifest(args.data_dir)
