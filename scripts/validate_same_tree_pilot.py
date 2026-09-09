@@ -13,6 +13,7 @@ import hashlib
 import json
 import math
 from pathlib import Path
+import random
 
 import numpy as np
 
@@ -31,6 +32,18 @@ SOURCE_PATHS = {
     "script": "scripts/run_same_tree_official_pilot.py",
     "config": "configs/same_tree_block_qwen3_4b_pilot.json",
 }
+VARIANT_DEFAULTS = {
+    "method":"gbv", "paths":3, "length":15, "temperature":1.0,
+    "draft_temperature":None, "share_prefixes":True,
+    "reuse_draft_cache":True, "draft_attention":"bidirectional",
+    "condition_features":"target", "probability_dtype":"float64",
+    "tree_budget":60, "diffusion_support_size":8,
+}
+EXPECTED_METHOD_MAPPING = {
+    "dflash":"dflash",
+    "ddtree":"ddtree",
+    "tree_block_verification":"ddtree_fused_scan",
+}
 
 
 def sha256(path: Path) -> str:
@@ -43,6 +56,31 @@ def digest(value: object) -> str:
         allow_nan=False,
     )
     return hashlib.sha256(canonical.encode()).hexdigest()
+
+
+def prompt_seed(seed: int, dataset: str, source_id: str) -> int:
+    return int(digest([seed, dataset, source_id])[:15], 16) % (2**31 - 1)
+
+
+def configured_variants(config: dict) -> tuple[list[dict], list[str]]:
+    entries = config.get("explicit_variants")
+    if not isinstance(entries, list) or not entries:
+        raise AssertionError("pilot config must explicitly register every variant")
+    variants = []
+    for entry in entries:
+        if not isinstance(entry, dict) or set(entry) != {"groups", "variant"}:
+            raise AssertionError("malformed explicit variant registration")
+        raw = entry["variant"]
+        if not isinstance(raw, dict) or not isinstance(raw.get("name"), str):
+            raise AssertionError("variant registration has no stable name")
+        unknown = set(raw) - ({"name"} | set(VARIANT_DEFAULTS))
+        if unknown:
+            raise AssertionError(f"unknown variant controls: {sorted(unknown)}")
+        variants.append({"name":raw["name"], **VARIANT_DEFAULTS, **raw})
+    names = [variant["name"] for variant in variants]
+    if len(names) != len(set(names)):
+        raise AssertionError("pilot config contains duplicate variant names")
+    return variants, names
 
 
 def close(left: float, right: float, tolerance: float = 1e-12) -> bool:
@@ -119,6 +157,12 @@ def validate(result_dir: Path, repo_root: Path,
     manifest = json.loads((result_dir / "manifest.json").read_text())
     report = json.loads((result_dir / "report.json").read_text())
     rows = rows_document["rows"]
+    config_path = (repo_root / SOURCE_PATHS["config"]).resolve()
+    config = json.loads(config_path.read_text())
+    expected_variants, variant_order = configured_variants(config)
+    variants_by_name = {
+        variant["name"]:variant for variant in expected_variants
+    }
 
     if manifest["formal_complete"] or report["formal_complete"]:
         raise AssertionError("qualification pilot must not claim formal completion")
@@ -126,6 +170,19 @@ def validate(result_dir: Path, repo_root: Path,
         raise AssertionError("raw row document is incomplete")
     if len(rows) != manifest["expected_records"]:
         raise AssertionError("raw record count differs from the manifest")
+    if ({name:variant["method"] for name, variant in variants_by_name.items()}
+            != EXPECTED_METHOD_MAPPING):
+        raise AssertionError("frozen config variant names/methods changed")
+    if (manifest.get("variants") != expected_variants
+            or manifest.get("datasets") != config.get("datasets")
+            or manifest.get("seeds") != config.get("seeds")
+            or manifest.get("max_new_tokens") != config.get("max_new_tokens")
+            or manifest.get("order_policy") != config.get("method_order")
+            or manifest.get("temperature") != 1.0
+            or manifest.get("official_precision") != {
+                key:config["model"].get(key) for key in EXPECTED_PRECISION
+            }):
+        raise AssertionError("manifest differs from the frozen pilot config")
 
     expected_prompt_ids = [
         (str(dataset), str(source_id), str(prompt_hash))
@@ -136,20 +193,67 @@ def validate(result_dir: Path, repo_root: Path,
         raise AssertionError("manifest contains duplicate prompt identities")
     if len(expected_prompt_ids) != manifest["per_dataset"] * len(manifest["datasets"]):
         raise AssertionError("manifest prompt count differs from the pilot design")
+    if ({dataset for dataset, _, _ in expected_prompt_ids}
+            != set(manifest["datasets"])
+            or any(sum(dataset == expected for dataset, _, _ in expected_prompt_ids)
+                   != manifest["per_dataset"] for expected in manifest["datasets"])
+            or any(len(prompt_hash) != 64
+                   or any(character not in "0123456789abcdef"
+                          for character in prompt_hash)
+                   for _, _, prompt_hash in expected_prompt_ids)):
+        raise AssertionError("manifest dataset counts or prompt hashes changed")
     expected_source_ids = [
         [dataset, source_id] for dataset, source_id, _ in expected_prompt_ids
     ]
     if (digest(expected_source_ids)
             != manifest["data_selection"]["source_ids_sha256"]):
         raise AssertionError("manifest source selection digest changed")
-    actual_prompt_ids = {
-        (str(row["dataset"]), str(row["source_id"]), row["prompt_sha256"])
-        for row in rows
+    prompt_hashes = {
+        (dataset, source_id):prompt_hash
+        for dataset, source_id, prompt_hash in expected_prompt_ids
     }
-    if actual_prompt_ids != set(expected_prompt_ids):
-        raise AssertionError("raw source/prompt set differs from the manifest")
-    if {row["seed"] for row in rows} != set(manifest["seeds"]):
-        raise AssertionError("raw seed set differs from the manifest")
+    expected_row_keys = {
+        (variant, dataset, source_id, seed)
+        for variant in variant_order
+        for dataset, source_id, _ in expected_prompt_ids
+        for seed in manifest["seeds"]
+    }
+    actual_row_keys = [
+        (str(row.get("variant")), str(row.get("dataset")),
+         str(row.get("source_id")), row.get("seed"))
+        for row in rows
+    ]
+    if (len(actual_row_keys) != len(set(actual_row_keys))
+            or set(actual_row_keys) != expected_row_keys):
+        raise AssertionError(
+            "rows do not equal the prompt x seed x variant contract"
+        )
+
+    shuffled_order = variant_order.copy()
+    random.Random(manifest["order_policy"]["seed"]).shuffle(shuffled_order)
+    per_dataset_seen = Counter()
+    prompt_ordinals = {}
+    for dataset, source_id, _ in expected_prompt_ids:
+        prompt_ordinals[dataset, source_id] = per_dataset_seen[dataset]
+        per_dataset_seen[dataset] += 1
+    seed_indices = {seed:index for index, seed in enumerate(manifest["seeds"])}
+    for row in rows:
+        prompt_key = str(row["dataset"]), str(row["source_id"])
+        if (row.get("prompt_sha256") != prompt_hashes[prompt_key]
+                or row.get("sampling_seed") != prompt_seed(
+                    row["seed"], prompt_key[0], prompt_key[1]
+                )):
+            raise AssertionError("row prompt or sampling-seed identity changed")
+        ordinal = (
+            seed_indices[row["seed"]] * manifest["per_dataset"]
+            + prompt_ordinals[prompt_key]
+        )
+        offset = ordinal % len(shuffled_order)
+        scheduled = shuffled_order[offset:] + shuffled_order[:offset]
+        if (row.get("method_order_ordinal") != ordinal
+                or row.get("execution_position")
+                != scheduled.index(row["variant"])):
+            raise AssertionError("row method order differs from frozen rotation")
 
     groups: dict[tuple, list[dict]] = defaultdict(list)
     for row in rows:
@@ -213,13 +317,22 @@ def validate(result_dir: Path, repo_root: Path,
             raise AssertionError(f"{label} per-dataset estimates changed")
         recalculated[label] = value
 
+    recalculated_gate = all(
+        value["ci95"][0] > 1.0 for value in recalculated.values()
+    )
     if (report["records"] != len(rows)
             or report["paired_groups"] != len(groups)
-            or not report["gate_passed"]):
+            or report.get("gate_passed") is not recalculated_gate
+            or report.get("decision") != (
+                "proceed_to_full_registered_suite" if recalculated_gate
+                else "stop_and_review_power_or_implementation"
+            )):
         raise AssertionError("reported completion or gate decision changed")
 
     variants = {variant["name"]: variant for variant in manifest["variants"]}
-    if set(variants) != EXPECTED_METHODS:
+    if (set(variants) != EXPECTED_METHODS
+            or {name:variant["method"] for name, variant in variants.items()}
+            != EXPECTED_METHOD_MAPPING):
         raise AssertionError("manifest methods changed")
     if variants["dflash"]["draft_temperature"] is not None:
         raise AssertionError("official DFlash must record greedy Draft control")
@@ -274,8 +387,7 @@ def validate(result_dir: Path, repo_root: Path,
         "position_counts": position_counts,
         "independent_recalculation": recalculated,
         "strict_speed_gate": {
-            "passed": all(value["ci95"][0] > 1.0
-                          for value in recalculated.values()),
+            "passed": recalculated_gate,
             "rule": "all three independently recalculated 95% CI lower bounds > 1",
         },
         "dflash_metadata": "PASS_NULL_DRAFT_TEMPERATURE_AND_GREEDY_ARGMAX",
