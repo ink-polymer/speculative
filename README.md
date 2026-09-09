@@ -1,22 +1,32 @@
 # DFlash-SpecBlock：AdaptiveTree T=0/T=1 正式实验
 
-## 当前正式实验（唯一口径）
+## 新服务器正式实验（本分支唯一口径）
 
-本分支当前用于从零重跑一套公平、可审计的 **T=0/T=1** 实验。正式模型仅为
-Qwen3-4B 与 Qwen3-8B；Qwen3-Coder-30B-A3B、树状块验证及其他温度均已延期，
-不进入本轮计划、计数或结论。
+本分支用于在新服务器从零重跑一套公平、可审计的 **T=0/T=1** 实验。
+正式模型仅为 Qwen3-4B 与 Qwen3-8B；Qwen3-Coder-30B-A3B 和其他温度延期。
+此前基于 `16c0e91` 启动过的 59,904-call 任务不含树状块，不能用
+本分支续跑或覆盖；本分支的 65,280-call 矩阵必须使用新的输入与输出目录。
 
 - **T=0**：Target、DFlash、DDTree 的 7 个固定预算，以及修正后的 canonical
   AdaptiveTree。canonical 方法允许 `B<=256`，把构树成本计入预算决策，并关闭周期探索。
   同时运行固定的 8 方法注册表：主方法、`adaptive_legacy` 历史对照及 6 项消融/控制；
   `adaptive_legacy_cost_attribution` 是只切换成本归因的严格单因素对照。
-- **T=1**：仅 Target、DFlash 与 DDTree-B45（`L=15`），在 3 个生成 seed 上运行。
-- **不在本轮运行**：树状块验证、旧扩散树实验、30B 模型及 T=0/T=1 以外的温度。
+- **T=1**：Target、DFlash、DDTree-B45 与同树 `tree_block_verification`
+  （`L=15, B=45`），在 3 个生成 seed 上运行；树块候选只替换 DDTree 验证器。
+- **不在本轮运行**：旧扩散树实验、30B 模型及 T=0/T=1 以外的温度。
+
+若在 H20 上先单独完成 4B 的 T=1，其范围名称必须为
+**“Qwen3-4B / T=1 / H20 登记子矩阵”**：9,792 条结果记录、10,752 个实际生成轮次。
+子矩阵完成不等于全套正式实验完成；4B/8B、T=0/T=1 的 65,280-call 全矩阵及
+全部完整性/公平性门禁通过前，`formal_complete` 仍为 `false`，不得作全矩阵或论文结论。
 
 权威范围、调用数和公平性约束见
 [`docs/FORMAL_EXPERIMENT_MATRIX.md`](docs/FORMAL_EXPERIMENT_MATRIX.md)；统一部署、审计、
 doctor 与启动流程见
 [`docs/INTEGRATED_ADAPTIVE_TREE_BLOCK_EXPERIMENT.md`](docs/INTEGRATED_ADAPTIVE_TREE_BLOCK_EXPERIMENT.md)。
+H20 上先跑 4B/T=1 子矩阵时，使用
+[`docs/QWEN3_4B_T1_H20_RUNBOOK.md`](docs/QWEN3_4B_T1_H20_RUNBOOK.md) 的独立启动与
+post-run 审计流程。
 用 `bash scripts/run_integrated_fresh_server.sh plan` 查看计划；其他旧启动脚本只为历史复查保留，
 不得据此扩大当前正式矩阵。
 
@@ -53,8 +63,8 @@ DFlash 接受长度保底，并严格修复旧反例；但新版本仍有同预�
 统一入口和 8 方法注册表。
 
 历史三路径 GBV 论文实验的 12 配置方案见
-[归档说明](docs/GBV_PAPER_EXPERIMENTS.md)。该矩阵不属于本轮 T=1 正式范围；本轮 T=1
-只比较 Target、DFlash 与 DDTree-B45，并使用 3 个生成 seed。
+[归档说明](docs/GBV_PAPER_EXPERIMENTS.md)。该矩阵不属于本轮 T=1 正式范围；新服务器
+T=1 比较 Target、DFlash、DDTree-B45 与同树 `tree_block_verification`，并使用 3 个生成 seed。
 
 ## 历史工程实现说明（不属于本轮启动入口）
 

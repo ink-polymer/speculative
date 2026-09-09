@@ -26,10 +26,17 @@ import tempfile
 from .common import ROOT, digest, file_hash, read_jsonl, source_hashes, write_json
 from .config import Variant, build_variants, load_config
 from .data import DATASETS, evaluation_policy
-from .preflight import SAME_TREE_WITNESS_PROMPT, SAME_TREE_WITNESS_SEED
+from .preflight import (
+    SAME_TREE_VARIANT_NAMES,
+    SAME_TREE_VERIFIER_EXPECTATIONS,
+    SAME_TREE_WITNESS_PROMPT,
+    SAME_TREE_WITNESS_SEED,
+)
 from .report import (clustered_ci, speedup,
                      summarize as summarize_results, validate_results)
 from .runner import make_plan
+from .runtime_model import (runtime_model_expectations,
+                            validate_runtime_model_identity)
 
 
 STUDY = "adaptive_tree_ddtree_dflash_t0_t1"
@@ -44,6 +51,11 @@ SAMPLING_IMPLEMENTATIONS = {
     "tree_block_verification": "ddtree_fused_scan",
 }
 TREE_BLOCK_STATUS = "registered_t1_same_tree_fused_scan"
+QWEN3_TARGET_VOCAB_SIZE = 151936
+QWEN3_HIDDEN_SIZE = {
+    "Qwen/Qwen3-4B":2560,
+    "Qwen/Qwen3-8B":4096,
+}
 FORMAL_MODEL_IDS = ("qwen3_4b", "qwen3_8b")
 T1_DATASET_COUNTS = {
     "gsm8k":128, "math500":128, "aime24":30, "aime25":30,
@@ -298,10 +310,11 @@ def _validate_same_tree_runtime_witness(witness: dict, cfg: dict) -> None:
         entry["variant"]["name"]:entry["variant"]
         for entry in build_variants(cfg)
     }
-    names = ("ddtree_t1p0", "tree_block_verification_t1p0")
+    names = SAME_TREE_VARIANT_NAMES
     baseline = witness.get("baseline", {})
     candidate = witness.get("candidate", {})
     shape = witness.get("probability_shape")
+    target_vocab_size = witness.get("target_vocab_size")
 
     def valid_sha256(value) -> bool:
         return (
@@ -309,40 +322,179 @@ def _validate_same_tree_runtime_witness(witness: dict, cfg: dict) -> None:
             and all(character in "0123456789abcdef" for character in value)
         )
 
+    def plain_int(value) -> bool:
+        return isinstance(value, int) and not isinstance(value, bool)
+
     identities = ((baseline, names[0], "ddtree"),
                   (candidate, names[1], "ddtree_fused_scan"))
+
+    def expected_runtime_verifier(name) -> dict:
+        expected = SAME_TREE_VERIFIER_EXPECTATIONS[name]
+        return {
+            **expected,
+            "source_sha256":file_hash(ROOT / expected["source_file"]),
+        }
+
+    def valid_verifier_output(identity, output) -> bool:
+        if (not isinstance(output, dict)
+                or set(output) != {
+                    "accepted_nodes", "accepted_tokens", "bonus_token",
+                }):
+            return False
+        nodes = output.get("accepted_nodes")
+        output_tokens = output.get("accepted_tokens")
+        bonus = output.get("bonus_token")
+        if (not isinstance(nodes, list) or not isinstance(output_tokens, list)
+                or len(nodes) != len(output_tokens)
+                or not plain_int(bonus)
+                or bonus < 0 or bonus >= target_vocab_size):
+            return False
+        parents = identity["parents"]
+        tree_tokens = identity["tree_tokens"]
+        previous = 0
+        for node, token in zip(nodes, output_tokens):
+            if (not plain_int(node) or not 0 < node < len(parents)
+                    or not plain_int(token)
+                    or parents[node] != previous
+                    or tree_tokens[node - 1] != token):
+                return False
+            previous = node
+        child_edges = {
+            (parent, tree_tokens[node - 1])
+            for node, parent in enumerate(parents[1:], 1)
+        }
+        return (previous, bonus) not in child_edges
+
+    def valid_generator_before(value) -> bool:
+        return (
+            isinstance(value, dict)
+            and set(value) == {"initial_seed", "device", "state_sha256"}
+            and plain_int(value.get("initial_seed"))
+            and value["initial_seed"] == SAME_TREE_WITNESS_SEED
+            and value.get("device") == "cuda:0"
+            and valid_sha256(value.get("state_sha256"))
+        )
+
+    def valid_identity(identity, name, method) -> bool:
+        if (not plain_int(target_vocab_size)
+                or target_vocab_size != QWEN3_TARGET_VOCAB_SIZE):
+            return False
+        if not isinstance(identity, dict):
+            return False
+        variant = variants.get(name, {})
+        parents = identity.get("parents")
+        tree_tokens = identity.get("tree_tokens")
+        identity_shape = identity.get("probability_shape")
+        verifier = identity.get("verifier")
+        if (identity.get("name") != name
+                or identity.get("method") != method
+                or identity.get("variant") != variant
+                or not isinstance(parents, list)
+                or not isinstance(tree_tokens, list)
+                or len(parents) != variant.get("tree_budget", -1) + 1
+                or len(tree_tokens) != len(parents) - 1
+                or not parents or not plain_int(parents[0]) or parents[0] != -1
+                or any(not plain_int(parent) or parent < 0 or parent >= node
+                       for node, parent in enumerate(parents[1:], 1))
+                or any(not plain_int(token)
+                       or token < 0 or token >= target_vocab_size
+                       for token in tree_tokens)
+                or len(set(zip(parents[1:], tree_tokens))) != len(tree_tokens)
+                or identity.get("tree_sha256") != digest([parents, tree_tokens])
+                or not valid_sha256(identity.get("probabilities_sha256"))
+                or not isinstance(identity_shape, list)
+                or len(identity_shape) != 2
+                or any(not plain_int(dimension) for dimension in identity_shape)
+                or identity_shape != [len(parents), target_vocab_size]
+                or identity.get("probability_dtype") != "torch.float64"
+                or not plain_int(identity.get("target_vocab_size"))
+                or identity.get("target_vocab_size") != target_vocab_size
+                or not plain_int(identity.get("verifier_observer_calls"))
+                or identity.get("verifier_observer_calls") != 1
+                or not isinstance(verifier, dict)):
+            return False
+        depths = [0] * len(parents)
+        for node, parent in enumerate(parents[1:], 1):
+            depths[node] = depths[parent] + 1
+        if max(depths) > variant["length"]:
+            return False
+        expected_input = {
+            "tree_sha256":identity["tree_sha256"],
+            "probabilities_sha256":identity["probabilities_sha256"],
+            "probability_shape":identity_shape,
+            "probability_dtype":identity["probability_dtype"],
+        }
+        actual_input = verifier.get("input")
+        actual_output = verifier.get("output")
+        return (
+            set(verifier) == {
+                "module", "qualname", "callable", "source_file",
+                "source_sha256", "observed_call_index", "input",
+                "input_sha256", "output", "output_sha256",
+            }
+            and all(verifier.get(field) == value for field, value in
+                expected_runtime_verifier(name).items())
+            and plain_int(verifier.get("observed_call_index"))
+            and verifier["observed_call_index"] == 1
+            and isinstance(actual_input, dict)
+            and set(actual_input) == {
+                *expected_input, "generator_before", "validate",
+            }
+            and all(actual_input.get(field) == value
+                    for field, value in expected_input.items())
+            and valid_generator_before(actual_input.get("generator_before"))
+            and actual_input.get("validate") is False
+            and verifier.get("input_sha256") == digest(actual_input)
+            and valid_verifier_output(identity, actual_output)
+            and verifier.get("output_sha256") == digest(actual_output)
+        )
+
     invalid_identity = any(
-        identity.get("name") != name
-        or identity.get("method") != method
-        or identity.get("variant") != variants.get(name)
-        or not isinstance(identity.get("parents"), list)
-        or not isinstance(identity.get("tree_tokens"), list)
-        or len(identity.get("parents", []))
-           != variants[names[0]]["tree_budget"] + 1
-        or len(identity.get("tree_tokens", []))
-           != variants[names[0]]["tree_budget"]
-        or identity.get("tree_sha256") != digest([
-            identity.get("parents"), identity.get("tree_tokens")
-        ])
-        or not valid_sha256(identity.get("probabilities_sha256"))
+        not valid_identity(identity, name, method)
         for identity, name, method in identities
     )
+    observer_calls = witness.get("verifier_observer_calls")
     if (witness.get("passed") is not True
             or witness.get("prompt_sha256") != digest(SAME_TREE_WITNESS_PROMPT)
+            or not plain_int(witness.get("seed"))
             or witness.get("seed") != SAME_TREE_WITNESS_SEED
             or witness.get("parents_equal") is not True
             or witness.get("tree_tokens_equal") is not True
             or witness.get("target_probabilities_equal") is not True
+            or witness.get("tree_states_valid") is not True
+            or witness.get("verifier_routes_correct") is not True
+            or witness.get("verifier_generator_inputs_equal") is not True
+            or not isinstance(observer_calls, dict)
+            or set(observer_calls) != set(names)
+            or any(not plain_int(count) for count in observer_calls.values())
+            or observer_calls != {
+                names[0]:1, names[1]:1,
+            }
+            or witness.get("verifier_observation_policy")
+               != "first_successful_call_only"
+            or not plain_int(
+                witness.get("expected_verifier_observer_calls_per_method")
+            )
+            or witness.get("expected_verifier_observer_calls_per_method") != 1
+            or witness.get("probability_vocab_matches_target") is not True
             or witness.get("probability_dtype") != "torch.float64"
             or not isinstance(shape, list) or len(shape) != 2
+            or any(not plain_int(dimension) for dimension in shape)
             or shape[0] != variants[names[0]]["tree_budget"] + 1
-            or not isinstance(shape[1], int) or shape[1] < 1
+            or not plain_int(target_vocab_size)
+            or target_vocab_size != QWEN3_TARGET_VOCAB_SIZE
+            or shape[1] != target_vocab_size
             or invalid_identity
             or baseline.get("parents") != candidate.get("parents")
             or baseline.get("tree_tokens") != candidate.get("tree_tokens")
             or baseline.get("tree_sha256") != candidate.get("tree_sha256")
             or baseline.get("probabilities_sha256")
-               != candidate.get("probabilities_sha256")):
+               != candidate.get("probabilities_sha256")
+            or baseline.get("verifier", {}).get("input", {}).get(
+                "generator_before"
+            ) != candidate.get("verifier", {}).get("input", {}).get(
+                "generator_before"
+            )):
         raise ValueError(
             "T=1 same-tree runtime witness is missing, stale, or unequal"
         )
@@ -375,7 +527,7 @@ def _validate_t1_preflight(preflight: dict, cfg: dict, doctor: dict) -> None:
                 "required":"stable repeated outputs and top-1 margins <= 2 * measured error",
             }
             or not preflight.get("stop_token_ids")
-            or not all(isinstance(token, int) for token in preflight["stop_token_ids"])
+            or not all(type(token) is int for token in preflight["stop_token_ids"])
             or environment.get("versions") != expected_versions
             or environment.get("python") != doctor["python"]
             or environment.get("cuda") != doctor["cuda"]
@@ -393,6 +545,49 @@ def _validate_t1_preflight(preflight: dict, cfg: dict, doctor: dict) -> None:
             or any(check.get("result", {}).get("passed") is not check["expected_pass"]
                    for check in evaluator_checks)):
         raise ValueError("T=1 GPU preflight environment or evaluator evidence is invalid")
+
+    runtime_gate = preflight.get("runtime_model_gate", {})
+    runtime_gate_keys = {
+        "schema", "expectations", "identity_after_load",
+        "identity_after_preflight", "passed_after_load",
+        "passed_after_preflight", "identities_match",
+    }
+    try:
+        expected_runtime = runtime_model_expectations(
+            cfg["model"], strict_same_tree_t1=True, device="cuda:0",
+        )
+        if (not isinstance(runtime_gate, dict)
+                or set(runtime_gate) != runtime_gate_keys
+                or type(runtime_gate.get("schema")) is not int
+                or runtime_gate["schema"] != 1
+                or digest(runtime_gate.get("expectations"))
+                   != digest(expected_runtime)
+                or runtime_gate.get("passed_after_load") is not True
+                or runtime_gate.get("passed_after_preflight") is not True
+                or runtime_gate.get("identities_match") is not True):
+            raise ValueError("runtime model gate metadata is incomplete")
+        after_load = runtime_gate["identity_after_load"]
+        after_preflight = runtime_gate["identity_after_preflight"]
+        validate_runtime_model_identity(after_load, expected_runtime)
+        validate_runtime_model_identity(after_preflight, expected_runtime)
+        if after_load != after_preflight:
+            raise ValueError("runtime model identities differ")
+        expected_hidden_size = QWEN3_HIDDEN_SIZE[cfg["model"]["target"]]
+        for identity in (after_load, after_preflight):
+            for role, field in (("target", "target"), ("draft", "draft")):
+                config_identity = identity[role]["config"]
+                if (config_identity["_name_or_path"] != cfg["model"][field]
+                        or config_identity["_commit_hash"]
+                           != cfg["model"][field + "_revision"]
+                        or config_identity["vocab_size"]
+                           != QWEN3_TARGET_VOCAB_SIZE
+                        or config_identity["hidden_size"] != expected_hidden_size
+                        or identity[role]["parameter_devices"] != ["cuda:0"]):
+                    raise ValueError(f"{role} checkpoint identity is unregistered")
+    except (KeyError, RuntimeError, TypeError, ValueError) as exc:
+        raise ValueError(
+            "T=1 GPU preflight runtime model evidence is invalid"
+        ) from exc
 
     _validate_same_tree_runtime_witness(
         preflight.get("same_tree_runtime_witness", {}), cfg,

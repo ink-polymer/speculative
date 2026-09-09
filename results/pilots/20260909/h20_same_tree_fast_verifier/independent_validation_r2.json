@@ -16,6 +16,7 @@
         1.0073116145390422,
         1.0435348459602165
       ],
+      "metric": "equal_dataset_geomean_decode_speedup",
       "per_dataset": {
         "aime25": 1.0605269816343266,
         "gsm8k": 1.0245028527980717,
@@ -45,6 +46,7 @@
         1.1633749394791233,
         1.2321128595224038
       ],
+      "metric": "equal_dataset_geomean_decode_speedup",
       "per_dataset": {
         "aime25": 1.2306707850173162,
         "gsm8k": 1.1553984127713404,
@@ -74,6 +76,7 @@
         1.133700517241549,
         1.2028903039028385
       ],
+      "metric": "equal_dataset_geomean_decode_speedup",
       "per_dataset": {
         "aime25": 1.1604332622643785,
         "gsm8k": 1.12776495410996,
@@ -96,7 +99,7 @@
       "speedup": 1.1675618914742263
     }
   },
-  "integrity": "PASS",
+  "integrity": "PASS_PINNED_R2_BYTES_AND_VALIDATED_FIELDS",
   "kind": "independent_same_tree_pilot_validation",
   "manifest_prompt_and_seed_coverage": "PASS_EXACT_SOURCE_PROMPT_SET_AND_ALL_REGISTERED_SEEDS",
   "official_precision": "PASS_BF16_SDPA_SDPA_TF32_FALSE",
@@ -225,7 +228,7 @@
   },
   "records": 504,
   "result_dir": "results/pilots/20260909/h20_same_tree_fast_verifier/h20-same-tree-block-official-pilot-20260910-r2",
-  "same_tree_runtime_witness": "PASS_46_BY_151936_FP64",
+  "same_tree_runtime_witness": "PASS_TREE_f29066599c637e75f7fcce747f8cc40b92d7bf93c3495742660e0261c8ef2905_46_BY_151936_FP64",
   "source_hashes": {
     "files": {
       "config": {
@@ -249,7 +252,8 @@
         "sha256": "3c7cbf0995664159a0bd4702bd10af02b445a98a9fb47031142620c8369caef3"
       }
     },
-    "status": "PASS"
+    "scope": "not a transitive runtime-source dependency closure",
+    "status": "PASS_RECORDED_FIVE_FILES"
   },
   "strict_speed_gate": {
     "passed": true,

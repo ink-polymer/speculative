@@ -9,13 +9,35 @@ from pathlib import Path
 import platform
 import subprocess
 
-from .common import digest, source_hashes, write_json
+from .common import ROOT, digest, file_hash, source_hashes, write_json
 from .config import Variant, build_variants
+from .runtime_model import (enforce_runtime_model_gate, is_registered_same_tree_t1,
+                            runtime_model_expectations)
 
 
 BF16_NUMERICAL_LOGIT_ERROR_LIMIT = 0.5
 SAME_TREE_WITNESS_PROMPT = "Compute 19 + 23. Give a brief explanation."
 SAME_TREE_WITNESS_SEED = 205
+SAME_TREE_VARIANT_NAMES = (
+    "ddtree_t1p0", "tree_block_verification_t1p0",
+)
+SAME_TREE_VERIFIER_EXPECTATIONS = {
+    "ddtree_t1p0":{
+        "module":"gbv_experiments.sampling",
+        "qualname":"tree_verify_ancestral_batched",
+        "callable":"gbv_experiments.sampling.tree_verify_ancestral_batched",
+        "source_file":"src/gbv_experiments/sampling.py",
+    },
+    "tree_block_verification_t1p0":{
+        "module":"gbv_experiments.fused_tree_sampling",
+        "qualname":"tree_verify_ancestral_fused_scan",
+        "callable":(
+            "gbv_experiments.fused_tree_sampling."
+            "tree_verify_ancestral_fused_scan"
+        ),
+        "source_file":"src/gbv_experiments/fused_tree_sampling.py",
+    },
+}
 
 
 def _tensor_sha256(value) -> str:
@@ -30,9 +52,9 @@ def _tensor_sha256(value) -> str:
 
 def _same_tree_runtime_witness(engine, tokenizer, model, variants, stop_ids,
                                device) -> dict | None:
-    """Compare the real T=1 DDTree tree and Target rows before verification."""
+    """Bind equal real T=1 inputs to the verifier callables that consumed them."""
     by_name = {variant.name: variant for variant in variants}
-    names = ("ddtree_t1p0", "tree_block_verification_t1p0")
+    names = SAME_TREE_VARIANT_NAMES
     if not set(names) <= set(by_name):
         return None
 
@@ -45,6 +67,7 @@ def _same_tree_runtime_witness(engine, tokenizer, model, variants, stop_ids,
         return_tensors="pt",
     ).to(device)
     captured = {}
+    verifier_events = {name:[] for name in names}
     for name in names:
         def observe(parents, tree_tokens, all_p, witness_name=name):
             if witness_name not in captured:
@@ -53,22 +76,169 @@ def _same_tree_runtime_witness(engine, tokenizer, model, variants, stop_ids,
                     all_p.detach().cpu().clone(),
                 )
 
+        def observe_verifier(identity, witness_name=name):
+            verifier_events[witness_name].append(identity)
+
         engine.generate(
             ids, by_name[name], 32, stop_ids,
             seed=SAME_TREE_WITNESS_SEED, tree_observer=observe,
+            verifier_observer=observe_verifier,
         )
 
+    target_vocab_size = engine.target.config.vocab_size
+    verifier_observer_calls = {
+        name:len(verifier_events[name]) for name in names
+    }
     if set(captured) != set(names):
         return {
             "passed":False,
             "failure":"a registered method did not expose its first probability tree",
             "captured_variants":sorted(captured),
+            "target_vocab_size":target_vocab_size,
+            "verifier_observer_calls":verifier_observer_calls,
+        }
+    if any(count != 1 for count in verifier_observer_calls.values()):
+        return {
+            "passed":False,
+            "failure":"a registered method did not execute exactly one observed verifier",
+            "captured_variants":sorted(captured),
+            "target_vocab_size":target_vocab_size,
+            "verifier_observer_calls":verifier_observer_calls,
         }
     baseline = captured[names[0]]
     candidate = captured[names[1]]
     parents_equal = baseline[0] == candidate[0]
     tokens_equal = baseline[1] == candidate[1]
     probabilities_equal = torch.equal(baseline[2], candidate[2])
+
+    def plain_int(value) -> bool:
+        return isinstance(value, int) and not isinstance(value, bool)
+
+    def valid_tree_state(name, state) -> bool:
+        parents, tree_tokens, probabilities = state
+        if (not plain_int(target_vocab_size) or target_vocab_size < 1
+                or len(parents) != by_name[name].tree_budget + 1
+                or len(tree_tokens) != len(parents) - 1
+                or list(probabilities.shape) != [len(parents), target_vocab_size]
+                or str(probabilities.dtype) != "torch.float64"
+                or not parents or not plain_int(parents[0]) or parents[0] != -1
+                or any(not plain_int(parent) or parent < 0 or parent >= node
+                       for node, parent in enumerate(parents[1:], 1))
+                or any(not plain_int(token)
+                       or token < 0 or token >= target_vocab_size
+                       for token in tree_tokens)
+                or len(set(zip(parents[1:], tree_tokens))) != len(tree_tokens)):
+            return False
+        depths = [0] * len(parents)
+        for node, parent in enumerate(parents[1:], 1):
+            depths[node] = depths[parent] + 1
+        return max(depths) <= by_name[name].length
+
+    def verifier_output_matches(state, output) -> bool:
+        if (not isinstance(output, dict)
+                or set(output) != {
+                    "accepted_nodes", "accepted_tokens", "bonus_token",
+                }):
+            return False
+        nodes = output.get("accepted_nodes")
+        output_tokens = output.get("accepted_tokens")
+        bonus = output.get("bonus_token")
+        if (not isinstance(nodes, list) or not isinstance(output_tokens, list)
+                or len(nodes) != len(output_tokens)
+                or not plain_int(bonus)
+                or bonus < 0 or bonus >= target_vocab_size):
+            return False
+        parents, tree_tokens, _ = state
+        previous = 0
+        for node, token in zip(nodes, output_tokens):
+            if (not plain_int(node) or not 0 < node < len(parents)
+                    or not plain_int(token)
+                    or parents[node] != previous
+                    or tree_tokens[node - 1] != token):
+                return False
+            previous = node
+        child_edges = {
+            (parent, tree_tokens[node - 1])
+            for node, parent in enumerate(parents[1:], 1)
+        }
+        return (previous, bonus) not in child_edges
+
+    def valid_generator_before(value) -> bool:
+        return (
+            isinstance(value, dict)
+            and set(value) == {"initial_seed", "device", "state_sha256"}
+            and plain_int(value.get("initial_seed"))
+            and value["initial_seed"] == SAME_TREE_WITNESS_SEED
+            and value.get("device") == str(device)
+            and isinstance(value.get("state_sha256"), str)
+            and len(value["state_sha256"]) == 64
+            and all(character in "0123456789abcdef"
+                    for character in value["state_sha256"])
+        )
+
+    def verifier_identity_matches(name, state, actual) -> bool:
+        expected = SAME_TREE_VERIFIER_EXPECTATIONS[name]
+        expected_input = {
+            "tree_sha256":digest([state[0], state[1]]),
+            "probabilities_sha256":_tensor_sha256(state[2]),
+            "probability_shape":list(state[2].shape),
+            "probability_dtype":str(state[2].dtype),
+        }
+        actual_input = actual.get("input", {}) if isinstance(actual, dict) else {}
+        actual_output = actual.get("output", {}) if isinstance(actual, dict) else {}
+        return (
+            isinstance(actual, dict)
+            and set(actual) == {
+                "module", "qualname", "callable", "source_file",
+                "source_sha256", "observed_call_index", "input",
+                "input_sha256", "output", "output_sha256",
+            }
+            and all(actual.get(field) == value
+                    for field, value in expected.items())
+            and actual.get("source_sha256")
+               == file_hash(ROOT / expected["source_file"])
+            and plain_int(actual.get("observed_call_index"))
+            and actual["observed_call_index"] == 1
+            and isinstance(actual_input, dict)
+            and set(actual_input) == {
+                *expected_input, "generator_before", "validate",
+            }
+            and all(actual_input.get(field) == value
+                    for field, value in expected_input.items())
+            and valid_generator_before(actual_input.get("generator_before"))
+            and actual_input.get("validate") is False
+            and actual.get("input_sha256") == digest(actual_input)
+            and verifier_output_matches(state, actual_output)
+            and actual.get("output_sha256") == digest(actual_output)
+        )
+
+    tree_states_valid = all(
+        valid_tree_state(name, captured[name]) for name in names
+    )
+    verifier_routes_correct = all(
+        verifier_identity_matches(name, captured[name], verifier_events[name][0])
+        for name in names
+    )
+    def observed_generator_before(name):
+        event = verifier_events[name][0]
+        event_input = event.get("input") if isinstance(event, dict) else None
+        return (
+            event_input.get("generator_before")
+            if isinstance(event_input, dict) else None
+        )
+
+    baseline_generator_before = observed_generator_before(names[0])
+    candidate_generator_before = observed_generator_before(names[1])
+    verifier_generator_inputs_equal = (
+        baseline_generator_before is not None
+        and baseline_generator_before == candidate_generator_before
+    )
+    probability_shape = list(baseline[2].shape)
+    probability_vocab_matches_target = (
+        plain_int(target_vocab_size) and target_vocab_size > 0
+        and len(probability_shape) == 2
+        and probability_shape[1] == target_vocab_size
+    )
 
     def identity(name, state):
         return {
@@ -79,16 +249,34 @@ def _same_tree_runtime_witness(engine, tokenizer, model, variants, stop_ids,
             "tree_tokens":state[1],
             "tree_sha256":digest([state[0], state[1]]),
             "probabilities_sha256":_tensor_sha256(state[2]),
+            "probability_shape":list(state[2].shape),
+            "probability_dtype":str(state[2].dtype),
+            "target_vocab_size":target_vocab_size,
+            "verifier_observer_calls":len(verifier_events[name]),
+            "verifier":verifier_events[name][0],
         }
 
     return {
-        "passed":parents_equal and tokens_equal and probabilities_equal,
+        "passed":(
+            parents_equal and tokens_equal and probabilities_equal
+            and tree_states_valid and verifier_routes_correct
+            and verifier_generator_inputs_equal
+            and probability_vocab_matches_target
+        ),
         "prompt_sha256":digest(SAME_TREE_WITNESS_PROMPT),
         "seed":SAME_TREE_WITNESS_SEED,
         "parents_equal":parents_equal,
         "tree_tokens_equal":tokens_equal,
         "target_probabilities_equal":probabilities_equal,
-        "probability_shape":list(baseline[2].shape),
+        "tree_states_valid":tree_states_valid,
+        "verifier_routes_correct":verifier_routes_correct,
+        "verifier_generator_inputs_equal":verifier_generator_inputs_equal,
+        "verifier_observer_calls":verifier_observer_calls,
+        "verifier_observation_policy":"first_successful_call_only",
+        "expected_verifier_observer_calls_per_method":1,
+        "target_vocab_size":target_vocab_size,
+        "probability_vocab_matches_target":probability_vocab_matches_target,
+        "probability_shape":probability_shape,
         "probability_dtype":str(baseline[2].dtype),
         "baseline":identity(names[0], baseline),
         "candidate":identity(names[1], candidate),
@@ -219,6 +407,15 @@ def check_model(cfg, output: Path, device="cuda:0", code_backend="docker", only_
     environment = check_environment(cfg, code_backend, device)
     model = model_identity(cfg["model"])
     engine, tokenizer = load_models(model, device)
+    registered_same_tree_t1 = is_registered_same_tree_t1(cfg)
+    runtime_expectations = runtime_model_expectations(
+        cfg["model"], strict_same_tree_t1=registered_same_tree_t1,
+        device=str(torch.device(device)) if registered_same_tree_t1 else None,
+    )
+    runtime_identity_after_load = enforce_runtime_model_gate(
+        engine, runtime_expectations,
+        tokenizer=tokenizer if registered_same_tree_t1 else None,
+    )
     stop_ids = stop_token_ids(engine, tokenizer)
     prompts = ["Compute 19 + 23. Give a brief explanation.",
                "Write a Python function that reverses a list.",
@@ -305,6 +502,15 @@ def check_model(cfg, output: Path, device="cuda:0", code_backend="docker", only_
         same_tree_runtime_witness = _same_tree_runtime_witness(
             engine, tokenizer, model, variants, stop_ids, device,
         )
+    runtime_identity_after_preflight = enforce_runtime_model_gate(
+        engine, runtime_expectations,
+        tokenizer=tokenizer if registered_same_tree_t1 else None,
+    )
+    runtime_identities_match = (
+        runtime_identity_after_preflight == runtime_identity_after_load
+    )
+    if not runtime_identities_match:
+        raise RuntimeError("Runtime model identity changed during GPU preflight")
     generation_checks = [check for check in checks if "greedy_equal" in check]
     passed = (
         all(c.get("gate_passed", c.get("passed", False)) for c in checks)
@@ -323,6 +529,15 @@ def check_model(cfg, output: Path, device="cuda:0", code_backend="docker", only_
               "scope": "checkpoint structural and bounded-numerical smoke gate, not full benchmark results",
               "environment": environment, "model": model, "stop_token_ids": stop_ids,
               "source_hashes": source_hashes(), "checks": checks,
+              "runtime_model_gate":{
+                  "schema":1,
+                  "expectations":runtime_expectations,
+                  "identity_after_load":runtime_identity_after_load,
+                  "identity_after_preflight":runtime_identity_after_preflight,
+                  "passed_after_load":True,
+                  "passed_after_preflight":True,
+                  "identities_match":runtime_identities_match,
+              },
               "same_tree_runtime_witness":same_tree_runtime_witness}
     write_json(output, result)
     if not passed:

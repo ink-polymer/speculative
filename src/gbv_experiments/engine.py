@@ -146,6 +146,80 @@ class Engine:
         if self.device.type == "cuda":
             torch.cuda.synchronize(self.device)
 
+    @staticmethod
+    def _runtime_verifier_identity(
+            verifier, parents, tree_tokens, all_p, nodes, output_tokens, bonus,
+            *, generator_before, validate) -> dict:
+        """Describe one callable and its actual inputs/outputs after it returned."""
+        # Keep source inspection and hashing entirely off the timed production
+        # path.  A verifier observer is used only by preflight diagnostics.
+        import hashlib
+        import inspect
+        from pathlib import Path
+
+        from .common import digest, file_hash
+
+        source = inspect.getsourcefile(verifier)
+        if source is None:
+            raise RuntimeError("Cannot resolve the executed verifier source")
+        source_path = Path(source).resolve()
+        try:
+            source_file = str(source_path.relative_to(ROOT.resolve()))
+        except ValueError:
+            source_file = str(source_path)
+        module = getattr(verifier, "__module__", None)
+        qualname = getattr(verifier, "__qualname__", None)
+        if not isinstance(module, str) or not isinstance(qualname, str):
+            raise RuntimeError("Executed verifier lacks a stable Python identity")
+        if not isinstance(bonus, int) or isinstance(bonus, bool):
+            raise RuntimeError("Executed verifier returned a non-integral bonus token")
+        probability_tensor = all_p.detach().cpu().contiguous()
+        probability_payload = hashlib.sha256()
+        probability_payload.update(str(probability_tensor.dtype).encode())
+        probability_payload.update(str(tuple(probability_tensor.shape)).encode())
+        probability_payload.update(probability_tensor.numpy().tobytes())
+        verifier_input = {
+            "tree_sha256":digest([list(parents), list(tree_tokens)]),
+            "probabilities_sha256":probability_payload.hexdigest(),
+            "probability_shape":list(probability_tensor.shape),
+            "probability_dtype":str(probability_tensor.dtype),
+            "generator_before":generator_before,
+            "validate":validate,
+        }
+        verifier_output = {
+            "accepted_nodes":list(nodes),
+            "accepted_tokens":list(output_tokens),
+            "bonus_token":bonus,
+        }
+        return {
+            "module":module,
+            "qualname":qualname,
+            "callable":f"{module}.{qualname}",
+            "source_file":source_file,
+            "source_sha256":file_hash(source_path),
+            "observed_call_index":1,
+            "input":verifier_input,
+            "input_sha256":digest(verifier_input),
+            "output":verifier_output,
+            "output_sha256":digest(verifier_output),
+        }
+
+    @staticmethod
+    def _runtime_generator_identity(generator) -> dict:
+        """Hash the verifier's actual generator state before diagnostic dispatch."""
+        import hashlib
+
+        state = generator.get_state().detach().cpu().contiguous()
+        payload = hashlib.sha256()
+        payload.update(str(state.dtype).encode())
+        payload.update(str(tuple(state.shape)).encode())
+        payload.update(state.numpy().tobytes())
+        return {
+            "initial_seed":int(generator.initial_seed()),
+            "device":str(generator.device),
+            "state_sha256":payload.hexdigest(),
+        }
+
     def features(self, hidden_states, rows=None):
         selected = [hidden_states[i + 1] for i in self.draft.target_layer_ids]
         if rows is not None:
@@ -197,7 +271,7 @@ class Engine:
     def generate(self, input_ids, variant: Variant, max_new_tokens: int, stop_ids,
                  seed=0, profile=False, audit_greedy=False, tree_observer=None,
                  shared_suffix_observer=None, atom_observer=None, diffusion_observer=None,
-                 ar_observer=None, scaffold_observer=None):
+                 ar_observer=None, scaffold_observer=None, verifier_observer=None):
         variant.validate()
         if input_ids.shape[0] != 1 or max_new_tokens < 1:
             raise ValueError("Expected one prompt and max_new_tokens >= 1")
@@ -240,6 +314,7 @@ class Engine:
         greedy_audit = []
         target_calls, draft_calls = 1, 0
         target_tokens = input_ids.shape[1]
+        verifier_observed = False
         while len(generated) < max_new_tokens and generated[-1] not in stops:
             if variant.method == "target":
                 with meter.measure("target_decode"):
@@ -468,6 +543,7 @@ class Engine:
                      if lazy_lm_head else output.logits[0]),
                     variant.temperature,
                 )
+            executed_verifier = None
             with meter.measure("select_and_correct"):
                 if variant.method in RECYCLE_TREE_METHODS:
                     node_paths = torch.tensor(
@@ -527,11 +603,18 @@ class Engine:
                         "ddtree_fused_parallel": tree_verify_ancestral_fused_parallel,
                         "ddtree_fused_scan": tree_verify_ancestral_fused_scan,
                     }[variant.method]
+                    generator_before = (
+                        self._runtime_generator_identity(generator)
+                        if verifier_observer is not None and not verifier_observed
+                        else None
+                    )
                     nodes, tokens, bonus = verifier(
                         tree.parents, tree.tokens, all_p, generator,
                         validate=False,
                     )
                     accepted = len(nodes)
+                    if generator_before is not None:
+                        executed_verifier = (verifier, generator_before)
                 elif variant.method in LAZY_HEAD_TREE_METHODS:
                     nodes, tokens, bonus, lazy_projection_stats = (
                         tree_verify_ancestral_lazy_projection(
@@ -544,11 +627,19 @@ class Engine:
                     )
                     accepted = len(nodes)
                 elif variant.method in {"ddtree", "root_shared_ddtree", "atom_tree_ancestral", "diffusion_tree_ancestral"}:
-                    nodes, tokens, bonus = tree_verify_ancestral_batched(
+                    verifier = tree_verify_ancestral_batched
+                    generator_before = (
+                        self._runtime_generator_identity(generator)
+                        if verifier_observer is not None and not verifier_observed
+                        else None
+                    )
+                    nodes, tokens, bonus = verifier(
                         tree.parents, tree.tokens, all_p, generator,
                         validate=False,
                     )
                     accepted = len(nodes)
+                    if generator_before is not None:
+                        executed_verifier = (verifier, generator_before)
                 elif variant.method in DIFFUSION_SCAFFOLD_METHODS:
                     nodes, tokens, bonus = diffusion_tree_bv.verify_scaffold_hidden(
                         output.last_hidden_state[0],
@@ -668,6 +759,17 @@ class Engine:
                         accepted, bonus = verifier(paths[chosen], p_by_path[chosen], r, generator)
                     nodes = tree.path_nodes[chosen][:accepted]
                     tokens = paths[chosen, :accepted].tolist()
+            if executed_verifier is not None:
+                # This is deliberately after the selected callable returned.
+                # The normal timing path has no observer, performs no source
+                # inspection, and introduces no additional CUDA synchronization.
+                verifier, generator_before = executed_verifier
+                verifier_observer(self._runtime_verifier_identity(
+                    verifier, tree.parents, tree.tokens, all_p,
+                    nodes, tokens, bonus,
+                    generator_before=generator_before, validate=False,
+                ))
+                verifier_observed = True
             if scaffold_observer is not None and variant.method in DIFFUSION_SCAFFOLD_METHODS:
                 # Diagnostic-only witness of the actual draft and selected exit.
                 # Tree logits alone cannot certify fixed greedy coverage or

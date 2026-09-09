@@ -1,6 +1,7 @@
-"""Independently validate a same-tree block-verification pilot artifact.
+"""Independently validate the archived r2 same-tree pilot artifact.
 
-The validator reads raw rows and recomputes every reported paired speedup and
+The validator pins all three archived artifact byte streams, then reads the raw
+rows and independently recomputes every reported paired speedup, aggregate, and
 cluster-bootstrap confidence interval.  It deliberately does not import the
 benchmark runner so that a broken or changed runtime implementation cannot
 silently validate its own output.
@@ -44,6 +45,29 @@ EXPECTED_METHOD_MAPPING = {
     "ddtree":"ddtree",
     "tree_block_verification":"ddtree_fused_scan",
 }
+EXPECTED_COMPARISON_METRIC = "equal_dataset_geomean_decode_speedup"
+EXPECTED_TREE_SHA256 = (
+    "f29066599c637e75f7fcce747f8cc40b92d7bf93c3495742660e0261c8ef2905"
+)
+EXPECTED_ARTIFACT_SHA256 = {
+    "manifest.json": (
+        "5297a29d8c66c86692f953f1e712806e6bc089f54a5ce8b18e1197137914dc43"
+    ),
+    "report.json": (
+        "dc1944452d68c33b6e5cedf7c5af2d7479a25ed2cd18f56a3ec728c276dfb401"
+    ),
+    "rows.json": (
+        "67a9389704f854158ca69dd5be73a57cad8d3849d116d764844b9d76a920e0f0"
+    ),
+}
+EXPECTED_ROWS_KEYS = {"primary_timing", "complete", "completed_groups", "rows"}
+EXPECTED_REPORT_KEYS = {
+    "gate_passed", "formal_complete", "comparisons", "baseline_sanity",
+    "aggregate", "records", "paired_groups", "telemetry_end", "decision",
+}
+EXPECTED_TELEMETRY_KEYS = {
+    "utc", "hostname", "pid", "slurm_job_id", "gpu_uuid", "nvidia_smi",
+}
 
 
 def sha256(path: Path) -> str:
@@ -85,6 +109,29 @@ def configured_variants(config: dict) -> tuple[list[dict], list[str]]:
 
 def close(left: float, right: float, tolerance: float = 1e-12) -> bool:
     return abs(left - right) <= tolerance
+
+
+def assert_json_equal(actual: object, expected: object, label: str) -> None:
+    """Require the same JSON structure, allowing tiny float round-off only."""
+    if isinstance(expected, float):
+        if (isinstance(actual, bool) or not isinstance(actual, (int, float))
+                or not close(float(actual), expected)):
+            raise AssertionError(f"{label} changed")
+        return
+    if isinstance(expected, dict):
+        if not isinstance(actual, dict) or set(actual) != set(expected):
+            raise AssertionError(f"{label} schema changed")
+        for key, value in expected.items():
+            assert_json_equal(actual[key], value, f"{label}.{key}")
+        return
+    if isinstance(expected, list):
+        if not isinstance(actual, list) or len(actual) != len(expected):
+            raise AssertionError(f"{label} schema changed")
+        for index, value in enumerate(expected):
+            assert_json_equal(actual[index], value, f"{label}[{index}]")
+        return
+    if type(actual) is not type(expected) or actual != expected:
+        raise AssertionError(f"{label} changed")
 
 
 def display_path(path: Path, repo_root: Path) -> str:
@@ -138,6 +185,7 @@ def compare(rows: list[dict], manifest: dict, candidate: str,
     return {
         "candidate": candidate,
         "baseline": baseline,
+        "metric": EXPECTED_COMPARISON_METRIC,
         "speedup": math.exp(sum(dataset_logs.values()) / len(dataset_logs)),
         "ci95": [float(low), float(high)],
         "per_dataset": {
@@ -151,8 +199,41 @@ def compare(rows: list[dict], manifest: dict, candidate: str,
     }
 
 
+def aggregate(rows: list[dict], variant: str) -> dict:
+    selected = [row for row in rows if row["variant"] == variant]
+    rounds = [round_ for row in selected for round_ in row["rounds"]]
+    tokens = sum(row["decode_tokens"] for row in selected)
+    elapsed = sum(row["decode_ms"] for row in selected)
+    if not selected or not rounds or tokens <= 0 or elapsed <= 0:
+        raise AssertionError(f"{variant} has invalid aggregate inputs")
+    return {
+        "records": len(selected),
+        "decode_tokens": tokens,
+        "decode_ms": elapsed,
+        "tokens_per_second": 1000 * tokens / elapsed,
+        "mean_accepted_draft_tokens_per_round": sum(
+            round_["accepted_draft_tokens"] for round_ in rounds
+        ) / len(rounds),
+        "mean_committed_tokens_per_round": sum(
+            round_["committed_tokens"] for round_ in rounds
+        ) / len(rounds),
+        "rounds": len(rounds),
+    }
+
+
 def validate(result_dir: Path, repo_root: Path,
              engine_source: Path | None = None) -> dict:
+    artifacts = {
+        name: sha256(result_dir / name) for name in EXPECTED_ARTIFACT_SHA256
+    }
+    if artifacts != EXPECTED_ARTIFACT_SHA256:
+        mismatches = sorted(
+            name for name, expected in EXPECTED_ARTIFACT_SHA256.items()
+            if artifacts[name] != expected
+        )
+        raise AssertionError(
+            f"archived r2 artifact byte identity changed: {mismatches}"
+        )
     rows_document = json.loads((result_dir / "rows.json").read_text())
     manifest = json.loads((result_dir / "manifest.json").read_text())
     report = json.loads((result_dir / "report.json").read_text())
@@ -164,10 +245,25 @@ def validate(result_dir: Path, repo_root: Path,
         variant["name"]:variant for variant in expected_variants
     }
 
-    if manifest["formal_complete"] or report["formal_complete"]:
+    if (not isinstance(rows_document, dict)
+            or set(rows_document) != EXPECTED_ROWS_KEYS
+            or rows_document["primary_timing"] is not False
+            or rows_document["complete"] is not True):
+        raise AssertionError("raw row container metadata or schema changed")
+    if (not isinstance(report, dict)
+            or set(report) != EXPECTED_REPORT_KEYS
+            or set(report.get("comparisons", {})) != {"ddtree", "dflash"}):
+        raise AssertionError("report metadata or schema changed")
+    telemetry = report["telemetry_end"]
+    if (not isinstance(telemetry, dict)
+            or set(telemetry) != EXPECTED_TELEMETRY_KEYS
+            or not all(isinstance(telemetry[key], str) and telemetry[key]
+                       for key in ("utc", "hostname", "gpu_uuid", "nvidia_smi"))
+            or not isinstance(telemetry["pid"], int)):
+        raise AssertionError("report telemetry metadata or schema changed")
+    if (manifest.get("formal_complete") is not False
+            or report.get("formal_complete") is not False):
         raise AssertionError("qualification pilot must not claim formal completion")
-    if not rows_document["complete"]:
-        raise AssertionError("raw row document is incomplete")
     if len(rows) != manifest["expected_records"]:
         raise AssertionError("raw record count differs from the manifest")
     if ({name:variant["method"] for name, variant in variants_by_name.items()}
@@ -306,22 +402,22 @@ def validate(result_dir: Path, repo_root: Path,
     )
     for label, candidate, baseline, reported in comparisons:
         value = compare(rows, manifest, candidate, baseline)
-        if not close(value["speedup"], reported["speedup"]):
-            raise AssertionError(f"{label} point estimate changed")
-        if any(not close(left, right)
-               for left, right in zip(value["ci95"], reported["ci95"])):
-            raise AssertionError(f"{label} confidence interval changed")
-        if any(not close(value["per_dataset"][dataset],
-                         reported["per_dataset"][dataset])
-               for dataset in manifest["datasets"]):
-            raise AssertionError(f"{label} per-dataset estimates changed")
+        assert_json_equal(reported, value, label)
         recalculated[label] = value
+
+    recalculated_aggregate = {
+        variant: aggregate(rows, variant) for variant in variant_order
+    }
+    assert_json_equal(
+        report["aggregate"], recalculated_aggregate, "report.aggregate",
+    )
 
     recalculated_gate = all(
         value["ci95"][0] > 1.0 for value in recalculated.values()
     )
     if (report["records"] != len(rows)
             or report["paired_groups"] != len(groups)
+            or rows_document["completed_groups"] != len(groups)
             or report.get("gate_passed") is not recalculated_gate
             or report.get("decision") != (
                 "proceed_to_full_registered_suite" if recalculated_gate
@@ -347,7 +443,13 @@ def validate(result_dir: Path, repo_root: Path,
     if manifest["official_precision"] != EXPECTED_PRECISION:
         raise AssertionError("official precision/backend controls changed")
     witness = manifest["same_tree_runtime_witness"]
-    if not (witness["passed"]
+    if not (isinstance(witness, dict)
+            and set(witness) == {
+                "passed", "tree_sha256", "probability_shape",
+                "probability_dtype",
+            }
+            and witness["passed"] is True
+            and witness["tree_sha256"] == EXPECTED_TREE_SHA256
             and witness["probability_shape"] == [46, 151936]
             and witness["probability_dtype"] == "torch.float64"):
         raise AssertionError("same-tree runtime witness failed")
@@ -366,13 +468,9 @@ def validate(result_dir: Path, repo_root: Path,
             "path": display_path(path, repo_root), "sha256": actual,
         }
 
-    artifacts = {
-        name: sha256(result_dir / name)
-        for name in ("manifest.json", "report.json", "rows.json")
-    }
     return {
         "kind": "independent_same_tree_pilot_validation",
-        "integrity": "PASS",
+        "integrity": "PASS_PINNED_R2_BYTES_AND_VALIDATED_FIELDS",
         "formal_complete": False,
         "result_dir": display_path(result_dir, repo_root),
         "records": len(rows),
@@ -392,8 +490,14 @@ def validate(result_dir: Path, repo_root: Path,
         },
         "dflash_metadata": "PASS_NULL_DRAFT_TEMPERATURE_AND_GREEDY_ARGMAX",
         "official_precision": "PASS_BF16_SDPA_SDPA_TF32_FALSE",
-        "same_tree_runtime_witness": "PASS_46_BY_151936_FP64",
-        "source_hashes": {"status": "PASS", "files": source_files},
+        "same_tree_runtime_witness": (
+            f"PASS_TREE_{EXPECTED_TREE_SHA256}_46_BY_151936_FP64"
+        ),
+        "source_hashes": {
+            "status": "PASS_RECORDED_FIVE_FILES",
+            "scope": "not a transitive runtime-source dependency closure",
+            "files": source_files,
+        },
         "artifact_sha256": artifacts,
     }
 

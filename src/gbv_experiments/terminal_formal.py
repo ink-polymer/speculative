@@ -19,6 +19,7 @@ import xml.etree.ElementTree as ET
 from .common import ROOT, canonical, digest, file_hash, prompt_seed, read_jsonl, write_json
 from .data import DATASETS, load_prepared
 from .runner import output_lock, stop_token_ids
+from .runtime_model import enforce_runtime_model_gate
 from .terminal_protocol import (check_group, compare, freeze_document, gpu_matches,
                                 load_study, method_names, paired_order, plan,
                                 primary_candidate, study_sources, variants)
@@ -168,17 +169,7 @@ def allocation_gate(device):
 
 
 def model_gate(engine):
-    import torch
-    for name, model in (("Target", engine.target), ("Draft", engine.draft)):
-        dtypes = {p.dtype for p in model.parameters() if p.is_floating_point()}
-        if dtypes != {torch.bfloat16} or model.config._attn_implementation != "sdpa":
-            raise RuntimeError(f"{name} runtime precision/attention mismatch")
-        if model.training or any(p.requires_grad for p in model.parameters()):
-            raise RuntimeError(f"{name} must be frozen and in eval mode")
-    if torch.backends.cuda.matmul.allow_tf32 or torch.backends.cudnn.allow_tf32:
-        raise RuntimeError("TF32 changed")
-    if engine.proposal_adapter is not None:
-        raise RuntimeError("An unregistered trained adapter is attached")
+    return enforce_runtime_model_gate(engine)
 
 
 def load_frozen_engine(study, device):

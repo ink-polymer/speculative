@@ -4,7 +4,7 @@
 > 当前必须以 [正式实验矩阵](FORMAL_EXPERIMENT_MATRIX.md) 和
 > [统一运行与审计说明](INTEGRATED_ADAPTIVE_TREE_BLOCK_EXPERIMENT.md) 为准。
 
-## 当前正式口径
+## 新服务器正式口径
 
 Qwen3-8B 仍是正式模型之一，但不再通过旧的 `run_paper_t0_qwen3_8b.sh` 独立入口定义实验。
 当前统一入口同时覆盖 Qwen3-4B 和 Qwen3-8B，并把温度严格限制为 T=0 与 T=1：
@@ -13,8 +13,10 @@ Qwen3-8B 仍是正式模型之一，但不再通过旧的 `run_paper_t0_qwen3_8b
 - canonical AdaptiveTree 使用 `B<=256`、budget-aware tree-build cost attribution，并关闭周期探索。
 - AdaptiveTree 固定为 8 方法注册表：主方法、`adaptive_legacy` 历史对照及 6 项消融/控制；
   `adaptive_legacy_cost_attribution` 是只切换成本归因的严格单因素对照。
-- T=1 只比较 Target、DFlash 与 DDTree-B45（`L=15`），运行 3 个生成 seed。
-- 树状块验证、30B 模型和其他温度均延期，不进入本轮结果。
+- T=1 比较 Target、DFlash、DDTree-B45 与同树 `tree_block_verification`
+  （`L=15, B=45`），运行 3 个生成 seed。
+- 30B 模型和其他温度延期；树状块只在新服务器的全新矩阵运行，不续接
+  此前基于 `16c0e91` 启动过且不含树状块的 H20 任务。
 
 查看当前计划应使用：
 

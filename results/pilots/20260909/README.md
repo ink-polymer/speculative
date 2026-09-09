@@ -24,6 +24,13 @@ with, or presented as the future 4B/8B full-matrix result.
   `1874a873ab3940ca4d1c58a3cc0f9fb222a3c8599fc5a0efeed9305e1011ed86`.
   This differs intentionally from the later integrated engine and must be
   supplied explicitly when validating the archived pilot.
+- The r2 observer fired before the old verifier invocation. It binds the
+  recorded same-tree input and intended route, but does not independently
+  prove that the fused callable was actually invoked and returned
+  successfully. The new formal witness is emitted only after a successful
+  verifier return and binds the actual callable identity, the generator
+  pre-state, and the output hash. That later evidence must not be inferred or
+  backfilled from r2.
 - Fused-scan unit, vocabulary, and speed-gate files are implementation
   diagnostics. They are not end-to-end model results.
 
@@ -42,8 +49,17 @@ three-seed, 2,048-token matrix, followed by all integrity and fairness gates.
 A superiority claim additionally requires the relevant paired source-cluster
 95% confidence-interval lower bound to exceed 1.
 
-The r2 raw rows, reports, and five bound source files are independently
-verifiable, but the original prepared-data directory/manifest is not present
-in this archive. Therefore this archive is not a self-contained end-to-end
-rerun package. The future formal run must prepare and hash a new complete input
+A standalone H20 completion of Qwen3-4B T=1 must be labeled
+"Qwen3-4B / T=1 / H20 registered submatrix" (9,792 result records and 10,752
+actual generation turns). It may set only `submatrix_complete=true`; it does
+not complete the registered 65,280-call Qwen3-4B/Qwen3-8B T=0/T=1 matrix, and
+must keep all full-matrix and publication-claim flags false.
+
+The validator pins the exact r2 manifest, report, and rows byte streams before
+independently recalculating their registered statistics. The five recorded
+source files are also verifiable, but those five hashes are not a transitive
+runtime-source dependency closure, and the original prepared-data
+directory/manifest is not present in
+this archive. Therefore this archive is not a self-contained end-to-end rerun
+package. The future formal run must prepare and hash a new complete input
 snapshot instead of importing pilot inputs or timings.

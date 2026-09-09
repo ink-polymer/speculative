@@ -4,7 +4,11 @@
 
 修正 DFlash 元数据后的最终资格试跑 `r2` 通过预先声明的严格速度门槛：树状块验证相对 DDTree 为 **1.02527×**，95% CI 为 **[1.00731, 1.04353]**；相对 DFlash 为 **1.19706×**，95% CI 为 **[1.16337, 1.23211]**。DDTree 相对 DFlash 也为正，**1.16756× [1.13370, 1.20289]**。
 
-这证明候选方案在本次 H20 资格试跑中显著快于两个基线，但它**不是完整正式实验**，也不是 H200 结果。完整的 4B/8B、8 数据集、2048 token、质量评测矩阵尚需在新服务器从头运行；正式矩阵完成前 `claim_tree_block_results_from_pilots` 和 `claim_tree_block_results_before_completed_validated_full_matrix` 均保持 `false`。
+这些归档行按 r2 方法标签计算后通过了两个严格速度门槛；但由于下文说明的
+旧 observer 路由证据局限，r2 本身不能独立把这些速度行升格为“已绑定实际 fused callable”
+的证据。它**不是完整正式实验**，也不是 H200 结果。完整的 4B/8B、8 数据集、2048 token、
+质量评测矩阵尚需在新服务器从头运行；正式矩阵完成前 `claim_tree_block_results_from_pilots` 和
+`claim_tree_block_results_before_completed_validated_full_matrix` 均保持 `false`。
 
 ## 最终 r2 实验设计
 
@@ -32,7 +36,11 @@
 | DDTree | `ddtree` | T=1 probability tree | 对全部 Target 行批量 multinomial |
 | 树状块验证 | `ddtree_fused_scan` | 与 DDTree 完全相同的 T=1 probability tree | 单个持久 CUDA block，只扫描实际到达的 FP64 行 |
 
-候选方法只替换 DDTree 的验证器。运行时 witness 已确认两者的父节点、树 token 和整个 `[46, 151936]` FP64 Target 概率张量相同。两种采样器实现同一祖先 categorical law，但 RNG 算法映射随机流的方式不同，因此同 seed 下不要求逐条生成路径一致。
+候选方法在实验设计上只替换 DDTree 的验证器。r2 归档记录显示两者准备的父节点、
+树 token 和整个 `[46, 151936]` FP64 Target 概率张量相同。但 r2 的旧 observer 在 verifier
+调用前触发，所以这份归档只能证明所记录的同树输入和拟调用路由，不能独立证明
+fused callable 实际被调用并成功返回。两种采样器实现同一祖先 categorical law，但 RNG
+算法映射随机流的方式不同，因此同 seed 下不要求逐条生成路径一致。
 
 ## 最终 r2 汇总结果
 
@@ -69,13 +77,13 @@
 | 检查 | 规模或条件 | 结果 |
 |---|---|---|
 | 完整词表 inverse-CDF 对照 | 1,024 seeds，词表 151,936，最大深度 15 | 路径、token、bonus 全部一致；通过 |
-| 真实 DDTree 同树 witness | 46×151,936 FP64 概率张量 | 父节点、树 token、Target 行完全一致；通过 |
+| r2 同树输入记录 | 46×151,936 FP64 概率张量 | 父节点、树 token、Target 行完全一致；旧 observer 不独立证明成功调用路由 |
 | 方法顺序平衡 | 7 数据集 × 3 方法 × 3 位置 | 每个 cell 8 条；通过 |
 | 配对完整性 | 168 组 | 同 prompt、同 sampling seed、每组 3 方法；通过 |
 | 官方精度 | BF16，SDPA/SDPA，TF32=false | 通过 |
 | 官方 DFlash 控制 | Draft temperature=`null`，greedy argmax | 通过 |
 | 独立统计复算 | 直接读取 504 条原始记录 | 三个 point estimate 与 CI 逐浮点值一致；通过 |
-| 精确源码哈希 | engine、两个 verifier、脚本、配置 | 通过；精确 r2 engine 快照已保存 |
+| 五个记录源码哈希 | engine、两个 verifier、脚本、配置 | 通过；精确 r2 engine 快照已保存；不代表传递依赖闭包 |
 | 服务器整合回归 | CUDA/引擎/公平性/正式矩阵相关测试 | 257 项通过，exit 0 |
 
 服务器测试排除了一个仅在 root 环境下必然拒绝的 process-scorer 身份测试；该测试验证的是评分 Python 不应解析到 `/root`，与 CUDA 验证器和本次速度结果无关。失败日志和排除后通过日志均保留，没有覆盖或删除。
@@ -126,8 +134,12 @@ T=0 和 T=1 是不同生成协议，禁止合并为一个跨温度加速比。Qw
 3. r2 没有任务质量评分，不能据此声称质量等价或“严格无损”。
 4. BF16 并行树 Target 行与逐 token 自回归 Target 可能有数值差异；候选和 DDTree 之间的树及 Target 行相同，但不能把这一点外推成对自回归 Target 的逐位一致。
 5. 结果只适用于记录的 NVIDIA H20 软件/时钟环境，不能改名为 H200 或宣称跨硬件普遍成立。
-6. r2 的原始行、报告和五份绑定源码可独立复算，但当时的 prepared-data 目录/清单
-   未随归档保存，所以这不是自包含的端到端重跑包；未来正式运行必须重新准备并哈希完整输入。
+6. r2 的原始行、报告和五份记录源码可独立复算，但五文件哈希不是完整运行源码的
+   传递依赖闭包，且当时的 prepared-data 目录/清单未随归档保存。因此这不是自包含的
+   端到端重跑包；新正式运行必须重新准备并哈希完整输入。
+7. r2 的旧 observer 在 verifier 调用前触发，未绑定成功返回的实际 callable 和该次
+   调用前 RNG 状态。因此它不能单独作为 fused-scan 真实路由证明；新正式
+   witness 必须在 verifier 成功返回后记录实际 callable、调用前 RNG 及输出哈希。
 
 ## 复核命令
 
@@ -139,6 +151,7 @@ python scripts/validate_same_tree_pilot.py \
   --engine-source results/pilots/20260909/h20_same_tree_fast_verifier/reproduction/r2_source/engine.py
 ```
 
-预期输出包含 `integrity: PASS`、`strict_speed_gate.passed: true`、504 条记录、168 个配对组，以及三组与上表完全一致的速度比和置信区间。
+预期输出包含 `integrity: PASS_PINNED_R2_BYTES_AND_VALIDATED_FIELDS`、
+`strict_speed_gate.passed: true`、504 条记录、168 个配对组，以及三组与上表完全一致的速度比和置信区间。
 
-原始证据位于 `results/pilots/20260909/h20_same_tree_fast_verifier/`：每次运行的 `manifest.json`、`rows.json`、`report.json`、完整日志、调优 gate、全词表审计、服务器测试和精确 r2 源码快照均已保留。
+原始证据位于 `results/pilots/20260909/h20_same_tree_fast_verifier/`：每次运行的 `manifest.json`、`rows.json`、`report.json`、完整日志、调优 gate、全词表审计、服务器测试和精确 r2 `engine.py` 快照均已保留。

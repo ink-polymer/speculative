@@ -1,14 +1,19 @@
 from dataclasses import replace
 from itertools import product
+from types import SimpleNamespace
 
 import pytest
 import torch
 
 from gbv_experiments import engine as engine_module
+from gbv_experiments.common import ROOT, digest, file_hash
 from gbv_experiments.config import SHARED_SUFFIX_METHODS as ROOT_MARGINAL_METHODS, Variant
 from gbv_experiments.engine import Engine
 from gbv_experiments.sampling import tree_verify_ancestral_batched
-from gbv_experiments.preflight import classify_greedy_mismatch
+from gbv_experiments.preflight import (
+    _same_tree_runtime_witness,
+    classify_greedy_mismatch,
+)
 from gbv_experiments.tree import (adaptive_path_proposal, adaptive_prefix_proposal,
                                   budgeted_prefix_proposal, compact_cache,
                                   probability_tree, sampled_tree)
@@ -46,6 +51,7 @@ def test_fused_tree_methods_are_valid_probability_tree_variants(method):
 def test_fused_tree_methods_dispatch_in_generation(
         tiny_engine, monkeypatch, method, attribute):
     monkeypatch.setattr(engine_module, attribute, tree_verify_ancestral_batched)
+    observed = []
     ids = torch.tensor([[1, 4, 2, 6]])
     reference = tiny_engine.generate(
         ids, Variant(name="target", method="target", paths=1, length=3,
@@ -55,9 +61,179 @@ def test_fused_tree_methods_dispatch_in_generation(
     result = tiny_engine.generate(
         ids, Variant(name=method, method=method, paths=1, length=3,
                      temperature=0, tree_budget=12),
-        12, [], seed=19,
+        12, [], seed=19, verifier_observer=observed.append,
     )
     assert result["generated_token_ids"] == reference["generated_token_ids"]
+    assert len(result["rounds"]) > 1
+    assert len(observed) == 1
+    event = observed[0]
+    assert {key:event[key] for key in (
+        "module", "qualname", "callable", "source_file", "source_sha256",
+    )} == {
+        "module":"gbv_experiments.sampling",
+        "qualname":"tree_verify_ancestral_batched",
+        "callable":"gbv_experiments.sampling.tree_verify_ancestral_batched",
+        "source_file":"src/gbv_experiments/sampling.py",
+        "source_sha256":file_hash(ROOT / "src/gbv_experiments/sampling.py"),
+    }
+    assert event["observed_call_index"] == 1
+    assert event["input_sha256"] == digest(event["input"])
+    assert event["output_sha256"] == digest(event["output"])
+    assert event["input"]["probability_shape"] == [13, 17]
+    assert event["input"]["probability_dtype"] == "torch.float64"
+    assert event["input"]["generator_before"]["initial_seed"] == 19
+    assert event["input"]["generator_before"]["device"] == "cpu"
+    assert len(event["input"]["generator_before"]["state_sha256"]) == 64
+    assert event["input"]["validate"] is False
+
+
+@pytest.mark.parametrize(
+    "method,attribute",
+    [
+        ("ddtree", "tree_verify_ancestral_batched"),
+        ("ddtree_fused_scan", "tree_verify_ancestral_fused_scan"),
+    ],
+)
+def test_verifier_observer_runs_only_after_success(
+        tiny_engine, monkeypatch, method, attribute):
+    observed = []
+
+    def failing_verifier(*args, **kwargs):
+        raise RuntimeError("verifier sentinel")
+
+    monkeypatch.setattr(
+        engine_module, attribute, failing_verifier,
+    )
+    ids = torch.tensor([[1, 4, 2, 6]])
+    variant = Variant(
+        name=method, method=method, paths=1, length=3,
+        temperature=0, tree_budget=12,
+    )
+    with pytest.raises(RuntimeError, match="verifier sentinel"):
+        tiny_engine.generate(
+            ids, variant, 12, [], seed=19,
+            verifier_observer=observed.append,
+        )
+    assert observed == []
+
+
+def test_no_verifier_observer_does_not_inspect_callable(tiny_engine, monkeypatch):
+    def forbidden_identity(*args, **kwargs):
+        raise AssertionError("normal timing path inspected verifier identity")
+
+    monkeypatch.setattr(
+        Engine, "_runtime_verifier_identity", staticmethod(forbidden_identity),
+    )
+    result = tiny_engine.generate(
+        torch.tensor([[1, 4, 2, 6]]),
+        Variant(
+            name="ddtree", method="ddtree", paths=1, length=3,
+            temperature=0, tree_budget=12,
+        ),
+        12, [], seed=19,
+    )
+    assert result["generated_tokens"] == 12
+
+
+@pytest.mark.parametrize(
+    "candidate_callable,repetitions,passed",
+    [
+        (engine_module.tree_verify_ancestral_fused_scan, 1, True),
+        (tree_verify_ancestral_batched, 1, False),
+        (engine_module.tree_verify_ancestral_fused_scan, 2, False),
+    ],
+)
+def test_same_tree_preflight_binds_exactly_one_actual_verifier(
+        candidate_callable, repetitions, passed):
+    class Tokenizer:
+        @staticmethod
+        def apply_chat_template(*args, **kwargs):
+            return torch.tensor([[1, 2]])
+
+    class DiagnosticEngine:
+        target = SimpleNamespace(config=SimpleNamespace(vocab_size=17))
+
+        @staticmethod
+        def generate(ids, variant, maximum, stops, **kwargs):
+            del ids, maximum, stops
+            parents = [-1, 0, 0, 0]
+            tree_tokens = [1, 2, 3]
+            probability_rows = torch.full(
+                (4, 17), 1 / 17, dtype=torch.float64,
+            )
+            kwargs["tree_observer"](parents, tree_tokens, probability_rows)
+            verifier = (
+                tree_verify_ancestral_batched
+                if variant.method == "ddtree" else candidate_callable
+            )
+            event = Engine._runtime_verifier_identity(
+                verifier, parents, tree_tokens, probability_rows,
+                [1], [tree_tokens[0]], 4,
+                generator_before=Engine._runtime_generator_identity(
+                    torch.Generator(device="cpu").manual_seed(
+                        kwargs["seed"]
+                    )
+                ),
+                validate=False,
+            )
+            for _ in range(repetitions):
+                kwargs["verifier_observer"](event)
+
+    variants = [
+        Variant(
+            name="ddtree_t1p0", method="ddtree", paths=1, length=2,
+            temperature=1.0, draft_temperature=1.0,
+            probability_dtype="float64", tree_budget=3,
+        ),
+        Variant(
+            name="tree_block_verification_t1p0", method="ddtree_fused_scan",
+            paths=1, length=2, temperature=1.0, draft_temperature=1.0,
+            probability_dtype="float64", tree_budget=3,
+        ),
+    ]
+    witness = _same_tree_runtime_witness(
+        DiagnosticEngine(), Tokenizer(), {"enable_thinking":False},
+        variants, [], "cpu",
+    )
+    assert witness["passed"] is passed
+    if repetitions == 1:
+        assert witness["verifier_routes_correct"] is passed
+        assert witness["verifier_generator_inputs_equal"]
+    else:
+        assert witness["verifier_observer_calls"] == {
+            "ddtree_t1p0":2, "tree_block_verification_t1p0":2,
+        }
+
+
+def test_same_tree_preflight_rejects_actual_candidate_misroute(
+        tiny_engine, monkeypatch):
+    class Tokenizer:
+        @staticmethod
+        def apply_chat_template(*args, **kwargs):
+            return torch.tensor([[1, 2]])
+
+    monkeypatch.setattr(
+        engine_module, "tree_verify_ancestral_fused_scan",
+        tree_verify_ancestral_batched,
+    )
+    variants = [
+        Variant(
+            name="ddtree_t1p0", method="ddtree", paths=1, length=2,
+            temperature=1.0, draft_temperature=1.0,
+            probability_dtype="float64", tree_budget=3,
+        ),
+        Variant(
+            name="tree_block_verification_t1p0", method="ddtree_fused_scan",
+            paths=1, length=2, temperature=1.0, draft_temperature=1.0,
+            probability_dtype="float64", tree_budget=3,
+        ),
+    ]
+    witness = _same_tree_runtime_witness(
+        tiny_engine, Tokenizer(), {"enable_thinking":False},
+        variants, [], "cpu",
+    )
+    assert not witness["passed"]
+    assert not witness["verifier_routes_correct"]
 
 
 def test_budgeted_prefix_proposal_caps_final_verification_tree():

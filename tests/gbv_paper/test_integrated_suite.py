@@ -34,10 +34,12 @@ from gbv_experiments.integrated_suite import (
     validate_block_order,
 )
 from gbv_experiments.preflight import (
+    SAME_TREE_VERIFIER_EXPECTATIONS,
     SAME_TREE_WITNESS_PROMPT,
     SAME_TREE_WITNESS_SEED,
 )
 from gbv_experiments.runner import dataset_local_schedule, make_plan, scheduled_variants
+from gbv_experiments.runtime_model import runtime_model_expectations
 
 
 SUITE = ROOT / "configs/adaptive_tree_block_suite.json"
@@ -466,6 +468,35 @@ def test_t1_gpu_preflight_is_bound_to_model_source_backend_and_gpu():
     tree_sha256 = digest([parents, tree_tokens])
     probabilities_sha256 = "a" * 64
 
+    def verifier_event(name):
+        verifier_input = {
+            "tree_sha256":tree_sha256,
+            "probabilities_sha256":probabilities_sha256,
+            "probability_shape":[46, 151936],
+            "probability_dtype":"torch.float64",
+            "generator_before":{
+                "initial_seed":SAME_TREE_WITNESS_SEED,
+                "device":"cuda:0",
+                "state_sha256":"c" * 64,
+            },
+            "validate":False,
+        }
+        verifier_output = {
+            "accepted_nodes":[1],
+            "accepted_tokens":[tree_tokens[0]],
+            "bonus_token":1,
+        }
+        expected = SAME_TREE_VERIFIER_EXPECTATIONS[name]
+        return {
+            **expected,
+            "source_sha256":file_hash(ROOT / expected["source_file"]),
+            "observed_call_index":1,
+            "input":verifier_input,
+            "input_sha256":digest(verifier_input),
+            "output":verifier_output,
+            "output_sha256":digest(verifier_output),
+        }
+
     def witness_identity(name, method):
         return {
             "name":name, "method":method,
@@ -473,7 +504,61 @@ def test_t1_gpu_preflight_is_bound_to_model_source_backend_and_gpu():
             "parents":parents, "tree_tokens":tree_tokens,
             "tree_sha256":tree_sha256,
             "probabilities_sha256":probabilities_sha256,
+            "probability_shape":[46, 151936],
+            "probability_dtype":"torch.float64",
+            "target_vocab_size":151936,
+            "verifier_observer_calls":1,
+            "verifier":verifier_event(name),
         }
+
+    expected_runtime = runtime_model_expectations(
+        cfg["model"], strict_same_tree_t1=True, device="cuda:0",
+    )
+
+    def runtime_identity():
+        def model_identity(role):
+            contract = expected_runtime[role + "_config"]
+            return {
+                "class":contract["class"],
+                "parameter_tensors":contract["parameter_tensors"],
+                "parameters":contract["parameters"],
+                "floating_parameter_tensors":contract["parameter_tensors"],
+                "floating_parameter_dtypes":["torch.bfloat16"],
+                "parameter_devices":["cuda:0"],
+                "training":False,
+                "training_modules":[],
+                "trainable_parameter_tensors":0,
+                "trainable_parameters":0,
+                "attention_implementation":"sdpa",
+                "embedded_adapter_modules":[],
+                "adapter_parameter_names":[],
+                "config":{
+                    "_name_or_path":contract["name_or_path"],
+                    "_commit_hash":contract["commit_hash"],
+                    "model_type":contract["model_type"],
+                    "vocab_size":contract["vocab_size"],
+                    "hidden_size":contract["hidden_size"],
+                    "num_hidden_layers":contract["num_hidden_layers"],
+                },
+            }
+        return {
+            "schema":expected_runtime["schema"],
+            "target":model_identity("target"),
+            "draft":model_identity("draft"),
+            "draft_runtime":json.loads(json.dumps(
+                expected_runtime["draft_runtime"]
+            )),
+            "tokenizer":json.loads(json.dumps(expected_runtime["tokenizer"])) | {
+                "minimum_token_id":0,
+                "maximum_token_id":151668,
+            },
+            "tf32":{"cuda_matmul":False, "cudnn":False},
+            "proposal_adapter_attribute_present":True,
+            "proposal_adapter_attached":False,
+            "proposal_adapter_class":None,
+        }
+
+    loaded_runtime_identity = runtime_identity()
 
     preflight = {
         "passed":True, "greedy_exact_passed":True, "numerical_ambiguities":0,
@@ -482,14 +567,35 @@ def test_t1_gpu_preflight_is_bound_to_model_source_backend_and_gpu():
             "required":"stable repeated outputs and top-1 margins <= 2 * measured error",
         },
         "scope":"checkpoint structural and bounded-numerical smoke gate, not full benchmark results",
-        "model":cfg["model"], "stop_token_ids":[151645],
+        "model":cfg["model"], "stop_token_ids":[151645, 151643],
         "source_hashes":source_hashes(), "checks":checks,
+        "runtime_model_gate":{
+            "schema":1,
+            "expectations":expected_runtime,
+            "identity_after_load":loaded_runtime_identity,
+            "identity_after_preflight":json.loads(json.dumps(
+                loaded_runtime_identity
+            )),
+            "passed_after_load":True,
+            "passed_after_preflight":True,
+            "identities_match":True,
+        },
         "same_tree_runtime_witness":{
             "passed":True,
             "prompt_sha256":digest(SAME_TREE_WITNESS_PROMPT),
             "seed":SAME_TREE_WITNESS_SEED,
             "parents_equal":True, "tree_tokens_equal":True,
             "target_probabilities_equal":True,
+            "tree_states_valid":True,
+            "verifier_routes_correct":True,
+            "verifier_generator_inputs_equal":True,
+            "verifier_observer_calls":{
+                "ddtree_t1p0":1, "tree_block_verification_t1p0":1,
+            },
+            "verifier_observation_policy":"first_successful_call_only",
+            "expected_verifier_observer_calls_per_method":1,
+            "target_vocab_size":151936,
+            "probability_vocab_matches_target":True,
             "probability_shape":[46, 151936],
             "probability_dtype":"torch.float64",
             "baseline":witness_identity("ddtree_t1p0", "ddtree"),
@@ -525,9 +631,123 @@ def test_t1_gpu_preflight_is_bound_to_model_source_backend_and_gpu():
     with pytest.raises(ValueError, match="preflight environment"):
         _validate_t1_preflight(broken, cfg, doctor)
     broken = json.loads(json.dumps(preflight))
+    broken["runtime_model_gate"]["identity_after_preflight"]["target"][
+        "floating_parameter_dtypes"
+    ] = ["torch.float32"]
+    with pytest.raises(ValueError, match="runtime model evidence"):
+        _validate_t1_preflight(broken, cfg, doctor)
+    broken = json.loads(json.dumps(preflight))
+    broken["runtime_model_gate"]["expectations"]["allow_tf32"] = True
+    with pytest.raises(ValueError, match="runtime model evidence"):
+        _validate_t1_preflight(broken, cfg, doctor)
+    broken = json.loads(json.dumps(preflight))
+    broken["runtime_model_gate"]["identity_after_load"]["draft"][
+        "parameter_devices"
+    ] = ["cuda:1"]
+    broken["runtime_model_gate"]["identity_after_preflight"]["draft"][
+        "parameter_devices"
+    ] = ["cuda:1"]
+    with pytest.raises(ValueError, match="runtime model evidence"):
+        _validate_t1_preflight(broken, cfg, doctor)
+    broken = json.loads(json.dumps(preflight))
     broken["same_tree_runtime_witness"]["candidate"][
         "probabilities_sha256"
     ] = "b" * 64
+    with pytest.raises(ValueError, match="same-tree runtime witness"):
+        _validate_t1_preflight(broken, cfg, doctor)
+    broken = json.loads(json.dumps(preflight))
+    broken["same_tree_runtime_witness"]["candidate"]["verifier"][
+        "callable"
+    ] = "gbv_experiments.sampling.tree_verify_ancestral_batched"
+    with pytest.raises(ValueError, match="same-tree runtime witness"):
+        _validate_t1_preflight(broken, cfg, doctor)
+    broken = json.loads(json.dumps(preflight))
+    verifier = broken["same_tree_runtime_witness"]["candidate"]["verifier"]
+    verifier["input"]["tree_sha256"] = "b" * 64
+    verifier["input_sha256"] = digest(verifier["input"])
+    with pytest.raises(ValueError, match="same-tree runtime witness"):
+        _validate_t1_preflight(broken, cfg, doctor)
+    broken = json.loads(json.dumps(preflight))
+    verifier = broken["same_tree_runtime_witness"]["candidate"]["verifier"]
+    verifier["output"]["accepted_nodes"] = [2]
+    verifier["output_sha256"] = digest(verifier["output"])
+    with pytest.raises(ValueError, match="same-tree runtime witness"):
+        _validate_t1_preflight(broken, cfg, doctor)
+    for field, value in (
+        ("observed_call_index", True),
+        ("accepted_nodes", [True]),
+        ("bonus_token", True),
+    ):
+        broken = json.loads(json.dumps(preflight))
+        verifier = broken["same_tree_runtime_witness"]["candidate"]["verifier"]
+        if field == "observed_call_index":
+            verifier[field] = value
+        else:
+            verifier["output"][field] = value
+            verifier["output_sha256"] = digest(verifier["output"])
+        with pytest.raises(ValueError, match="same-tree runtime witness"):
+            _validate_t1_preflight(broken, cfg, doctor)
+    broken = json.loads(json.dumps(preflight))
+    broken["same_tree_runtime_witness"]["candidate"]["verifier"] = (
+        broken["same_tree_runtime_witness"]["baseline"]["verifier"]
+    )
+    with pytest.raises(ValueError, match="same-tree runtime witness"):
+        _validate_t1_preflight(broken, cfg, doctor)
+    broken = json.loads(json.dumps(preflight))
+    broken["same_tree_runtime_witness"]["target_vocab_size"] = 1
+    with pytest.raises(ValueError, match="same-tree runtime witness"):
+        _validate_t1_preflight(broken, cfg, doctor)
+    for path, value in (
+        (("target_vocab_size",), 151936.0),
+        (("probability_shape", 0), 46.0),
+        (("verifier_observer_calls", "ddtree_t1p0"), True),
+        (("expected_verifier_observer_calls_per_method",), True),
+        (("baseline", "target_vocab_size"), 151936.0),
+        (("baseline", "probability_shape", 0), 46.0),
+        (("baseline", "verifier_observer_calls"), True),
+        (("baseline", "parents", 0), -1.0),
+    ):
+        broken = json.loads(json.dumps(preflight))
+        target = broken["same_tree_runtime_witness"]
+        for key in path[:-1]:
+            target = target[key]
+        target[path[-1]] = value
+        with pytest.raises(ValueError, match="same-tree runtime witness"):
+            _validate_t1_preflight(broken, cfg, doctor)
+    broken = json.loads(json.dumps(preflight))
+    verifier = broken["same_tree_runtime_witness"]["candidate"]["verifier"]
+    verifier["input"]["generator_before"]["state_sha256"] = "d" * 64
+    verifier["input_sha256"] = digest(verifier["input"])
+    with pytest.raises(ValueError, match="same-tree runtime witness"):
+        _validate_t1_preflight(broken, cfg, doctor)
+    broken = json.loads(json.dumps(preflight))
+    verifier = broken["same_tree_runtime_witness"]["candidate"]["verifier"]
+    verifier["input"]["validate"] = True
+    verifier["input_sha256"] = digest(verifier["input"])
+    with pytest.raises(ValueError, match="same-tree runtime witness"):
+        _validate_t1_preflight(broken, cfg, doctor)
+    broken = json.loads(json.dumps(preflight))
+    for role in ("baseline", "candidate"):
+        identity = broken["same_tree_runtime_witness"][role]
+        verifier = identity["verifier"]
+        verifier["output"] = {
+            "accepted_nodes":[],
+            "accepted_tokens":[],
+            "bonus_token":identity["tree_tokens"][0],
+        }
+        verifier["output_sha256"] = digest(verifier["output"])
+    with pytest.raises(ValueError, match="same-tree runtime witness"):
+        _validate_t1_preflight(broken, cfg, doctor)
+    broken = json.loads(json.dumps(preflight))
+    for role in ("baseline", "candidate"):
+        identity = broken["same_tree_runtime_witness"][role]
+        identity["parents"][1] = 1
+        identity["tree_sha256"] = digest([
+            identity["parents"], identity["tree_tokens"],
+        ])
+        verifier_input = identity["verifier"]["input"]
+        verifier_input["tree_sha256"] = identity["tree_sha256"]
+        identity["verifier"]["input_sha256"] = digest(verifier_input)
     with pytest.raises(ValueError, match="same-tree runtime witness"):
         _validate_t1_preflight(broken, cfg, doctor)
 

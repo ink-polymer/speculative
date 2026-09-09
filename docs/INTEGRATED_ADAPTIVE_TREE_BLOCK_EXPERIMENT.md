@@ -1,9 +1,9 @@
 # AdaptiveTree、DDTree 与 DFlash：T=0 / T=1 正式实验
 
-> 本文档对应未来服务器分支。当前由 `16c0e91` 启动的正式任务不含树状块，
-> 不得用本分支去 `resume` 它。树状块全矩阵必须在未来服务器使用全新输出目录启动。
+> 本文档对应新服务器全矩阵分支。此前基于 `16c0e91` 启动过的任务不含树状块，
+> 不得用本分支去 `resume` 它。树状块全矩阵必须在新服务器使用全新输出目录启动。
 
-## 本服务器的实验边界
+## 新服务器的实验边界
 
 本套件只运行两组不能混合统计的正式实验：
 
@@ -15,6 +15,12 @@
 合并加速比或置信区间。30B 不属于本轮正式矩阵。
 每个真实模型的 GPU preflight 还会记录 T=1 同树 witness；正式报告必须
 重验两种方法的 parents、tree tokens 和 Target FP64 概率张量哈希全部相同。
+
+若先单独执行 H20 上的 4B T=1，该任务始终只是
+**“Qwen3-4B / T=1 / H20 登记子矩阵”**（9,792 条结果记录、10,752 个实际生成轮次）。
+它不包含 8B 或 T=0，所以即使子矩阵所有门禁通过，也必须保持
+`formal_complete=false`、`whole_formal_matrix_complete=false` 和论文结论禁止状态。
+全套正式完成只指 4B/8B、T=0/T=1 的 65,280-call 矩阵和全部完整性/公平性门禁通过。
 
 ## 公平性与失败即停止门禁
 
@@ -35,7 +41,15 @@
 此外还会用真实微型 Qwen3 前向检查 T=1 DFlash 的 Draft 确实保持 greedy
 argmax，而不是误用 Target 的采样温度。随后每个正式 4B/8B checkpoint 都会分别
 执行 DDTree 与树块候选，保存首棵树的父节点、树 token、FP64 Target 概率张量哈希
-和形状；完整张量必须逐元素相同，运行时 witness 才通过。
+和形状；同时在各自验证器第一次成功返回后记录实际 callable、源码哈希以及该次
+输入/输出哈希，其中输入还绑定该次调用前的 generator 状态。完整张量必须逐元素
+相同、调用路由必须分别命中官方 DDTree 与 fused-scan 实现，运行时 witness 才通过。
+observer 只用于 preflight，不进入正式计时路径。
+
+归档 r2 的旧 observer 在 verifier 调用之前就触发；它可以保留当时准备的同树输入，
+却不能独立证明所记录的 fused callable 实际被调用并成功返回。新正式 witness 必须在
+真实 verifier 成功返回后才发出事件，并同时绑定实际 callable 身份、调用前 RNG 状态及
+输出哈希。该新证据不得从 r2 归档倒推或回填。
 
 测试 node ID、测试源码 SHA-256 和退出状态写入 `server_doctor.json`。随后在任何正式
 计时之前，套件先完成 T=1 的真实数据/答案审计及两个真实模型预检，再用两个真实模型对
@@ -51,7 +65,7 @@ MT-Bench 的质量列显示 `--`，表示外部 judge 结果单独报告，并�
 
 ```bash
 export INTEGRATED_PYTHON=/root/autodl-tmp/envs/speculative/bin/python
-export INTEGRATED_RUN_DIR=/root/autodl-tmp/outputs/adaptivetree-t0-t1-h20-001
+export INTEGRATED_RUN_DIR=/root/autodl-tmp/outputs/adaptivetree-t0-t1-tree-block-future-001
 export ADAPTIVE_DATA_DIR=/root/autodl-tmp/data/adaptive-t0
 export SAMPLING_DATA_DIR=/root/autodl-tmp/data/sampling-t1
 export CODE_BACKEND=process
@@ -89,7 +103,7 @@ bash scripts/run_integrated_fresh_server.sh resume
 
 汇总时不会信任已有表格：T=0 从所有原始 `.pt` 与完成标记重新建表，T=1 从
 `results.jsonl` 和 `scores.jsonl` 重算覆盖与统计；重算结果必须与落盘表逐字段相同。
-历史 pilot 只能用于工程资格判断，不会导入未来正式计时。完整矩阵和
+历史 pilot 只能用于工程资格判断，不会导入新正式计时。完整矩阵和
 所有完整性/公平性门禁通过前，禁止把树块 pilot 数值当作正式结果；声称
 优于某个基线时，该配对 source 聚类 95% CI 下界必须大于 1。
 T=0 只有一次完整确定性 pass，只给描述性点估计、不提供置信区间；T=1 才报告冻结的

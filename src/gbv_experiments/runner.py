@@ -13,6 +13,12 @@ from contextlib import contextmanager
 from .common import canonical, digest, file_hash, prompt_seed, source_hashes, write_json
 from .config import Variant, build_variants, select_variants
 from .data import DATASETS, evaluation_coverage, evaluation_policy, load_prepared
+from .runtime_model import (MODEL_PARAMETERS_SCHEMA,
+                            RUNTIME_READY_GATE_SCHEMA,
+                            enforce_runtime_model_gate,
+                            is_registered_same_tree_t1,
+                            runtime_model_expectations,
+                            validate_model_parameters_evidence)
 
 
 def key(record):
@@ -136,6 +142,11 @@ def _run(cfg, data_dir: Path, output: Path, device: str, groups=None, smoke=Fals
     if not torch.cuda.is_available() or torch.device(device).type != "cuda":
         raise RuntimeError("Formal inference needs CUDA; use the CPU tests for local verification")
     model = model_identity(cfg["model"])
+    registered_same_tree_t1 = is_registered_same_tree_t1(cfg)
+    runtime_expectations = runtime_model_expectations(
+        cfg["model"], strict_same_tree_t1=registered_same_tree_t1,
+        device=str(torch.device(device)) if registered_same_tree_t1 else None,
+    )
     versions = {}
     for pkg in ("torch", "transformers", "datasets", "huggingface-hub", "numpy"):
         versions[pkg] = importlib.metadata.version(pkg)
@@ -172,6 +183,18 @@ def _run(cfg, data_dir: Path, output: Path, device: str, groups=None, smoke=Fals
             raise ValueError("Existing results have no run manifest")
         write_json(manifest_path, manifest)
     completed = resume_records(output / "results.jsonl", run_id)
+    model_parameters_path = output / "model_parameters.json"
+    stored_model_parameters = None
+    if model_parameters_path.exists():
+        stored_model_parameters = json.loads(model_parameters_path.read_text())
+        validate_model_parameters_evidence(
+            stored_model_parameters, run_id=run_id,
+            expected=runtime_expectations, require_ready=bool(completed),
+        )
+    elif completed:
+        raise RuntimeError(
+            "Existing result rows have no model_parameters.json runtime gate"
+        )
     valid = {(e["variant"]["name"], r["dataset"], r["source_id"], seed)
              for e in entries for r in rows for seed in cfg["seeds"]}
     active_names = {e["variant"]["name"] for e in active_entries}
@@ -194,19 +217,68 @@ def _run(cfg, data_dir: Path, output: Path, device: str, groups=None, smoke=Fals
         print(f"Requested variants already complete: {len(active_keys)} question/conversation records")
         return
     engine, tokenizer = load_models(model, device)
-    write_json(output / "model_parameters.json", {
+    loaded_runtime_identity = enforce_runtime_model_gate(
+        engine, runtime_expectations,
+        tokenizer=tokenizer if registered_same_tree_t1 else None,
+    )
+    model_parameters = {
+        "schema": MODEL_PARAMETERS_SCHEMA,
+        "run_id": run_id,
         "target_parameters": sum(p.numel() for p in engine.target.parameters()),
         "draft_parameters": sum(p.numel() for p in engine.draft.parameters()),
         "trainable_parameters": sum(p.numel() for module in (engine.target, engine.draft) for p in module.parameters() if p.requires_grad),
         "draft_block_size": engine.draft.block_size,
         "target_feature_layers": engine.draft.target_layer_ids,
-    })
+        "runtime_model_gate": {
+            "schema": RUNTIME_READY_GATE_SCHEMA,
+            "status": "loaded_not_ready",
+            "expectations": runtime_expectations,
+            "identity_after_load": loaded_runtime_identity,
+            "identity_before_timing": None,
+            "passed_after_load": True,
+            "passed_before_timing": False,
+            "identities_match": False,
+        },
+    }
+    ready_model_parameters = model_parameters | {
+        "runtime_model_gate": model_parameters["runtime_model_gate"] | {
+            "status": "ready_for_timing",
+            "identity_before_timing": loaded_runtime_identity,
+            "identities_match": True,
+            "passed_before_timing": True,
+        }
+    }
+    if stored_model_parameters is not None:
+        if canonical(stored_model_parameters) not in {
+                canonical(model_parameters), canonical(ready_model_parameters)}:
+            raise ValueError("Runtime model identity changed since the prior formal stage")
+    else:
+        write_json(model_parameters_path, model_parameters)
     stop_ids = stop_token_ids(engine, tokenizer)
 
     warmup = encode_messages(tokenizer, [{"role": "user", "content": "Compute 1 + 1."}], model, device)
     for entry in active_entries:
         engine.generate(warmup, Variant(**entry["variant"]), cfg.get("warmup_tokens", 16),
                         stop_ids, seed=0, profile=profile)
+    timing_runtime_identity = enforce_runtime_model_gate(
+        engine, runtime_expectations,
+        tokenizer=tokenizer if registered_same_tree_t1 else None,
+    )
+    if timing_runtime_identity != loaded_runtime_identity:
+        raise RuntimeError("Runtime model identity changed between load and formal timing")
+    model_parameters = model_parameters | {
+        "runtime_model_gate": model_parameters["runtime_model_gate"] | {
+            "status": "ready_for_timing",
+            "identity_before_timing": timing_runtime_identity,
+            "identities_match": True,
+            "passed_before_timing": True,
+        }
+    }
+    validate_model_parameters_evidence(
+        model_parameters, run_id=run_id,
+        expected=runtime_expectations, require_ready=True,
+    )
+    write_json(model_parameters_path, model_parameters)
     row_ordinals, dataset_counts = dataset_local_schedule(rows)
     with (output / "results.jsonl").open("a", encoding="utf-8") as stream:
         for seed_index, seed in enumerate(cfg["seeds"]):

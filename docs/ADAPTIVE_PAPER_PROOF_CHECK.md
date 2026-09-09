@@ -45,6 +45,7 @@
 结果。169 项历史测试、MathJax 检查及理想计算证明均不构成实际 BF16 完整数据实验必然无损的
 保证；也不能推出 corrected canonical AdaptiveTree 的成本归因正确、吞吐更高或 T=1 采样无偏。
 
-当前正式实验只运行 Qwen3-4B/8B 的 T=0/T=1 矩阵；30B 与树状块验证均延期。canonical
-AdaptiveTree 的 `B<=256`、无周期探索和 budget-aware 成本归因必须由当前源码契约、测试、doctor
-及完整新跑结果共同支持，不能引用本文档替代。
+新服务器正式实验只运行 Qwen3-4B/8B 的 T=0/T=1 矩阵；30B 延期，树状块验证仅进入
+独立 T=1，不属于 AdaptiveTree 的 T=0 证明。canonical AdaptiveTree 的 `B<=256`、无周期探索
+和 budget-aware 成本归因必须由当前源码契约、测试、doctor 及完整新跑结果共同支持，不能引用
+本文档替代。

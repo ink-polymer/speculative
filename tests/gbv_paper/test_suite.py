@@ -100,19 +100,34 @@ def test_gbv_first_resume_reuses_results_and_preserves_full_manifest(tmp_path, m
     cfg = load_config(ROOT / "configs/gbv_paper_ddtree_counts.json")
     cfg["datasets"], cfg["seeds"] = ["gsm8k"], [17]
     cfg.pop("evaluation")
+    cfg["model"].update({
+        "target":"fixture/model", "draft":"fixture/model",
+        "target_revision":None, "draft_revision":None,
+    })
     rows = [{"dataset": "gsm8k", "source_id": str(i), "prompt_sha256": "h"} for i in range(2)]
     monkeypatch.setattr(runner, "load_prepared", lambda *args: ({"fixture": True}, rows))
     monkeypatch.setattr(runner, "model_identity", lambda config: config)
+    monkeypatch.setattr(runner, "is_registered_same_tree_t1", lambda config: False)
     monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
     monkeypatch.setattr(torch.cuda, "get_device_properties", lambda device: SimpleNamespace(total_memory=1))
     monkeypatch.setattr(torch.cuda, "get_device_name", lambda device: "mock scheduler device")
     monkeypatch.setattr(runner.subprocess, "check_output", lambda *args, **kwargs: "mock-driver")
     calls, loads = [], []
-    target = torch.nn.Linear(1, 1)
+    monkeypatch.setattr(torch.backends.cuda.matmul, "allow_tf32", False)
+    monkeypatch.setattr(torch.backends.cudnn, "allow_tf32", False)
+    target = torch.nn.Linear(1, 1).to(torch.bfloat16).eval().requires_grad_(False)
+    identity_config = {
+        "_attn_implementation":"sdpa", "_name_or_path":"fixture/model",
+        "_commit_hash":None, "model_type":"fixture", "vocab_size":17,
+        "hidden_size":1, "num_hidden_layers":1,
+    }
+    target.config = SimpleNamespace(**identity_config)
     target.generation_config = SimpleNamespace(eos_token_id=0)
-    draft = torch.nn.Linear(1, 1)
-    draft.block_size, draft.target_layer_ids = 16, [1]
-    engine = SimpleNamespace(target=target, draft=draft, generate=lambda *a, **k: None)
+    draft = torch.nn.Linear(1, 1).to(torch.bfloat16).eval().requires_grad_(False)
+    draft.config = SimpleNamespace(**identity_config)
+    draft.block_size, draft.target_layer_ids, draft.mask_token_id = 16, [0], 16
+    engine = SimpleNamespace(target=target, draft=draft, proposal_adapter=None,
+                             generate=lambda *a, **k: None)
     tokenizer = SimpleNamespace(eos_token_id=0)
     def load(*args):
         loads.append(True)
@@ -126,10 +141,37 @@ def test_gbv_first_resume_reuses_results_and_preserves_full_manifest(tmp_path, m
     runner.run(cfg, tmp_path / "data", tmp_path, "cuda:0", only_variants=["gbv"])
     first_rows = read_jsonl(tmp_path / "results.jsonl")
     manifest = json.loads((tmp_path / "run_manifest.json").read_text())
+    model_parameters_path = tmp_path / "model_parameters.json"
+    model_parameters = json.loads(model_parameters_path.read_text())
+    runtime_gate = model_parameters["runtime_model_gate"]
+    assert model_parameters["schema"] == 1
+    assert runtime_gate["schema"] == 1
+    assert runtime_gate["status"] == "ready_for_timing"
+    assert runtime_gate["passed_after_load"] and runtime_gate["passed_before_timing"]
+    assert runtime_gate["identities_match"]
+    assert runtime_gate["identity_after_load"] == runtime_gate["identity_before_timing"]
     assert len(first_rows) == 2 and len(manifest["variants"]) == 7
     assert not (tmp_path / "completed.json").exists()
     stage = json.loads(next(tmp_path.glob("stage_completed_*.json")).read_text())
     assert stage["stage_complete"] and not stage["full_experiment_complete"]
+
+    model_parameters_path.unlink()
+    with pytest.raises(RuntimeError, match="no model_parameters.json"):
+        runner.run(cfg, tmp_path / "data", tmp_path, "cuda:0", only_variants=["gbv"])
+    write_json(model_parameters_path, model_parameters)
+
+    loaded_only = deepcopy(model_parameters)
+    loaded_only["runtime_model_gate"].update({
+        "status":"loaded_not_ready",
+        "identity_before_timing":None,
+        "passed_before_timing":False,
+        "identities_match":False,
+    })
+    write_json(model_parameters_path, loaded_only)
+    with pytest.raises(RuntimeError, match="ready-for-timing"):
+        runner.run(cfg, tmp_path / "data", tmp_path, "cuda:0", only_variants=["gbv"])
+    write_json(model_parameters_path, model_parameters)
+
     runner.run(cfg, tmp_path / "data", tmp_path, "cuda:0", only_variants=["gbv"])
     assert len(loads) == 1 and len(calls) == 2
     runner.run(cfg, tmp_path / "data", tmp_path, "cuda:0")
