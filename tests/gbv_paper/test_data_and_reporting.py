@@ -180,6 +180,12 @@ def test_code_worker_correctness_and_timeout():
     assert not evaluate_code("while True: pass", evaluation, backend="process", timeout=.1)["passed"]
 
 
+def test_process_worker_never_executes_candidate_as_root():
+    evaluation = {"kind": "mbpp", "tests": ["assert not_root()"]}
+    candidate = "import os\ndef not_root(): return not hasattr(os, 'geteuid') or os.geteuid() != 0"
+    assert evaluate_code(candidate, evaluation, backend="process")["passed"]
+
+
 def test_mbpp_setup_runs_after_candidate_definitions_and_before_assertions():
     candidate = """class Node:
     def __init__(self, value):

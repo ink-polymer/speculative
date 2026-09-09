@@ -39,16 +39,27 @@ def make_program(text, evaluation):
     return code, tests
 
 
-WORKER = '''import json, resource, sys
+WORKER = '''import ctypes, json, os, resource, sys
 from pathlib import Path
 resource.setrlimit(resource.RLIMIT_CPU, (int(sys.argv[1]), int(sys.argv[1])+1))
 if sys.platform == "linux":
     resource.setrlimit(resource.RLIMIT_AS, (2*1024**3, 2*1024**3))
+if hasattr(resource, "RLIMIT_NPROC"):
+    resource.setrlimit(resource.RLIMIT_NPROC, (64, 64))
 resource.setrlimit(resource.RLIMIT_FSIZE, (1024**2, 1024**2))
 resource.setrlimit(resource.RLIMIT_NOFILE, (64, 64))
 namespace = {"__name__": "__main__"}
 candidate = Path("candidate.py").read_text()
 tests = Path("tests.py").read_text()
+if "GBV_EVAL_UID" in os.environ:
+    libc = ctypes.CDLL(None, use_errno=True)
+    if libc.prctl(38, 1, 0, 0, 0) != 0:  # PR_SET_NO_NEW_PRIVS
+        raise OSError(ctypes.get_errno(), "prctl(PR_SET_NO_NEW_PRIVS) failed")
+    os.setgroups([])
+    os.setgid(int(os.environ["GBV_EVAL_GID"]))
+    os.setuid(int(os.environ["GBV_EVAL_UID"]))
+    if os.geteuid() == 0:
+        raise RuntimeError("process evaluator refused to execute candidate code as root")
 try:
     exec(compile(candidate, "candidate.py", "exec"), namespace)
     exec(compile(tests, "tests.py", "exec"), namespace)
@@ -85,6 +96,15 @@ def run_sandbox(files, arguments, backend, timeout, image="gbv-code-eval:py311",
         # No model credentials are forwarded to generated code.
         env = {k: v for k, v in os.environ.items() if k in {"PATH", "SYSTEMROOT", "DOCKER_HOST"}}
         env.update({"OPENBLAS_NUM_THREADS": "1", "OMP_NUM_THREADS": "1"})
+        if backend == "process" and os.name == "posix" and os.geteuid() == 0:
+            # The outer experiment may run as root on a rented GPU container.  The
+            # worker reads its fixtures first, irreversibly drops to nobody, and
+            # sets no_new_privs before any generated code is compiled or executed.
+            uid = gid = 65534
+            os.chown(directory, uid, gid)
+            for path in directory.iterdir():
+                os.chown(path, uid, gid)
+            env.update({"GBV_EVAL_UID": str(uid), "GBV_EVAL_GID": str(gid)})
         with (directory / "stdout.log").open("wb") as stdout:
             process = subprocess.Popen(command, cwd=directory, env=env,
                                        stdout=stdout, stderr=subprocess.STDOUT, start_new_session=True)

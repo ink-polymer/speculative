@@ -54,6 +54,11 @@ python -m pip install -r adaptivetree_paper/requirements-paper.txt
 docker build -t gbv-code-eval:py311 experiments/gbv_paper
 ```
 
+若租用的 GPU 容器没有 Docker 且内核禁止嵌套 user/network namespace，可显式设置
+`CODE_BACKEND=process`。Linux root 作业的 process worker 会在编译、执行模型代码前不可逆地
+降到 uid/gid 65534，并启用 `no_new_privs`、资源限制和清理后的环境变量。它不等价于禁网容器，
+只应在无密钥、专用于本实验的实例中使用；评分清单会记录实际后端，不得把不同后端的评分混合。
+
 先执行环境与协议检查，再用新目录后台启动：
 
 ```bash

@@ -324,6 +324,11 @@ def doctor_integrated_suite(path: Path, output: Path | None = None,
         "flash_attn":getattr(flash_attn, "__version__", "unknown"),
         "compiler":compiler,
         "code_backend":code_backend,
+        "code_isolation":(
+            "Docker: network disabled, all capabilities dropped, no-new-privileges"
+            if code_backend == "docker" else
+            "process: sanitized environment and rlimits; root workers irreversibly drop to uid/gid 65534 with no-new-privileges"
+        ),
         "docker_image":docker_image,
     }
     if output is not None:

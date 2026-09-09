@@ -9,12 +9,14 @@ from .common import ROOT
 
 UPSTREAM_COMMIT = "28fef95ea8c9f7a547c8329f2cd3d32b92c1fa24"
 
-WORKER = '''import importlib.util, json, resource, signal, sys
+WORKER = '''import ctypes, importlib.util, json, os, resource, signal, sys
 from pathlib import Path
 cpu_seconds = int(sys.argv[2])
 resource.setrlimit(resource.RLIMIT_CPU, (cpu_seconds, cpu_seconds + 1))
 if sys.platform == "linux":
     resource.setrlimit(resource.RLIMIT_AS, (4 * 1024**3, 4 * 1024**3))
+if hasattr(resource, "RLIMIT_NPROC"):
+    resource.setrlimit(resource.RLIMIT_NPROC, (64, 64))
 resource.setrlimit(resource.RLIMIT_FSIZE, (1024**2, 1024**2))
 resource.setrlimit(resource.RLIMIT_NOFILE, (64, 64))
 spec = importlib.util.spec_from_file_location("lcb_official", "testing_util.py")
@@ -24,6 +26,15 @@ sample = json.loads(Path("sample.json").read_text())
 candidate = Path("candidate.py").read_text()
 expected_count = len(json.loads(sample["input_output"])["inputs"])
 result_path = Path("result.json")
+if "GBV_EVAL_UID" in os.environ:
+    libc = ctypes.CDLL(None, use_errno=True)
+    if libc.prctl(38, 1, 0, 0, 0) != 0:  # PR_SET_NO_NEW_PRIVS
+        raise OSError(ctypes.get_errno(), "prctl(PR_SET_NO_NEW_PRIVS) failed")
+    os.setgroups([])
+    os.setgid(int(os.environ["GBV_EVAL_GID"]))
+    os.setuid(int(os.environ["GBV_EVAL_UID"]))
+    if os.geteuid() == 0:
+        raise RuntimeError("process evaluator refused to execute candidate code as root")
 try:
     checks, metadata = module.run_test(sample, candidate, timeout=int(sys.argv[1]))
     passed = len(checks) == expected_count and all(value > 0 for value in checks)
