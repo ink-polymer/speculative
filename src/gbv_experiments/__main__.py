@@ -97,6 +97,12 @@ def main():
     p.add_argument("--run-dir", type=Path, required=True)
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--model-ids", nargs="+")
+    p = sub.add_parser("doctor-integrated-suite")
+    p.add_argument("--suite", type=Path,
+                   default=ROOT / "configs/adaptive_tree_block_suite.json")
+    p.add_argument("--output", type=Path, required=True)
+    p.add_argument("--device", default="cuda:0")
+    p.add_argument("--code-backend", choices=["docker", "process"], default="docker")
     p = sub.add_parser("import-mtbench-judgments")
     p.add_argument("--run-dir", type=Path, required=True)
     p.add_argument("--export-dir", type=Path, required=True)
@@ -185,6 +191,12 @@ def main():
         )
         print(json.dumps({"fairness_gate_passed":result["fairness_gate_passed"],
                           "output":str(args.output)}, ensure_ascii=False, indent=2))
+    elif args.command == "doctor-integrated-suite":
+        from .integrated_suite import doctor_integrated_suite
+        result = doctor_integrated_suite(
+            args.suite, args.output, args.device, args.code_backend
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":

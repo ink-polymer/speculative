@@ -33,6 +33,45 @@ T=0 与 T>0 的数据矩阵、随机性和 Draft 注意力后端不同，因此�
 
 ## 使用方式
 
+### 新服务器必须全量重跑
+
+旧服务器的性能结果只能作为历史记录，不能复制进本套件。新服务器必须指定一个从未存在过的 `INTEGRATED_RUN_DIR`；GPU UUID、CUDA 环境、源码、配置和数据 revision 会写进新 contract。若把旧输出目录带到另一张卡上，环境检查会拒绝继续。
+
+新服务器建议使用同一个 Python 3.11 虚拟环境，先按服务器驱动安装匹配的 CUDA PyTorch 与 `flash-attn`，再安装两套实验的共同依赖和代码评分镜像：
+
+```bash
+python3.11 -m venv .venv-integrated
+source .venv-integrated/bin/activate
+
+# 按新服务器 CUDA/驱动选择正确的 PyTorch wheel；不要照抄另一台机器的 wheel。
+python -m pip install -r requirements-gbv-paper.txt
+python -m pip install -r adaptivetree_paper/requirements-paper.txt
+# 安装与当前 torch/CUDA ABI 匹配的 flash-attn wheel，或在本机编译。
+
+docker build -t gbv-code-eval:py311 experiments/gbv_paper
+```
+
+先执行环境与协议检查，再用新目录后台启动：
+
+```bash
+export INTEGRATED_PYTHON="$PWD/.venv-integrated/bin/python"
+export INTEGRATED_RUN_DIR="$PWD/outputs/integrated-new-server-001"
+
+bash scripts/run_integrated_fresh_server.sh plan
+bash scripts/run_integrated_fresh_server.sh audit
+bash scripts/run_integrated_fresh_server.sh doctor
+bash scripts/run_integrated_fresh_server.sh start
+```
+
+`start` 通过 `nohup` 启动，SSH 断开不会终止主进程。查看状态或断电/作业中止后从同一个新目录续跑：
+
+```bash
+bash scripts/run_integrated_fresh_server.sh status
+bash scripts/run_integrated_fresh_server.sh resume
+```
+
+`start` 只接受完全不存在的输出/log/PID，防止误混旧实验；`resume` 只补当前 contract 缺失的记录。更换 GPU、源码或配置后必须改用另一个全新目录并重新 `start`。
+
 本地只做计划和只读审计，不加载模型：
 
 ```bash

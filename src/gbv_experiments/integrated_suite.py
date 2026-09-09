@@ -4,9 +4,13 @@ from __future__ import annotations
 import ast
 import csv
 import gc
+import importlib
+import importlib.metadata
 import json
 import os
 from pathlib import Path
+import platform
+import shutil
 import subprocess
 import sys
 
@@ -220,6 +224,10 @@ def audit_integrated_suite(path: Path, output: Path | None = None, model_ids=Non
         adaptive_root / "src/dflash_specblock/paper/official_worker.py",
         ROOT / "src/gbv_experiments/engine.py",
         ROOT / "src/gbv_experiments/sampling.py",
+        ROOT / "src/gbv_experiments/config.py",
+        ROOT / "src/gbv_experiments/runner.py",
+        ROOT / "src/gbv_experiments/report.py",
+        ROOT / "src/gbv_experiments/integrated_suite.py",
         ROOT / "third_party/ddtree_pinned/ddtree.py",
         ROOT / "third_party/ddtree_pinned/dflash.py",
     ]
@@ -244,12 +252,77 @@ def audit_integrated_suite(path: Path, output: Path | None = None, model_ids=Non
             "adaptive_best_backend":"auxiliary table only; never mixed into the primary architecture table",
             "stochastic_block":"T=0.3/0.6/1.0 within one SDPA/SDPA engine",
             "cross_protocol_speedup_pooling_allowed":False,
+            "old_server_result_reuse_allowed":False,
             "reason":"T=0 AdaptiveTree and T>0 block decoding use different sampling laws, data matrices, and draft attention backends",
         },
         "source_sha256":{str(source.relative_to(ROOT)):file_hash(source)
                          for source in source_paths},
         "adaptive_distribution_files":len(adaptive_distribution),
         "pinned_ddtree_commit":commit,
+    }
+    if output is not None:
+        write_json(output, result)
+    return result
+
+
+def doctor_integrated_suite(path: Path, output: Path | None = None,
+                            device="cuda:0", code_backend="docker") -> dict:
+    """Fail before a long run when the fresh server cannot reproduce the suite."""
+    import torch
+
+    audit = audit_integrated_suite(path)
+    if sys.version_info[:2] not in {(3, 10), (3, 11)}:
+        raise RuntimeError("Integrated experiments require Python 3.10 or 3.11")
+    expected_versions = {
+        "transformers":"4.57.1",
+        "huggingface-hub":"0.36.0",
+        "datasets":"3.6.0",
+        "accelerate":"1.10.1",
+        "numpy":"2.2.6",
+        "math-verify":"0.8.0",
+        "safetensors":"0.6.2",
+    }
+    versions = {name:importlib.metadata.version(name) for name in expected_versions}
+    wrong = {name:{"expected":expected_versions[name], "actual":actual}
+             for name, actual in versions.items() if actual != expected_versions[name]}
+    if wrong:
+        raise RuntimeError(f"Pinned Python dependency mismatch: {wrong}")
+    if not torch.cuda.is_available() or torch.device(device).type != "cuda":
+        raise RuntimeError("Integrated formal runs require an NVIDIA CUDA GPU")
+    if torch.__version__.split("+", 1)[0] != "2.9.1":
+        raise RuntimeError(f"Expected torch 2.9.1, found {torch.__version__}")
+    properties = torch.cuda.get_device_properties(torch.device(device))
+    uuid = str(getattr(properties, "uuid", "unknown"))
+    if uuid.lower() in {"", "none", "unknown", "unavailable"}:
+        raise RuntimeError("CUDA build must expose a stable GPU UUID")
+    flash_attn = importlib.import_module("flash_attn")
+    for module in ("ninja", "loguru"):
+        importlib.import_module(module)
+    compiler = shutil.which("c++") or shutil.which("g++")
+    if compiler is None:
+        raise RuntimeError("A C++ compiler is required for official DDTree cache compaction")
+    docker_image = None
+    if code_backend == "docker":
+        docker_image = subprocess.check_output(
+            ["docker", "image", "inspect", "gbv-code-eval:py311", "--format", "{{.Id}}"],
+            text=True,
+        ).strip()
+    elif code_backend != "process":
+        raise ValueError("Unknown code scoring backend")
+    result = {
+        "passed":True,
+        "fairness_audit":audit,
+        "python":platform.python_version(),
+        "packages":versions,
+        "torch":torch.__version__,
+        "cuda":torch.version.cuda,
+        "gpu":torch.cuda.get_device_name(torch.device(device)),
+        "gpu_uuid":uuid,
+        "gpu_memory_bytes":properties.total_memory,
+        "flash_attn":getattr(flash_attn, "__version__", "unknown"),
+        "compiler":compiler,
+        "code_backend":code_backend,
+        "docker_image":docker_image,
     }
     if output is not None:
         write_json(output, result)
@@ -294,7 +367,8 @@ def plan_integrated_suite(path: Path, model_ids=None) -> dict:
         },
         "total_generation_calls":adaptive_calls + block_generations,
         "cross_protocol_aggregate":None,
-        "note":"Families are launched and reported together but speedups are never pooled across T=0 and T>0 protocols.",
+        "old_server_results_imported":False,
+        "note":"Use a fresh output directory on new hardware. Families are launched and reported together, but speedups are never pooled across T=0 and T>0 protocols.",
     }
 
 
@@ -315,8 +389,7 @@ def run_integrated_suite(path: Path, adaptive_data_dir: Path, block_data_dir: Pa
     from .scoring import score_run, validate_gold
 
     suite = load_integrated_suite(path, model_ids)
-    if not torch.cuda.is_available() or torch.device(device).type != "cuda":
-        raise RuntimeError("No CUDA GPU is available; planning/auditing works locally")
+    doctor = doctor_integrated_suite(path, device=device, code_backend=code_backend)
     properties = torch.cuda.get_device_properties(torch.device(device))
     uuid = str(getattr(properties, "uuid", "unknown"))
     if uuid.lower() in {"", "none", "unknown", "unavailable"}:
@@ -328,6 +401,7 @@ def run_integrated_suite(path: Path, adaptive_data_dir: Path, block_data_dir: Pa
     if environment_path.exists() and _load_json(environment_path) != environment:
         raise ValueError("GPU environment changed; use a new integrated run directory")
     write_json(environment_path, environment)
+    write_json(output / "server_doctor.json", doctor)
     write_json(output / "plan.json", plan_integrated_suite(path, model_ids))
     audit_integrated_suite(path, output / "fairness_audit.json", model_ids)
 
@@ -380,6 +454,7 @@ def run_integrated_suite(path: Path, adaptive_data_dir: Path, block_data_dir: Pa
               "adaptive_results":"adaptive/*_diagnostic/tables.json",
               "block_results":"block/*/report/summary.json",
               "integrated_report":"report/integrated_results.md",
+              "old_server_results_imported":False,
               "cross_protocol_speedup_pooling_allowed":False}
     write_json(output / "completed.json", result)
     return result
