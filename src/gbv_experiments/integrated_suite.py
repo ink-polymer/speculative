@@ -280,6 +280,8 @@ def doctor_integrated_suite(path: Path, output: Path | None = None,
         "accelerate":"1.10.1",
         "numpy":"2.2.6",
         "math-verify":"0.8.0",
+        "sacrebleu":"2.5.1",
+        "einops":"0.8.1",
         "safetensors":"0.6.2",
     }
     versions = {name:importlib.metadata.version(name) for name in expected_versions}

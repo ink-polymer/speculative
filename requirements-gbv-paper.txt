@@ -6,5 +6,7 @@ accelerate==1.10.1
 numpy==2.2.6
 matplotlib==3.10.3
 math-verify==0.8.0
+sacrebleu==2.5.1
+einops==0.8.1
 pytest==8.4.1
 safetensors==0.6.2
