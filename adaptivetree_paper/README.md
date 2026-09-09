@@ -15,6 +15,7 @@
 - Draft 使用 FA2；Target 分 SDPA/FA2 两组；树方法仅 SDPA。固定 DDTree 对照预算 16/32/64/128/256/512/1024，采用官方回答级 decode TPOT 均值之比。
 - 主方法与四项消融：去接受校准、去延迟项、去周期探索、预热后冻结校准。默认完整矩阵 60 个进程组、55,296 次生成调用，另加预热。
 - 逐题 token 对照官方 Target-only；不一致保存诊断并停止，不删除失败题。不是任务准确率评分或 BF16 无条件等价保证。
+- 公平整合实验可显式启用 `--method-order-policy balanced-rotation`，让所有方法在每个计时位置均衡轮换；默认仍为 `official-fixed` 以保留上游复现口径。同后端架构主表写入 `tables_controlled_sdpa.csv`，最佳后端表只作辅助对照。
 
 ## 环境与运行
 

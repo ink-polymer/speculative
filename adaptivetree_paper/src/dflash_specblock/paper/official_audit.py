@@ -29,6 +29,8 @@ def validate_worker_contract(args, config):
             or metadata["max_new_tokens"] != (32 if args.smoke_count else 2048)
             or metadata.get("greedy_audit_policy", "strict")
                != getattr(args, "greedy_audit_policy", "strict")
+            or metadata.get("method_order_policy", "official-fixed")
+               != getattr(args, "method_order_policy", "official-fixed")
             or metadata.get("diagnostic_variants", []) != expected_diagnostics
             or metadata.get("wandb") != wandb_contract(args)
             or int(os.environ.get("WORLD_SIZE", "1")) != args.nproc_per_node):

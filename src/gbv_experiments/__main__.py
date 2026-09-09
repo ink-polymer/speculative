@@ -78,6 +78,25 @@ def main():
             p.add_argument("--data-dir", type=Path, default=ROOT / "datasets/gbv_paper_ddtree_counts")
             p.add_argument("--device", default="cuda:0")
             p.add_argument("--code-backend", choices=["docker", "process"], default="docker")
+    for name in ("plan-integrated-suite", "audit-integrated-suite", "run-integrated-suite"):
+        p = sub.add_parser(name)
+        p.add_argument("--suite", type=Path,
+                       default=ROOT / "configs/adaptive_tree_block_suite.json")
+        p.add_argument("--model-ids", nargs="+")
+        p.add_argument("--output", type=Path, required=name != "plan-integrated-suite")
+        if name == "run-integrated-suite":
+            p.add_argument("--adaptive-data-dir", type=Path,
+                           default=ROOT / "adaptivetree_paper/datasets/ddtree_official_t0")
+            p.add_argument("--block-data-dir", type=Path,
+                           default=ROOT / "datasets/gbv_paper_ddtree_counts")
+            p.add_argument("--device", default="cuda:0")
+            p.add_argument("--code-backend", choices=["docker", "process"], default="docker")
+    p = sub.add_parser("report-integrated-suite")
+    p.add_argument("--suite", type=Path,
+                   default=ROOT / "configs/adaptive_tree_block_suite.json")
+    p.add_argument("--run-dir", type=Path, required=True)
+    p.add_argument("--output", type=Path, required=True)
+    p.add_argument("--model-ids", nargs="+")
     p = sub.add_parser("import-mtbench-judgments")
     p.add_argument("--run-dir", type=Path, required=True)
     p.add_argument("--export-dir", type=Path, required=True)
@@ -142,6 +161,30 @@ def main():
     elif args.command == "run-tree-suite":
         from .tree_suite import run_tree_suite
         run_tree_suite(args.suite, args.data_dir, args.output, args.device, args.code_backend, args.phase, args.model_ids)
+    elif args.command == "plan-integrated-suite":
+        from .integrated_suite import plan_integrated_suite
+        plan = plan_integrated_suite(args.suite, args.model_ids)
+        if args.output:
+            write_json(args.output, plan)
+        print(json.dumps(plan, ensure_ascii=False, indent=2))
+    elif args.command == "audit-integrated-suite":
+        from .integrated_suite import audit_integrated_suite
+        result = audit_integrated_suite(args.suite, args.output, args.model_ids)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    elif args.command == "run-integrated-suite":
+        from .integrated_suite import run_integrated_suite
+        result = run_integrated_suite(
+            args.suite, args.adaptive_data_dir, args.block_data_dir,
+            args.output, args.device, args.code_backend, args.model_ids
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    elif args.command == "report-integrated-suite":
+        from .integrated_suite import report_integrated_suite
+        result = report_integrated_suite(
+            args.suite, args.run_dir, args.output, args.model_ids
+        )
+        print(json.dumps({"fairness_gate_passed":result["fairness_gate_passed"],
+                          "output":str(args.output)}, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":

@@ -42,6 +42,30 @@ def validate_results(manifest, records, scores=None, allow_partial=False):
         raise ValueError("Duplicate or unexpected result keys")
     if not allow_partial and (actual != expected or manifest["coverage"] not in {"full_evaluation_split", "fixed_evaluation_subset"}):
         raise ValueError(f"Formal report requires every evaluation record: {len(actual)}/{len(expected)}")
+    if (actual == expected
+            and manifest.get("method_order", {}).get("policy") == "balanced_rotation"):
+        names = {entry["variant"]["name"] for entry in manifest["variants"]}
+        positions = {name:[] for name in names}
+        scheduled = defaultdict(list)
+        for record in records:
+            name = record["variant"]
+            position = record.get("method_execution_position")
+            ordinal = record.get("method_order_ordinal")
+            if not isinstance(position, int) or not isinstance(ordinal, int):
+                raise ValueError("Missing balanced method-order evidence")
+            positions[name].append(position)
+            scheduled[record["dataset"], record["source_id"], record["seed"]].append(
+                (name, position, ordinal)
+            )
+        for group in scheduled.values():
+            if ({name for name, _, _ in group} != names
+                    or {position for _, position, _ in group} != set(range(len(names)))
+                    or len({ordinal for _, _, ordinal in group}) != 1):
+                raise ValueError("Incomplete or inconsistent balanced method rotation")
+        for values in positions.values():
+            counts = [values.count(position) for position in range(len(names))]
+            if max(counts) - min(counts) > 1:
+                raise ValueError("Method execution positions are not globally balanced")
     hashes = {(d, i): h for d, i, h in manifest["prompt_ids"]}
     for r in records:
         if r["run_id"] != manifest["run_id"] or r["prompt_sha256"] != hashes[r["dataset"], r["source_id"]]:

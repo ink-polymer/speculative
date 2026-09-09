@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "study": "adaptive_tree_and_stochastic_block_verification",
+  "adaptive": {
+    "project": "../adaptivetree_paper",
+    "config": "../adaptivetree_paper/configs/paper_t0_full.json",
+    "temperature": 0.0,
+    "greedy_audit_policy": "strict",
+    "method_order_policy": "balanced-rotation",
+    "diagnostic_variants": ["cost_attributed_no_exploration", "cost_attributed_no_exploration_b256"]
+  },
+  "block": {
+    "temperatures": [0.3, 0.6, 1.0],
+    "methods": ["target", "dflash", "ddtree", "ddtree_lazy_projection"],
+    "length": 15,
+    "tree_budget": 45,
+    "probability_dtype": "float64",
+    "method_order_policy": "balanced_rotation"
+  },
+  "models": [
+    {
+      "id": "qwen3_4b",
+      "adaptive_model_index": 0,
+      "block_config": "adaptive_block_qwen3_4b.json",
+      "target": "Qwen/Qwen3-4B",
+      "target_revision": "1cfa9a7208912126459214e8b04321603b3df60c",
+      "draft": "z-lab/Qwen3-4B-DFlash-b16",
+      "draft_revision": "b74e3a329c4d963783143b1e970d95b002be72bd"
+    },
+    {
+      "id": "qwen3_8b",
+      "adaptive_model_index": 1,
+      "block_config": "adaptive_block_qwen3_8b.json",
+      "target": "Qwen/Qwen3-8B",
+      "target_revision": "b968826d9c46dd6066d109eabc6255188de91218",
+      "draft": "z-lab/Qwen3-8B-DFlash-b16",
+      "draft_revision": "9b41424b7109f9c5413454f481b09a82b85333f4"
+    }
+  ]
+}

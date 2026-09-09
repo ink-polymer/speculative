@@ -19,8 +19,8 @@ from dflash_specblock.paper.controller import (COST_ATTRIBUTED_VARIANT,
 from dflash_specblock.paper.official import main
 from dflash_specblock.paper.official_spec import BUDGETS, COMMIT, LIMITS, MODELS, UPSTREAM, data_utils, load_config, upstream, verify_sources
 from dflash_specblock.paper.official_data import check_manifest, prepare, select_official
-from dflash_specblock.paper.official_reporting import official_rows, validate_pair
-from dflash_specblock.paper.official_worker import audit_response, method_names
+from dflash_specblock.paper.official_reporting import controlled_sdpa_rows, official_rows, validate_pair
+from dflash_specblock.paper.official_worker import audit_response, method_names, scheduled_methods
 
 torch.set_num_threads(1)
 
@@ -206,6 +206,47 @@ def test_official_method_order_and_no_t1_support():
         COST_ATTRIBUTED_VARIANT, EXTENDED_BUDGET_VARIANT)
     with pytest.raises(ValueError, match="Unknown diagnostic"):
         method_names("sdpa", VARIANTS, ("unlabelled_experiment",))
+
+
+def test_balanced_method_rotation_preserves_methods_and_positions():
+    methods = method_names("sdpa", VARIANTS, (
+        COST_ATTRIBUTED_VARIANT, EXTENDED_BUDGET_VARIANT))
+    orders = [scheduled_methods(methods, ordinal, "balanced-rotation")
+              for ordinal in range(len(methods) * 3)]
+    assert scheduled_methods(methods, 0, "official-fixed") == methods
+    assert all(set(order) == set(methods) and len(order) == len(methods)
+               for order in orders)
+    for method in methods:
+        positions = [order.index(method) for order in orders]
+        assert all(positions.count(position) == 3 for position in range(len(methods)))
+
+
+def test_stored_balanced_order_is_validated_not_only_declared():
+    expected = [{"index":0, "turns":["synthetic prompt"]}]
+    sdpa, flash = synthetic_run(), synthetic_run("flash_attention_2")
+    for run in (sdpa, flash):
+        run["method_order_policy"] = "balanced-rotation"
+        methods = run["methods"]
+        run["responses"][0]["_audit"]["method_order"] = scheduled_methods(
+            methods, 0, "balanced-rotation"
+        )
+    validate_pair(sdpa, flash, "gsm8k", 0, VARIANTS, expected)
+    sdpa["responses"][0]["_audit"]["method_order"][-1] = "baseline"
+    with pytest.raises(ValueError, match="execution order"):
+        validate_pair(sdpa, flash, "gsm8k", 0, VARIANTS, expected)
+
+
+def test_controlled_table_never_uses_faster_cross_backend_baseline():
+    sdpa = {"target_attn_implementation":"sdpa", "responses":[]}
+    for base in (10., 2.):
+        sdpa["responses"].append({"baseline":response(base), "dflash":response(2.),
+            **{f"ddtree_tb{budget}":response(1.5 if budget == 128 else 3.)
+               for budget in BUDGETS},
+            **{variant:response(1.) for variant in VARIANTS}})
+    rows = {row["method"]:row for row in controlled_sdpa_rows(sdpa, VARIANTS)}
+    assert rows["adaptive"]["speedup_vs_target"] == 6.
+    assert rows["DFlash"]["method_backend"] == "sdpa"
+    assert rows["adaptive"]["target_baseline_backend"] == "sdpa"
 
 
 def synthetic_environment():

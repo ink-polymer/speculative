@@ -105,7 +105,7 @@ def load_config(path: Path) -> dict:
     cfg = json.loads(path.read_text())
     allowed = {"model", "datasets", "seeds", "max_new_tokens", "warmup_tokens", "main",
                "ablations", "bootstrap_samples", "scoring", "evaluation",
-               "explicit_variants"}
+               "explicit_variants", "method_order"}
     if set(cfg) - allowed:
         raise ValueError(f"Unknown configuration keys: {sorted(set(cfg)-allowed)}")
     if not cfg.get("datasets") or len(set(cfg["datasets"])) != len(cfg["datasets"]):
@@ -127,6 +127,12 @@ def load_config(path: Path) -> dict:
         raise ValueError("Unsupported model dtype")
     if any(not isinstance(seed, int) or isinstance(seed, bool) for seed in cfg["seeds"]):
         raise ValueError("Seeds must be integers")
+    method_order = cfg.get("method_order", {"policy": "seeded_shuffle", "seed": 0})
+    if (not isinstance(method_order, dict) or set(method_order) != {"policy", "seed"}
+            or method_order["policy"] not in {"seeded_shuffle", "balanced_rotation"}
+            or not isinstance(method_order["seed"], int)
+            or isinstance(method_order["seed"], bool)):
+        raise ValueError("method_order requires a seeded_shuffle or balanced_rotation policy and integer seed")
     from .data import evaluation_policy
     evaluation_policy(cfg["datasets"], cfg.get("evaluation"))
     return cfg

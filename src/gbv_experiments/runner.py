@@ -49,10 +49,25 @@ def make_plan(cfg, groups=None, only_variants=None):
             "model": cfg["model"], "only_variants": only_variants,
             "source_counts": {name: DATASETS[name].expected for name in cfg["datasets"]},
             "seeds": cfg["seeds"], "max_new_tokens": cfg["max_new_tokens"],
+            "method_order": cfg.get("method_order", {"policy": "seeded_shuffle", "seed": 0}),
             "variants": entries, "variant_count": len(entries),
             "user_turns": turn_counts,
             "expected_records": sum(counts.values()) * len(cfg["seeds"]) * len(entries),
             "expected_generations": sum(turn_counts.values()) * len(cfg["seeds"]) * len(entries)}
+
+
+def scheduled_variants(entries, method_order, ordinal, per_prompt_seed):
+    """Schedule timed methods reproducibly, with optional exact position balance."""
+    policy = method_order.get("policy", "seeded_shuffle")
+    order = entries.copy()
+    if policy == "seeded_shuffle":
+        random.Random(per_prompt_seed).shuffle(order)
+        return order
+    if policy != "balanced_rotation":
+        raise ValueError("Unknown method order policy")
+    random.Random(method_order["seed"]).shuffle(order)
+    offset = ordinal % len(order)
+    return order[offset:] + order[:offset]
 
 
 def model_identity(cfg):
@@ -119,6 +134,7 @@ def _run(cfg, data_dir: Path, output: Path, device: str, groups=None, smoke=Fals
         driver = "unavailable"
     spec = {"schema": 3, "model": model, "variants": entries, "seeds": cfg["seeds"],
             "max_new_tokens": min(16, cfg["max_new_tokens"]) if smoke else cfg["max_new_tokens"],
+            "method_order": cfg.get("method_order", {"policy": "seeded_shuffle", "seed": 0}),
             "coverage": "smoke" if smoke else evaluation_coverage(policy), "evaluation": policy, "profile": profile,
             "scoring": cfg.get("scoring", {}), "bootstrap_samples": cfg.get("bootstrap_samples", 1000),
             "data_manifest": data_manifest, "dataset_names": cfg["datasets"],
@@ -179,12 +195,16 @@ def _run(cfg, data_dir: Path, output: Path, device: str, groups=None, smoke=Fals
         engine.generate(warmup, Variant(**entry["variant"]), cfg.get("warmup_tokens", 16),
                         stop_ids, seed=0, profile=profile)
     with (output / "results.jsonl").open("a", encoding="utf-8") as stream:
-        for seed in cfg["seeds"]:
-            for row in rows:
+        for seed_index, seed in enumerate(cfg["seeds"]):
+            for row_index, row in enumerate(rows):
                 per_prompt_seed = prompt_seed(seed, row["dataset"], row["source_id"])
-                order = active_entries.copy()
-                random.Random(per_prompt_seed).shuffle(order)
-                for entry in order:
+                ordinal = seed_index * len(rows) + row_index
+                order = scheduled_variants(
+                    entries, spec["method_order"], ordinal, per_prompt_seed
+                )
+                for execution_position, entry in enumerate(order):
+                    if entry["variant"]["name"] not in active_names:
+                        continue
                     v = Variant(**entry["variant"])
                     ident = (v.name, row["dataset"], row["source_id"], seed)
                     if ident in completed:
@@ -196,6 +216,9 @@ def _run(cfg, data_dir: Path, output: Path, device: str, groups=None, smoke=Fals
                                   "source_id": row["source_id"], "prompt_sha256": row["prompt_sha256"],
                                   "seed": seed, "sampling_seed": per_prompt_seed,
                                   **result}
+                        if spec["method_order"]["policy"] == "balanced_rotation":
+                            record["method_order_ordinal"] = ordinal
+                            record["method_execution_position"] = execution_position
                         stream.write(canonical(record) + "\n")
                         stream.flush()
                         os.fsync(stream.fileno())

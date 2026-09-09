@@ -27,6 +27,21 @@ def method_names(backend, variants, diagnostic_variants=()):
     return names
 
 
+def scheduled_methods(methods, response_ordinal, policy):
+    """Return a deterministic order with balanced timed positions.
+
+    A cyclic rotation gives every method each execution position equally often
+    over every complete cycle.  The legacy order remains available for exact
+    upstream protocol reproduction.
+    """
+    if policy == "official-fixed":
+        return list(methods)
+    if policy != "balanced-rotation":
+        raise ValueError("Unknown method order policy")
+    offset = response_ordinal % len(methods)
+    return list(methods[offset:] + methods[:offset])
+
+
 def response_tokens(result):
     return result.output_ids[0, result.num_input_tokens:].tolist()
 
@@ -127,6 +142,7 @@ def worker(args, config):
         for name,builder in diagnostic_builders.items()
     }
     audit_policy = getattr(args, "greedy_audit_policy", "strict")
+    order_policy = getattr(args, "method_order_policy", "official-fixed")
     wandb_run = initialize_wandb(
         args, model_name=target_name, draft_name=draft_name, backend=args.backend,
         rank=rank, world_size=world, diagnostic_variants=diagnostic_variants,
@@ -155,17 +171,26 @@ def worker(args, config):
     controllers = {name: make_paper_builder(config["adaptive"], name)
                    for name in controllers}
     responses = []
+    response_offsets = []
+    response_count = 0
+    for row in rows:
+        response_offsets.append(response_count)
+        response_count += len(row["turns"])
     for idx in range(rank, len(rows), world):
         messages = []
         for turn, user_content in enumerate(rows[idx]["turns"]):
             messages.append({"role":"user", "content":user_content})
             ids = encode(messages)
             response = {}
-            for method in methods:
+            execution_order = scheduled_methods(
+                methods, response_offsets[idx] + turn, order_policy
+            )
+            for method in execution_order:
                 response[method] = generate(ids, method, maximum)
             audit = audit_response(response, index=idx, turn=turn, input_ids=ids,
                 diagnostic_path=args.output.with_name(args.output.stem + f".rank{rank}.mismatch.json"),
                 policy=audit_policy)
+            audit["method_order"] = execution_order
             log_response(wandb_run, response, step=len(responses), index=idx, turn=turn)
             # Adding ablations must NOT change the official multi-turn conditioning:
             # SDPA uses the last original DDTree budget (1024); FA2 uses DFlash.
@@ -196,6 +221,7 @@ def worker(args, config):
                 "world_size":world, "hardware":hardware,
                 "smoke":bool(args.smoke_count), "methods":methods,
                 "greedy_audit_policy":audit_policy,
+                "method_order_policy":order_policy,
                 "adaptive_timing":"proposal+build; compile+verify+KV/commit; all controller overhead included in official decode timer",
                 "substage_note":"Adaptive fine-grained tree_build_* attribution unavailable; use aggregate tree_build"}
     if wandb_contract(args):

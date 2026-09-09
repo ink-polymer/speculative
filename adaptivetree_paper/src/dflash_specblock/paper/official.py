@@ -79,6 +79,10 @@ def main(argv=None):
     parser.add_argument("--identity")
     parser.add_argument("--greedy-audit-policy", choices=["strict", "record-bf16-mismatches"],
                         default="strict")
+    parser.add_argument("--method-order-policy",
+                        choices=["official-fixed", "balanced-rotation"],
+                        default="official-fixed",
+                        help="preserve upstream order or rotate every method through timed positions")
     parser.add_argument("--experimental-cost-attribution", action="store_true",
                         help="add a diagnostic no-exploration controller with budget-aware tree-build cost")
     parser.add_argument("--experimental-extended-budgets", action="store_true",
@@ -133,7 +137,8 @@ def main(argv=None):
                 "dataset_manifest":manifest, "code_identity":code_identity(),
                 "nproc_per_node":args.nproc_per_node, "model_indices":models, "datasets":datasets,
                 "smoke_count":args.smoke_count, "max_new_tokens":32 if args.smoke_count else 2048,
-                "greedy_audit_policy":audit_policy}
+                "greedy_audit_policy":audit_policy,
+                "method_order_policy":args.method_order_policy}
     if diagnostic_variants:
         metadata["diagnostic_variants"] = list(diagnostic_variants)
     if wandb_settings:
@@ -169,7 +174,8 @@ def main(argv=None):
                         "--model-index",str(model_index),"--dataset",dataset,"--backend",backend,
                         "--output",str(output.resolve()),"--identity",identity,
                         "--nproc-per-node",str(args.nproc_per_node),"--smoke-count",str(args.smoke_count),
-                        "--greedy-audit-policy",audit_policy]
+                        "--greedy-audit-policy",audit_policy,
+                        "--method-order-policy",args.method_order_policy]
                     if args.experimental_cost_attribution:
                         worker_args.append("--experimental-cost-attribution")
                     if args.experimental_extended_budgets:
