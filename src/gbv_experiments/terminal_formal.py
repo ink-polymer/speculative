@@ -17,7 +17,7 @@ import uuid
 import xml.etree.ElementTree as ET
 
 from .common import ROOT, canonical, digest, file_hash, prompt_seed, read_jsonl, write_json
-from .data import DATASETS, evaluation_policy, load_prepared
+from .data import DATASETS, load_prepared
 from .runner import output_lock, stop_token_ids
 from .terminal_protocol import (check_group, compare, freeze_document, gpu_matches,
                                 load_study, method_names, paired_order, plan,
@@ -282,7 +282,10 @@ def replay_functions(state):
     from .fused_tree_sampling import (tree_verify_ancestral_fused,
                                       tree_verify_ancestral_fused_parallel)
     parents, tokens, p = state["parents"], state["tokens"], state["all_p"]
-    ancestral = lambda g: sampling.tree_verify_ancestral_batched(parents, tokens, p, g, validate=False)
+    def ancestral(generator):
+        return sampling.tree_verify_ancestral_batched(
+            parents, tokens, p, generator, validate=False
+        )
     if state.get("kind") in {"one_step_diffusion_trie", "scaffold_diffusion_trie"}:
         from . import diffusion_tree_bv as diffusion
         from .tree import Tree
@@ -346,6 +349,43 @@ def replay_functions(state):
         "rm_serial_ref": lambda g: rm.verify(*args, g, validate=False),
         "rm_early_root": lambda g: rm.verify_early_root(*args, g, validate=False),
         "rm_token": lambda g: rm.verify_tensorized(*args, g, validate=False, rule="token"),
+    }
+
+
+_VERIFIER_IMPLEMENTATIONS = {
+    "ddtree": ("src/gbv_experiments/sampling.py",
+               "gbv_experiments.sampling.tree_verify_ancestral_batched", {}),
+    "tm_full": ("src/gbv_experiments/sampling.py",
+                "gbv_experiments.sampling.tree_block_verify_terminal_mass", {}),
+    "tm_dense_exit": ("src/gbv_experiments/sampling.py",
+                      "gbv_experiments.sampling.tree_block_verify_terminal_mass",
+                      {"exit_mode": "dense"}),
+    "tm_complement": ("src/gbv_experiments/sampling.py",
+                      "gbv_experiments.sampling.tree_block_verify_terminal_mass",
+                      {"exit_mode": "complement"}),
+    "tm_joint": ("src/gbv_experiments/sampling.py",
+                 "gbv_experiments.sampling.tree_block_verify_terminal_mass",
+                 {"exit_mode": "joint"}),
+    "fused_ancestral": ("src/gbv_experiments/fused_tree_sampling.py",
+                        "gbv_experiments.fused_tree_sampling.tree_verify_ancestral_fused", {}),
+    "fused_parallel": ("src/gbv_experiments/fused_tree_sampling.py",
+                       "gbv_experiments.fused_tree_sampling.tree_verify_ancestral_fused_parallel", {}),
+}
+
+
+def verifier_implementation_manifest(method):
+    """Return the auditable callable, options and source hash for a replay method."""
+    from .common import ROOT, file_hash
+
+    try:
+        relative, callable_name, options = _VERIFIER_IMPLEMENTATIONS[method]
+    except KeyError as exc:
+        raise ValueError(f"Unknown verifier implementation: {method}") from exc
+    return {
+        "callable": callable_name,
+        "options": options,
+        "source_file": relative,
+        "source_sha256": file_hash(ROOT / relative),
     }
 
 
@@ -438,7 +478,6 @@ def diagnostics(study, data_dir, output, device):
 
 
 def run_repeat(study, data_dir, output, device, repeat):
-    import torch
     from .conversation import encode_messages, generate_conversation
     from .report import validate_results
     reg, data = registered(study, data_dir, output)

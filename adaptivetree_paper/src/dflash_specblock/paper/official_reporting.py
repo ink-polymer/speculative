@@ -3,9 +3,7 @@ from __future__ import annotations
 
 import csv
 import math
-from pathlib import Path
 
-import numpy as np
 import torch
 
 from .common import atomic_json, digest, file_hash, load_json
@@ -37,7 +35,7 @@ def load_completed(path, identity):
 
 
 def validate_run_contract(run, source_lock, nproc, smoke_count, environment,
-                          greedy_audit_policy="strict"):
+                          greedy_audit_policy="strict", diagnostic_variants=()):
     maximum = 32 if smoke_count else 2048
     args = run["args"]
     if (run["source_lock"] != source_lock or run["world_size"] != nproc
@@ -46,6 +44,7 @@ def validate_run_contract(run, source_lock, nproc, smoke_count, environment,
             or args["tree_budget"] != ",".join(map(str, BUDGETS))
             or args["flash_attn"] != (run["target_attn_implementation"] == "flash_attention_2")
             or run.get("greedy_audit_policy", "strict") != greedy_audit_policy
+            or run.get("diagnostic_variants", []) != list(diagnostic_variants)
             or len(run["hardware"]) != nproc
             or {h["rank"] for h in run["hardware"]} != set(range(nproc))):
         raise ValueError("Run source, hardware or generation settings differ from contract")
@@ -154,6 +153,8 @@ def summarize(directory, data_dir, config, identity, model_indices, datasets, sm
     source_lock = load_json(data_dir / "source_revisions.json")
     rows = []
     audit_policy = metadata.get("greedy_audit_policy", "strict")
+    diagnostic_variants = tuple(metadata.get("diagnostic_variants", ()))
+    variants = (*config["variants"], *diagnostic_variants)
     audit_stats = []
     for dataset in datasets:
         expected = load_json(data_dir / f"{dataset}.json")
@@ -164,23 +165,27 @@ def summarize(directory, data_dir, config, identity, model_indices, datasets, sm
                     for backend in ("sdpa", "flash_attention_2")]
             for run in runs:
                 validate_run_contract(run, source_lock, metadata["nproc_per_node"], smoke_count,
-                                      environment, audit_policy)
-            audit_stats.append(validate_pair(*runs, dataset, model_index, config["variants"],
+                                      environment, audit_policy, diagnostic_variants)
+            audit_stats.append(validate_pair(*runs, dataset, model_index, variants,
                                              expected, audit_policy))
-            for row in official_rows(*runs, config["variants"]):
+            for row in official_rows(*runs, variants):
                 rows.append({"dataset":dataset, "model":MODELS[model_index][0],
                              "cases":len(expected), "turns":sum(len(r["turns"]) for r in expected), **row})
-    report = {"protocol":"ddtree_official_t0", "training":False, "full_split":False,
+    report = {"protocol":("ddtree_official_t0_diagnostic_cost_attribution"
+                          if diagnostic_variants else "ddtree_official_t0"),
+              "training":False, "full_split":False,
               "protocol_identity":identity, "environment_sha256":file_hash(directory / "environment.json"),
               "official_samples":not bool(smoke_count),
               "greedy_audit_policy":audit_policy,
-              "publication_gate_passed":not bool(smoke_count) and audit_policy == "strict",
+              "publication_gate_passed":(not diagnostic_variants and not bool(smoke_count)
+                                           and audit_policy == "strict"),
               "strict_lossless_claim_eligible":audit_policy == "strict",
               "numerical_audit":{"responses":sum(s["responses"] for s in audit_stats),
                   "exact_responses":sum(s["exact_responses"] for s in audit_stats),
                   "mismatching_responses":sum(s["mismatching_responses"] for s in audit_stats),
                   "cross_backend_baseline_mismatches":sum(s["cross_backend_baseline_mismatches"] for s in audit_stats)},
-              "full_official_t0_model_dataset_matrix":model_indices==list(range(3)) and datasets==list(LIMITS),
+              "full_official_t0_model_dataset_matrix":(not diagnostic_variants
+                  and model_indices==list(range(3)) and datasets==list(LIMITS)),
               "metric":"mean(per-response decode time/output tokens) ratio; excludes target prefill and first speculative draft",
               "baseline":"best mean-TPOT AR/DFlash backend independently; best DDTree budget, as upstream",
               "accuracy_scope":("exact agreement with official target-only baseline, not task grading or a BF16 mathematical guarantee"
@@ -198,6 +203,8 @@ def summarize(directory, data_dir, config, identity, model_indices, datasets, sm
              "|---|---|---|---:|---:|---:|"]
     if smoke_count:
         lines[0] = "# SMOKE ONLY：不可用于论文"
+    elif diagnostic_variants:
+        lines[0] = "# DIAGNOSTIC：成本归因实验，不属于冻结官方矩阵"
     elif audit_policy != "strict":
         lines[0] = "# BF16 mismatch-recording benchmark：不可声称严格无损"
     lines += [f"| {r['model']} | {r['dataset']} | {r['method']} | {r['speedup_vs_target']:.4f}× | {r['speedup_vs_best_ddtree']:.4f}× | {r['mean_acceptance_length']:.3f} |" for r in rows]

@@ -11,10 +11,11 @@ import pytest
 import torch
 
 from dflash_specblock.ddtree_builder import DDTreeBuilder, LatencyAwareDDTreeBuilder
-from dflash_specblock.paper.common import BASELINES, ROOT, VARIANTS, atomic_json, contract, digest, load_config, load_json
-from dflash_specblock.paper.controller import FixedBudgetBuilder, PaperAdaptiveBuilder, make_builder
+from dflash_specblock.paper.common import BASELINES, ROOT, VARIANTS, atomic_json, contract, load_config, load_json
+from dflash_specblock.paper.controller import (COST_ATTRIBUTED_VARIANT,
+    FixedBudgetBuilder, PaperAdaptiveBuilder, make_builder, make_paper_builder)
 from dflash_specblock.paper.data import make_row
-from dflash_specblock.paper.evaluation import evaluate, initial_states, paired_bootstrap, summarize, validate_states
+from dflash_specblock.paper.evaluation import evaluate, paired_bootstrap, summarize, validate_states
 from dflash_specblock.paper.runtime import PaperRuntime, commit
 
 torch.set_num_threads(1)
@@ -87,7 +88,8 @@ def test_budget_aware_stage_attribution_is_isolated_and_exact():
     stages = dict(tree_nodes=60, draft_ms=2, tree_build_ms=3,
                   tree_compile_ms=5, target_verify_ms=7, commit_ms=11,
                   accepted_draft_tokens=4)
-    legacy.observe_stages(**stages)
+    legacy.observe(tree_nodes=60, draft_ms=5, verify_ms=23,
+                   accepted_draft_tokens=4)
     corrected.observe_stages(**stages)
     assert legacy._fixed_ms == 5
     assert legacy._verify_ms[60] == 23
@@ -96,6 +98,7 @@ def test_budget_aware_stage_attribution_is_isolated_and_exact():
     assert legacy._fixed_ms + legacy._verify_ms[60] == 28
     assert corrected._fixed_ms + corrected._verify_ms[60] == 28
     assert legacy.identity != corrected.identity
+    assert "raw_stage_ms" not in legacy.trace[-1]
     assert corrected.trace[-1]["raw_stage_ms"]["tree_build"] == 3
     with pytest.raises(ValueError, match="identity/schema mismatch"):
         corrected.load_state_dict(legacy.state_dict())
@@ -104,6 +107,9 @@ def test_budget_aware_stage_attribution_is_isolated_and_exact():
     )
     restored.load_state_dict(corrected.state_dict())
     assert restored.state_dict() == corrected.state_dict()
+    factory = make_paper_builder(cfg(), COST_ATTRIBUTED_VARIANT)
+    assert factory.variant == "no_exploration"
+    assert factory.timing_partition == "budget_aware"
 
 
 @pytest.mark.parametrize("seed", range(6))

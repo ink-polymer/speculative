@@ -10,7 +10,6 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import torch
-from transformers import DynamicCache
 
 from .official_spec import upstream
 
@@ -47,6 +46,8 @@ def adaptive_generate(
     save_tree_traces: bool = False,
     builder: object | None = None,
 ) -> SimpleNamespace:
+    from transformers import DynamicCache
+
     u = upstream()
     cuda_time, empty_stage_times = u.dflash.cuda_time, u.dflash.empty_stage_times
     sample, extract_context_feature = u.model.sample, u.model.extract_context_feature
@@ -200,18 +201,31 @@ def adaptive_generate(
         acceptance_lengths.append(len(accepted_indices))
         start += len(accepted_indices)
         stage_times["commit"] += cuda_time() - commit_stage_start
-        # The frozen official controller retains its original attribution.  An
-        # opt-in diagnostic controller can instead charge tree construction to
-        # the selected budget without changing any timed work or decoded token.
-        builder.observe_stages(
-            tree_nodes=int(node_token_ids.numel()),
-            draft_ms=1000 * draft_stage_elapsed,
-            tree_build_ms=1000 * (stage_times["tree_build"] - stage_before["tree_build"]),
-            tree_compile_ms=1000 * (stage_times["tree_compile"] - stage_before["tree_compile"]),
-            target_verify_ms=1000 * (stage_times["verify"] - stage_before["verify"]),
-            commit_ms=1000 * (stage_times["commit"] - stage_before["commit"]),
-            accepted_draft_tokens=len(accepted_indices) - 1,
-        )
+        if getattr(builder, "timing_partition", "legacy") == "legacy":
+            # Preserve the frozen protocol's exact expression grouping and trace
+            # schema.  Even a mathematically equivalent regrouping can move an
+            # EWMA tie by an ulp and is therefore kept out of the official path.
+            builder.observe(
+                tree_nodes=int(node_token_ids.numel()),
+                draft_ms=1000 * (draft_stage_elapsed + stage_times["tree_build"]
+                                   - stage_before["tree_build"]),
+                verify_ms=1000 * sum(stage_times[k] - stage_before[k]
+                                     for k in ("tree_compile", "verify", "commit")),
+                accepted_draft_tokens=len(accepted_indices) - 1,
+            )
+        else:
+            # Diagnostic-only correction: tree construction varies with the
+            # selected budget and belongs in its per-budget latency estimate.
+            builder.observe_stages(
+                tree_nodes=int(node_token_ids.numel()),
+                draft_ms=1000 * draft_stage_elapsed,
+                tree_build_ms=1000 * (stage_times["tree_build"]
+                                      - stage_before["tree_build"]),
+                tree_compile_ms=1000 * (stage_times["tree_compile"] - stage_before["tree_compile"]),
+                target_verify_ms=1000 * (stage_times["verify"] - stage_before["verify"]),
+                commit_ms=1000 * (stage_times["commit"] - stage_before["commit"]),
+                accepted_draft_tokens=len(accepted_indices) - 1,
+            )
         round_timestamps.append(cuda_time() - round_clock_start)
         if save_tree_traces:
             round_trees.append({

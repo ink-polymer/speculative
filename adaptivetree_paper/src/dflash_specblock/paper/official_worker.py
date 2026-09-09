@@ -1,27 +1,25 @@
 """One official (dataset, model, target backend) run, with additive Adaptive methods."""
 from __future__ import annotations
 
-import hashlib
-import os
 import random
-import time
-from pathlib import Path
-from types import SimpleNamespace
 
 import numpy as np
 import torch
 
 from .common import atomic_json, digest, file_hash, load_json
-from .controller import PaperAdaptiveBuilder
+from .controller import COST_ATTRIBUTED_VARIANT, make_paper_builder
 from .official_data import check_manifest
 from .official_spec import BUDGETS, LIMITS, MODELS, upstream
 from .official_audit import gpu_identity, validate_hardware
 
 
-def method_names(backend, variants):
+def method_names(backend, variants, diagnostic_variants=()):
+    if set(diagnostic_variants) - {COST_ATTRIBUTED_VARIANT}:
+        raise ValueError("Unknown diagnostic AdaptiveTree variant")
     names = ["baseline", "dflash"]
     if backend == "sdpa":
-        names += [f"ddtree_tb{budget}" for budget in BUDGETS] + list(variants)
+        names += ([f"ddtree_tb{budget}" for budget in BUDGETS]
+                  + list(variants) + list(diagnostic_variants))
     elif backend != "flash_attention_2":
         raise ValueError("Unexpected official target backend")
     return names
@@ -107,9 +105,12 @@ def worker(args, config):
     rows = load_json(args.data_dir / f"{args.dataset}.json")
     if args.smoke_count:
         rows = rows[:args.smoke_count]
-    methods = method_names(args.backend, config["variants"])
-    controllers = {name: PaperAdaptiveBuilder(config["adaptive"], name)
-                   for name in config["variants"]} if args.backend == "sdpa" else {}
+    diagnostic_variants = ((COST_ATTRIBUTED_VARIANT,)
+        if getattr(args, "experimental_cost_attribution", False) else ())
+    controller_names = (*config["variants"], *diagnostic_variants)
+    methods = method_names(args.backend, config["variants"], diagnostic_variants)
+    controllers = {name: make_paper_builder(config["adaptive"], name)
+                   for name in controller_names} if args.backend == "sdpa" else {}
     audit_policy = getattr(args, "greedy_audit_policy", "strict")
 
     def generate(ids, method, max_tokens):
@@ -132,7 +133,8 @@ def worker(args, config):
     warmup_ids = encode([{"role":"user", "content":"Warmup"}])
     for method in methods:
         generate(warmup_ids, method, min(maximum, 16))
-    controllers = {name: PaperAdaptiveBuilder(config["adaptive"], name) for name in controllers}
+    controllers = {name: make_paper_builder(config["adaptive"], name)
+                   for name in controllers}
     responses = []
     for idx in range(rank, len(rows), world):
         messages = []
@@ -174,6 +176,12 @@ def worker(args, config):
                 "greedy_audit_policy":audit_policy,
                 "adaptive_timing":"proposal+build; compile+verify+KV/commit; all controller overhead included in official decode timer",
                 "substage_note":"Adaptive fine-grained tree_build_* attribution unavailable; use aggregate tree_build"}
+    if diagnostic_variants:
+        run_data["diagnostic_variants"] = list(diagnostic_variants)
+        run_data["diagnostic_timing"] = (
+            "cost_attributed_no_exploration: proposal; "
+            "build+compile+verify+KV/commit per selected budget"
+        )
     expected_turns = sum(len(r["turns"]) for r in rows)
     if len(responses) != expected_turns:
         raise RuntimeError("Missing official response turns")

@@ -12,6 +12,7 @@ from ..ddtree_builder import BudgetDecision, DDTreeBuilder, LatencyAwareDDTreeBu
 from .common import BASELINES, K, VARIANTS, digest
 
 TIMING_PARTITIONS = ("legacy", "budget_aware")
+COST_ATTRIBUTED_VARIANT = "cost_attributed_no_exploration"
 
 
 class FixedBudgetBuilder(DDTreeBuilder):
@@ -94,7 +95,7 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
         self.observe(tree_nodes=tree_nodes, draft_ms=fixed_ms,
                      verify_ms=budget_ms,
                      accepted_draft_tokens=accepted_draft_tokens)
-        if self.trace:
+        if self.trace and self.timing_partition != "legacy":
             self.trace[-1]["raw_stage_ms"] = stages
             self.trace[-1]["timing_partition"] = self.timing_partition
 
@@ -144,3 +145,14 @@ def make_builder(cfg, method):
     if method in BASELINES and method.startswith("fixed_"):
         return FixedBudgetBuilder(K, int(method.split("_")[1]))
     raise ValueError(f"Not a tree method: {method}")
+
+
+def make_paper_builder(cfg, method):
+    """Build an official controller or the explicitly labelled diagnostic one."""
+    if method in VARIANTS:
+        return PaperAdaptiveBuilder(cfg, method)
+    if method == COST_ATTRIBUTED_VARIANT:
+        return PaperAdaptiveBuilder(
+            cfg, "no_exploration", timing_partition="budget_aware"
+        )
+    raise ValueError(f"Unknown paper controller: {method}")

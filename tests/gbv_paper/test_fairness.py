@@ -4,6 +4,7 @@ import pytest
 
 from gbv_experiments.config import Variant
 from gbv_experiments.fairness import assert_architecture_only_pair
+from gbv_experiments.terminal_formal import verifier_implementation_manifest
 
 
 MODEL = {
@@ -63,3 +64,14 @@ def test_architecture_only_pair_rejects_backend_drift():
         assert_architecture_only_pair(
             baseline, candidate, {**MODEL, "target_attention": "eager"}
         )
+
+
+def test_verifier_implementation_manifest_identifies_actual_kernel_source():
+    baseline = verifier_implementation_manifest("ddtree")
+    fused = verifier_implementation_manifest("fused_parallel")
+    assert baseline["callable"].endswith("tree_verify_ancestral_batched")
+    assert fused["callable"].endswith("tree_verify_ancestral_fused_parallel")
+    assert baseline["source_file"] != fused["source_file"]
+    assert len(baseline["source_sha256"]) == len(fused["source_sha256"]) == 64
+    with pytest.raises(ValueError, match="Unknown verifier implementation"):
+        verifier_implementation_manifest("name_only")

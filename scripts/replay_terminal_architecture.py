@@ -25,7 +25,8 @@ from gbv_experiments.engine import load_models
 from gbv_experiments.fairness import assert_architecture_only_pair
 from gbv_experiments.terminal_formal import (DIAGNOSTIC_PROMPTS,
                                              allocation_gate, model_gate,
-                                             replay_functions)
+                                             replay_functions,
+                                             verifier_implementation_manifest)
 
 
 TEMPERATURES = (0.3, 0.6, 1.0)
@@ -102,19 +103,23 @@ def run(args) -> dict:
         raise ValueError("Output already exists; choose a new path")
     cfg = load_config(args.config)
     baseline = _variant("ddtree", "ddtree", 1.0)
-    fairness = {
-        method: assert_architecture_only_pair(
+    fairness = {}
+    for method, variant_method in (
+        ("tm_full", "ddtree_terminal_block"),
+        ("tm_dense_exit", "ddtree_terminal_dense"),
+        ("tm_complement", "ddtree_terminal_block"),
+        ("tm_joint", "ddtree_terminal_block"),
+        ("fused_ancestral", "ddtree"),
+        ("fused_parallel", "ddtree"),
+    ):
+        record = assert_architecture_only_pair(
             baseline, _variant(method, variant_method, 1.0), cfg["model"]
         )
-        for method, variant_method in (
-            ("tm_full", "ddtree_terminal_block"),
-            ("tm_dense_exit", "ddtree_terminal_dense"),
-            ("tm_complement", "ddtree_terminal_block"),
-            ("tm_joint", "ddtree_terminal_block"),
-            ("fused_ancestral", "ddtree"),
-            ("fused_parallel", "ddtree"),
-        )
-    }
+        record["verifier_implementations"] = {
+            "baseline": verifier_implementation_manifest("ddtree"),
+            "candidate": verifier_implementation_manifest(method),
+        }
+        fairness[method] = record
 
     allocation_gate(args.device)
     engine, tokenizer = load_models(cfg["model"], args.device)
@@ -238,7 +243,6 @@ def run(args) -> dict:
                             ),
                         })
                 del functions, gpu_state
-            del captured
             _write(args.output, report)
             print(
                 f"replay T={temperature} prompt={prompt_index + 1}/"

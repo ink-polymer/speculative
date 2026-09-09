@@ -2,23 +2,26 @@
 from __future__ import annotations
 
 import argparse
+import importlib
 import json
 import os
 from pathlib import Path
 import subprocess
 import sys
 
-from .common import ROOT, atomic_json, code_identity, contract, digest, file_hash, load_json, run_lock
+from .common import ROOT, atomic_json, code_identity, contract, load_json, run_lock
 from .official_data import check_manifest, prepare
 from .official_spec import LIMITS, MODELS, PINNED_MODEL_REVISIONS, load_config, verify_sources
+from .controller import COST_ATTRIBUTED_VARIANT
 
 
-def plan(config, model_indices, datasets, smoke_count, nproc):
+def plan(config, model_indices, datasets, smoke_count, nproc,
+         experimental_cost_attribution=False):
     counts = {name:min(LIMITS[name], smoke_count) if smoke_count else LIMITS[name] for name in datasets}
     turns = sum(n * (2 if name=="mt-bench" else 1) for name,n in counts.items())
     # SDPA: baseline, DFlash, seven DDTree budgets, five Adaptive variants.
     # FA2: baseline and DFlash only.
-    return {"protocol":config["protocol"], "temperature":0, "training":False,
+    result = {"protocol":config["protocol"], "temperature":0, "training":False,
             "data_sampling":"Dataset.shuffle(seed=0).select(range(limit)) only when full size > limit",
             "test_counts":counts, "cases":sum(counts.values()), "turns_per_method":turns,
             "models":[MODELS[i][0] for i in model_indices], "nproc_per_node":nproc,
@@ -27,9 +30,13 @@ def plan(config, model_indices, datasets, smoke_count, nproc):
                 "draft_revision":PINNED_MODEL_REVISIONS.get(MODELS[i][1], "locked during prepare")}
                 for i in model_indices],
             "benchmark_process_groups":len(datasets)*len(model_indices)*2,
-            "generation_calls":turns*len(model_indices)*(11+len(config["variants"])),
+            "generation_calls":turns*len(model_indices)*(11+len(config["variants"])
+                + int(experimental_cost_attribution)),
             "full_split":False, "official_samples":not bool(smoke_count),
             "launches_models":False}
+    if experimental_cost_attribution:
+        result["diagnostic_variants"] = [COST_ATTRIBUTED_VARIANT]
+    return result
 
 
 def doctor(nproc):
@@ -38,7 +45,8 @@ def doctor(nproc):
     import torch
     result = environment(require_gpu=True)
     import flash_attn
-    import ninja, loguru
+    for dependency in ("ninja", "loguru"):
+        importlib.import_module(dependency)
     if torch.cuda.device_count() < nproc:
         raise RuntimeError(f"Official default requests {nproc} GPUs; only {torch.cuda.device_count()} visible. "
                            "An explicit --nproc-per-node override is recorded as a hardware deviation.")
@@ -66,12 +74,16 @@ def main(argv=None):
     parser.add_argument("--identity")
     parser.add_argument("--greedy-audit-policy", choices=["strict", "record-bf16-mismatches"],
                         default="strict")
+    parser.add_argument("--experimental-cost-attribution", action="store_true",
+                        help="add a diagnostic no-exploration controller with budget-aware tree-build cost")
     args = parser.parse_args(argv)
     config = load_config(args.config)
     if args.nproc_per_node < 1 or args.smoke_count < 0:
         parser.error("nproc must be positive and smoke-count nonnegative")
     if args.smoke_count and "smoke" not in args.run_dir.name.lower():
         parser.error("Smoke requires a separate run directory containing 'smoke'")
+    if args.experimental_cost_attribution and "diagnostic" not in args.run_dir.name.lower():
+        parser.error("Experimental cost attribution requires a separate run directory containing 'diagnostic'")
     if args.stage == "worker":
         if any(v is None for v in (args.model_index,args.dataset,args.backend,args.output,args.identity)):
             parser.error("Internal worker requires model, dataset, backend, output and identity")
@@ -83,7 +95,9 @@ def main(argv=None):
     models = [args.model_index] if args.model_index is not None else list(range(len(MODELS)))
     datasets = [args.dataset] if args.dataset else list(LIMITS)
     if args.stage == "plan":
-        print(json.dumps(plan(config, models, datasets, args.smoke_count, args.nproc_per_node),ensure_ascii=False,indent=2))
+        print(json.dumps(plan(config, models, datasets, args.smoke_count,
+                              args.nproc_per_node, args.experimental_cost_attribution),
+                         ensure_ascii=False, indent=2))
         return
     if args.stage == "doctor":
         print(json.dumps(doctor(args.nproc_per_node),ensure_ascii=False,indent=2))
@@ -100,6 +114,8 @@ def main(argv=None):
                 "nproc_per_node":args.nproc_per_node, "model_indices":models, "datasets":datasets,
                 "smoke_count":args.smoke_count, "max_new_tokens":32 if args.smoke_count else 2048,
                 "greedy_audit_policy":audit_policy}
+    if args.experimental_cost_attribution:
+        metadata["diagnostic_variants"] = [COST_ATTRIBUTED_VARIANT]
     with run_lock(args.run_dir):
         identity = contract(args.run_dir, metadata)
     from .official_reporting import load_completed, run_stem, summarize, validate_run_contract
@@ -120,7 +136,8 @@ def main(argv=None):
                     if output.with_suffix(".complete.json").exists():
                         run = load_completed(output,identity)
                         validate_run_contract(run, load_json(args.data_dir/"source_revisions.json"),
-                                              args.nproc_per_node,args.smoke_count,env,audit_policy)
+                                              args.nproc_per_node,args.smoke_count,env,audit_policy,
+                                              metadata.get("diagnostic_variants", ()))
                         continue
                     if output.exists():
                         raise FileExistsError("Incomplete artifact exists; use a new run directory, not silent overwrite")
@@ -130,6 +147,8 @@ def main(argv=None):
                         "--output",str(output.resolve()),"--identity",identity,
                         "--nproc-per-node",str(args.nproc_per_node),"--smoke-count",str(args.smoke_count),
                         "--greedy-audit-policy",audit_policy]
+                    if args.experimental_cost_attribution:
+                        worker_args.append("--experimental-cost-attribution")
                     if args.nproc_per_node == 1:
                         command = [sys.executable,*worker_args]
                     else:

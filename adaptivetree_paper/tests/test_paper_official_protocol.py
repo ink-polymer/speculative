@@ -13,9 +13,10 @@ import torch
 
 from dflash_specblock.ddtree_builder import DDTreeBuilder
 from dflash_specblock.paper.common import ROOT, VARIANTS, atomic_json, load_json
-from dflash_specblock.paper.controller import PaperAdaptiveBuilder
+from dflash_specblock.paper.controller import (COST_ATTRIBUTED_VARIANT,
+    PaperAdaptiveBuilder, make_paper_builder)
 from dflash_specblock.paper.official import main
-from dflash_specblock.paper.official_spec import BUDGETS, COMMIT, LIMITS, MODELS, SOURCES, UPSTREAM, data_utils, load_config, upstream, verify_sources
+from dflash_specblock.paper.official_spec import BUDGETS, COMMIT, LIMITS, MODELS, UPSTREAM, data_utils, load_config, upstream, verify_sources
 from dflash_specblock.paper.official_data import check_manifest, prepare, select_official
 from dflash_specblock.paper.official_reporting import official_rows, validate_pair
 from dflash_specblock.paper.official_worker import audit_response, method_names
@@ -42,6 +43,11 @@ def test_official_matrix_is_extracted_from_pinned_script_and_cli(capsys):
     assert result["generation_calls"] == 55296 and result["nproc_per_node"] == 8
     assert result["official_samples"] and not result["full_split"] and not result["training"]
     assert len(result["models"]) == 3
+    main(["plan", "--experimental-cost-attribution", "--run-dir",
+          "outputs/cost-diagnostic"])
+    diagnostic = json.loads(capsys.readouterr().out)
+    assert diagnostic["generation_calls"] == 58752
+    assert diagnostic["diagnostic_variants"] == [COST_ATTRIBUTED_VARIANT]
 
 
 def test_source_integrity_and_original_builder_byte_identity():
@@ -176,6 +182,13 @@ def test_mismatch_record_policy_is_explicit_and_non_lossless(tmp_path):
 def test_official_method_order_and_no_t1_support():
     assert method_names("sdpa",VARIANTS)[:9] == ["baseline","dflash"]+[f"ddtree_tb{b}" for b in BUDGETS]
     assert method_names("flash_attention_2",VARIANTS) == ["baseline","dflash"]
+    diagnostics = (COST_ATTRIBUTED_VARIANT,)
+    assert method_names("sdpa", VARIANTS, diagnostics)[-1] == COST_ATTRIBUTED_VARIANT
+    assert method_names("flash_attention_2", VARIANTS, diagnostics) == ["baseline", "dflash"]
+    builder = make_paper_builder(cfg()["adaptive"], COST_ATTRIBUTED_VARIANT)
+    assert builder.variant == "no_exploration" and builder.timing_partition == "budget_aware"
+    with pytest.raises(ValueError, match="Unknown diagnostic"):
+        method_names("sdpa", VARIANTS, ("unlabelled_experiment",))
 
 
 def synthetic_environment():
@@ -183,9 +196,9 @@ def synthetic_environment():
             "benchmark_gpus":[{"rank":0,"gpu":"synthetic","uuid":"synthetic"}]}
 
 
-def synthetic_run(backend="sdpa"):
-    methods = method_names(backend, VARIANTS)
-    return {"target_attn_implementation":backend, "draft_attn_implementation":"flash_attention_2",
+def synthetic_run(backend="sdpa", diagnostic_variants=()):
+    methods = method_names(backend, VARIANTS, diagnostic_variants)
+    result = {"target_attn_implementation":backend, "draft_attn_implementation":"flash_attention_2",
         "args":{"dataset":"gsm8k", "model_name_or_path":MODELS[0][0], "draft_name_or_path":MODELS[0][1],
                 "temperature":0., "max_samples":128, "max_new_tokens":2048,
                 "tree_budget":",".join(map(str,BUDGETS)), "flash_attn":backend!="sdpa"},
@@ -193,6 +206,9 @@ def synthetic_run(backend="sdpa"):
         "hardware":[{"rank":0,"gpu":"synthetic","uuid":"synthetic","flash_attn":"test-only"}], "world_size":1,
         "responses":[{**{m:response(2. if m=="baseline" else 1.) for m in methods},
                       "_audit":{"index":0,"turn":0,"exact_match":True,"input_sha256":"synthetic"}}]}
+    if diagnostic_variants:
+        result["diagnostic_variants"] = list(diagnostic_variants)
+    return result
 
 
 @pytest.mark.parametrize("field,value",[("source_lock",{}),("world_size",8),("block_size",32),
@@ -280,9 +296,42 @@ def test_summary_checks_contract_completion_environment_and_artifact_hash(tmp_pa
         reporting.summarize(run_dir,data_dir,config,identity,[0],["gsm8k"])
 
 
+def test_cost_attribution_summary_is_explicitly_diagnostic(tmp_path, monkeypatch):
+    from dflash_specblock.paper import official_reporting as reporting
+    from dflash_specblock.paper.common import contract, file_hash
+    run_dir, data_dir = tmp_path/"diagnostic-run", tmp_path/"data"
+    manifest = {"test_only":True}
+    config = cfg()
+    diagnostics = (COST_ATTRIBUTED_VARIANT,)
+    metadata = {"config":config,"model_indices":[0],"datasets":["gsm8k"],"smoke_count":0,
+        "dataset_manifest":manifest,"source_manifest":verify_sources(),"nproc_per_node":1,
+        "diagnostic_variants":list(diagnostics)}
+    identity = contract(run_dir, metadata)
+    atomic_json(run_dir/"environment.json", synthetic_environment())
+    atomic_json(data_dir/"source_revisions.json", {"test_only":True})
+    atomic_json(data_dir/"gsm8k.json", [{"index":0,"turns":["synthetic prompt"]}])
+    monkeypatch.setattr(reporting, "check_manifest", lambda _: manifest)
+    for backend in ("sdpa", "flash_attention_2"):
+        path = run_dir/(reporting.run_stem("gsm8k", 0, backend)+".pt")
+        run = {**synthetic_run(backend, diagnostics), "protocol_identity":identity}
+        torch.save(run, path)
+        atomic_json(path.with_suffix(".complete.json"), {"identity":identity,
+            "sha256":file_hash(path),"turns":1,"cases":1,"methods":run["methods"],
+            "smoke":False})
+    reporting.summarize(run_dir, data_dir, config, identity, [0], ["gsm8k"])
+    report = load_json(run_dir/"tables.json")
+    assert report["protocol"] == "ddtree_official_t0_diagnostic_cost_attribution"
+    assert not report["publication_gate_passed"]
+    assert not report["full_official_t0_model_dataset_matrix"]
+    assert any(row["method"] == COST_ATTRIBUTED_VARIANT for row in report["rows"])
+
+
 @pytest.mark.parametrize("model_index", [0, 1])
-def test_worker_multiturn_keeps_official_history_method_and_run_completion(tmp_path,monkeypatch,model_index):
-    import transformers
+@pytest.mark.parametrize("experimental", [False, True])
+def test_worker_multiturn_keeps_official_history_method_and_run_completion(
+        tmp_path, monkeypatch, model_index, experimental):
+    transformers = SimpleNamespace(DynamicCache=object)
+    monkeypatch.setitem(sys.modules, "transformers", transformers)
     from dflash_specblock.paper import official_worker as worker_module, adaptive_official
     seen = []
     loaded = []
@@ -310,10 +359,12 @@ def test_worker_multiturn_keeps_official_history_method_and_run_completion(tmp_p
         dflash=SimpleNamespace(dflash_generate=lambda **kw:generated(1 if kw["block_size"]==1 else 2)),
         ddtree=SimpleNamespace(maybe_enable_cpp_compact=lambda _:None,load_cpp_compact_module=lambda:object(),
                               ddtree_generate=lambda **kw:generated(kw["tree_budget"])))
+    transformers.AutoModelForCausalLM = FakeModel
+    transformers.AutoTokenizer = SimpleNamespace(
+        from_pretrained=lambda *a, **k: Tokenizer()
+    )
     monkeypatch.setattr(worker_module,"upstream",lambda:fake)
     monkeypatch.setattr(worker_module,"check_manifest",lambda _: {})
-    monkeypatch.setattr(transformers,"AutoModelForCausalLM",FakeModel)
-    monkeypatch.setattr(transformers.AutoTokenizer,"from_pretrained",lambda *a,**k:Tokenizer())
     monkeypatch.setattr(adaptive_official,"adaptive_generate",lambda **kw:generated(999))
     monkeypatch.setitem(sys.modules,"flash_attn",SimpleNamespace(__version__="test-only"))
     monkeypatch.setattr(torch.cuda,"is_available",lambda:True)
@@ -329,7 +380,8 @@ def test_worker_multiturn_keeps_official_history_method_and_run_completion(tmp_p
     atomic_json(tmp_path/"mt-bench.json",[{"index":0,"turns":["first","second"]}])
     atomic_json(tmp_path/"environment.json",synthetic_environment())
     args = SimpleNamespace(data_dir=tmp_path,model_index=model_index,backend="sdpa",dataset="mt-bench",
-                           smoke_count=1,output=tmp_path/"case.pt",identity="synthetic",run_dir=tmp_path)
+                           smoke_count=1,output=tmp_path/"case.pt",identity="synthetic",run_dir=tmp_path,
+                           experimental_cost_attribution=experimental)
     worker_module.worker(args,cfg())
     assert loaded == [(name,"a"*40) for name in MODELS[model_index]]
     assert seen[0] == [{"role":"user","content":"Warmup"}]
@@ -337,4 +389,8 @@ def test_worker_multiturn_keeps_official_history_method_and_run_completion(tmp_p
     assert all("token-999" not in str(m) for m in seen)
     saved = torch.load(args.output,weights_only=False)
     assert len(saved["responses"]) == 2 and saved["smoke"]
+    assert saved.get("diagnostic_variants", []) == (
+        [COST_ATTRIBUTED_VARIANT] if experimental else []
+    )
+    assert ("diagnostic_timing" in saved) is experimental
     assert args.output.with_suffix(".complete.json").exists()

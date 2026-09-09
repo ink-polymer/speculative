@@ -6,6 +6,7 @@ import os
 from .common import code_identity, digest, load_json
 from .official_data import check_manifest
 from .official_spec import verify_sources
+from .controller import COST_ATTRIBUTED_VARIANT
 
 
 def validate_worker_contract(args, config):
@@ -13,6 +14,8 @@ def validate_worker_contract(args, config):
     metadata = recorded["metadata"]
     if recorded["identity"] != args.identity or digest(metadata) != args.identity:
         raise ValueError("Worker contract hash/identity mismatch")
+    expected_diagnostics = ([COST_ATTRIBUTED_VARIANT]
+        if getattr(args, "experimental_cost_attribution", False) else [])
     if (metadata["config"] != config or metadata["code_identity"] != code_identity()
             or metadata["source_manifest"] != verify_sources()
             or metadata["dataset_manifest"] != check_manifest(args.data_dir)
@@ -23,6 +26,7 @@ def validate_worker_contract(args, config):
             or metadata["max_new_tokens"] != (32 if args.smoke_count else 2048)
             or metadata.get("greedy_audit_policy", "strict")
                != getattr(args, "greedy_audit_policy", "strict")
+            or metadata.get("diagnostic_variants", []) != expected_diagnostics
             or int(os.environ.get("WORLD_SIZE", "1")) != args.nproc_per_node):
         raise ValueError("Worker code/data/model scope differs from the parent contract")
     from .official_reporting import run_stem

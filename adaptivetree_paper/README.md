@@ -40,6 +40,19 @@ CUDA_VISIBLE_DEVICES=0 bash scripts/run_paper_t0_full.sh all \
 
 smoke 不能用于论文；显式单卡/模型子集会记录为协议范围或硬件偏离。正式运行可分别调用 evaluate 和 summarize。上游未公开历史 HF 快照，本包锁定本次数据和权重 revision；不能声称复原未知的作者历史快照。没有 collect/train 步骤。
 
+预算成本归因修正是独立诊断方法，不会改写上述冻结矩阵。它复用最佳的
+`no_exploration` 控制器，但把随节点预算变化的 tree-build 延迟计入对应预算：
+
+```bash
+CUDA_VISIBLE_DEVICES=0 bash scripts/run_paper_t0_full.sh all \
+  --experimental-cost-attribution --nproc-per-node 1 --model-index 0 \
+  --dataset gsm8k --smoke-count 2 \
+  --run-dir outputs/cost_attribution_diagnostic_smoke
+```
+
+该方法在结果中明确命名为 `cost_attributed_no_exploration`；带此方法的汇总会标为
+diagnostic 且不能通过冻结官方矩阵的 publication gate。
+
 ## 本地检查与历史结果
 
 ```bash
