@@ -19,7 +19,8 @@ from dflash_specblock.paper.controller import (COST_ATTRIBUTED_VARIANT,
 from dflash_specblock.paper.official import main
 from dflash_specblock.paper.official_spec import BUDGETS, COMMIT, LIMITS, MODELS, UPSTREAM, data_utils, load_config, upstream, verify_sources
 from dflash_specblock.paper.official_data import check_manifest, prepare, select_official
-from dflash_specblock.paper.official_reporting import controlled_sdpa_rows, official_rows, validate_pair
+from dflash_specblock.paper.official_reporting import (controlled_exact_output_subset_rows,
+    controlled_sdpa_rows, official_rows, validate_pair)
 from dflash_specblock.paper.official_worker import audit_response, method_names, scheduled_methods
 
 torch.set_num_threads(1)
@@ -247,8 +248,15 @@ def test_controlled_table_never_uses_faster_cross_backend_baseline():
             **{f"ddtree_tb{budget}":response(1.5 if budget == 128 else 3.)
                for budget in BUDGETS},
             **{variant:response(1.) for variant in VARIANTS}})
+    sdpa["responses"][1]["adaptive"] = response(1., 8)
     rows = {row["method"]:row for row in controlled_sdpa_rows(sdpa, VARIANTS)}
     assert rows["adaptive"]["speedup_vs_target"] == 6.
+    assert rows["adaptive"]["exact_output_rate"] == .5
+    exact = {row["method"]:row
+             for row in controlled_exact_output_subset_rows(sdpa, VARIANTS)}
+    assert exact["adaptive"]["exact_output_responses"] == 1
+    assert exact["adaptive"]["exact_subset_speedup_vs_target"] == 10.
+    assert exact["adaptive"]["selection_bias_warning"] is True
     assert rows["DFlash"]["method_backend"] == "sdpa"
     assert rows["adaptive"]["target_baseline_backend"] == "sdpa"
 
@@ -361,7 +369,10 @@ def test_summary_checks_contract_completion_environment_and_artifact_hash(tmp_pa
     report = load_json(run_dir/"tables.json")
     assert report["protocol_identity"] == identity and report["environment_sha256"]
     assert not report["full_official_t0_model_dataset_matrix"]
+    assert report["controlled_exact_output_subset_rows"]
+    assert report["exact_output_subset_warning"]
     assert (run_dir/"tables.csv").exists() and (run_dir/"tables.md").exists()
+    assert (run_dir/"tables_exact_output_subset_diagnostic.csv").exists()
     marker = path.with_suffix(".complete.json")
     completion = load_json(marker)
     atomic_json(marker,{**completion,"cases":2})

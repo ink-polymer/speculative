@@ -154,9 +154,22 @@ def official_rows(sdpa, flash, variants):
             "mean_decode_tpot_seconds":tpot, "speedup_vs_target":base_tpot/tpot,
             "speedup_vs_best_ddtree":dd_tpot/tpot,
             "mean_acceptance_length":table.mean_acceptance_length(run, key),
+            **pairwise_exact_output_stats(run, key),
             "target_baseline_backend":baseline["target_attn_implementation"],
-            "method_backend":run["target_attn_implementation"]})
+            "method_backend":run["target_attn_implementation"],
+            "exact_output_reference_backend":run["target_attn_implementation"]})
     return results
+
+
+def pairwise_exact_output_stats(run, key):
+    total = len(run["responses"])
+    exact = sum(
+        response_tokens(response[key]) == response_tokens(response["baseline"])
+        for response in run["responses"]
+    )
+    return {"responses":total, "exact_output_responses":exact,
+            "output_divergence_responses":total - exact,
+            "exact_output_rate":exact / total}
 
 
 def controlled_sdpa_rows(sdpa, variants):
@@ -175,7 +188,33 @@ def controlled_sdpa_rows(sdpa, variants):
             "mean_decode_tpot_seconds":tpot, "speedup_vs_target":base_tpot/tpot,
             "speedup_vs_best_ddtree":dd_tpot/tpot,
             "mean_acceptance_length":table.mean_acceptance_length(sdpa, key),
+            **pairwise_exact_output_stats(sdpa, key),
             "target_baseline_backend":"sdpa", "method_backend":"sdpa"})
+    return rows
+
+
+def controlled_exact_output_subset_rows(sdpa, variants):
+    """Pairwise content-matched timing diagnostic; never a population estimate."""
+    keys = [f"ddtree_tb{budget}" for budget in BUDGETS]
+    rows = []
+    for label, key in ([('DFlash', 'dflash')]
+                       + [(key, key) for key in keys + list(variants)]):
+        matched = [response for response in sdpa["responses"]
+                   if response_tokens(response[key]) == response_tokens(response["baseline"])]
+        baseline_mean = (sum(response["baseline"].time_per_output_token
+                             for response in matched) / len(matched) if matched else None)
+        method_mean = (sum(response[key].time_per_output_token
+                           for response in matched) / len(matched) if matched else None)
+        rows.append({"method":label, "selected_key":key,
+            **pairwise_exact_output_stats(sdpa, key),
+            "baseline_mean_decode_tpot_seconds":baseline_mean,
+            "method_mean_decode_tpot_seconds":method_mean,
+            "exact_subset_speedup_vs_target":(
+                baseline_mean / method_mean if matched else None
+            ),
+            "target_baseline_backend":"sdpa", "method_backend":"sdpa",
+            "estimand":"post_hoc_pairwise_exact_output_subset",
+            "selection_bias_warning":True})
     return rows
 
 
@@ -233,6 +272,7 @@ def summarize(directory, data_dir, config, identity, model_indices, datasets, sm
     audit_stats = []
     budget_usage = []
     controlled_rows = []
+    controlled_exact_rows = []
     for dataset in datasets:
         expected = load_json(data_dir / f"{dataset}.json")
         if smoke_count:
@@ -255,6 +295,10 @@ def summarize(directory, data_dir, config, identity, model_indices, datasets, sm
             for row in controlled_sdpa_rows(runs[0], variants):
                 controlled_rows.append({"dataset":dataset, "model":MODELS[model_index][0],
                     "cases":len(expected), "turns":sum(len(r["turns"]) for r in expected), **row})
+            for row in controlled_exact_output_subset_rows(runs[0], variants):
+                controlled_exact_rows.append({"dataset":dataset,
+                    "model":MODELS[model_index][0], "cases":len(expected),
+                    "turns":sum(len(r["turns"]) for r in expected), **row})
     diagnostic_protocol = ("ddtree_official_t0_diagnostic_cost_attribution"
         if diagnostic_variants == (COST_ATTRIBUTED_VARIANT,)
         else "ddtree_official_t0_diagnostic_extended_budget")
@@ -268,6 +312,10 @@ def summarize(directory, data_dir, config, identity, model_indices, datasets, sm
                                            and audit_policy == "strict"
                                            and method_order_policy == "official-fixed"),
               "strict_lossless_claim_eligible":audit_policy == "strict",
+              "controlled_protocol_gate_passed":(
+                  not bool(smoke_count)
+                  and method_order_policy == "balanced-rotation"
+              ),
               "controlled_comparison_gate_passed":(
                   not bool(smoke_count) and audit_policy == "strict"
                   and method_order_policy == "balanced-rotation"
@@ -284,7 +332,12 @@ def summarize(directory, data_dir, config, identity, model_indices, datasets, sm
               "accuracy_scope":("exact agreement with official target-only baseline, not task grading or a BF16 mathematical guarantee"
                   if audit_policy == "strict" else
                   "BF16 token mismatches are retained and counted; speed rows are not a strict lossless claim"),
-              "rows":rows, "controlled_same_backend_rows":controlled_rows}
+              "rows":rows, "controlled_same_backend_rows":controlled_rows,
+              "controlled_exact_output_subset_rows":controlled_exact_rows,
+              "exact_output_subset_warning":(
+                  "Post-hoc content-matched rows are selection-biased diagnostics, not "
+                  "population speedup estimates."
+              )}
     if diagnostic_variants:
         report["diagnostic_budget_usage"] = budget_usage
     atomic_json(directory / "tables.json", report)
@@ -296,6 +349,11 @@ def summarize(directory, data_dir, config, identity, model_indices, datasets, sm
         writer = csv.DictWriter(stream, fieldnames=list(controlled_rows[0]))
         writer.writeheader()
         writer.writerows(controlled_rows)
+    with (directory / "tables_exact_output_subset_diagnostic.csv").open(
+            "w", encoding="utf-8", newline="") as stream:
+        writer = csv.DictWriter(stream, fieldnames=list(controlled_exact_rows[0]))
+        writer.writeheader()
+        writer.writerows(controlled_exact_rows)
     lines = ["# DDTree 官方口径：T=0 AdaptiveTree", "",
              "解码 TPOT 均值之比；非全量数据，按官方 seed=0 抽样。无训练。", "",
              "| 模型 | 数据集 | 方法 | 相对 Target | 相对最佳 DDTree | 接受长度 |",
@@ -312,6 +370,15 @@ def summarize(directory, data_dir, config, identity, model_indices, datasets, sm
               "| 模型 | 数据集 | 方法 | 相对 SDPA Target | 相对最佳 DDTree | 接受长度 |",
               "|---|---|---|---:|---:|---:|"]
     lines += [f"| {r['model']} | {r['dataset']} | {r['method']} | {r['speedup_vs_target']:.4f}× | {r['speedup_vs_best_ddtree']:.4f}× | {r['mean_acceptance_length']:.3f} |" for r in controlled_rows]
+    lines += ["", "## 完全相同输出配对子集（选择偏差诊断）", "",
+              "这不是总体加速比估计，只用于隔离输出内容差异。", "",
+              "| 模型 | 数据集 | 方法 | 相同输出数/总数 | 子集相对 Target |",
+              "|---|---|---|---:|---:|"]
+    def fmt(value):
+        return "--" if value is None else f"{value:.4f}×"
+    lines += [f"| {r['model']} | {r['dataset']} | {r['method']} | "
+              f"{r['exact_output_responses']}/{r['responses']} | "
+              f"{fmt(r['exact_subset_speedup_vs_target'])} |" for r in controlled_exact_rows]
     if budget_usage:
         lines += ["", "## 诊断预算使用", "",
                   "| 模型 | 数据集 | 方法 | 轮数 | >128 占比 | 上限占比 | 选择计数 |",

@@ -20,6 +20,8 @@ def test_integrated_plan_keeps_protocol_families_separate_and_complete():
     plan = plan_integrated_suite(SUITE)
     assert plan["models"] == ["qwen3_4b", "qwen3_8b"]
     assert plan["adaptive_t0"]["generation_calls"] == 41472
+    assert plan["adaptive_t0"]["greedy_audit_policy"] == "record-bf16-mismatches"
+    assert not plan["adaptive_t0"]["strict_lossless_claim_allowed"]
     assert plan["stochastic_block"]["expected_records"] == 56592
     assert plan["stochastic_block"]["expected_generations"] == 62352
     assert plan["total_generation_calls"] == 103824
@@ -28,10 +30,16 @@ def test_integrated_plan_keeps_protocol_families_separate_and_complete():
     assert not plan["fairness_audit"]["claim_boundaries"][
         "cross_protocol_speedup_pooling_allowed"
     ]
+    assert not plan["fairness_audit"]["claim_boundaries"][
+        "adaptive_strict_lossless_claim_allowed"
+    ]
 
 
 def test_models_revisions_backends_and_block_controls_are_exactly_matched():
     suite = load_integrated_suite(SUITE)
+    assert suite["spec"]["adaptive"]["greedy_audit_policy"] == (
+        "record-bf16-mismatches"
+    )
     assert [model["adaptive_model_index"] for model in suite["models"]] == [0, 1]
     for model in suite["models"]:
         cfg = model["config"]

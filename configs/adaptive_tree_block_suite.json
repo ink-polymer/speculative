@@ -5,7 +5,7 @@
     "project": "../adaptivetree_paper",
     "config": "../adaptivetree_paper/configs/paper_t0_full.json",
     "temperature": 0.0,
-    "greedy_audit_policy": "strict",
+    "greedy_audit_policy": "record-bf16-mismatches",
     "method_order_policy": "balanced-rotation",
     "diagnostic_variants": ["cost_attributed_no_exploration", "cost_attributed_no_exploration_b256"]
   },

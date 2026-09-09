@@ -125,9 +125,12 @@ def load_integrated_suite(path: Path, model_ids=None) -> dict:
         raise ValueError("Invalid AdaptiveTree suite section")
     if (adaptive_spec["temperature"] != 0
             or tuple(adaptive_spec["diagnostic_variants"]) != DIAGNOSTICS
-            or adaptive_spec["greedy_audit_policy"] != "strict"
+            or adaptive_spec["greedy_audit_policy"] != "record-bf16-mismatches"
             or adaptive_spec["method_order_policy"] != "balanced-rotation"):
-        raise ValueError("Integrated AdaptiveTree requires both diagnostics, strict tokens, and balanced order")
+        raise ValueError(
+            "Integrated AdaptiveTree requires both diagnostics, BF16 divergence recording, "
+            "and balanced order"
+        )
     block_spec = spec["block"]
     if (set(block_spec) != {"temperatures", "methods", "length", "tree_budget",
                             "probability_dtype", "method_order_policy"}
@@ -238,7 +241,8 @@ def audit_integrated_suite(path: Path, output: Path | None = None, model_ids=Non
         "checks":{
             "immutable_model_revisions":True,
             "adaptive_official_t0_protocol":True,
-            "adaptive_strict_token_gate":True,
+            "adaptive_token_divergence_recorded":True,
+            "adaptive_strict_lossless_claim_disabled":True,
             "adaptive_balanced_method_positions":True,
             "adaptive_primary_table_same_target_backend_sdpa":True,
             "block_same_target_and_draft_backend_sdpa":True,
@@ -249,6 +253,11 @@ def audit_integrated_suite(path: Path, output: Path | None = None, model_ids=Non
         },
         "claim_boundaries":{
             "adaptive_t0_primary":"same-backend SDPA Target/DFlash/DDTree/AdaptiveTree only",
+            "adaptive_t0_output_control":(
+                "all-response performance includes pairwise exact-output rates; exact-output "
+                "subset speed is a selection-biased diagnostic only"
+            ),
+            "adaptive_strict_lossless_claim_allowed":False,
             "adaptive_best_backend":"auxiliary table only; never mixed into the primary architecture table",
             "stochastic_block":"T=0.3/0.6/1.0 within one SDPA/SDPA engine",
             "cross_protocol_speedup_pooling_allowed":False,
@@ -411,6 +420,10 @@ def plan_integrated_suite(path: Path, model_ids=None) -> dict:
             "generation_calls":adaptive_calls,
             "diagnostics":list(DIAGNOSTICS),
             "primary_backend":"sdpa",
+            "greedy_audit_policy":suite["spec"]["adaptive"]["greedy_audit_policy"],
+            "strict_lossless_claim_allowed":False,
+            "all_response_table_includes_pairwise_exact_output_rates":True,
+            "exact_output_subset_table_is_selection_biased_diagnostic":True,
             "method_order_policy":"balanced-rotation",
         },
         "stochastic_block":{
@@ -473,7 +486,8 @@ def run_integrated_suite(path: Path, adaptive_data_dir: Path, block_data_dir: Pa
                   "--data-dir", str(adaptive_data_dir.resolve()),
                   "--run-dir", str(run_dir), "--nproc-per-node", "1",
                   "--model-index", str(model["adaptive_model_index"]),
-                  "--greedy-audit-policy", "strict",
+                  "--greedy-audit-policy",
+                  suite["spec"]["adaptive"]["greedy_audit_policy"],
                   "--method-order-policy", "balanced-rotation",
                   "--experimental-cost-attribution", "--experimental-extended-budgets"]
         _run_command(adaptive_base + ["evaluate", *common],
@@ -506,6 +520,9 @@ def run_integrated_suite(path: Path, adaptive_data_dir: Path, block_data_dir: Pa
     result = {"study":STUDY, "complete":True,
               "model_ids":[model["id"] for model in suite["models"]],
               "fairness_gate_passed":integrated_report["fairness_gate_passed"],
+              "strict_lossless_gate_passed":integrated_report[
+                  "strict_lossless_gate_passed"
+              ],
               "fairness_audit":"fairness_audit.json",
               "adaptive_results":"adaptive/*_diagnostic/tables.json",
               "block_results":"block/*/report/summary.json",
@@ -552,6 +569,7 @@ def report_integrated_suite(path: Path, run_dir: Path, output: Path,
     suite = load_integrated_suite(path, model_ids)
     audit = audit_integrated_suite(path, model_ids=model_ids)
     adaptive_rows = []
+    adaptive_exact_subset_rows = []
     adaptive_auxiliary_rows = []
     block_rows = []
     gates = {}
@@ -562,17 +580,25 @@ def report_integrated_suite(path: Path, run_dir: Path, output: Path,
         numerical = adaptive.get("numerical_audit", {})
         controlled = adaptive.get("controlled_same_backend_rows", [])
         adaptive_gate = (
-            adaptive.get("controlled_comparison_gate_passed") is True
-            and adaptive.get("greedy_audit_policy") == "strict"
+            adaptive.get("controlled_protocol_gate_passed") is True
+            and adaptive.get("greedy_audit_policy") ==
+                suite["spec"]["adaptive"]["greedy_audit_policy"]
             and adaptive.get("method_order_policy") == "balanced-rotation"
-            and numerical.get("mismatching_responses") == 0
+            and numerical.get("responses") ==
+                numerical.get("exact_responses", 0) + numerical.get("mismatching_responses", 0)
             and controlled
             and all(row.get("target_baseline_backend") == "sdpa"
-                    and row.get("method_backend") == "sdpa" for row in controlled)
+                    and row.get("method_backend") == "sdpa"
+                    and 0 <= row.get("exact_output_rate", -1) <= 1
+                    for row in controlled)
         )
         if not adaptive_gate:
             raise ValueError(f"AdaptiveTree fairness gate failed for {model_id}")
         adaptive_rows.extend({"model_id":model_id, **row} for row in controlled)
+        adaptive_exact_subset_rows.extend(
+            {"model_id":model_id, **row}
+            for row in adaptive.get("controlled_exact_output_subset_rows", [])
+        )
         adaptive_auxiliary_rows.extend(
             {"model_id":model_id, **row} for row in adaptive.get("rows", [])
         )
@@ -591,19 +617,36 @@ def report_integrated_suite(path: Path, run_dir: Path, output: Path,
         if len(rows) != len(model["config"]["datasets"]) * len(expected_variants):
             raise ValueError(f"Incomplete block summary for {model_id}")
         block_rows.extend({"model_id":model_id, **row} for row in rows)
-        gates[model_id] = {"adaptive_same_backend_strict_balanced":True,
-                           "block_complete_balanced":order_audit["passed"]}
+        gates[model_id] = {
+            "adaptive_same_backend_balanced_divergence_audited":True,
+            "block_complete_balanced":order_audit["passed"],
+            "adaptive_strict_lossless":(
+                adaptive.get("greedy_audit_policy") == "strict"
+                and numerical.get("mismatching_responses") == 0
+            ),
+        }
 
+    comparison_keys = (
+        "adaptive_same_backend_balanced_divergence_audited",
+        "block_complete_balanced",
+    )
     result = {
         "study":STUDY,
-        "fairness_gate_passed":all(all(values.values()) for values in gates.values()),
+        "fairness_gate_passed":all(
+            all(values[key] for key in comparison_keys) for values in gates.values()
+        ),
+        "strict_lossless_gate_passed":all(
+            values["adaptive_strict_lossless"] for values in gates.values()
+        ),
         "gates":gates,
         "fairness_audit":audit,
         "primary_tables":{
-            "adaptive_t0_same_backend_sdpa":adaptive_rows,
+            "adaptive_t0_same_backend_sdpa_with_exact_output_rates":adaptive_rows,
             "stochastic_block_t_positive_sdpa":block_rows,
         },
         "auxiliary_tables":{
+            "adaptive_t0_pairwise_exact_output_subset_selection_biased":
+                adaptive_exact_subset_rows,
             "adaptive_t0_best_available_backend_not_for_architecture_claims":
                 adaptive_auxiliary_rows,
         },
@@ -613,6 +656,7 @@ def report_integrated_suite(path: Path, run_dir: Path, output: Path,
     write_json(output / "integrated_results.json", result)
     for filename, rows in (
             ("adaptive_t0_controlled_sdpa.csv", adaptive_rows),
+            ("adaptive_t0_exact_output_subset_diagnostic.csv", adaptive_exact_subset_rows),
             ("adaptive_t0_best_backend_auxiliary.csv", adaptive_auxiliary_rows),
             ("stochastic_block_t_positive_sdpa.csv", block_rows)):
         if not rows:
@@ -621,20 +665,30 @@ def report_integrated_suite(path: Path, run_dir: Path, output: Path,
             writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
             writer.writeheader()
             writer.writerows(rows)
+    def fmt(value):
+        return "--" if value is None else f"{value:.4f}"
+
     lines = ["# AdaptiveTree 与块解码：公平实验汇总", "",
-             "所有主表均已通过同 revision、同后端、完整性、均衡顺序和正确性门禁。",
+             "所有主表均已通过同 revision、同后端、完整性、均衡顺序和差异审计门禁。",
+             "T=0 的 BF16 输出差异被保留并逐方法报告；本报告不声称严格无损。",
              "T=0 与 T>0 属于不同协议，禁止汇总成一个跨协议加速比。", ""]
-    lines += ["## T=0 主表：统一 SDPA 后端", "",
-              "| 模型 | 数据集 | 方法 | 相对 Target | 相对最佳 DDTree | 接受长度 |",
-              "|---|---|---|---:|---:|---:|"]
+    lines += ["## T=0 主表：统一 SDPA 后端（全样本，非无损声明）", "",
+              "| 模型 | 数据集 | 方法 | 相对 Target | 相对最佳 DDTree | 接受长度 | 精确输出率 |",
+              "|---|---|---|---:|---:|---:|---:|"]
     lines += [f"| {row['model_id']} | {row['dataset']} | {row['method']} | "
               f"{row['speedup_vs_target']:.4f}× | {row['speedup_vs_best_ddtree']:.4f}× | "
-              f"{row['mean_acceptance_length']:.3f} |" for row in adaptive_rows]
+              f"{row['mean_acceptance_length']:.3f} | {row['exact_output_rate']:.2%} |"
+              for row in adaptive_rows]
+    lines += ["", "## T=0 完全相同输出配对子集（选择偏差诊断）", "",
+              "| 模型 | 数据集 | 方法 | 相同输出数/总数 | 子集相对 Target |",
+              "|---|---|---|---:|---:|"]
+    lines += [f"| {row['model_id']} | {row['dataset']} | {row['method']} | "
+              f"{row['exact_output_responses']}/{row['responses']} | "
+              f"{fmt(row['exact_subset_speedup_vs_target'])}× |"
+              for row in adaptive_exact_subset_rows]
     lines += ["", "## T>0 主表：统一 SDPA/SDPA", "",
               "| 模型 | 数据集 | 温度 | 方法 | Decode tok/s | 相对 Target | 95% CI |",
               "|---|---|---:|---|---:|---:|---:|"]
-    def fmt(value):
-        return "--" if value is None else f"{value:.4f}"
     lines += [f"| {row['model_id']} | {row['dataset']} | {row['temperature']:.1f} | "
               f"{row['variant']} | {fmt(row['decode_tps'])} | {fmt(row['speedup_vs_ar'])}× | "
               f"[{fmt(row['speedup_ci_low'])}, {fmt(row['speedup_ci_high'])}] |"

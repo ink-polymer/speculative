@@ -17,7 +17,12 @@ T=0 与 T>0 的数据矩阵、随机性和 Draft 注意力后端不同，因此�
 - Draft 固定 FA2；公平主表中的 Target、DFlash、DDTree、AdaptiveTree 全部取 Target=SDPA 的同后端结果。
 - 上游“各方法选择最佳后端”的表仍会生成，但只标为辅助表，不用于架构优劣结论。
 - 每个回答对方法顺序做确定性的循环轮换；完整循环中每个方法占据每个计时位置的次数相同，尾部差最多 1。
-- 使用 `strict` 逐 token 门禁；任何方法与 Target-only 输出不一致即停止，不写成功结论。
+- 使用 `record-bf16-mismatches` 保存每个回答的逐方法差异；全样本同后端表必须同时报告
+  每个方法相对 Target-only 的完全相同输出数与比例，禁止称为“严格无损”。
+- 另生成逐方法完全相同输出的配对子集表，用来诊断输出内容对耗时的影响；该子集是结果后
+  选择，必须标记选择偏差，不能作为总体加速比估计或替代全样本表。
+- `strict_lossless_gate` 与协议公平门禁分开保存。只要任一回答有差异，前者就是 false；
+  不允许因为代码、数据、后端和顺序公平就推导出无损结论。
 - 修正后的 `cost_attributed_no_exploration` 与扩展到 B=256 的诊断同时运行，B=128 是 B=256 的同进程对照。
 
 ### T>0 块解码
@@ -29,7 +34,12 @@ T=0 与 T>0 的数据矩阵、随机性和 Draft 注意力后端不同，因此�
 - GPU 预检先在 T=0 检查真实 checkpoint 的贪心输出、树掩码和 KV 压缩；不通过则禁止正式计时。
 - T>0 的质量使用相同任务评分器；速度使用逐题配对 Target 和以 `source_id` 为簇的 bootstrap 置信区间。
 
-这些门禁能保证代码和协议层面的可比性，但不能把有限样本或单一 GPU 型号变成普适结论。正式表仍需报告 GPU、CUDA、库版本、置信区间和完整性状态。
+这些门禁能保证代码和协议层面的可比性，但不能把有限样本、单一 GPU 型号或 BF16 下不同
+调用形状的输出差异变成无损结论。H20 预检曾在 8B 第一个 GSM8K 样本定位到一个稳定的
+近并列：单 token SDPA 对两个候选的 logits 为 39.75/39.50，16-token 验证为 39.50/39.50，
+最大差 0.25。math SDPA 会反转选择方向而不会消除形状差异，因此正式运行保留并报告所有
+差异，不把它们一概归类为无害数值误差。正式表仍需报告 GPU、CUDA、库版本、置信区间和
+完整性状态。
 
 ## 使用方式
 
@@ -123,7 +133,8 @@ PYTHONPATH=src python -m gbv_experiments report-integrated-suite \
 主要产物：
 
 - `fairness_audit.json`：运行前的模型、后端、方法参数与源码审计。
-- `adaptive/*_diagnostic/tables_controlled_sdpa.csv`：T=0 同后端主表。
+- `adaptive/*_diagnostic/tables_controlled_sdpa.csv`：T=0 同后端全样本表，含逐方法精确输出率。
+- `adaptive/*_diagnostic/tables_exact_output_subset_diagnostic.csv`：T=0 完全相同输出配对子集诊断。
 - `adaptive/*_diagnostic/tables.csv`：T=0 最佳后端辅助表。
 - `block/*/report/summary.csv`：T>0 各温度逐数据集表。
 - `report/integrated_results.md`：通过全部门禁后的统一并列表格。
