@@ -11,4 +11,5 @@ packaging==25.0
 loguru==0.7.3
 ninja>=1.11
 typing-extensions>=4.10
+wandb==0.26.1
 # Install a flash-attn wheel matching the server's PyTorch/CUDA build separately.

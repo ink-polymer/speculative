@@ -55,6 +55,11 @@ def test_official_matrix_is_extracted_from_pinned_script_and_cli(capsys):
     assert extended["generation_calls"] == 62208
     assert extended["diagnostic_variants"] == [
         COST_ATTRIBUTED_VARIANT, EXTENDED_BUDGET_VARIANT]
+    main(["plan", "--wandb-project", "adaptive-test", "--wandb-group", "test-group"])
+    monitored = json.loads(capsys.readouterr().out)
+    assert monitored["wandb"] == {
+        "project":"adaptive-test", "entity":None, "group":"test-group"}
+    assert "WANDB_API_KEY" not in json.dumps(monitored)
 
 
 def test_source_integrity_and_original_builder_byte_identity():

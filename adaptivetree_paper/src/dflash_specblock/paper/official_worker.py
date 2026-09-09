@@ -12,6 +12,7 @@ from .controller import (DIAGNOSTIC_VARIANTS, make_paper_builder,
 from .official_data import check_manifest
 from .official_spec import BUDGETS, LIMITS, MODELS, upstream
 from .official_audit import gpu_identity, validate_hardware
+from .wandb_monitor import finish_wandb, initialize_wandb, log_response, wandb_contract
 
 
 def method_names(backend, variants, diagnostic_variants=()):
@@ -114,7 +115,22 @@ def worker(args, config):
     methods = method_names(args.backend, config["variants"], diagnostic_variants)
     controllers = {name: make_paper_builder(config["adaptive"], name)
                    for name in controller_names} if args.backend == "sdpa" else {}
+    diagnostic_builders = {
+        name:controllers.get(name) or make_paper_builder(config["adaptive"], name)
+        for name in diagnostic_variants
+    }
+    diagnostic_controller_configs = {
+        name:{"budget_candidates":list(builder.budget_candidates),
+              "maximum_draft_nodes":builder.tree_budget,
+              "timing_partition":builder.timing_partition,
+              "controller_variant":builder.variant}
+        for name,builder in diagnostic_builders.items()
+    }
     audit_policy = getattr(args, "greedy_audit_policy", "strict")
+    wandb_run = initialize_wandb(
+        args, model_name=target_name, draft_name=draft_name, backend=args.backend,
+        rank=rank, world_size=world, diagnostic_variants=diagnostic_variants,
+        controller_configs=diagnostic_controller_configs)
 
     def generate(ids, method, max_tokens):
         kwargs = dict(model=draft, target=target, input_ids=ids,
@@ -150,6 +166,7 @@ def worker(args, config):
             audit = audit_response(response, index=idx, turn=turn, input_ids=ids,
                 diagnostic_path=args.output.with_name(args.output.stem + f".rank{rank}.mismatch.json"),
                 policy=audit_policy)
+            log_response(wandb_run, response, step=len(responses), index=idx, turn=turn)
             # Adding ablations must NOT change the official multi-turn conditioning:
             # SDPA uses the last original DDTree budget (1024); FA2 uses DFlash.
             history_method = "ddtree_tb1024" if args.backend == "sdpa" else "dflash"
@@ -161,9 +178,11 @@ def worker(args, config):
     hardware = {**gpu_identity(device, rank), "flash_attn":getattr(flash_attn, "__version__", "unknown")}
     validate_hardware([hardware], environment, world)
     hardware = u.dist.all_gather(hardware)
+    local_responses = responses
     if world > 1:
         gathered = u.dist.gather(responses, dst=0)
         if not u.dist.is_main():
+            finish_wandb(wandb_run, local_responses, methods)
             return
         responses = [item for group in gathered for item in group]
     run_data = {"responses":responses, "block_size":block_size,
@@ -179,19 +198,11 @@ def worker(args, config):
                 "greedy_audit_policy":audit_policy,
                 "adaptive_timing":"proposal+build; compile+verify+KV/commit; all controller overhead included in official decode timer",
                 "substage_note":"Adaptive fine-grained tree_build_* attribution unavailable; use aggregate tree_build"}
+    if wandb_contract(args):
+        run_data["wandb"] = wandb_contract(args)
     if diagnostic_variants:
         run_data["diagnostic_variants"] = list(diagnostic_variants)
-        diagnostic_builders = {
-            name:controllers.get(name) or make_paper_builder(config["adaptive"], name)
-            for name in diagnostic_variants
-        }
-        run_data["diagnostic_controllers"] = {
-            name:{"budget_candidates":list(builder.budget_candidates),
-                  "maximum_draft_nodes":builder.tree_budget,
-                  "timing_partition":builder.timing_partition,
-                  "controller_variant":builder.variant}
-            for name,builder in diagnostic_builders.items()
-        }
+        run_data["diagnostic_controllers"] = diagnostic_controller_configs
         run_data["diagnostic_timing"] = (
             "proposal is fixed; build+compile+verify+KV/commit is attributed "
             "to the selected budget"
@@ -209,3 +220,4 @@ def worker(args, config):
         "identity":args.identity, "sha256":file_hash(args.output), "turns":expected_turns,
         "cases":len(rows), "methods":methods, "smoke":bool(args.smoke_count),
         "greedy_audit_policy":audit_policy})
+    finish_wandb(wandb_run, responses, methods)

@@ -23,6 +23,7 @@ dependencies = [
 
 [project.optional-dependencies]
 test = ["pytest>=7.4", "ruff>=0.6"]
+monitor = ["wandb==0.26.1"]
 
 [project.scripts]
 dflash-specblock = "dflash_specblock.cli:main"

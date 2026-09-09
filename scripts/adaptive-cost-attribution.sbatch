@@ -17,6 +17,8 @@ test -f "$FUYILE_ROOT/logs/adaptive-record-validated.txt"
 fuyile_load_gpu_toolchain
 : "${ADAPTIVE_MODEL_INDEX:?Set ADAPTIVE_MODEL_INDEX to 0 (Qwen3-4B) or 1 (Qwen3-8B)}"
 : "${ADAPTIVE_SOURCE:?Set ADAPTIVE_SOURCE to the immutable source worktree}"
+: "${WANDB_API_KEY:?Set WANDB_API_KEY in the submitted job environment; never put it in source code}"
+WANDB_PROJECT="${WANDB_PROJECT:-adaptivetree}"
 ADAPTIVE_SMOKE_COUNT="${ADAPTIVE_SMOKE_COUNT:-2}"
 case "$ADAPTIVE_MODEL_INDEX" in
   0) MODEL_TAG=4b ;;
@@ -37,6 +39,9 @@ cd "$ADAPTIVE_SOURCE/adaptivetree_paper"
 export PATH="$FUYILE_ROOT/envs/adaptive/bin:$PATH"
 export PAPER_PYTHON="$FUYILE_ROOT/envs/adaptive/bin/python"
 export PYTHONPATH="$PWD/src"
+export WANDB_DISABLE_CODE=true
+export WANDB_DISABLE_GIT=true
+export WANDB_CONSOLE=off
 trap 'rc=$?; printf "%s model=%s run_dir=%s exit_code=%s\n" "$(date -Is)" "$MODEL_TAG" "$RUN_DIR" "$rc" > "$FUYILE_ROOT/logs/adaptive-b256-${SLURM_JOB_ID}.status"' EXIT
 
 arguments=(
@@ -46,9 +51,14 @@ arguments=(
   --model-index "$ADAPTIVE_MODEL_INDEX"
   --nproc-per-node 1
   --greedy-audit-policy record-bf16-mismatches
+  --wandb-project "$WANDB_PROJECT"
+  --wandb-group "adaptive-b256-${MODEL_TAG}-${SLURM_JOB_ID}"
   --data-dir "$FUYILE_ROOT/data/adaptive"
   --run-dir "$RUN_DIR"
 )
+if [[ -n "${WANDB_ENTITY:-}" ]]; then
+  arguments+=(--wandb-entity "$WANDB_ENTITY")
+fi
 if (( ADAPTIVE_SMOKE_COUNT > 0 )); then
   arguments+=(--smoke-count "$ADAPTIVE_SMOKE_COUNT")
 fi

@@ -28,7 +28,7 @@ def worker_fixture(tmp_path, monkeypatch):
     return args, config
 
 
-@pytest.mark.parametrize("change",["code","source","data","model","dataset","nproc","smoke","world","output","hash"])
+@pytest.mark.parametrize("change",["code","source","data","model","dataset","nproc","smoke","world","output","wandb","hash"])
 def test_worker_rejects_stale_or_misrouted_parent_contract(tmp_path,monkeypatch,change):
     args, config = worker_fixture(tmp_path,monkeypatch)
     official_audit.validate_worker_contract(args,config)
@@ -41,6 +41,7 @@ def test_worker_rejects_stale_or_misrouted_parent_contract(tmp_path,monkeypatch,
     elif change == "smoke": args.smoke_count = 2
     elif change == "world": monkeypatch.setenv("WORLD_SIZE","2")
     elif change == "output": args.output = tmp_path/"different-model.pt"
+    elif change == "wandb": args.wandb_project = "uncontracted-project"
     elif change == "hash":
         recorded = load_json(tmp_path/"contract.json")
         recorded["metadata"]["code_identity"] = "changed-without-new-hash"

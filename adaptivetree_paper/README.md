@@ -69,6 +69,26 @@ CUDA_VISIBLE_DEVICES=0 bash scripts/run_paper_t0_full.sh all \
 记录各预算选择次数、`>128` 占比和命中候选上限的占比。只有当更大的接受收益覆盖
 额外构树、编译、Target 验证与 KV/commit 成本时，控制器才会持续选择更大预算。
 
+### W&B 在线监控
+
+W&B 是可选依赖；`requirements-paper.txt` 已固定版本。密钥只从作业环境中的
+`WANDB_API_KEY` 读取，绝不能写入配置、命令行参数或仓库。交互式安全输入后再提交：
+
+```bash
+read -rsp 'WANDB API key: ' WANDB_API_KEY && printf '\n'
+export WANDB_API_KEY
+export WANDB_PROJECT=adaptivetree
+export ADAPTIVE_MODEL_INDEX=0  # 另提交一次 1，即 Qwen3-8B
+sbatch --export=ALL ../scripts/adaptive-cost-attribution.sbatch
+unset WANDB_API_KEY
+```
+
+每个 GPU rank 建立一个同组 run，实时记录逐回答 decode TPOT、tokens/s、相对本次
+Target 的加速比、接受长度、阶段耗时，以及 AdaptiveTree 的预算均值/最大值和
+`>128` 轮次占比；不上传 prompt 或生成 token。也可直接给入口传入
+`--wandb-project PROJECT [--wandb-entity ENTITY] [--wandb-group GROUP]`。为减少对延迟
+实验的扰动，入口关闭 W&B 的后台系统指标、系统元数据和代码采集，只上传上述显式指标。
+
 ## 本地检查与历史结果
 
 ```bash

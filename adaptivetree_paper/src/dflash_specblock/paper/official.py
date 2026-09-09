@@ -13,6 +13,7 @@ from .common import ROOT, atomic_json, code_identity, contract, load_json, run_l
 from .official_data import check_manifest, prepare
 from .official_spec import LIMITS, MODELS, PINNED_MODEL_REVISIONS, load_config, verify_sources
 from .controller import selected_diagnostic_variants
+from .wandb_monitor import wandb_contract
 
 
 def plan(config, model_indices, datasets, smoke_count, nproc,
@@ -82,6 +83,10 @@ def main(argv=None):
                         help="add a diagnostic no-exploration controller with budget-aware tree-build cost")
     parser.add_argument("--experimental-extended-budgets", action="store_true",
                         help="add cost-attributed B=128 and extended B=256 diagnostic controllers")
+    parser.add_argument("--wandb-project",
+                        help="stream non-secret progress metrics to this W&B project")
+    parser.add_argument("--wandb-entity", help="optional W&B entity/team")
+    parser.add_argument("--wandb-group", help="optional W&B run group")
     args = parser.parse_args(argv)
     config = load_config(args.config)
     if args.nproc_per_node < 1 or args.smoke_count < 0:
@@ -92,6 +97,7 @@ def main(argv=None):
         cost_attribution=args.experimental_cost_attribution,
         extended_budgets=args.experimental_extended_budgets,
     )
+    wandb_settings = wandb_contract(args)
     if diagnostic_variants and "diagnostic" not in args.run_dir.name.lower():
         parser.error("Experimental AdaptiveTree variants require a separate run directory containing 'diagnostic'")
     if args.stage == "worker":
@@ -105,9 +111,12 @@ def main(argv=None):
     models = [args.model_index] if args.model_index is not None else list(range(len(MODELS)))
     datasets = [args.dataset] if args.dataset else list(LIMITS)
     if args.stage == "plan":
-        print(json.dumps(plan(config, models, datasets, args.smoke_count,
-                              args.nproc_per_node, args.experimental_cost_attribution,
-                              args.experimental_extended_budgets),
+        result = plan(config, models, datasets, args.smoke_count,
+                      args.nproc_per_node, args.experimental_cost_attribution,
+                      args.experimental_extended_budgets)
+        if wandb_settings:
+            result["wandb"] = wandb_settings
+        print(json.dumps(result,
                          ensure_ascii=False, indent=2))
         return
     if args.stage == "doctor":
@@ -127,6 +136,8 @@ def main(argv=None):
                 "greedy_audit_policy":audit_policy}
     if diagnostic_variants:
         metadata["diagnostic_variants"] = list(diagnostic_variants)
+    if wandb_settings:
+        metadata["wandb"] = wandb_settings
     with run_lock(args.run_dir):
         identity = contract(args.run_dir, metadata)
     from .official_reporting import load_completed, run_stem, summarize, validate_run_contract
@@ -148,7 +159,8 @@ def main(argv=None):
                         run = load_completed(output,identity)
                         validate_run_contract(run, load_json(args.data_dir/"source_revisions.json"),
                                               args.nproc_per_node,args.smoke_count,env,audit_policy,
-                                              metadata.get("diagnostic_variants", ()))
+                                              metadata.get("diagnostic_variants", ()),
+                                              metadata.get("wandb"))
                         continue
                     if output.exists():
                         raise FileExistsError("Incomplete artifact exists; use a new run directory, not silent overwrite")
@@ -162,6 +174,12 @@ def main(argv=None):
                         worker_args.append("--experimental-cost-attribution")
                     if args.experimental_extended_budgets:
                         worker_args.append("--experimental-extended-budgets")
+                    if args.wandb_project:
+                        worker_args += ["--wandb-project", args.wandb_project]
+                    if args.wandb_entity:
+                        worker_args += ["--wandb-entity", args.wandb_entity]
+                    if args.wandb_group:
+                        worker_args += ["--wandb-group", args.wandb_group]
                     if args.nproc_per_node == 1:
                         command = [sys.executable,*worker_args]
                     else:

@@ -36,7 +36,8 @@ def load_completed(path, identity):
 
 
 def validate_run_contract(run, source_lock, nproc, smoke_count, environment,
-                          greedy_audit_policy="strict", diagnostic_variants=()):
+                          greedy_audit_policy="strict", diagnostic_variants=(),
+                          wandb_settings=None):
     maximum = 32 if smoke_count else 2048
     args = run["args"]
     if (run["source_lock"] != source_lock or run["world_size"] != nproc
@@ -46,6 +47,7 @@ def validate_run_contract(run, source_lock, nproc, smoke_count, environment,
             or args["flash_attn"] != (run["target_attn_implementation"] == "flash_attention_2")
             or run.get("greedy_audit_policy", "strict") != greedy_audit_policy
             or run.get("diagnostic_variants", []) != list(diagnostic_variants)
+            or run.get("wandb") != wandb_settings
             or len(run["hardware"]) != nproc
             or {h["rank"] for h in run["hardware"]} != set(range(nproc))):
         raise ValueError("Run source, hardware or generation settings differ from contract")
@@ -199,7 +201,8 @@ def summarize(directory, data_dir, config, identity, model_indices, datasets, sm
                     for backend in ("sdpa", "flash_attention_2")]
             for run in runs:
                 validate_run_contract(run, source_lock, metadata["nproc_per_node"], smoke_count,
-                                      environment, audit_policy, diagnostic_variants)
+                                      environment, audit_policy, diagnostic_variants,
+                                      metadata.get("wandb"))
             audit_stats.append(validate_pair(*runs, dataset, model_index, variants,
                                              expected, audit_policy))
             for method in diagnostic_variants:

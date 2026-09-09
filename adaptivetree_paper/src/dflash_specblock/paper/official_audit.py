@@ -7,6 +7,7 @@ from .common import code_identity, digest, load_json
 from .official_data import check_manifest
 from .official_spec import verify_sources
 from .controller import selected_diagnostic_variants
+from .wandb_monitor import wandb_contract
 
 
 def validate_worker_contract(args, config):
@@ -29,6 +30,7 @@ def validate_worker_contract(args, config):
             or metadata.get("greedy_audit_policy", "strict")
                != getattr(args, "greedy_audit_policy", "strict")
             or metadata.get("diagnostic_variants", []) != expected_diagnostics
+            or metadata.get("wandb") != wandb_contract(args)
             or int(os.environ.get("WORLD_SIZE", "1")) != args.nproc_per_node):
         raise ValueError("Worker code/data/model scope differs from the parent contract")
     from .official_reporting import run_stem
