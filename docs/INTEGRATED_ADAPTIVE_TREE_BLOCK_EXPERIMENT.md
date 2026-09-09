@@ -58,6 +58,15 @@ docker build -t gbv-code-eval:py311 experiments/gbv_paper
 `CODE_BACKEND=process`。Linux root 作业的 process worker 会在编译、执行模型代码前不可逆地
 降到 uid/gid 65534，并启用 `no_new_privs`、资源限制和清理后的环境变量。它不等价于禁网容器，
 只应在无密钥、专用于本实验的实例中使用；评分清单会记录实际后端，不得把不同后端的评分混合。
+root 作业还必须通过 `GBV_PROCESS_PYTHON` 指定一个位于 `/root` 之外、对降权用户可读的独立
+Python 3.11 解释器；该环境只需标准库和固定版本的 NumPy，不应放入模型或账户凭据。
+
+```bash
+conda create -y -p /opt/gbv-code-eval python=3.11 pip
+/opt/gbv-code-eval/bin/pip install numpy==2.2.6
+export GBV_PROCESS_PYTHON=/opt/gbv-code-eval/bin/python
+export CODE_BACKEND=process
+```
 
 先执行环境与协议检查，再用新目录后台启动：
 

@@ -90,7 +90,15 @@ def run_sandbox(files, arguments, backend, timeout, image="gbv-code-eval:py311",
                        "-v", f"{tmp}:/work", "-w", "/work", image,
                        "python", "-I", "worker.py", *arguments]
         elif backend == "process":
-            command = [sys.executable, "-I", "worker.py", *arguments]
+            process_python = os.environ.get("GBV_PROCESS_PYTHON", sys.executable)
+            if os.name == "posix" and os.geteuid() == 0:
+                resolved = Path(process_python).resolve()
+                if resolved == Path("/root") or Path("/root") in resolved.parents:
+                    raise RuntimeError(
+                        "Root process evaluation requires GBV_PROCESS_PYTHON outside /root "
+                        "so the dropped worker can import the standard library"
+                    )
+            command = [process_python, "-I", "worker.py", *arguments]
         else:
             raise ValueError(f"Unknown code backend: {backend}")
         # No model credentials are forwarded to generated code.

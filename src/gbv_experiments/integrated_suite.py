@@ -304,12 +304,27 @@ def doctor_integrated_suite(path: Path, output: Path | None = None,
     if compiler is None:
         raise RuntimeError("A C++ compiler is required for official DDTree cache compaction")
     docker_image = None
+    code_evaluator_python = None
     if code_backend == "docker":
         docker_image = subprocess.check_output(
             ["docker", "image", "inspect", "gbv-code-eval:py311", "--format", "{{.Id}}"],
             text=True,
         ).strip()
-    elif code_backend != "process":
+    elif code_backend == "process":
+        code_evaluator_python = str(Path(os.environ.get(
+            "GBV_PROCESS_PYTHON", sys.executable
+        )).resolve())
+        if os.name == "posix" and os.geteuid() == 0:
+            resolved = Path(code_evaluator_python)
+            if resolved == Path("/root") or Path("/root") in resolved.parents:
+                raise RuntimeError(
+                    "Root process evaluation requires GBV_PROCESS_PYTHON outside /root"
+                )
+        subprocess.run(
+            [code_evaluator_python, "-I", "-c", "import numpy; print(numpy.__version__)"],
+            check=True, stdout=subprocess.DEVNULL,
+        )
+    else:
         raise ValueError("Unknown code scoring backend")
     result = {
         "passed":True,
@@ -324,6 +339,7 @@ def doctor_integrated_suite(path: Path, output: Path | None = None,
         "flash_attn":getattr(flash_attn, "__version__", "unknown"),
         "compiler":compiler,
         "code_backend":code_backend,
+        "code_evaluator_python":code_evaluator_python,
         "code_isolation":(
             "Docker: network disabled, all capabilities dropped, no-new-privileges"
             if code_backend == "docker" else
