@@ -125,3 +125,10 @@ def test_post_run_block_order_audit_requires_complete_rotations(tmp_path):
     )
     with pytest.raises(ValueError, match="complete balanced"):
         validate_block_order(tmp_path)
+
+
+def test_fresh_server_launcher_keeps_selected_python_helpers_on_path():
+    launcher = (ROOT / "scripts/run_integrated_fresh_server.sh").read_text()
+    assert 'PYTHON_RESOLVED="$(command -v "$PYTHON_BIN")"' in launcher
+    assert 'export PATH="$(dirname "$PYTHON_RESOLVED"):$PATH"' in launcher
+    assert 'PYTHON_BIN="$PYTHON_RESOLVED"' in launcher

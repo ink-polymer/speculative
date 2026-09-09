@@ -300,9 +300,39 @@ def doctor_integrated_suite(path: Path, output: Path | None = None,
     flash_attn = importlib.import_module("flash_attn")
     for module in ("ninja", "loguru"):
         importlib.import_module(module)
+    ninja_executable = shutil.which("ninja")
+    if ninja_executable is None:
+        raise RuntimeError(
+            "Ninja must be on PATH for the official DDTree C++ cache compaction extension"
+        )
+    ninja_version = subprocess.check_output(
+        [ninja_executable, "--version"], text=True
+    ).strip()
     compiler = shutil.which("c++") or shutil.which("g++")
     if compiler is None:
         raise RuntimeError("A C++ compiler is required for official DDTree cache compaction")
+    suite = load_integrated_suite(path)
+    adaptive_env = os.environ.copy()
+    adaptive_env["PYTHONPATH"] = str(suite["adaptive_root"] / "src")
+    compact_check = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "from dflash_specblock.paper.official_spec import upstream; "
+                "assert upstream().ddtree.load_cpp_compact_module() is not None"
+            ),
+        ],
+        cwd=suite["adaptive_root"],
+        env=adaptive_env,
+        text=True,
+        capture_output=True,
+    )
+    if compact_check.returncode:
+        detail = (compact_check.stderr or compact_check.stdout).strip()[-2000:]
+        raise RuntimeError(
+            f"Official DDTree C++ cache compaction preflight failed: {detail}"
+        )
     docker_image = None
     code_evaluator_python = None
     if code_backend == "docker":
@@ -337,6 +367,9 @@ def doctor_integrated_suite(path: Path, output: Path | None = None,
         "gpu_uuid":uuid,
         "gpu_memory_bytes":properties.total_memory,
         "flash_attn":getattr(flash_attn, "__version__", "unknown"),
+        "ninja_executable":ninja_executable,
+        "ninja_version":ninja_version,
+        "ddtree_cpp_compaction":True,
         "compiler":compiler,
         "code_backend":code_backend,
         "code_evaluator_python":code_evaluator_python,

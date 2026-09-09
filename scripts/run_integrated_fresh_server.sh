@@ -7,6 +7,12 @@ export PYTHONPATH="$REPOSITORY_ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
 
 MODE="${1:-plan}"
 PYTHON_BIN="${INTEGRATED_PYTHON:-python}"
+PYTHON_RESOLVED="$(command -v "$PYTHON_BIN")"
+# A venv's Python can be selected by absolute path while its helper binaries
+# (notably Ninja, required by the pinned DDTree C++ extension) remain absent
+# from PATH.  Keep the complete selected runtime together.
+export PATH="$(dirname "$PYTHON_RESOLVED"):$PATH"
+PYTHON_BIN="$PYTHON_RESOLVED"
 SUITE="${INTEGRATED_SUITE:-$REPOSITORY_ROOT/configs/adaptive_tree_block_suite.json}"
 RUN_DIR="${INTEGRATED_RUN_DIR:-$REPOSITORY_ROOT/outputs/integrated-adaptive-block-fresh}"
 ADAPTIVE_DATA_DIR="${ADAPTIVE_DATA_DIR:-$REPOSITORY_ROOT/adaptivetree_paper/datasets/ddtree_official_t0}"
