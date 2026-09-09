@@ -736,6 +736,103 @@ def tree_block_verify_terminal_mass(parents, tokens, all_p, generator=None,
     return nodes, output_tokens, int(bonus)
 
 
+def tree_verify_ancestral_lazy_projection(
+        parents, tokens, final_hidden, lm_head, temperature: float,
+        probability_dtype=torch.float64, generator=None, validate: bool = True):
+    """Apply the vocabulary head only to rows an exact tree walk can need.
+
+    Official DDTree projects and samples all ``B + 1`` verified tree rows.
+    A leaf row cannot influence which leaf is reached; it is needed only when
+    that particular leaf becomes the terminal node.  This verifier therefore
+    projects all internal rows as one efficient batch, performs the same
+    ancestral Target walk, and projects at most the one reached leaf on demand.
+
+    The output law is unchanged.  For ``I`` internal nodes and ``F`` leaves,
+    the vocabulary projection uses ``I + 1[terminal is a leaf]`` rows instead
+    of ``I + F``.  Its expected projected-row count is at most ``I + 1`` and is
+    strictly below DDTree whenever the finite tree has more than one leaf.
+    """
+    parents = list(parents)
+    tokens = list(tokens)
+    node_count = len(parents)
+    if (node_count < 1 or len(tokens) != node_count - 1
+            or final_hidden.ndim != 2 or final_hidden.shape[0] != node_count):
+        raise ValueError("Lazy-projection tree tensor shape mismatch")
+    if parents[0] != -1 or any(parent < 0 or parent >= node
+                               for node, parent in enumerate(parents[1:], 1)):
+        raise ValueError("Tree parents must precede their children")
+    if len(set(zip(parents[1:], tokens))) != len(tokens):
+        raise ValueError("A tree parent cannot repeat a child token")
+
+    internal_nodes = sorted(set(parents[1:]))
+    internal_lookup = {node: row for row, node in enumerate(internal_nodes)}
+    children = {
+        (parents[node], tokens[node - 1]): node
+        for node in range(1, node_count)
+    }
+    if not internal_nodes:
+        logits = lm_head(final_hidden[:1])[0]
+        p = probabilities(logits, temperature, probability_dtype)
+        if validate and not bool(torch.isfinite(p).all() & (p >= 0).all()
+                                 & (p.sum() > 0)):
+            raise FloatingPointError("Invalid lazy-projection leaf probabilities")
+        return [], [], int(sample(p, generator)), {
+            "internal_projected_rows": 0,
+            "leaf_projected_rows": 1,
+            "projected_rows": 1,
+            "total_tree_rows": 1,
+        }
+
+    device = final_hidden.device
+    internal_indices = torch.tensor(
+        internal_nodes, dtype=torch.long, device=device
+    )
+    internal_logits = lm_head(final_hidden.index_select(0, internal_indices))
+    internal_p = probabilities(
+        internal_logits, temperature, probability_dtype
+    )
+    vocab = internal_p.shape[-1]
+    if any(token < 0 or token >= vocab for token in tokens):
+        raise ValueError("Tree token is outside the Target vocabulary")
+    if validate:
+        valid = (torch.isfinite(internal_p).all() & (internal_p >= 0).all()
+                 & (internal_p.sum(-1) > 0).all())
+        if not bool(valid):
+            raise FloatingPointError("Invalid lazy-projection internal probabilities")
+
+    # Independent draws for unused internal rows can be discarded, exactly as
+    # in official DDTree.  Keeping them batched preserves GPU utilization.
+    posterior_tokens = sample(internal_p, generator).tolist()
+    nodes = []
+    output_tokens = []
+    node = 0
+    leaf_projected = 0
+    while node in internal_lookup:
+        bonus = int(posterior_tokens[internal_lookup[node]])
+        child = children.get((node, bonus))
+        if child is None:
+            break
+        node = child
+        nodes.append(node)
+        output_tokens.append(bonus)
+    else:
+        # Exactly one reached leaf needs a full-vocabulary Target row.
+        leaf_logits = lm_head(final_hidden[node:node + 1])[0]
+        leaf_p = probabilities(leaf_logits, temperature, probability_dtype)
+        if validate and not bool(torch.isfinite(leaf_p).all() & (leaf_p >= 0).all()
+                                 & (leaf_p.sum() > 0)):
+            raise FloatingPointError("Invalid lazy-projection leaf probabilities")
+        bonus = int(sample(leaf_p, generator))
+        leaf_projected = 1
+
+    return nodes, output_tokens, bonus, {
+        "internal_projected_rows": len(internal_nodes),
+        "leaf_projected_rows": leaf_projected,
+        "projected_rows": len(internal_nodes) + leaf_projected,
+        "total_tree_rows": node_count,
+    }
+
+
 def tree_verify_ancestral_batched(parents, tokens, all_p, generator=None,
                                   validate: bool = True):
     """Official DDTree posterior sampling: draw every verified row in one batch.

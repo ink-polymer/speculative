@@ -1,4 +1,4 @@
-"""Strict architecture-only screen of terminal-mass tree block verification."""
+"""Strict architecture-only screen of exact probability-tree samplers."""
 from __future__ import annotations
 
 import json
@@ -16,10 +16,18 @@ from gbv_experiments.fairness import assert_architecture_only_pair
 
 
 ROOT = Path(os.environ["FUYILE_ROOT"])
-SOURCE = ROOT / "src/gbv-optimized"
+SOURCE = Path(os.environ.get("GBV_STRICT_SOURCE", ROOT / "src/gbv-optimized"))
 RUN_SCHEMA = 24
 RUN_TAG = os.environ.get("GBV_STRICT_TAG", "tree-gbv-v24-terminal-mass")
-CANDIDATE_NAME = "ddtree_terminal_mass_block"
+CANDIDATE_NAME = os.environ.get(
+    "GBV_STRICT_CANDIDATE_NAME", "ddtree_terminal_mass_block"
+)
+CANDIDATE_METHOD = os.environ.get(
+    "GBV_STRICT_CANDIDATE_METHOD", "ddtree_terminal_block"
+)
+CONFIG = Path(os.environ.get(
+    "GBV_STRICT_CONFIG", SOURCE / "configs/gbv_paper_full.json"
+))
 OUTPUT = ROOT / "logs" / f"{RUN_TAG}-{os.environ['SLURM_JOB_ID']}.json"
 shared = runpy.run_path(str(ROOT / "scripts/benchmark-tree-gbv-v2.py"))
 summary = shared["summary"]
@@ -50,14 +58,14 @@ def summarize_runs(rows):
 
 @torch.inference_mode()
 def main():
-    cfg = load_config(SOURCE / "configs/gbv_paper_full.json")
+    cfg = load_config(CONFIG)
     baseline = Variant(
         name="ddtree", method="ddtree", paths=1, length=15,
         temperature=1.0, draft_temperature=1.0, tree_budget=45,
         probability_dtype="float64",
     )
     candidate = Variant(
-        name=CANDIDATE_NAME, method="ddtree_terminal_block", paths=1,
+        name=CANDIDATE_NAME, method=CANDIDATE_METHOD, paths=1,
         length=15, temperature=1.0, draft_temperature=1.0,
         tree_budget=45, probability_dtype="float64",
     )
@@ -76,7 +84,7 @@ def main():
     report = {
         "schema": RUN_SCHEMA,
         "complete": False,
-        "purpose": "strict terminal-mass block sampler versus official batched-posterior DDTree",
+        "purpose": "strict exact tree sampler versus official batched-posterior DDTree",
         "gpu": torch.cuda.get_device_name(engine.device),
         "torch": torch.__version__,
         "fairness": fairness,
@@ -89,10 +97,30 @@ def main():
             "same_expected_accepted_length": True,
             "same_seed_does_not_couple_realized_paths": True,
             "ddtree_posterior": "one batched categorical over every verified Target row",
-            "only_delta": "all-node batched posterior -> first-exit terminal-mass block draw",
-            "terminal_mass_implementation": "direct uncovered-mass sums, batched ancestor products",
-            "extra_temporary_memory": "O(internal_nodes * vocabulary + B * L)",
-            "probability_validation": "shared softmax; terminal kernel validate=False",
+            "only_delta": (
+                "all-node batched posterior -> exact persistent multi-SM ancestral tree walk"
+                if CANDIDATE_METHOD == "ddtree_fused_parallel"
+                else "all-node batched posterior -> exact persistent single-block ancestral tree walk"
+                if CANDIDATE_METHOD == "ddtree_fused"
+                else "eager all-row vocabulary projection -> batched internal rows plus one reached leaf"
+                if CANDIDATE_METHOD == "ddtree_lazy_projection"
+                else "all-node batched posterior -> first-exit terminal-mass block draw"
+            ),
+            "candidate_method": CANDIDATE_METHOD,
+            "terminal_mass_implementation": (
+                "direct uncovered-mass sums, batched ancestor products"
+                if CANDIDATE_METHOD.startswith("ddtree_terminal") else None
+            ),
+            "extra_temporary_memory": (
+                "O(cooperative_blocks + tree_depth)"
+                if CANDIDATE_METHOD == "ddtree_fused_parallel"
+                else "O(tree_depth)"
+                if CANDIDATE_METHOD == "ddtree_fused"
+                else "O(internal_nodes * vocabulary)"
+                if CANDIDATE_METHOD == "ddtree_lazy_projection"
+                else "O(internal_nodes * vocabulary + B * L)"
+            ),
+            "probability_validation": "shared FP64 probability rule; candidate kernel validate=False",
         },
         "validation": {},
         "runs": [],

@@ -22,8 +22,11 @@ from .sampling import (block_verify_batched, block_verify_sparse,
                        sample, select_and_reweight, select_greedy_path,
                        tree_block_verify_recycle,
                        tree_block_verify_terminal_mass,
+                       tree_verify_ancestral_lazy_projection,
                        tree_verify_ancestral_batched,
                        token_verify)
+from .fused_tree_sampling import (tree_verify_ancestral_fused,
+                                  tree_verify_ancestral_fused_parallel)
 from .tree import (adaptive_path_proposal, adaptive_prefix_proposal,
                    budgeted_prefix_proposal, compact_cache, probability_tree,
                    sampled_tree)
@@ -50,6 +53,8 @@ FINITE_TREE_METHODS.update(RECYCLE_TREE_METHODS)
 TERMINAL_TREE_METHODS = {
     "ddtree_terminal_block", "ddtree_terminal_serial", "ddtree_terminal_dense",
 }
+FUSED_TREE_METHODS = {"ddtree_fused", "ddtree_fused_parallel"}
+LAZY_HEAD_TREE_METHODS = {"ddtree_lazy_projection"}
 
 
 class StageMeter:
@@ -154,6 +159,18 @@ class Engine:
         if last_only:
             kwargs["logits_to_keep"] = 1
         return self.target(**kwargs)
+
+    def target_hidden_forward(self, ids, cache, *, positions=None, mask=None):
+        """Run the Target transformer without eagerly applying its LM head."""
+        kwargs = dict(
+            input_ids=ids, past_key_values=cache, use_cache=True,
+            output_hidden_states=True, return_dict=True,
+        )
+        if positions is not None:
+            kwargs["position_ids"] = positions
+        if mask is not None:
+            kwargs["attention_mask"] = mask
+        return self.target.model(**kwargs)
 
     @staticmethod
     def greedy_trace_point(logits, generated_index):
@@ -294,7 +311,8 @@ class Engine:
                         support_size=variant.diffusion_support_size)
                 draft_calls += 1
             with meter.measure("tree_build"):
-                if variant.method == "ddtree" or variant.method in TERMINAL_TREE_METHODS:
+                if (variant.method == "ddtree" or variant.method in
+                        TERMINAL_TREE_METHODS | FUSED_TREE_METHODS | LAZY_HEAD_TREE_METHODS):
                     tree = probability_tree(q, variant.tree_budget)
                     paths = None
                     tree_proposal = None
@@ -400,19 +418,31 @@ class Engine:
                     ])
                     target_tokens += packed_ids.numel()
                 else:
-                    output = self.target_forward(ids, target_cache, hidden=True,
-                                                 positions=positions, mask=mask)
-                    all_p = (None if variant.method in (ATOM_TREE_METHODS - {"atom_tree_ancestral"})
-                             | (DIFFUSION_TREE_METHODS - DIFFUSION_SCAFFOLD_METHODS
-                                - {"diffusion_tree_ancestral"})
-                             else probabilities(output.logits[0], variant.temperature, dtype))
+                    if variant.method in LAZY_HEAD_TREE_METHODS:
+                        output = self.target_hidden_forward(
+                            ids, target_cache, positions=positions, mask=mask
+                        )
+                        all_p = None
+                    else:
+                        output = self.target_forward(ids, target_cache, hidden=True,
+                                                     positions=positions, mask=mask)
+                        all_p = (None if variant.method in (ATOM_TREE_METHODS - {"atom_tree_ancestral"})
+                                 | (DIFFUSION_TREE_METHODS - DIFFUSION_SCAFFOLD_METHODS
+                                    - {"diffusion_tree_ancestral"})
+                                 else probabilities(output.logits[0], variant.temperature, dtype))
                     target_tokens += ids.shape[1]
                 target_calls += 1
             if tree_observer is not None:
                 # Only diagnostic runs attach an observer. Captures and their
                 # synchronization must never contaminate primary throughput.
                 tree_observer(tree.parents, tree.tokens,
-                              all_p if all_p is not None else probabilities(output.logits[0], variant.temperature, dtype))
+                              all_p if all_p is not None else probabilities(
+                                  self.target.get_output_embeddings()(
+                                      output.last_hidden_state[0]
+                                  ) if variant.method in LAZY_HEAD_TREE_METHODS
+                                  else output.logits[0],
+                                  variant.temperature, dtype,
+                              ))
             if shared_suffix_observer is not None and variant.method in SHARED_SUFFIX_METHODS:
                 # Diagnostic-only capture includes the ACTUAL proposal Q;
                 # marginal verifier replay cannot be reconstructed from p alone.
@@ -473,6 +503,28 @@ class Engine:
                                      else "batched"),
                         exit_mode=("dense" if variant.method == "ddtree_terminal_dense"
                                    else "internal"),
+                    )
+                    accepted = len(nodes)
+                elif variant.method in FUSED_TREE_METHODS:
+                    verifier = (
+                        tree_verify_ancestral_fused_parallel
+                        if variant.method == "ddtree_fused_parallel"
+                        else tree_verify_ancestral_fused
+                    )
+                    nodes, tokens, bonus = verifier(
+                        tree.parents, tree.tokens, all_p, generator,
+                        validate=False,
+                    )
+                    accepted = len(nodes)
+                elif variant.method in LAZY_HEAD_TREE_METHODS:
+                    nodes, tokens, bonus, lazy_projection_stats = (
+                        tree_verify_ancestral_lazy_projection(
+                            tree.parents, tree.tokens,
+                            output.last_hidden_state[0],
+                            self.target.get_output_embeddings(),
+                            variant.temperature, dtype, generator,
+                            validate=False,
+                        )
                     )
                     accepted = len(nodes)
                 elif variant.method in {"ddtree", "root_shared_ddtree", "atom_tree_ancestral", "diffusion_tree_ancestral"}:
@@ -602,7 +654,13 @@ class Engine:
                 scaffold_observer(tree, tree_proposal, logits, nodes, tokens, bonus)
             if audit_greedy and variant.method != "target":
                 row_index = torch.tensor([0] + nodes, device=self.device)
-                tree_logits = output.logits[0].index_select(0, row_index)
+                tree_logits = (
+                    self.target.get_output_embeddings()(
+                        output.last_hidden_state[0].index_select(0, row_index)
+                    )
+                    if variant.method in LAZY_HEAD_TREE_METHODS
+                    else output.logits[0].index_select(0, row_index)
+                )
                 # Match the production AR baseline exactly: prompt prefill followed
                 # by one cached token at a time. A full-sequence forward may use a
                 # different SDPA kernel and is not the baseline being audited.
@@ -700,6 +758,13 @@ class Engine:
                                             "scaffold_fill": variant.method != "diffusion_scaffold_no_fill",
                                             "correction_recycling": variant.method != "diffusion_scaffold_no_recycle",
                                             "continuation_backend": "ancestral" if variant.method == "diffusion_scaffold_ancestral" else "terminal"})
+                if variant.method in LAZY_HEAD_TREE_METHODS:
+                    round_stats.update({
+                        "vocabulary_projection_rows": lazy_projection_stats["projected_rows"],
+                        "full_vocabulary_projection_rows": lazy_projection_stats["total_tree_rows"],
+                        "internal_projection_rows": lazy_projection_stats["internal_projected_rows"],
+                        "leaf_projection_rows": lazy_projection_stats["leaf_projected_rows"],
+                    })
                 rounds.append(round_stats)
                 del output, all_p, hidden, logits
                 if variant.method in PACKED_TREE_METHODS:

@@ -58,7 +58,9 @@ class Variant:
                                "tree_gbv_prefix_recycle_packed",
                                "tree_gbv_packed",
                                "ddtree", "ddtree_terminal_block",
-                               "ddtree_terminal_serial", "ddtree_terminal_dense"} | SHARED_SUFFIX_METHODS | ATOM_TREE_METHODS | DIFFUSION_LAW_METHODS:
+                               "ddtree_terminal_serial", "ddtree_terminal_dense",
+                               "ddtree_fused", "ddtree_fused_parallel",
+                               "ddtree_lazy_projection"} | SHARED_SUFFIX_METHODS | ATOM_TREE_METHODS | DIFFUSION_LAW_METHODS:
             raise ValueError(f"Unknown method: {self.method}")
         if self.paths < 1 or self.length < 1 or self.temperature < 0:
             raise ValueError("paths/length must be positive and temperature nonnegative")

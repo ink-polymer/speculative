@@ -100,6 +100,77 @@ def test_official_ddtree_batched_posterior_has_exact_ancestral_law(monkeypatch):
     assert sum(observed.values()) == 1
 
 
+def test_lazy_projection_has_exact_ancestral_law_and_skips_leaf_heads(monkeypatch):
+    parents = [-1, 0, 0, 1]
+    tokens = [0, 1, 2]
+    rows = [[2, 3, 5], [4, 1, 5], [3, 6, 1], [7, 2, 1]]
+    rational = [[Fraction(value, sum(row)) for value in row] for row in rows]
+    p = torch.tensor(
+        [[float(value) for value in row] for row in rational],
+        dtype=torch.float64,
+    )
+    hidden = p.log()
+    observed = defaultdict(float)
+
+    def execute(internal_choices, probability, leaf_choice=None):
+        calls = 0
+
+        def forced(weights, generator=None):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                assert weights.shape == (2, 3)
+                return torch.tensor(internal_choices)
+            assert leaf_choice is not None and weights.shape == (3,)
+            return torch.tensor(leaf_choice)
+
+        monkeypatch.setattr(sampling, "sample", forced)
+        nodes, output_tokens, bonus, stats = (
+            sampling.tree_verify_ancestral_lazy_projection(
+                parents, tokens, hidden, torch.nn.Identity(), 1.0,
+                torch.float64, validate=True,
+            )
+        )
+        observed[(tuple(nodes), tuple(output_tokens), bonus)] += float(probability)
+        assert stats["internal_projected_rows"] == 2
+        assert stats["projected_rows"] < stats["total_tree_rows"]
+        assert stats["leaf_projected_rows"] == (leaf_choice is not None)
+
+    children = {(0, 0): 1, (0, 1): 2, (1, 2): 3}
+    for choices in product(range(3), repeat=2):
+        probability = rational[0][choices[0]] * rational[1][choices[1]]
+        node = children.get((0, choices[0]))
+        if node == 1:
+            node = children.get((1, choices[1]))
+        if node is None:
+            execute(choices, probability)
+            continue
+        for leaf_choice in range(3):
+            execute(
+                choices,
+                probability * rational[node][leaf_choice],
+                leaf_choice,
+            )
+
+    expected = {}
+    paths = [(), (1,), (2,), (1, 3)]
+    prefix_mass = [Fraction(1), rational[0][0], rational[0][1],
+                   rational[0][0] * rational[1][2]]
+    child_tokens = [{0, 1}, {2}, set(), set()]
+    for node, path in enumerate(paths):
+        output_tokens = tuple(tokens[index - 1] for index in path)
+        for token in range(3):
+            if token not in child_tokens[node]:
+                expected[(path, output_tokens, token)] = float(
+                    prefix_mass[node] * rational[node][token]
+                )
+
+    assert set(observed) == set(expected)
+    for event, probability in expected.items():
+        assert observed[event] == pytest.approx(probability, abs=1e-13)
+    assert sum(observed.values()) == pytest.approx(1, abs=1e-13)
+
+
 @pytest.mark.parametrize("validate", [False, True])
 @pytest.mark.parametrize("mode", [{}, {"prefix_mode": "serial"}, {"exit_mode": "dense"},
                                   {"exit_mode": "complement"}])

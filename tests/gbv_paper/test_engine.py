@@ -4,8 +4,10 @@ from itertools import product
 import pytest
 import torch
 
+from gbv_experiments import engine as engine_module
 from gbv_experiments.config import SHARED_SUFFIX_METHODS as ROOT_MARGINAL_METHODS, Variant
 from gbv_experiments.engine import Engine
+from gbv_experiments.sampling import tree_verify_ancestral_batched
 from gbv_experiments.preflight import classify_greedy_mismatch
 from gbv_experiments.tree import (adaptive_path_proposal, adaptive_prefix_proposal,
                                   budgeted_prefix_proposal, compact_cache,
@@ -20,6 +22,40 @@ def test_tree_merge_keeps_candidate_multiplicity():
     visible = tree.visibility()
     assert not visible[tree.path_nodes[2][-1], tree.path_nodes[0][-1]]
     assert len(sampled_tree(paths, False).tokens) == 9
+
+
+@pytest.mark.parametrize(
+    "method",
+    ["ddtree_fused", "ddtree_fused_parallel", "ddtree_lazy_projection"],
+)
+def test_fused_tree_methods_are_valid_probability_tree_variants(method):
+    variant = Variant(
+        name=method, method=method, paths=1, length=15,
+        temperature=1.0, draft_temperature=1.0, tree_budget=45,
+        probability_dtype="float64",
+    )
+    variant.validate()
+
+
+@pytest.mark.parametrize("method,attribute", [
+    ("ddtree_fused", "tree_verify_ancestral_fused"),
+    ("ddtree_fused_parallel", "tree_verify_ancestral_fused_parallel"),
+])
+def test_fused_tree_methods_dispatch_in_generation(
+        tiny_engine, monkeypatch, method, attribute):
+    monkeypatch.setattr(engine_module, attribute, tree_verify_ancestral_batched)
+    ids = torch.tensor([[1, 4, 2, 6]])
+    reference = tiny_engine.generate(
+        ids, Variant(name="target", method="target", paths=1, length=3,
+                     temperature=0),
+        12, [], seed=19,
+    )
+    result = tiny_engine.generate(
+        ids, Variant(name=method, method=method, paths=1, length=3,
+                     temperature=0, tree_budget=12),
+        12, [], seed=19,
+    )
+    assert result["generated_token_ids"] == reference["generated_token_ids"]
 
 
 def test_budgeted_prefix_proposal_caps_final_verification_tree():
@@ -84,6 +120,7 @@ def test_tree_logits_and_compacted_cache_equal_sequential(tiny_engine, share, sh
                                            ("ddtree_terminal_block", 1),
                                            ("ddtree_terminal_serial", 1),
                                            ("ddtree_terminal_dense", 1),
+                                           ("ddtree_lazy_projection", 1),
                                            ("ddtree", 1)] + [(name, 3) for name in sorted(ROOT_MARGINAL_METHODS)])
 @pytest.mark.parametrize("options", [{}, {"reuse_draft_cache": False}, {"share_prefixes": False}, {"draft_attention": "causal"}, {"condition_features": "zero"}])
 def test_greedy_matches_target_across_cache_attention_and_verifiers(tiny_engine, method, paths, options):
