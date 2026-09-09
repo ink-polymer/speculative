@@ -3,14 +3,30 @@ from __future__ import annotations
 import contextlib
 import hashlib
 import json
-import math
 import os
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[3]
 ORIGINAL_COMMIT = "9dd67698ad828b8c3fca8659e3a388f0b2dfbdf7"
+# Historical controlled-v3 names.  Keep these stable so old configs and the
+# local legacy harness continue to reproduce the original B<=128 controller.
 VARIANTS = ("adaptive", "no_acceptance_calibration", "no_latency", "no_exploration", "frozen_after_warmup")
+
+# Canonical names for new official runs.  ``adaptive`` is the corrected
+# budget-aware B<=256 controller; every comparison that changes one of its
+# design choices is named explicitly.  In particular, the historical method
+# is never silently reported under the primary name again.
+OFFICIAL_VARIANTS = (
+    "adaptive",
+    "adaptive_legacy",
+    "adaptive_b128",
+    "adaptive_legacy_cost_attribution",
+    "adaptive_with_exploration",
+    "adaptive_no_acceptance_calibration",
+    "adaptive_no_latency",
+    "adaptive_frozen_after_warmup",
+)
 BASELINES = ("ar", "dflash", "ddtree", "fixed_30", "fixed_45", "fixed_80", "fixed_100", "fixed_128")
 K = 15
 

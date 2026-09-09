@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 from types import SimpleNamespace
 
 import pytest
@@ -16,7 +15,8 @@ def worker_fixture(tmp_path, monkeypatch):
     config = cfg()
     metadata = {"config":config, "code_identity":"current-test-code", "source_manifest":{"test":True},
         "dataset_manifest":{"test":True}, "model_indices":[1], "datasets":["gsm8k"],
-        "nproc_per_node":1, "smoke_count":0, "max_new_tokens":2048}
+        "nproc_per_node":1, "smoke_count":0, "max_new_tokens":2048,
+        "method_schema_version":2, "primary_adaptive_method":"adaptive"}
     monkeypatch.setattr(official_audit,"code_identity",lambda:"current-test-code")
     monkeypatch.setattr(official_audit,"verify_sources",lambda:{"test":True})
     monkeypatch.setattr(official_audit,"check_manifest",lambda _: {"test":True})
@@ -32,16 +32,26 @@ def worker_fixture(tmp_path, monkeypatch):
 def test_worker_rejects_stale_or_misrouted_parent_contract(tmp_path,monkeypatch,change):
     args, config = worker_fixture(tmp_path,monkeypatch)
     official_audit.validate_worker_contract(args,config)
-    if change == "code": monkeypatch.setattr(official_audit,"code_identity",lambda:"modified-after-launch")
-    elif change == "source": monkeypatch.setattr(official_audit,"verify_sources",lambda:{"modified":True})
-    elif change == "data": monkeypatch.setattr(official_audit,"check_manifest",lambda _: {"modified":True})
-    elif change == "model": args.model_index = 0
-    elif change == "dataset": args.dataset = "math500"
-    elif change == "nproc": args.nproc_per_node = 2
-    elif change == "smoke": args.smoke_count = 2
-    elif change == "world": monkeypatch.setenv("WORLD_SIZE","2")
-    elif change == "output": args.output = tmp_path/"different-model.pt"
-    elif change == "wandb": args.wandb_project = "uncontracted-project"
+    if change == "code":
+        monkeypatch.setattr(official_audit,"code_identity",lambda:"modified-after-launch")
+    elif change == "source":
+        monkeypatch.setattr(official_audit,"verify_sources",lambda:{"modified":True})
+    elif change == "data":
+        monkeypatch.setattr(official_audit,"check_manifest",lambda _: {"modified":True})
+    elif change == "model":
+        args.model_index = 0
+    elif change == "dataset":
+        args.dataset = "math500"
+    elif change == "nproc":
+        args.nproc_per_node = 2
+    elif change == "smoke":
+        args.smoke_count = 2
+    elif change == "world":
+        monkeypatch.setenv("WORLD_SIZE","2")
+    elif change == "output":
+        args.output = tmp_path/"different-model.pt"
+    elif change == "wandb":
+        args.wandb_project = "uncontracted-project"
     elif change == "hash":
         recorded = load_json(tmp_path/"contract.json")
         recorded["metadata"]["code_identity"] = "changed-without-new-hash"

@@ -245,6 +245,120 @@ def verify_probabilities(node_probabilities, tree, proposal, generator=None,
     return nodes, [tree.tokens[node - 1] for node in nodes], bonus
 
 
+def verify_single_path_logits(node_logits, tree, proposal, temperature,
+                              generator=None, *, validate=True):
+    """Specialize diffusion BV to its exact K=1 sparse-block form.
+
+    With one labelled branch the latent coupling has the product of the
+    truncated denoising marginals as its proposal law.  The general transport
+    recurrence therefore reduces exactly to ordinary block verification.  This
+    implementation keeps only L x R Target support probabilities plus the one
+    full-vocabulary correction row that reaches the output.
+    """
+    if not math.isfinite(temperature) or temperature <= 0:
+        raise ValueError("Single-path diffusion BV requires positive temperature")
+    k, length, _ = proposal.slots.shape
+    if (k != 1 or node_logits.ndim != 2 or not node_logits.is_floating_point()
+            or node_logits.shape[0] != len(tree.parents)
+            or node_logits.device != proposal.source.device
+            or len(tree.path_nodes) != 1
+            or len(tree.path_nodes[0]) != length):
+        raise ValueError("Single-path diffusion target/proposal shape mismatch")
+    if validate:
+        proposal.validate(node_logits.shape[-1])
+        if tree != sampled_tree(proposal.paths()):
+            raise ValueError("Single-path tree must represent the diffusion sample")
+        if bool(torch.isnan(node_logits).any() | torch.isposinf(node_logits).any()
+                | ~torch.isfinite(node_logits).any(-1).all()):
+            raise ValueError("Invalid target logits")
+
+    path = proposal.paths()[0]
+    row_nodes = torch.tensor(
+        [0] + tree.path_nodes[0], dtype=torch.long, device=node_logits.device,
+    )
+    prefix_logits = node_logits.index_select(0, row_nodes[:-1])
+    scaled = sampling.scaled_logits(prefix_logits, temperature)
+    normalizer = torch.logsumexp(scaled, -1, keepdim=True)
+    target_support = (
+        scaled.gather(1, proposal.law.tokens) - normalizer
+    ).exp()
+    del scaled
+
+    proposal_support = proposal.law.weights
+    matches = proposal.law.tokens.eq(path[:, None])
+    selected_target = torch.where(
+        matches, target_support, torch.zeros_like(target_support)
+    ).sum(-1)
+    selected_proposal = torch.where(
+        matches, proposal_support, torch.zeros_like(proposal_support)
+    ).sum(-1)
+    if validate and not bool((selected_proposal > 0).all()):
+        raise FloatingPointError("Sampled diffusion token has zero proposal mass")
+
+    weight = node_logits.new_ones((), dtype=torch.float64)
+    weights_by_depth = [weight]
+    for depth in range(length):
+        weight = torch.minimum(
+            torch.ones_like(weight),
+            weight * selected_target[depth] / selected_proposal[depth],
+        )
+        weights_by_depth.append(weight)
+    prefix_weights = torch.stack(weights_by_depth)
+
+    outside_support = (1 - target_support.sum(-1)).clamp_min(0)
+    support_residual = (
+        prefix_weights[:-1, None] * target_support - proposal_support
+    ).clamp_min(0)
+    residual_totals = torch.cat((
+        prefix_weights[:-1] * outside_support + support_residual.sum(-1),
+        prefix_weights[-1:],
+    ))
+    rejection = (1 - prefix_weights).clamp_min(0)
+    totals = residual_totals + rejection
+    if validate and not bool(torch.isfinite(totals).all()):
+        raise FloatingPointError("Invalid single-path BV endpoint masses")
+    safe_totals = torch.where(totals > 0, totals, torch.ones_like(totals))
+    accept_probability = torch.where(
+        totals > 0, residual_totals / safe_totals, torch.ones_like(totals)
+    )
+    binary = torch.stack((accept_probability, 1 - accept_probability), -1)
+    accepted_rows = sampling.sample(binary, generator).eq(0)
+    depth_ids = torch.arange(length + 1, device=node_logits.device)
+    selected_depth = torch.where(
+        accepted_rows, depth_ids, -torch.ones_like(depth_ids)
+    ).max()
+
+    correction_logits = node_logits.index_select(
+        0, row_nodes.index_select(0, selected_depth.reshape(1))
+    )[0]
+    target_row = sampling.probabilities(
+        correction_logits, temperature, torch.float64
+    )
+    residual_row = prefix_weights[selected_depth] * target_row
+    proposal_row = selected_depth.clamp_max(length - 1)
+    row_tokens = proposal.law.tokens.index_select(
+        0, proposal_row.reshape(1)
+    )
+    row_probabilities = proposal_support.index_select(
+        0, proposal_row.reshape(1)
+    ) * selected_depth.lt(length)
+    residual_row.scatter_add_(0, row_tokens[0], -row_probabilities[0])
+    residual_row.clamp_min_(0)
+    residual_total = residual_totals[selected_depth]
+    safe_residual_total = torch.where(
+        residual_total > 0, residual_total, torch.ones_like(residual_total)
+    )
+    correction = torch.where(
+        residual_total > 0, residual_row / safe_residual_total, target_row
+    )
+    bonus = sampling.sample(correction, generator)
+    depth, token = torch.stack((selected_depth, bonus)).tolist()
+    if depth < 0:
+        raise RuntimeError("Single-path BV failed to produce a nonempty output")
+    nodes = tree.path_nodes[0][:depth]
+    return nodes, [tree.tokens[node - 1] for node in nodes], int(token)
+
+
 def snapshot(proposal):
     """Flat tensor/metadata format supports CPU storage and existing GPU replay."""
     result = {"diffusion_" + key: value.detach().cpu().clone()
@@ -344,7 +458,11 @@ def verify_scaffold_logits(node_logits, tree, proposal, temperature, generator=N
                         | ~torch.isfinite(node_logits).any(-1).all())):
             raise ValueError("Invalid scaffold target rows or topology")
     if node_probabilities is None:
-        nodes, tokens, bonus = verify_logits(
+        verifier = (
+            verify_single_path_logits
+            if proposal.slots.shape[0] == 1 else verify_logits
+        )
+        nodes, tokens, bonus = verifier(
             node_logits[:count], base, proposal, temperature, generator,
             validate=validate,
         )
@@ -366,6 +484,74 @@ def verify_scaffold_logits(node_logits, tree, proposal, temperature, generator=N
         )
     return continue_scaffold_logits(node_logits, tree, nodes, tokens, bonus,
                                     temperature, generator, continuation=continuation)
+
+
+def verify_scaffold_hidden(final_hidden, lm_head, tree, proposal, temperature,
+                           generator=None, *, recycle=True,
+                           continuation="terminal", validate=True):
+    """Verify a scaffold while projecting only rows the block can consume.
+
+    The Target transformer still evaluates every tree node with the same mask.
+    This execution path defers the vocabulary head: first project the labelled
+    diffusion trie, then (only when entered) the selected continuation subtree.
+    It is the same composition used by :func:`verify_scaffold_logits` and does
+    not prune or alter the proposal tree after observing Target values.
+    """
+    count = max(n for path in tree.path_nodes for n in path) + 1
+    base = Tree(
+        tree.tokens[:count - 1], tree.parents[:count],
+        tree.depths[:count], tree.path_nodes,
+    )
+    if (final_hidden.ndim != 2 or final_hidden.shape[0] != len(tree.parents)
+            or final_hidden.device != proposal.source.device):
+        raise ValueError("Scaffold target hidden-state/topology shape mismatch")
+    if validate:
+        # The trusted engine path below avoids unused LM-head rows.  Public
+        # validation deliberately projects all rows once and delegates to the
+        # established full-logit contract so malformed unused nodes cannot hide.
+        return verify_scaffold_logits(
+            lm_head(final_hidden), tree, proposal, temperature, generator,
+            recycle=recycle, continuation=continuation, validate=True,
+        )
+
+    base_logits = lm_head(final_hidden[:count])
+    verifier = (
+        verify_single_path_logits
+        if proposal.slots.shape[0] == 1 else verify_logits
+    )
+    nodes, tokens, bonus = verifier(
+        base_logits, base, proposal, temperature, generator, validate=validate,
+    )
+    if not recycle:
+        return nodes, tokens, bonus
+
+    children = {
+        (parent, token): node
+        for node, (parent, token) in enumerate(
+            zip(tree.parents[1:], tree.tokens), 1
+        )
+    }
+    child = children.get((nodes[-1] if nodes else 0, bonus))
+    if child is None:
+        return nodes, tokens, bonus
+    indices, local = [child], {child: 0}
+    parents, proposed = [-1], []
+    for node in range(child + 1, len(tree.parents)):
+        if tree.parents[node] in local:
+            local[node] = len(indices)
+            indices.append(node)
+            parents.append(local[tree.parents[node]])
+            proposed.append(tree.tokens[node - 1])
+    selected_hidden = final_hidden.index_select(
+        0, torch.tensor(indices, dtype=torch.long, device=final_hidden.device)
+    )
+    probabilities = sampling.probabilities(
+        lm_head(selected_hidden), temperature, torch.float64
+    )
+    return _continue_scaffold_probabilities(
+        probabilities, indices, parents, proposed, nodes, tokens, bonus,
+        generator, continuation=continuation,
+    )
 
 
 def continue_scaffold_logits(node_logits, tree, nodes, tokens, bonus, temperature,

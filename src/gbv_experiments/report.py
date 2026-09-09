@@ -45,7 +45,7 @@ def validate_results(manifest, records, scores=None, allow_partial=False):
     if (actual == expected
             and manifest.get("method_order", {}).get("policy") == "balanced_rotation"):
         names = {entry["variant"]["name"] for entry in manifest["variants"]}
-        positions = {name:[] for name in names}
+        positions = defaultdict(lambda: {name:[] for name in names})
         scheduled = defaultdict(list)
         for record in records:
             name = record["variant"]
@@ -53,7 +53,7 @@ def validate_results(manifest, records, scores=None, allow_partial=False):
             ordinal = record.get("method_order_ordinal")
             if not isinstance(position, int) or not isinstance(ordinal, int):
                 raise ValueError("Missing balanced method-order evidence")
-            positions[name].append(position)
+            positions[record["dataset"]][name].append(position)
             scheduled[record["dataset"], record["source_id"], record["seed"]].append(
                 (name, position, ordinal)
             )
@@ -62,10 +62,13 @@ def validate_results(manifest, records, scores=None, allow_partial=False):
                     or {position for _, position, _ in group} != set(range(len(names)))
                     or len({ordinal for _, _, ordinal in group}) != 1):
                 raise ValueError("Incomplete or inconsistent balanced method rotation")
-        for values in positions.values():
-            counts = [values.count(position) for position in range(len(names))]
-            if max(counts) - min(counts) > 1:
-                raise ValueError("Method execution positions are not globally balanced")
+        for dataset, by_name in positions.items():
+            for values in by_name.values():
+                counts = [values.count(position) for position in range(len(names))]
+                if max(counts) - min(counts) > 1:
+                    raise ValueError(
+                        f"Method execution positions are not balanced within dataset {dataset}"
+                    )
     hashes = {(d, i): h for d, i, h in manifest["prompt_ids"]}
     for r in records:
         if r["run_id"] != manifest["run_id"] or r["prompt_sha256"] != hashes[r["dataset"], r["source_id"]]:
@@ -204,6 +207,8 @@ def summarize(manifest, records, scores=None, bootstrap=1000):
                "mean_generation_length": float(np.mean([r["generated_tokens"] for r in rows])),
                "length_cap_fraction": float(np.mean([t["finish_reason"] == "length" for t in turns])),
                "accepted_per_verify": ratio(sum(x["accepted_draft_tokens"] for x in rounds), len(rounds)),
+               "acceptance_rate": ratio(sum(x["accepted_draft_tokens"] for x in rounds),
+                                         sum(x.get("proposed_tokens", 0) for x in rounds)),
                "committed_per_verify": ratio(sum(x["committed_tokens"] for x in rounds), len(rounds)),
                "mean_tree_nodes": float(np.mean([x["tree_nodes"] for x in rounds])) if rounds else None,
                "target_forward_calls": sum(r["target_forward_calls"] for r in rows),

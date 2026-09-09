@@ -56,7 +56,6 @@ def test_wandb_monitor_logs_per_response_and_aggregate_without_secret(
     run = initialize_wandb(
         args(tmp_path), model_name="Qwen/Qwen3-4B", draft_name="draft",
         backend="sdpa", rank=0, world_size=1,
-        diagnostic_variants=("extended",),
         controller_configs={"extended":{"budget_candidates":[128, 256]}},
     )
     assert run is fake_run
@@ -91,5 +90,5 @@ def test_wandb_monitor_requires_environment_secret_only_when_online(
     with pytest.raises(RuntimeError, match="WANDB_API_KEY"):
         initialize_wandb(
             args(tmp_path), model_name="model", draft_name="draft", backend="sdpa",
-            rank=0, world_size=1, diagnostic_variants=(), controller_configs={})
+            rank=0, world_size=1, controller_configs={})
     assert wandb_contract(args(tmp_path, project=None)) is None

@@ -246,7 +246,10 @@ def test_scaffold_proof_premises_fail_closed(tiny_engine, monkeypatch, mutation)
 
         def draft_logits(hidden):
             logits = hidden.new_full((*hidden.shape[:-1], 17), -float("inf"))
-            logits[..., :2] = hidden.new_tensor([.51, .49]).log() * .6
+            # Draft projection is batched [1,L,H].  Lazy Target projection is
+            # [tree_rows,H] and must retain the separate p=.99 test law.
+            values = [.51, .49] if hidden.ndim == 3 else [.99, .01]
+            logits[..., :2] = hidden.new_tensor(values).log() * .6
             return logits
 
         def target_logits(*a, **kw):
@@ -258,7 +261,7 @@ def test_scaffold_proof_premises_fail_closed(tiny_engine, monkeypatch, mutation)
         monkeypatch.setattr(tiny_engine, "target_forward", target_logits)
         assert preflight.probe(tiny_engine, torch.tensor([[1, 3, 5]]), variant("diffusion_scaffold_bv"),
                                tokens=48, seed=42, tv_limit=1e-6)["passed"]
-        original = diffusion.verify_scaffold_logits
+        original = diffusion.verify_scaffold_hidden
         calls = 0
 
         def stop_early(*a, **kw):
@@ -268,7 +271,7 @@ def test_scaffold_proof_premises_fail_closed(tiny_engine, monkeypatch, mutation)
                 kw["recycle"] = False
             return original(*a, **kw)
 
-        monkeypatch.setattr(diffusion, "verify_scaffold_logits", stop_early)
+        monkeypatch.setattr(diffusion, "verify_scaffold_hidden", stop_early)
         error, message = ValueError, "before maximal exit"
     with pytest.raises(error, match=message):
         preflight.probe(tiny_engine, torch.tensor([[1, 3, 5]]), variant("diffusion_scaffold_bv"),

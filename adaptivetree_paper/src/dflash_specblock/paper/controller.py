@@ -9,13 +9,117 @@ from dataclasses import asdict
 import math
 
 from ..ddtree_builder import BudgetDecision, DDTreeBuilder, LatencyAwareDDTreeBuilder
-from .common import BASELINES, K, VARIANTS, digest
+from .common import BASELINES, K, OFFICIAL_VARIANTS, VARIANTS, digest
 
 TIMING_PARTITIONS = ("legacy", "budget_aware")
+# Canonical formal method names.
+ADAPTIVE_VARIANT = "adaptive"
+LEGACY_ADAPTIVE_VARIANT = "adaptive_legacy"
+B128_ABLATION_VARIANT = "adaptive_b128"
+LEGACY_COST_ATTRIBUTION_ABLATION_VARIANT = "adaptive_legacy_cost_attribution"
+EXPLORATION_ABLATION_VARIANT = "adaptive_with_exploration"
+NO_ACCEPTANCE_ABLATION_VARIANT = "adaptive_no_acceptance_calibration"
+NO_LATENCY_ABLATION_VARIANT = "adaptive_no_latency"
+FROZEN_ABLATION_VARIANT = "adaptive_frozen_after_warmup"
+
+# Read-only/reproduction aliases emitted by the pre-migration diagnostic
+# runner.  They remain constructible so old artifacts are intelligible, but
+# no new official method list emits them.
 COST_ATTRIBUTED_VARIANT = "cost_attributed_no_exploration"
 EXTENDED_BUDGET_VARIANT = "cost_attributed_no_exploration_b256"
+LEGACY_BUDGETS = (30, 45, 60, 80, 100, 128)
 EXTENDED_BUDGETS = (30, 45, 60, 80, 100, 128, 160, 192, 256)
 DIAGNOSTIC_VARIANTS = (COST_ATTRIBUTED_VARIANT, EXTENDED_BUDGET_VARIANT)
+
+# This registry is deliberately independent of the factory below.  It is the
+# immutable, auditable contract for every controller allowed in a new formal
+# artifact; neither a changed factory nor a forged artifact can redefine the
+# expected method semantics at validation time.
+OFFICIAL_CONTROLLER_REGISTRY = {
+    ADAPTIVE_VARIANT: {
+        "budget_candidates": EXTENDED_BUDGETS,
+        "maximum_draft_nodes": 256,
+        "timing_partition": "budget_aware",
+        "controller_variant": "no_exploration",
+        "exploration_interval": 0,
+    },
+    LEGACY_ADAPTIVE_VARIANT: {
+        "budget_candidates": LEGACY_BUDGETS,
+        "maximum_draft_nodes": 128,
+        "timing_partition": "legacy",
+        "controller_variant": "adaptive",
+        "exploration_interval": 64,
+    },
+    B128_ABLATION_VARIANT: {
+        "budget_candidates": LEGACY_BUDGETS,
+        "maximum_draft_nodes": 128,
+        "timing_partition": "budget_aware",
+        "controller_variant": "no_exploration",
+        "exploration_interval": 0,
+    },
+    LEGACY_COST_ATTRIBUTION_ABLATION_VARIANT: {
+        "budget_candidates": EXTENDED_BUDGETS,
+        "maximum_draft_nodes": 256,
+        "timing_partition": "legacy",
+        "controller_variant": "no_exploration",
+        "exploration_interval": 0,
+    },
+    EXPLORATION_ABLATION_VARIANT: {
+        "budget_candidates": EXTENDED_BUDGETS,
+        "maximum_draft_nodes": 256,
+        "timing_partition": "budget_aware",
+        "controller_variant": "adaptive",
+        "exploration_interval": 64,
+    },
+    NO_ACCEPTANCE_ABLATION_VARIANT: {
+        "budget_candidates": EXTENDED_BUDGETS,
+        "maximum_draft_nodes": 256,
+        "timing_partition": "budget_aware",
+        "controller_variant": "no_acceptance_calibration",
+        "exploration_interval": 0,
+    },
+    NO_LATENCY_ABLATION_VARIANT: {
+        "budget_candidates": EXTENDED_BUDGETS,
+        "maximum_draft_nodes": 256,
+        "timing_partition": "budget_aware",
+        "controller_variant": "no_latency",
+        "exploration_interval": 0,
+    },
+    FROZEN_ABLATION_VARIANT: {
+        "budget_candidates": EXTENDED_BUDGETS,
+        "maximum_draft_nodes": 256,
+        "timing_partition": "budget_aware",
+        "controller_variant": "frozen_after_warmup",
+        "exploration_interval": 0,
+    },
+}
+
+
+def controller_config(builder):
+    """Return the complete public contract recorded in a run artifact."""
+    return {
+        "budget_candidates": list(builder.budget_candidates),
+        "maximum_draft_nodes": builder.tree_budget,
+        "timing_partition": builder.timing_partition,
+        "controller_variant": builder.variant,
+        "exploration_interval": builder.exploration_interval,
+    }
+
+
+def expected_official_controller_configs(methods=OFFICIAL_VARIANTS):
+    """Serialize registered method contracts without consulting live builders."""
+    names = tuple(methods)
+    if len(names) != len(set(names)) or set(names) - set(OFFICIAL_CONTROLLER_REGISTRY):
+        raise ValueError("Unknown or duplicate official AdaptiveTree controller")
+    return {
+        name: {
+            **OFFICIAL_CONTROLLER_REGISTRY[name],
+            "budget_candidates": list(
+                OFFICIAL_CONTROLLER_REGISTRY[name]["budget_candidates"]
+            ),
+        }
+        for name in names
+    }
 
 
 class FixedBudgetBuilder(DDTreeBuilder):
@@ -151,35 +255,82 @@ def make_builder(cfg, method):
 
 
 def make_paper_builder(cfg, method):
-    """Build an official controller or the explicitly labelled diagnostic one."""
+    """Build a canonical official controller or a historical reproduction.
+
+    The canonical ``adaptive`` name intentionally denotes the corrected
+    controller: tree construction is charged to the selected budget, periodic
+    exploration is disabled, and candidates extend through B=256.  The exact
+    pre-migration method remains available as ``adaptive_legacy``.
+    """
+    configured = tuple(cfg["budget_candidates"])
+    if configured not in (LEGACY_BUDGETS, EXTENDED_BUDGETS):
+        raise ValueError("AdaptiveTree requires the registered B=128 or B=256 candidates")
+
+    def with_budgets(budgets, *, exploration=True):
+        result = {**cfg, "budget_candidates": list(budgets)}
+        if not exploration:
+            result["exploration_interval"] = 0
+        return result
+
+    if method in OFFICIAL_CONTROLLER_REGISTRY:
+        spec = OFFICIAL_CONTROLLER_REGISTRY[method]
+        builder_cfg = with_budgets(spec["budget_candidates"])
+        builder_cfg["exploration_interval"] = spec["exploration_interval"]
+        builder = PaperAdaptiveBuilder(
+            builder_cfg, spec["controller_variant"],
+            timing_partition=spec["timing_partition"],
+        )
+        if controller_config(builder) != expected_official_controller_configs((method,))[method]:
+            raise RuntimeError(f"Registered controller construction drifted: {method}")
+        return builder
+
+    # Historical official-v4 names reproduce their original behavior.  This
+    # compatibility branch is deliberately outside OFFICIAL_VARIANTS.
     if method in VARIANTS:
-        return PaperAdaptiveBuilder(cfg, method)
+        return PaperAdaptiveBuilder(with_budgets(LEGACY_BUDGETS), method)
     if method == COST_ATTRIBUTED_VARIANT:
         return PaperAdaptiveBuilder(
-            cfg, "no_exploration", timing_partition="budget_aware"
+            with_budgets(LEGACY_BUDGETS, exploration=False),
+            "no_exploration", timing_partition="budget_aware",
         )
     if method == EXTENDED_BUDGET_VARIANT:
-        official_budgets = tuple(cfg["budget_candidates"])
-        if official_budgets != EXTENDED_BUDGETS[:6]:
-            raise ValueError("Extended-budget diagnostic requires the official budget candidates")
-        extended_cfg = {**cfg, "budget_candidates": list(EXTENDED_BUDGETS)}
         return PaperAdaptiveBuilder(
-            extended_cfg, "no_exploration", timing_partition="budget_aware"
+            with_budgets(EXTENDED_BUDGETS, exploration=False),
+            "no_exploration", timing_partition="budget_aware",
         )
     raise ValueError(f"Unknown paper controller: {method}")
 
 
 def selected_diagnostic_variants(*, cost_attribution=False,
                                  extended_budgets=False):
-    """Return a stable diagnostic method list for a pair of CLI feature flags.
+    """Compatibility shim for pre-migration CLI feature flags.
 
-    The B=256 experiment always includes its otherwise-identical B=128 control,
-    so a larger-budget result cannot be interpreted without the cost-attributed
-    reference in the same process and hardware contract.
+    Both experiments have been promoted into the canonical matrix as
+    ``adaptive_b128`` and ``adaptive``.  The old flags are accepted so launch
+    scripts do not fail, but must not duplicate an identical timed method.
     """
-    result = []
-    if cost_attribution or extended_budgets:
-        result.append(COST_ATTRIBUTED_VARIANT)
+    del cost_attribution, extended_budgets
+    return ()
+
+
+def deprecated_experiment_flags(*, cost_attribution=False,
+                                extended_budgets=False):
+    """Describe legacy CLI flags in immutable contracts without adding work."""
+    aliases = []
+    if cost_attribution:
+        aliases.append("experimental_cost_attribution_is_adaptive_b128")
     if extended_budgets:
-        result.append(EXTENDED_BUDGET_VARIANT)
-    return tuple(result)
+        aliases.append("experimental_extended_budgets_is_adaptive")
+    return tuple(aliases)
+
+
+assert set(OFFICIAL_VARIANTS) == {
+    ADAPTIVE_VARIANT,
+    LEGACY_ADAPTIVE_VARIANT,
+    B128_ABLATION_VARIANT,
+    LEGACY_COST_ATTRIBUTION_ABLATION_VARIANT,
+    EXPLORATION_ABLATION_VARIANT,
+    NO_ACCEPTANCE_ABLATION_VARIANT,
+    NO_LATENCY_ABLATION_VARIANT,
+    FROZEN_ABLATION_VARIANT,
+}

@@ -87,8 +87,9 @@ def main():
         if name == "run-integrated-suite":
             p.add_argument("--adaptive-data-dir", type=Path,
                            default=ROOT / "adaptivetree_paper/datasets/ddtree_official_t0")
-            p.add_argument("--block-data-dir", type=Path,
-                           default=ROOT / "datasets/gbv_paper_ddtree_counts")
+            p.add_argument("--sampling-data-dir", "--block-data-dir", dest="block_data_dir",
+                           type=Path, default=ROOT / "datasets/gbv_paper_ddtree_counts",
+                           help="T=1 Target/DFlash/DDTree data; --block-data-dir is a compatibility alias")
             p.add_argument("--device", default="cuda:0")
             p.add_argument("--code-backend", choices=["docker", "process"], default="docker")
     p = sub.add_parser("report-integrated-suite")

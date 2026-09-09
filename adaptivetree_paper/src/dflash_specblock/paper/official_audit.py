@@ -6,7 +6,7 @@ import os
 from .common import code_identity, digest, load_json
 from .official_data import check_manifest
 from .official_spec import verify_sources
-from .controller import selected_diagnostic_variants
+from .controller import deprecated_experiment_flags
 from .wandb_monitor import wandb_contract
 
 
@@ -15,7 +15,7 @@ def validate_worker_contract(args, config):
     metadata = recorded["metadata"]
     if recorded["identity"] != args.identity or digest(metadata) != args.identity:
         raise ValueError("Worker contract hash/identity mismatch")
-    expected_diagnostics = list(selected_diagnostic_variants(
+    expected_legacy_flags = list(deprecated_experiment_flags(
         cost_attribution=getattr(args, "experimental_cost_attribution", False),
         extended_budgets=getattr(args, "experimental_extended_budgets", False),
     ))
@@ -27,11 +27,14 @@ def validate_worker_contract(args, config):
             or args.nproc_per_node != metadata["nproc_per_node"]
             or args.smoke_count != metadata["smoke_count"]
             or metadata["max_new_tokens"] != (32 if args.smoke_count else 2048)
+            or metadata.get("method_schema_version") != 2
+            or metadata.get("primary_adaptive_method") != "adaptive"
             or metadata.get("greedy_audit_policy", "strict")
                != getattr(args, "greedy_audit_policy", "strict")
             or metadata.get("method_order_policy", "official-fixed")
                != getattr(args, "method_order_policy", "official-fixed")
-            or metadata.get("diagnostic_variants", []) != expected_diagnostics
+            or "diagnostic_variants" in metadata
+            or metadata.get("deprecated_cli_aliases", []) != expected_legacy_flags
             or metadata.get("wandb") != wandb_contract(args)
             or int(os.environ.get("WORLD_SIZE", "1")) != args.nproc_per_node):
         raise ValueError("Worker code/data/model scope differs from the parent contract")

@@ -1,88 +1,52 @@
-# AdaptiveTree、DDTree、DFlash 与新块解码的公平整合实验
+# AdaptiveTree、DDTree 与 DFlash：T=0 / T=1 正式实验
 
-## 结论边界
+## 本服务器的实验边界
 
-本套件统一启动、审计和汇总两类实验，但不把它们伪装成同一个采样协议：
+本套件只运行两组不能混合统计的正式实验：
 
-- T=0：修改后的 AdaptiveTree、DFlash、七个固定预算 DDTree，以及两项成本归因/扩展预算诊断。
-- T=0.3/0.6/1.0：Target、DFlash、DDTree 和 `ddtree_lazy_projection`。
+- T=0：Qwen3-4B 与 Qwen3-8B 上的修正版 `adaptive` 主方法、冻结的 AdaptiveTree 消融、Target、DFlash，以及七个固定预算 DDTree。
+- T=1：同一组 Qwen3-4B 与 Qwen3-8B revision 上的 Target、DFlash、DDTree；DDTree 固定 L=15、B=45、FP64 概率计算。
 
-T=0 与 T>0 的数据矩阵、随机性和 Draft 注意力后端不同，因此禁止把两类实验的加速比求平均或合并置信区间。统一报告只做并列展示。
+树状块验证在本服务器明确为 `deferred_not_run`，不会启动，也不会出现在结果表中。T=0 与 T=1 使用不同采样律，禁止合并加速比或置信区间。30B 不属于本轮正式矩阵。
 
-## 公平性硬门禁
+## 公平性与失败即停止门禁
 
-### T=0 AdaptiveTree
+所有模型固定 40 位 Hugging Face revision、BF16、关闭 thinking 和 TF32。T=1 三个方法共享 Target=SDPA、Draft=SDPA、数据、三个种子、生成上限和评分器。DFlash 在 T=1 仍使用官方贪心 Draft；DDTree 使用 T=1 Draft 分布。
 
-- 4B/8B Target 与 Draft 使用和块实验相同的固定 40 位 revision。
-- Draft 固定 FA2；公平主表中的 Target、DFlash、DDTree、AdaptiveTree 全部取 Target=SDPA 的同后端结果。
-- 上游“各方法选择最佳后端”的表仍会生成，但只标为辅助表，不用于架构优劣结论。
-- 每个回答对方法顺序做确定性的循环轮换；完整循环中每个方法占据每个计时位置的次数相同，尾部差最多 1。
-- 使用 `record-bf16-mismatches` 保存每个回答的逐方法差异；全样本同后端表必须同时报告
-  每个方法相对 Target-only 的完全相同输出数与比例，禁止称为“严格无损”。
-- 另生成逐方法完全相同输出的配对子集表，用来诊断输出内容对耗时的影响；该子集是结果后
-  选择，必须标记选择偏差，不能作为总体加速比估计或替代全样本表。
-- `strict_lossless_gate` 与协议公平门禁分开保存。只要任一回答有差异，前者就是 false；
-  不允许因为代码、数据、后端和顺序公平就推导出无损结论。
-- 修正后的 `cost_attributed_no_exploration` 与扩展到 B=256 的诊断同时运行，B=128 是 B=256 的同进程对照。
+方法执行顺序按数据集分别从 ordinal 0 开始，并跨 seeds 连续循环。报告会逐数据集检查每个方法落在每个计时位置的次数，最大差必须不超过 1；仅在全局看似均衡、但某个数据集有位置偏差的结果会被拒绝。
 
-### T>0 块解码
+`doctor` 会拒绝非逻辑 `cuda:0`、GPU UUID 漂移或已有其他计算进程占用的机器，并实际
+执行所选代码评分沙箱。Docker 后端绑定镜像 ID；process 后端保留虚拟环境调用路径，
+并另行绑定真实二进制 SHA-256、`pyvenv.cfg` 与子解释器 Python/NumPy/SymPy 身份；root
+编排器必须将参赛代码降权到非 root 身份。
 
-- 4B/8B 均固定 BF16、Target=SDPA、Draft=SDPA、关闭 TF32 和 thinking。
-- 每个温度都有成对的 Target、DFlash、DDTree、`ddtree_lazy_projection`，共享 L=15、B=45、FP64 概率计算和同一批样本/种子。
-- DDTree 与 lazy projection 除方法名和实现入口外，所有配置字段必须完全一致。
-- 12 个方法/温度组合采用固定种子的均衡轮换；每条结果记录实际执行位置，正式报告再次检查每题是否恰好覆盖全部位置。
-- GPU 预检先在 T=0 检查真实 checkpoint 的贪心输出、树掩码和 KV 压缩；不通过则禁止正式计时。
-- T>0 的质量使用相同任务评分器；速度使用逐题配对 Target 和以 `source_id` 为簇的 bootstrap 置信区间。
+`doctor` 还会在加载正式模型前运行两个确定性的有限枚举分布律测试：
 
-这些门禁能保证代码和协议层面的可比性，但不能把有限样本、单一 GPU 型号或 BF16 下不同
-调用形状的输出差异变成无损结论。H20 预检曾在 8B 第一个 GSM8K 样本定位到一个稳定的
-近并列：单 token SDPA 对两个候选的 logits 为 39.75/39.50，16-token 验证为 39.50/39.50，
-最大差 0.25。math SDPA 会反转选择方向而不会消除形状差异，因此正式运行保留并报告所有
-差异，不把它们一概归类为无害数值误差。正式表仍需报告 GPU、CUDA、库版本、置信区间和
-完整性状态。
+- DFlash `matching_verify` 的完整输出律等于 Target 自回归律；
+- DDTree batched ancestral verifier 的输出律等于逐节点 Target ancestral sampling。
 
-## 使用方式
+此外还会用真实微型 Qwen3 前向检查 T=1 DFlash 的 Draft 确实保持 greedy
+argmax，而不是误用 Target 的采样温度。
 
-### 新服务器必须全量重跑
+测试 node ID、测试源码 SHA-256 和退出状态写入 `server_doctor.json`。随后在任何正式
+计时之前，套件先完成 T=1 的真实数据/答案审计及两个真实模型预检，再用两个真实模型对
+T=0 官方路径做 GPU smoke，覆盖双 Target 后端、FA2 Draft、C++ compaction 和完整方法注册表。
+最终统一报告会重新核验这些证据；缺失、失败、测试名、来源或源码哈希不一致都会阻断报告。
 
-旧服务器的性能结果只能作为历史记录，不能复制进本套件。新服务器必须指定一个从未存在过的 `INTEGRATED_RUN_DIR`；GPU UUID、CUDA 环境、源码、配置和数据 revision 会写进新 contract。若把旧输出目录带到另一张卡上，环境检查会拒绝继续。
+T=1 报告还会核验 summary 的 run ID、bootstrap 次数、`performance_only=false`、每个 `(dataset, variant)` 恰好一行，以及除 MT-Bench 外每个样本都有客观质量评分。Markdown 主表同时列出质量、平均生成长度和每次 Target 验证接受的 token 数。DFlash 的提议分母是路径 token，DDTree 的提议分母是整棵树节点，因此不把二者的“接受/提议比”作为横向比较指标。
+MT-Bench 的质量列显示 `--`，表示外部 judge 结果单独报告，并非漏评分。
 
-新服务器建议使用同一个 Python 3.11 虚拟环境，先按服务器驱动安装匹配的 CUDA PyTorch 与 `flash-attn`，再安装两套实验的共同依赖和代码评分镜像：
+## 新服务器运行
+
+旧服务器结果不能导入。每张新 GPU 使用一个从未存在过的输出目录；环境、代码或配置改变后也必须换目录。
 
 ```bash
-python3.11 -m venv .venv-integrated
-source .venv-integrated/bin/activate
-
-# H20/CUDA 12.8 的冻结环境：与官方 FlashAttention 2.8.3 wheel 匹配。
-python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu128
-python -m pip install -r requirements-gbv-paper.txt
-python -m pip install -r adaptivetree_paper/requirements-paper.txt
-# 安装官方 v2.8.3 的 cu12/torch2.8/cxx11abiTRUE/cp311 x86_64 wheel；
-# 正式安装前核对 SHA-256：
-# 3d41b2fc55753faa7f45d6568ea73a96b96afb48b82994ab9b49bcbcb6c87588
-
-docker build -t gbv-code-eval:py311 experiments/gbv_paper
-```
-
-若租用的 GPU 容器没有 Docker 且内核禁止嵌套 user/network namespace，可显式设置
-`CODE_BACKEND=process`。Linux root 作业的 process worker 会在编译、执行模型代码前不可逆地
-降到 uid/gid 65534，并启用 `no_new_privs`、资源限制和清理后的环境变量。它不等价于禁网容器，
-只应在无密钥、专用于本实验的实例中使用；评分清单会记录实际后端，不得把不同后端的评分混合。
-root 作业还必须通过 `GBV_PROCESS_PYTHON` 指定一个位于 `/root` 之外、对降权用户可读的独立
-Python 3.11 解释器；该环境只需标准库和固定版本的 NumPy，不应放入模型或账户凭据。
-
-```bash
-conda create -y -p /opt/gbv-code-eval python=3.11 pip
-/opt/gbv-code-eval/bin/pip install numpy==2.2.6
-export GBV_PROCESS_PYTHON=/opt/gbv-code-eval/bin/python
+export INTEGRATED_PYTHON=/root/autodl-tmp/envs/speculative/bin/python
+export INTEGRATED_RUN_DIR=/root/autodl-tmp/outputs/adaptivetree-t0-t1-h20-001
+export ADAPTIVE_DATA_DIR=/root/autodl-tmp/data/adaptive-t0
+export SAMPLING_DATA_DIR=/root/autodl-tmp/data/sampling-t1
 export CODE_BACKEND=process
-```
-
-先执行环境与协议检查，再用新目录后台启动：
-
-```bash
-export INTEGRATED_PYTHON="$PWD/.venv-integrated/bin/python"
-export INTEGRATED_RUN_DIR="$PWD/outputs/integrated-new-server-001"
+export GBV_PROCESS_PYTHON=/opt/gbv-code-eval/bin/python
 
 bash scripts/run_integrated_fresh_server.sh plan
 bash scripts/run_integrated_fresh_server.sh audit
@@ -90,52 +54,43 @@ bash scripts/run_integrated_fresh_server.sh doctor
 bash scripts/run_integrated_fresh_server.sh start
 ```
 
-`start` 通过 `nohup` 启动，SSH 断开不会终止主进程。查看状态或断电/作业中止后从同一个新目录续跑：
+`doctor` 必须成功后才能 `start`。`start` 使用后台进程，SSH 断开不影响运行；同一 contract 因断电或进程退出时使用 `resume`，不要重新 `start`：
 
 ```bash
 bash scripts/run_integrated_fresh_server.sh status
 bash scripts/run_integrated_fresh_server.sh resume
 ```
 
-`start` 只接受完全不存在的输出/log/PID，防止误混旧实验；`resume` 只补当前 contract 缺失的记录。更换 GPU、源码或配置后必须改用另一个全新目录并重新 `start`。
+启动器对同一 `INTEGRATED_RUN_DIR` 持有完整 worker 生命周期锁；并发执行 `start` 或
+`resume` 只允许一个进程进入，避免两个任务同时写结果或争抢 GPU。
 
-本地只做计划和只读审计，不加载模型：
+## 主要产物
+
+- `server_doctor.json`：冻结环境、GPU、评分沙箱、DDTree C++ 扩展及两项精确分布律证据。
+- `formal_matrix_audit.json`：本次 worker 实际绑定的 canonical T=0/T=1 矩阵及其哈希。
+- `fairness_audit.json`：revision、配置、源码和结论边界审计。
+- `sampling_data_audit.json` / `sampling_gold_audit.json`：T=1 数据与客观评分答案审计。
+- `adaptive_gpu_preflight.json`：两个真实模型的 T=0 双后端、全方法 GPU smoke 证据。
+- `adaptive/<model>/tables.json`：T=0 全样本、输出差异及消融结果。
+- `sampling_t1/<model>/report/summary.json`：T=1 完整质量与性能统计。
+- `report/integrated_results.md`：通过全部门禁后的 T=0/T=1 并列表格。
+- `report/integrated_results.json`：机器可读结果，固定记录 `tree_block_verification=deferred_not_run` 和 `cross_protocol_speedup_pooling_allowed=false`。
+
+汇总时不会信任已有表格：T=0 从所有原始 `.pt` 与完成标记重新建表，T=1 从
+`results.jsonl` 和 `scores.jsonl` 重算覆盖与统计；重算结果必须与落盘表逐字段相同。
+T=0 只有一次完整确定性 pass，只给描述性点估计、不提供置信区间；T=1 才报告冻结的
+配对聚簇 bootstrap 区间。
+
+只读计划、审计和重建报告分别使用：
 
 ```bash
 PYTHONPATH=src python -m gbv_experiments plan-integrated-suite \
   --suite configs/adaptive_tree_block_suite.json
-
 PYTHONPATH=src python -m gbv_experiments audit-integrated-suite \
   --suite configs/adaptive_tree_block_suite.json \
   --output outputs/integrated-fairness-audit.json
-```
-
-在单张 NVIDIA GPU 上运行完整实验；输出目录可续跑，但配置、源码、数据或环境变化时必须换目录：
-
-```bash
-PYTHONPATH=src python -m gbv_experiments run-integrated-suite \
-  --suite configs/adaptive_tree_block_suite.json \
-  --adaptive-data-dir adaptivetree_paper/datasets/ddtree_official_t0 \
-  --block-data-dir datasets/gbv_paper_ddtree_counts \
-  --output outputs/integrated-adaptive-block \
-  --device cuda:0
-```
-
-只重建统一表格：
-
-```bash
 PYTHONPATH=src python -m gbv_experiments report-integrated-suite \
   --suite configs/adaptive_tree_block_suite.json \
-  --run-dir outputs/integrated-adaptive-block \
-  --output outputs/integrated-adaptive-block/report
+  --run-dir "$INTEGRATED_RUN_DIR" \
+  --output "$INTEGRATED_RUN_DIR/report"
 ```
-
-主要产物：
-
-- `fairness_audit.json`：运行前的模型、后端、方法参数与源码审计。
-- `adaptive/*_diagnostic/tables_controlled_sdpa.csv`：T=0 同后端全样本表，含逐方法精确输出率。
-- `adaptive/*_diagnostic/tables_exact_output_subset_diagnostic.csv`：T=0 完全相同输出配对子集诊断。
-- `adaptive/*_diagnostic/tables.csv`：T=0 最佳后端辅助表。
-- `block/*/report/summary.csv`：T>0 各温度逐数据集表。
-- `report/integrated_results.md`：通过全部门禁后的统一并列表格。
-- `report/integrated_results.json`：机器可读结果；明确保存 `cross_protocol_speedup_pooling_allowed=false`。

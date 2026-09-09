@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "protocol": "ddtree_official_t0",
   "official_commit": "c96427a185677bf4133ed865dd1626a5041aef9b",
   "temperature": 0,
@@ -54,10 +54,13 @@
   ],
   "variants": [
     "adaptive",
-    "no_acceptance_calibration",
-    "no_latency",
-    "no_exploration",
-    "frozen_after_warmup"
+    "adaptive_legacy",
+    "adaptive_b128",
+    "adaptive_legacy_cost_attribution",
+    "adaptive_with_exploration",
+    "adaptive_no_acceptance_calibration",
+    "adaptive_no_latency",
+    "adaptive_frozen_after_warmup"
   ],
   "adaptive": {
     "budget_candidates": [
@@ -66,7 +69,10 @@
       60,
       80,
       100,
-      128
+      128,
+      160,
+      192,
+      256
     ],
     "initial_budget": 60,
     "warmup_rounds_per_budget": 1,

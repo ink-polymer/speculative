@@ -1,5 +1,10 @@
 # 本地核验记录（2026-09-03）
 
+> 本文是旧三模型、旧 AdaptiveTree 注册表的历史快照，不是当前正式实验合同。
+> 当前只运行 Qwen3-4B/8B、T=0/1；请以
+> [正式实验矩阵](FORMAL_EXPERIMENT_MATRIX.md) 和
+> [统一运行说明](INTEGRATED_ADAPTIVE_TREE_BLOCK_EXPERIMENT.md) 为准。
+
 ## 已通过
 
 - 再次复查后，独立 AdaptiveTree 实验包的 169 项本地测试全部通过（34.10 秒）。

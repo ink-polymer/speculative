@@ -20,6 +20,13 @@ torch::Tensor fused_tree_sample_parallel_cuda(
     torch::Tensor edge_tokens,
     torch::Tensor uniforms,
     int64_t max_depth);
+
+torch::Tensor fused_tree_sample_scan_cuda(
+    torch::Tensor probabilities,
+    torch::Tensor edge_parents,
+    torch::Tensor edge_tokens,
+    torch::Tensor uniforms,
+    int64_t max_depth);
 """
 
 
@@ -31,6 +38,7 @@ CUDA_SOURCE = r"""
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <cooperative_groups.h>
+#include <cub/block/block_scan.cuh>
 #include <algorithm>
 #include <climits>
 
@@ -164,6 +172,151 @@ torch::Tensor fused_tree_sample_cuda(
         static_cast<int>(vocabulary),
         static_cast<int>(max_depth));
   });
+  C10_CUDA_KERNEL_LAUNCH_CHECK();
+  return output;
+}
+
+template <typename scalar_t, int BLOCK_THREADS>
+__global__ void fused_tree_sample_scan_kernel(
+    const scalar_t* __restrict__ probabilities,
+    const int64_t* __restrict__ edge_parents,
+    const int64_t* __restrict__ edge_tokens,
+    const double* __restrict__ uniforms,
+    int64_t* __restrict__ output,
+    int node_count,
+    int vocabulary,
+    int max_depth) {
+  using BlockScan = cub::BlockScan<double, BLOCK_THREADS>;
+  __shared__ typename BlockScan::TempStorage scan_storage;
+  __shared__ int current_node;
+  __shared__ int finished;
+  __shared__ int accepted_count;
+  __shared__ int selected_token;
+
+  const int thread = threadIdx.x;
+  const int chunk = (vocabulary + BLOCK_THREADS - 1) / BLOCK_THREADS;
+  if (thread == 0) {
+    current_node = 0;
+    finished = 0;
+    accepted_count = 0;
+  }
+  __syncthreads();
+
+  for (int depth = 0; depth <= max_depth; ++depth) {
+    if (finished) {
+      break;
+    }
+    const int row = current_node;
+    const int begin = thread * chunk;
+    const int end = min(begin + chunk, vocabulary);
+    double local_sum = 0.0;
+    for (int token = begin; token < end; ++token) {
+      local_sum += static_cast<double>(
+          probabilities[row * vocabulary + token]);
+    }
+
+    double exclusive_prefix = 0.0;
+    double row_total = 0.0;
+    BlockScan(scan_storage).ExclusiveSum(
+        local_sum, exclusive_prefix, row_total);
+    if (thread == 0) {
+      selected_token = -1;
+    }
+    __syncthreads();
+
+    const double threshold = uniforms[depth] * row_total;
+    if (begin < end && threshold >= exclusive_prefix
+        && threshold < exclusive_prefix + local_sum) {
+      double prefix = exclusive_prefix;
+      for (int token = begin; token < end; ++token) {
+        prefix += static_cast<double>(
+            probabilities[row * vocabulary + token]);
+        if (threshold < prefix) {
+          atomicCAS(&selected_token, -1, token);
+          break;
+        }
+      }
+    }
+    __syncthreads();
+
+    if (thread == 0) {
+      // torch.rand is strictly below one.  This fallback only covers a final
+      // rounding gap in a non-normalized but otherwise positive input row.
+      if (selected_token < 0) {
+        selected_token = vocabulary - 1;
+      }
+      int child = -1;
+      for (int edge = 0; edge < node_count - 1; ++edge) {
+        if (edge_parents[edge] == row
+            && edge_tokens[edge] == selected_token) {
+          child = edge + 1;
+          break;
+        }
+      }
+      if (child >= 0 && depth < max_depth) {
+        output[accepted_count] = child;
+        ++accepted_count;
+        current_node = child;
+      } else {
+        output[max_depth] = accepted_count;
+        output[max_depth + 1] = selected_token;
+        finished = 1;
+      }
+    }
+    __syncthreads();
+  }
+}
+
+torch::Tensor fused_tree_sample_scan_cuda(
+    torch::Tensor probabilities,
+    torch::Tensor edge_parents,
+    torch::Tensor edge_tokens,
+    torch::Tensor uniforms,
+    int64_t max_depth) {
+  TORCH_CHECK(probabilities.is_cuda(), "probabilities must be CUDA");
+  TORCH_CHECK(probabilities.is_contiguous(), "probabilities must be contiguous");
+  TORCH_CHECK(probabilities.dim() == 2, "probabilities must have rank two");
+  TORCH_CHECK(edge_parents.is_cuda() && edge_tokens.is_cuda(),
+              "tree edges must be CUDA");
+  TORCH_CHECK(edge_parents.scalar_type() == torch::kLong
+              && edge_tokens.scalar_type() == torch::kLong,
+              "tree edges must use torch.long");
+  TORCH_CHECK(edge_parents.is_contiguous() && edge_tokens.is_contiguous(),
+              "tree edges must be contiguous");
+  TORCH_CHECK(uniforms.is_cuda()
+              && uniforms.scalar_type() == torch::kFloat64,
+              "uniforms must be CUDA float64");
+  TORCH_CHECK(max_depth >= 0 && uniforms.numel() >= max_depth + 1,
+              "not enough uniforms for the tree depth");
+  const int64_t node_count = probabilities.size(0);
+  const int64_t vocabulary = probabilities.size(1);
+  TORCH_CHECK(edge_parents.numel() == node_count - 1
+              && edge_tokens.numel() == node_count - 1,
+              "tree edge count mismatch");
+  TORCH_CHECK(node_count > 0 && vocabulary > 0,
+              "empty probability tree");
+  TORCH_CHECK(node_count <= INT_MAX && vocabulary <= INT_MAX
+              && max_depth <= INT_MAX, "tree dimensions exceed CUDA limits");
+
+  c10::cuda::CUDAGuard device_guard(probabilities.device());
+  auto output = torch::full(
+      {max_depth + 2}, -1,
+      torch::TensorOptions().dtype(torch::kLong).device(probabilities.device()));
+  constexpr int threads = 640;
+  auto stream = at::cuda::getCurrentCUDAStream();
+  AT_DISPATCH_FLOATING_TYPES(
+      probabilities.scalar_type(), "fused_tree_sample_scan_cuda", [&] {
+        fused_tree_sample_scan_kernel<scalar_t, threads>
+            <<<1, threads, 0, stream>>>(
+                probabilities.data_ptr<scalar_t>(),
+                edge_parents.data_ptr<int64_t>(),
+                edge_tokens.data_ptr<int64_t>(),
+                uniforms.data_ptr<double>(),
+                output.data_ptr<int64_t>(),
+                static_cast<int>(node_count),
+                static_cast<int>(vocabulary),
+                static_cast<int>(max_depth));
+      });
   C10_CUDA_KERNEL_LAUNCH_CHECK();
   return output;
 }
@@ -347,9 +500,9 @@ torch::Tensor fused_tree_sample_parallel_cuda(
     const double* uniform_ptr = uniforms.data_ptr<double>();
     int64_t* state_ptr = state.data_ptr<int64_t>();
     double* workspace_ptr = workspace.data_ptr<double>();
-    const int nodes = static_cast<int>(node_count);
-    const int vocab = static_cast<int>(vocabulary);
-    const int depth = static_cast<int>(max_depth);
+    int nodes = static_cast<int>(node_count);
+    int vocab = static_cast<int>(vocabulary);
+    int depth = static_cast<int>(max_depth);
     void* arguments[] = {
         &probability_ptr, &parent_ptr, &token_ptr, &uniform_ptr,
         &state_ptr, &workspace_ptr, &nodes, &vocab, &depth};
@@ -371,10 +524,11 @@ def load_fused_tree_sampler():
     from torch.utils.cpp_extension import load_inline
 
     return load_inline(
-        name="gbv_fused_tree_sampler_v3",
+        name="gbv_fused_tree_sampler_v11",
         cpp_sources=[CPP_SOURCE],
         cuda_sources=[CUDA_SOURCE],
-        functions=["fused_tree_sample_cuda", "fused_tree_sample_parallel_cuda"],
+        functions=["fused_tree_sample_cuda", "fused_tree_sample_parallel_cuda",
+                   "fused_tree_sample_scan_cuda"],
         extra_cflags=["-O3"],
         extra_cuda_cflags=["-O3"],
         with_cuda=True,
@@ -461,5 +615,38 @@ def tree_verify_ancestral_fused_parallel(parents, tokens, all_p, generator=None,
     bonus = int(packed[max_depth + 1])
     if not 0 <= accepted_count <= max_depth or not 0 <= bonus < all_p.shape[1]:
         raise RuntimeError("Parallel fused tree sampler returned invalid control values")
+    nodes = [int(node) for node in packed[:accepted_count]]
+    return nodes, [tokens[node - 1] for node in nodes], bonus
+
+
+def tree_verify_ancestral_fused_scan(parents, tokens, all_p, generator=None,
+                                      validate: bool = True):
+    """Traverse DDTree with one persistent block and a parallel CUB row scan."""
+    parents, tokens, max_depth = _topology(parents, tokens)
+    node_count = len(parents)
+    if (not all_p.is_cuda or all_p.ndim != 2 or all_p.shape[0] != node_count
+            or all_p.shape[1] < 1 or not all_p.is_floating_point()):
+        raise ValueError("Scan-fused DDTree probability tensor mismatch")
+    if any(token < 0 or token >= all_p.shape[1] for token in tokens):
+        raise ValueError("Tree token is outside the Target vocabulary")
+    if validate:
+        valid = (torch.isfinite(all_p).all() & (all_p >= 0).all()
+                 & (all_p.sum(-1) > 0).all())
+        if not bool(valid):
+            raise FloatingPointError("Invalid Target probabilities for scan-fused DDTree")
+
+    device = all_p.device
+    edge_parents = torch.tensor(parents[1:], dtype=torch.long, device=device)
+    edge_tokens = torch.tensor(tokens, dtype=torch.long, device=device)
+    uniforms = torch.rand(
+        max_depth + 1, dtype=torch.float64, device=device, generator=generator
+    )
+    packed = load_fused_tree_sampler().fused_tree_sample_scan_cuda(
+        all_p.contiguous(), edge_parents, edge_tokens, uniforms, max_depth
+    ).tolist()
+    accepted_count = int(packed[max_depth])
+    bonus = int(packed[max_depth + 1])
+    if not 0 <= accepted_count <= max_depth or not 0 <= bonus < all_p.shape[1]:
+        raise RuntimeError("Scan-fused tree sampler returned invalid control values")
     nodes = [int(node) for node in packed[:accepted_count]]
     return nodes, [tokens[node - 1] for node in nodes], bonus

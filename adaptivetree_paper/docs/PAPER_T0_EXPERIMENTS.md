@@ -1,12 +1,12 @@
-# 原版 Adaptive DDTree：DDTree 官方 T=0 实验与消融
+# 修正版 AdaptiveTree：DDTree 官方 T=0 实验与消融
 
-当前统一为 **非 RL 的原版延迟感知 Adaptive DDTree**。用户已确认连抽样数量也与官方一致，因此默认不再使用七套全量测试集。文件名中的 full 表示完整实验矩阵，不表示全量数据。
+当前统一为 **非 RL、成本归因修正且预算扩至 B=256 的 AdaptiveTree**。用户已确认连抽样数量也与官方一致，因此默认不再使用七套全量测试集。文件名中的 full 表示完整实验矩阵，不表示全量数据。
 
 [构树介绍与流程图](ADAPTIVE_DDTREE_METHOD.md) · [论文数学证明](ADAPTIVE_DDTREE_T0_PROOF.md) · [官方对齐说明](DDTREE_PROTOCOL_ALIGNMENT.md)
 
 ## 1. 方法与官方依据
 
-Adaptive 构树器逐字节恢复自本项目提交 `9dd67698ad828b8c3fca8659e3a388f0b2dfbdf7`：一次 DFlash block 前向，DDTree best-first 枚举最多 128 节点，再从 30/45/60/80/100/128 的嵌套前缀中选预算。初始 60；每预算预热一轮；EMA α=0.2；间隔 64 次有效决策探索。不训练 policy、reward、rank head 或 draft，不需要训练集/checkpoint。
+底层构树器逐字节恢复自本项目提交 `9dd67698ad828b8c3fca8659e3a388f0b2dfbdf7`。正式 `adaptive` 用一次 DFlash block 前向，DDTree best-first 枚举最多 256 节点，再从九个嵌套前缀中选预算；初始 60、每预算预热一轮、EMA α=0.2，并按当前注册合同关闭周期探索。旧 B≤128、旧成本归因、间隔 64 次探索的实现保留为 `adaptive_legacy`。不训练 policy、reward、rank head 或 draft，不需要训练集/checkpoint。
 
 评测对齐 DDTree 官方提交 `c96427a185677bf4133ed865dd1626a5041aef9b`。只复现其 **T=0 部分**，不将此方法扩展为 T=1 GBV。
 
@@ -51,7 +51,11 @@ MT-Bench 按官方方式共享当前轮输入；SDPA 组的下一轮对话使用
 
 4B 使用旧实验固定的 Target/Draft SHA：1cfa9a7208912126459214e8b04321603b3df60c / b74e3a329c4d963783143b1e970d95b002be72bd。8B 使用 GBV 已上传配置的同一对 SHA：b968826d9c46dd6066d109eabc6255188de91218 / 9b41424b7109f9c5413454f481b09a82b85333f4。30B 首次 prepare 解析 SHA 并锁定，不使用可变本地微调目录；不同 8B revision 的旧清单拒绝复用。
 
-新增 [Qwen3-8B 独立入口](ADAPTIVE_QWEN3_8B.md)：bash scripts/run_paper_t0_qwen3_8b.sh plan；包含相同主实验与四项消融，8B 独立输出，不同时加载其他模型。原有完整三模型入口保持不变。
+新增 [Qwen3-8B 独立入口](ADAPTIVE_QWEN3_8B.md)：bash scripts/run_paper_t0_qwen3_8b.sh plan；包含相同主实验、历史控制与六项消融，8B 独立输出，不同时加载其他模型。原有完整三模型入口保持不变。
+
+这里的“三模型入口”只描述独立包原始完整配置仍可表达的范围。当前 integrated
+formal 新服务器重跑只选择 4B/8B，并把 30B 与树状块验证明确延期；不得用本节
+的独立入口清单声称 integrated 已运行或将运行这些延期项。
 
 温度 0、BF16、每回答最多 2,048 新 token、thinking 关闭、seed=0、每 GPU batch=1。沿用官方脚本的 2,048，而不是 benchmark.py 单独调用时的 16,384 默认值。Draft 始终 FA2；Target 分别跑 SDPA 和 FA2 两组。树方法仅在 SDPA 组运行。遵循官方 PyTorch 默认 TF32 行为，不额外强设 TF32；采用官方 C++ cache compaction，编译失败则停下排查，不静默给不同配置冠以相同结果名。
 
@@ -65,15 +69,18 @@ MT-Bench 按官方方式共享当前轮输入；SDPA 组的下一轮对话使用
 |---|---|
 | 两个 Target 后端 | 官方 Target-only、官方 DFlash |
 | SDPA 固定预算 | 官方 DDTree：16/32/64/128/256/512/1024 |
-| SDPA 主方法 | 原版 adaptive：六候选预算在线选择 |
-| no_acceptance_calibration | 接受率校准系数固定 1 |
-| no_latency | 决策时成本分母固定 1，保留预热/探索 |
-| no_exploration | 关闭周期探索，保留首次预算预热 |
-| frozen_after_warmup | 六预算首次观测后冻结耗时及接受率校准；计数与探索仍继续 |
+| SDPA 主方法 | `adaptive`：正确成本归因、九候选预算（B≤256）、关闭周期探索 |
+| 历史控制 | `adaptive_legacy`：旧 B≤128、旧成本归因、带周期探索方法 |
+| 预算消融 | `adaptive_b128`：正确成本归因但只保留 B≤128 |
+| 成本归因消融 | `adaptive_legacy_cost_attribution`：保持 B≤256、关闭探索，只恢复旧成本归因 |
+| 探索消融 | `adaptive_with_exploration`：在正式方法上恢复周期探索 |
+| 校准消融 | `adaptive_no_acceptance_calibration`：接受率校准系数固定 1 |
+| 延迟消融 | `adaptive_no_latency`：决策时去除成本判别 |
+| 冻结消融 | `adaptive_frozen_after_warmup`：九预算预热后冻结耗时及接受率校准 |
 
-消融均不重训模型。Adaptive 的构树转换与控制器开销计入官方 decode timer。控制器仍使用“草稿＋构树”及“树编译＋验证＋KV/提交”的实测毫秒更新原版标量规则；换用官方执行器后，这些观测来自它的阶段计时，而不是伪称仍为旧 engine 的 CUDA-event 数字。
+消融均不重训模型。Adaptive 的构树转换与控制器开销计入官方 decode timer。各方法使用同一组实测阶段时间，但按 registry 中冻结的分区更新：canonical 以“草稿”为共享固定成本，将“构树＋树编译＋验证＋KV/提交”归入所选预算；`adaptive_legacy` 与成本归因消融才恢复旧分区。换用官方执行器后，这些观测来自它的阶段计时，而不是伪称仍为旧 engine 的 CUDA-event 数字。
 
-默认 10 数据集 × 3 模型 × 2 后端，60 个进程组；包括 Adaptive 和消融共 **55,296 次正式生成调用**，另加预热。没有 36 个 RL checkpoint、反事实数据引擎或训练 epochs。
+默认 10 数据集 × 3 模型 × 2 后端，60 个进程组；包括 Adaptive、历史控制和消融共 **65,664 次正式生成调用**，另加预热。没有 36 个 RL checkpoint、反事实数据引擎或训练 epochs。
 
 ## 5. 计时、汇总与审计
 
@@ -86,7 +93,7 @@ MT-Bench 按官方方式共享当前轮输入；SDPA 组的下一轮对话使用
 - Adaptive/各消融与同一个官方 Target baseline 和最佳 DDTree 对比。
 - 不再把三个顺序种子、重复测量或 bootstrap 当作官方原协议。
 
-额外审计在生成计时之外：保存数据/代码/权重来源、每轮输入 hash 与原始输出；发现任一方法与官方 Target-only 输出不一致即保存诊断并停止，不筛掉失败题。跨后端输入或输出不一致也拒绝出无损比较表。此检查针对官方 Target-only 实现；BF16 实数等价、特殊 mask 清理和任务准确率仍不是由此自动证明的。
+额外审计在生成计时之外：保存数据/代码/权重来源、每轮输入 hash 与原始输出。默认 `strict` 模式发现任一方法与官方 Target-only 输出不一致即保存诊断并停止；公平整合矩阵的 `record-bf16-mismatches` 模式则保留所有样本、逐方法统计差异，并明确禁止无损声明。跨后端输入或输出不一致也不能形成无损比较表。此检查针对官方 Target-only 实现；BF16 实数等价、特殊 mask 清理和任务准确率仍不是由此自动证明的。
 
 只对成功完成、hash 匹配的整个进程组续跑；失败组重新从头运行，不能跳过前半题而丢失自适应历史。拒绝覆盖已有但未经确认的 .pt。已完成组的 .pt 可用官方表格脚本读取；Adaptive 扩展表由 official_reporting.py 生成。不得加载来源不明的 pickle/.pt。
 
@@ -115,6 +122,6 @@ bash scripts/run_paper_t0_full.sh summarize
 
 ## 7. 证明与历史结果
 
-[数学证明](ADAPTIVE_DDTREE_T0_PROOF.md) 对应原版嵌套预算方法，证明代理质量性质以及在明确计算假设下的 T=0 贪心等价；不证明吞吐必然提高，也不是随机采样无偏性或 RL 收敛证明。
+[数学证明](ADAPTIVE_DDTREE_T0_PROOF.md) 中的具体控制器公式对应 legacy B≤128 方法；预算无关部分证明代理树性质，以及在明确计算假设下任意合法树序列的 T=0 贪心等价。它不证明当前 canonical 的成本归因修正必然提高吞吐，也不是实际 BF16 无条件一致、随机采样无偏性或 RL 收敛证明。
 
 旧截图属于原版非 RL 算法，但原始 2,000 条只有 **727 条**与当时 AR 完全一致，**1,273 条不一致**。它不作为这套官方协议的新结果或已验证无损结果。本次只修改、核对代码和文稿，未启动服务器 GPU 实验；尚无新加速比。

@@ -25,7 +25,7 @@ def test_qwen8b_default_only_plans_one_model(capsys, monkeypatch):
     assert pair["target_revision"] == PINNED_MODEL_REVISIONS[pair["target"]]
     assert pair["draft_revision"] == PINNED_MODEL_REVISIONS[pair["draft"]]
     assert plan["cases"] == 1072 and plan["turns_per_method"] == 1152
-    assert plan["benchmark_process_groups"] == 20 and plan["generation_calls"] == 18432
+    assert plan["benchmark_process_groups"] == 20 and plan["generation_calls"] == 21888
     assert not plan["training"] and not plan["launches_models"]
 
 

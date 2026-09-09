@@ -1,20 +1,20 @@
-# Adaptive DDTree：原版非 RL，DDTree 官方 T=0 实验
+# AdaptiveTree：修正版非 RL，DDTree 官方 T=0 实验
 
-新增 [Qwen3-8B 独立版本](docs/ADAPTIVE_QWEN3_8B.md)：bash scripts/run_paper_t0_qwen3_8b.sh plan。包含同一套主实验及四项消融，默认独立输出；不传参数仅显示计划，不启动 GPU。8B 权重 revision 与已上传 GBV 配置一致。
+新增 [Qwen3-8B 独立版本](docs/ADAPTIVE_QWEN3_8B.md)：bash scripts/run_paper_t0_qwen3_8b.sh plan。包含同一套正式方法、历史控制及六项消融，默认独立输出；不传参数仅显示计划，不启动 GPU。8B 权重 revision 与已上传 GBV 配置一致。
 
-本包恢复截图对应的原版延迟感知预算控制器，包含方法介绍、数学证明、正式评测、4 项消融和测试。**没有 RL 训练、GBV、模型权重、数据文件或新 GPU 实验结果。** 文件名中的 full 指完整实验矩阵，采样数量按用户要求采用 DDTree 官方设置，并非全量数据集。
+本包以修正成本归因并扩展到 B=256 的控制器作为正式 `adaptive`，同时保留明确命名的历史对照、消融、数学证明、正式评测和测试。**没有 RL 训练、GBV、模型权重、数据文件或新 GPU 实验结果。** 文件名中的 full 指完整实验矩阵，采样数量按用户要求采用 DDTree 官方设置，并非全量数据集。
 
 [构树与流程图](docs/ADAPTIVE_DDTREE_METHOD.md) · [论文版数学证明](docs/ADAPTIVE_DDTREE_T0_PAPER_PROOF.md) · [控制器公式与实现边界](docs/ADAPTIVE_DDTREE_T0_PROOF.md) · [完整实验说明](docs/PAPER_T0_EXPERIMENTS.md) · [官方对齐核对](docs/DDTREE_PROTOCOL_ALIGNMENT.md)
 
 ## 方法与评测
 
-- 保留原版 DDTree best-first；最多枚举 128 节点，在 30/45/60/80/100/128 的嵌套树间按校准接受收益与实测成本选预算。没有 policy 网络、训练集或 checkpoint。
+- 保留原版 DDTree best-first；正式 `adaptive` 最多枚举 256 节点，在 30/45/60/80/100/128/160/192/256 的嵌套树间按校准接受收益与完整预算相关实测成本选预算。没有 policy 网络、训练集或 checkpoint。
 - 官方十数据集：GSM8K 128、MATH-500 128、AIME24 30、AIME25 30、HumanEval 164、MBPP-sanitized 128、LiveCodeBench 128、SWE-bench 128、MT-Bench 80、Alpaca 128。
 - 共 1,072 题/对话，含 MT-Bench 双轮后每方法 1,152 次回答。直接执行固定版官方数据处理和 seed=0 抽样，不是全量测试集。
 - 三组原始 Target/DFlash 模型：Qwen3-4B、Qwen3-8B、Qwen3-Coder-30B-A3B-Instruct。T=0、BF16、每回答最多 2,048 新 token。
 - Draft 使用 FA2；Target 分 SDPA/FA2 两组；树方法仅 SDPA。固定 DDTree 对照预算 16/32/64/128/256/512/1024，采用官方回答级 decode TPOT 均值之比。
-- 主方法与四项消融：去接受校准、去延迟项、去周期探索、预热后冻结校准。默认完整矩阵 60 个进程组、55,296 次生成调用，另加预热。
-- 逐题 token 对照官方 Target-only；不一致保存诊断并停止，不删除失败题。不是任务准确率评分或 BF16 无条件等价保证。
+- 正式主方法、历史控制与六项消融：B=128、恢复旧成本归因、恢复周期探索、去接受校准、去延迟项、预热后冻结校准。默认完整矩阵 60 个进程组、65,664 次生成调用，另加预热。
+- 逐题 token 对照官方 Target-only。默认严格复现模式会在不一致时保存诊断并停止；公平整合矩阵使用 `record-bf16-mismatches` 保留并统计全部差异，不删除或筛掉样本。两种口径都不是任务准确率评分或 BF16 无条件等价保证。
 - 公平整合实验可显式启用 `--method-order-policy balanced-rotation`，让所有方法在每个计时位置均衡轮换；默认仍为 `official-fixed` 以保留上游复现口径。同后端架构主表写入 `tables_controlled_sdpa.csv`，最佳后端表只作辅助对照。
 
 ## 环境与运行
@@ -41,34 +41,25 @@ CUDA_VISIBLE_DEVICES=0 bash scripts/run_paper_t0_full.sh all \
 
 smoke 不能用于论文；显式单卡/模型子集会记录为协议范围或硬件偏离。正式运行可分别调用 evaluate 和 summarize。上游未公开历史 HF 快照，本包锁定本次数据和权重 revision；不能声称复原未知的作者历史快照。没有 collect/train 步骤。
 
-预算成本归因修正是独立诊断方法，不会改写上述冻结矩阵。它复用最佳的
-`no_exploration` 控制器，但把随节点预算变化的 tree-build 延迟计入对应预算：
+成本归因修正和 B=256 候选预算现已注册为正式 `adaptive`。tree-build、编译、
+Target 验证和 KV/commit 延迟都计入所选预算；仅 proposal 作为固定成本。旧方法明确
+命名为 `adaptive_legacy`，不再占用主方法名称。正式方法/对照如下：
 
-```bash
-CUDA_VISIBLE_DEVICES=0 bash scripts/run_paper_t0_full.sh all \
-  --experimental-cost-attribution --nproc-per-node 1 --model-index 0 \
-  --dataset gsm8k --smoke-count 2 \
-  --run-dir outputs/cost_attribution_diagnostic_smoke
-```
+| 名称 | 作用 |
+|---|---|
+| `adaptive` | 修正成本归因、B≤256、无周期探索的正式主方法 |
+| `adaptive_legacy` | B≤128、旧成本归因、带周期探索的历史控制 |
+| `adaptive_b128` | 只移除 B>128 候选的单因素消融 |
+| `adaptive_legacy_cost_attribution` | 保持 B≤256、关闭探索，仅恢复旧成本归因的单因素消融 |
+| `adaptive_with_exploration` | 只恢复周期探索的单因素消融 |
+| `adaptive_no_acceptance_calibration` | 去接受率校准 |
+| `adaptive_no_latency` | 去延迟判别 |
+| `adaptive_frozen_after_warmup` | 预热后冻结在线估计 |
 
-该方法在结果中明确命名为 `cost_attributed_no_exploration`；带此方法的汇总会标为
-diagnostic 且不能通过冻结官方矩阵的 publication gate。
-
-原候选预算只有 `30/45/60/80/100/128`，所以先前结果大量选择 128 时，不能区分
-“128 真是最优”与“控制器撞到搜索上限”。扩展预算诊断保留同一个 `no_exploration`
-控制器和正确的成本归因，仅追加 `160/192/256`，并自动同时运行 B=128 上限的对照：
-
-```bash
-CUDA_VISIBLE_DEVICES=0 bash scripts/run_paper_t0_full.sh all \
-  --experimental-extended-budgets --nproc-per-node 1 --model-index 0 \
-  --dataset gsm8k --smoke-count 2 \
-  --run-dir outputs/extended_budget_diagnostic_smoke
-```
-
-新方法名为 `cost_attributed_no_exploration_b256`。运行时缓冲区按控制器最大预算
-自动扩成 anchor + 256 个草稿节点；汇总的 `diagnostic_budget_usage` 会逐模型/数据集
-记录各预算选择次数、`>128` 占比和命中候选上限的占比。只有当更大的接受收益覆盖
-额外构树、编译、Target 验证与 KV/commit 成本时，控制器才会持续选择更大预算。
+旧的 `--experimental-cost-attribution` 与 `--experimental-extended-budgets` 参数仅为
+启动脚本兼容而保留，不会添加重复方法。旧长方法名只可用于重现历史 artifact，绝不
+写入新的正式 contract。报告在每行写入 `method_role`，并分别提供 `primary_rows`、
+`ablation_rows` 和 `adaptive_budget_usage`。
 
 ### W&B 在线监控
 

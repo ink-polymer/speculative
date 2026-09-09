@@ -60,6 +60,7 @@ class Variant:
                                "ddtree", "ddtree_terminal_block",
                                "ddtree_terminal_serial", "ddtree_terminal_dense",
                                "ddtree_fused", "ddtree_fused_parallel",
+                               "ddtree_fused_scan",
                                "ddtree_lazy_projection"} | SHARED_SUFFIX_METHODS | ATOM_TREE_METHODS | DIFFUSION_LAW_METHODS:
             raise ValueError(f"Unknown method: {self.method}")
         if self.paths < 1 or self.length < 1 or self.temperature < 0:

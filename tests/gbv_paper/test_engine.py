@@ -26,7 +26,8 @@ def test_tree_merge_keeps_candidate_multiplicity():
 
 @pytest.mark.parametrize(
     "method",
-    ["ddtree_fused", "ddtree_fused_parallel", "ddtree_lazy_projection"],
+    ["ddtree_fused", "ddtree_fused_parallel", "ddtree_fused_scan",
+     "ddtree_lazy_projection"],
 )
 def test_fused_tree_methods_are_valid_probability_tree_variants(method):
     variant = Variant(
@@ -40,6 +41,7 @@ def test_fused_tree_methods_are_valid_probability_tree_variants(method):
 @pytest.mark.parametrize("method,attribute", [
     ("ddtree_fused", "tree_verify_ancestral_fused"),
     ("ddtree_fused_parallel", "tree_verify_ancestral_fused_parallel"),
+    ("ddtree_fused_scan", "tree_verify_ancestral_fused_scan"),
 ])
 def test_fused_tree_methods_dispatch_in_generation(
         tiny_engine, monkeypatch, method, attribute):

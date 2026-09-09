@@ -88,11 +88,21 @@ def check_environment(cfg, code_backend="docker", device="cuda:0"):
     if cfg["model"].get("dtype", "bfloat16") == "bfloat16" and not torch.cuda.is_bf16_supported():
         raise RuntimeError("The GPU does not support BF16")
     image_id = None
+    process_identity = {
+        "process_python":None, "process_python_resolved":None,
+        "process_python_sha256":None, "process_python_runtime":None,
+        "process_pyvenv_cfg_sha256":None,
+    }
     if code_backend == "docker":
         image_id = subprocess.check_output(["docker", "image", "inspect", "gbv-code-eval:py311",
                                            "--format", "{{.Id}}"], text=True).strip()
         subprocess.run(["docker", "run", "--rm", "--network=none", "gbv-code-eval:py311",
                         "python", "-c", "import numpy, sympy; print('code evaluator ready')"], check=True)
+    elif code_backend == "process":
+        from .scoring import process_python_identity
+        process_identity = process_python_identity()
+    else:
+        raise ValueError("Unknown code scoring backend")
     versions = {name: importlib.metadata.version(name) for name in
                 ("torch", "transformers", "huggingface-hub", "datasets", "numpy", "math-verify")}
     evaluator_checks = []
@@ -111,9 +121,13 @@ def check_environment(cfg, code_backend="docker", device="cuda:0"):
                 if result["passed"] is not correct:
                     raise RuntimeError(f"LiveCodeBench evaluator preflight failed: {result}")
                 evaluator_checks.append({"functional": functional, "expected_pass": correct, "result": result})
+    properties = torch.cuda.get_device_properties(device)
     return {"versions": versions, "python": platform.python_version(), "cuda": torch.version.cuda,
-            "gpu": torch.cuda.get_device_name(device), "total_memory_bytes": torch.cuda.get_device_properties(device).total_memory,
-            "code_backend": code_backend, "code_image_id": image_id, "lcb_evaluator_checks": evaluator_checks}
+            "gpu": torch.cuda.get_device_name(device),
+            "gpu_uuid":str(getattr(properties, "uuid", "unknown")),
+            "total_memory_bytes": properties.total_memory,
+            "code_backend": code_backend, "code_image_id": image_id,
+            **process_identity, "lcb_evaluator_checks": evaluator_checks}
 
 
 def check_model(cfg, output: Path, device="cuda:0", code_backend="docker", only_variants=None):

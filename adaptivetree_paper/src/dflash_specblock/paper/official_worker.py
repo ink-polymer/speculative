@@ -7,8 +7,10 @@ import numpy as np
 import torch
 
 from .common import atomic_json, digest, file_hash, load_json
-from .controller import (DIAGNOSTIC_VARIANTS, make_paper_builder,
-                         selected_diagnostic_variants)
+from .controller import (DIAGNOSTIC_VARIANTS, controller_config,
+                         deprecated_experiment_flags,
+                         expected_official_controller_configs,
+                         make_paper_builder)
 from .official_data import check_manifest
 from .official_spec import BUDGETS, LIMITS, MODELS, upstream
 from .official_audit import gpu_identity, validate_hardware
@@ -69,7 +71,9 @@ def audit_response(response, *, index, turn, input_ids, diagnostic_path, policy=
             "greedy_audit_policy":policy,
             "message":("Official greedy token mismatch; no successful-run marker is written."
                        if policy == "strict" else
-                       "BF16 greedy mismatch recorded; timings are not eligible for a strict lossless claim.")})
+                       "Greedy output divergence observed during BF16 execution; "
+                       "the divergence cause is not inferred, and timings are not eligible "
+                       "for a strict lossless claim.")})
         if policy == "strict":
             raise RuntimeError(f"Greedy mismatch; diagnostic saved to {diagnostic_path}")
     return {"index": index, "turn": turn,
@@ -117,36 +121,33 @@ def worker(args, config):
     tokenizer = AutoTokenizer.from_pretrained(target_name, revision=lock["models"][target_name])
     block_size = draft.block_size
     if block_size != 16:
-        raise ValueError(f"Original AdaptiveTree requires K=15; loaded official draft has block_size={block_size}")
+        raise ValueError(f"AdaptiveTree T=0 requires K=15; loaded official draft has block_size={block_size}")
     maximum = min(config["max_new_tokens"], 32) if args.smoke_count else config["max_new_tokens"]
     rows = load_json(args.data_dir / f"{args.dataset}.json")
     if args.smoke_count:
         rows = rows[:args.smoke_count]
-    diagnostic_variants = selected_diagnostic_variants(
+    legacy_cli_aliases = deprecated_experiment_flags(
         cost_attribution=getattr(args, "experimental_cost_attribution", False),
         extended_budgets=getattr(args, "experimental_extended_budgets", False),
     )
-    controller_names = (*config["variants"], *diagnostic_variants)
-    methods = method_names(args.backend, config["variants"], diagnostic_variants)
+    controller_names = tuple(config["variants"])
+    methods = method_names(args.backend, config["variants"])
     controllers = {name: make_paper_builder(config["adaptive"], name)
                    for name in controller_names} if args.backend == "sdpa" else {}
-    diagnostic_builders = {
-        name:controllers.get(name) or make_paper_builder(config["adaptive"], name)
-        for name in diagnostic_variants
+    controller_configs = {
+        name:controller_config(builder) for name,builder in controllers.items()
     }
-    diagnostic_controller_configs = {
-        name:{"budget_candidates":list(builder.budget_candidates),
-              "maximum_draft_nodes":builder.tree_budget,
-              "timing_partition":builder.timing_partition,
-              "controller_variant":builder.variant}
-        for name,builder in diagnostic_builders.items()
-    }
+    expected_controller_configs = (
+        expected_official_controller_configs(controller_names)
+        if args.backend == "sdpa" else {}
+    )
+    if controller_configs != expected_controller_configs:
+        raise RuntimeError("Constructed AdaptiveTree controllers differ from the registry")
     audit_policy = getattr(args, "greedy_audit_policy", "strict")
     order_policy = getattr(args, "method_order_policy", "official-fixed")
     wandb_run = initialize_wandb(
         args, model_name=target_name, draft_name=draft_name, backend=args.backend,
-        rank=rank, world_size=world, diagnostic_variants=diagnostic_variants,
-        controller_configs=diagnostic_controller_configs)
+        rank=rank, world_size=world, controller_configs=controller_configs)
 
     def generate(ids, method, max_tokens):
         kwargs = dict(model=draft, target=target, input_ids=ids,
@@ -178,6 +179,7 @@ def worker(args, config):
         response_count += len(row["turns"])
     for idx in range(rank, len(rows), world):
         messages = []
+        conditioning_history = []
         for turn, user_content in enumerate(rows[idx]["turns"]):
             messages.append({"role":"user", "content":user_content})
             ids = encode(messages)
@@ -190,13 +192,23 @@ def worker(args, config):
             audit = audit_response(response, index=idx, turn=turn, input_ids=ids,
                 diagnostic_path=args.output.with_name(args.output.stem + f".rank{rank}.mismatch.json"),
                 policy=audit_policy)
+            # Bind both the immutable source prompt and the exact generated-token
+            # history that conditioned this turn.  In mismatch-recording mode the
+            # two target backends may legitimately have different MT-Bench
+            # continuation contexts, but neither may silently change the user
+            # turns or use an unexplained history.
+            audit["source_turns_sha256"] = digest(rows[idx]["turns"])
+            audit["user_turn_sha256"] = digest(user_content)
+            audit["conditioning_history_sha256"] = digest(conditioning_history)
             audit["method_order"] = execution_order
             log_response(wandb_run, response, step=len(responses), index=idx, turn=turn)
             # Adding ablations must NOT change the official multi-turn conditioning:
             # SDPA uses the last original DDTree budget (1024); FA2 uses DFlash.
             history_method = "ddtree_tb1024" if args.backend == "sdpa" else "dflash"
-            text = tokenizer.decode(response_tokens(response[history_method]), skip_special_tokens=True)
+            history_tokens = response_tokens(response[history_method])
+            text = tokenizer.decode(history_tokens, skip_special_tokens=True)
             messages.append({"role":"assistant", "content":text})
+            conditioning_history.append(history_tokens)
             response["_audit"] = audit
             responses.append(response)
         print(f"{args.dataset} model={args.model_index} {args.backend} rank={rank} case={idx+1}/{len(rows)}", flush=True)
@@ -220,19 +232,16 @@ def worker(args, config):
                 "protocol_identity":args.identity, "source_lock":lock,
                 "world_size":world, "hardware":hardware,
                 "smoke":bool(args.smoke_count), "methods":methods,
+                "method_schema_version":2,
                 "greedy_audit_policy":audit_policy,
                 "method_order_policy":order_policy,
-                "adaptive_timing":"proposal+build; compile+verify+KV/commit; all controller overhead included in official decode timer",
+                "adaptive_timing":"timing attribution is method-specific and frozen in controller_configs; all controller overhead is included in the official decode timer",
+                "controller_configs":controller_configs,
                 "substage_note":"Adaptive fine-grained tree_build_* attribution unavailable; use aggregate tree_build"}
     if wandb_contract(args):
         run_data["wandb"] = wandb_contract(args)
-    if diagnostic_variants:
-        run_data["diagnostic_variants"] = list(diagnostic_variants)
-        run_data["diagnostic_controllers"] = diagnostic_controller_configs
-        run_data["diagnostic_timing"] = (
-            "proposal is fixed; build+compile+verify+KV/commit is attributed "
-            "to the selected budget"
-        )
+    if legacy_cli_aliases:
+        run_data["deprecated_cli_aliases"] = list(legacy_cli_aliases)
     expected_turns = sum(len(r["turns"]) for r in rows)
     if len(responses) != expected_turns:
         raise RuntimeError("Missing official response turns")

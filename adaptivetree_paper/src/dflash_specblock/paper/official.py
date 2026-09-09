@@ -12,7 +12,7 @@ import sys
 from .common import ROOT, atomic_json, code_identity, contract, load_json, run_lock
 from .official_data import check_manifest, prepare
 from .official_spec import LIMITS, MODELS, PINNED_MODEL_REVISIONS, load_config, verify_sources
-from .controller import selected_diagnostic_variants
+from .controller import deprecated_experiment_flags
 from .wandb_monitor import wandb_contract
 
 
@@ -20,9 +20,10 @@ def plan(config, model_indices, datasets, smoke_count, nproc,
          experimental_cost_attribution=False, experimental_extended_budgets=False):
     counts = {name:min(LIMITS[name], smoke_count) if smoke_count else LIMITS[name] for name in datasets}
     turns = sum(n * (2 if name=="mt-bench" else 1) for name,n in counts.items())
-    # SDPA: baseline, DFlash, seven DDTree budgets, five Adaptive variants.
+    # SDPA: baseline, DFlash, seven DDTree budgets, and the registered
+    # AdaptiveTree method/ablation matrix.
     # FA2: baseline and DFlash only.
-    diagnostic_variants = selected_diagnostic_variants(
+    legacy_cli_aliases = deprecated_experiment_flags(
         cost_attribution=experimental_cost_attribution,
         extended_budgets=experimental_extended_budgets,
     )
@@ -35,12 +36,13 @@ def plan(config, model_indices, datasets, smoke_count, nproc,
                 "draft_revision":PINNED_MODEL_REVISIONS.get(MODELS[i][1], "locked during prepare")}
                 for i in model_indices],
             "benchmark_process_groups":len(datasets)*len(model_indices)*2,
-            "generation_calls":turns*len(model_indices)*(11+len(config["variants"])
-                + len(diagnostic_variants)),
+            "generation_calls":turns*len(model_indices)*(11+len(config["variants"])),
+            "method_schema_version":2,
+            "primary_adaptive_method":"adaptive",
             "full_split":False, "official_samples":not bool(smoke_count),
             "launches_models":False}
-    if diagnostic_variants:
-        result["diagnostic_variants"] = list(diagnostic_variants)
+    if legacy_cli_aliases:
+        result["deprecated_cli_aliases"] = list(legacy_cli_aliases)
     return result
 
 
@@ -63,7 +65,7 @@ def doctor(nproc):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="Original non-RL AdaptiveTree under pinned DDTree official T=0 evaluation",
+    parser = argparse.ArgumentParser(description="Corrected non-RL AdaptiveTree under pinned DDTree official T=0 evaluation",
                                      allow_abbrev=False)
     parser.add_argument("stage", choices=["plan","doctor","prepare","evaluate","summarize","all","worker"])
     parser.add_argument("--config", type=Path, default=ROOT/"configs/paper_t0_full.json")
@@ -84,9 +86,9 @@ def main(argv=None):
                         default="official-fixed",
                         help="preserve upstream order or rotate every method through timed positions")
     parser.add_argument("--experimental-cost-attribution", action="store_true",
-                        help="add a diagnostic no-exploration controller with budget-aware tree-build cost")
+                        help="deprecated compatibility alias; adaptive_b128 is now in the formal matrix")
     parser.add_argument("--experimental-extended-budgets", action="store_true",
-                        help="add cost-attributed B=128 and extended B=256 diagnostic controllers")
+                        help="deprecated compatibility alias; adaptive is now budget-aware through B=256")
     parser.add_argument("--wandb-project",
                         help="stream non-secret progress metrics to this W&B project")
     parser.add_argument("--wandb-entity", help="optional W&B entity/team")
@@ -97,13 +99,11 @@ def main(argv=None):
         parser.error("nproc must be positive and smoke-count nonnegative")
     if args.smoke_count and "smoke" not in args.run_dir.name.lower():
         parser.error("Smoke requires a separate run directory containing 'smoke'")
-    diagnostic_variants = selected_diagnostic_variants(
+    legacy_cli_aliases = deprecated_experiment_flags(
         cost_attribution=args.experimental_cost_attribution,
         extended_budgets=args.experimental_extended_budgets,
     )
     wandb_settings = wandb_contract(args)
-    if diagnostic_variants and "diagnostic" not in args.run_dir.name.lower():
-        parser.error("Experimental AdaptiveTree variants require a separate run directory containing 'diagnostic'")
     if args.stage == "worker":
         if any(v is None for v in (args.model_index,args.dataset,args.backend,args.output,args.identity)):
             parser.error("Internal worker requires model, dataset, backend, output and identity")
@@ -133,14 +133,16 @@ def main(argv=None):
             return
     audit_policy = args.greedy_audit_policy
     manifest = check_manifest(args.data_dir)
-    metadata = {"version":4, "config":config, "source_manifest":verify_sources(),
+    metadata = {"version":5, "config":config, "source_manifest":verify_sources(),
                 "dataset_manifest":manifest, "code_identity":code_identity(),
                 "nproc_per_node":args.nproc_per_node, "model_indices":models, "datasets":datasets,
                 "smoke_count":args.smoke_count, "max_new_tokens":32 if args.smoke_count else 2048,
+                "method_schema_version":2,
+                "primary_adaptive_method":"adaptive",
                 "greedy_audit_policy":audit_policy,
                 "method_order_policy":args.method_order_policy}
-    if diagnostic_variants:
-        metadata["diagnostic_variants"] = list(diagnostic_variants)
+    if legacy_cli_aliases:
+        metadata["deprecated_cli_aliases"] = list(legacy_cli_aliases)
     if wandb_settings:
         metadata["wandb"] = wandb_settings
     with run_lock(args.run_dir):
@@ -164,8 +166,10 @@ def main(argv=None):
                         run = load_completed(output,identity)
                         validate_run_contract(run, load_json(args.data_dir/"source_revisions.json"),
                                               args.nproc_per_node,args.smoke_count,env,audit_policy,
-                                              metadata.get("diagnostic_variants", ()),
-                                              metadata.get("wandb"))
+                                              (),
+                                              metadata.get("wandb"),
+                                              args.method_order_policy,
+                                              metadata.get("deprecated_cli_aliases", ()))
                         continue
                     if output.exists():
                         raise FileExistsError("Incomplete artifact exists; use a new run directory, not silent overwrite")

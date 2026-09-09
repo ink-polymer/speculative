@@ -1,7 +1,6 @@
 from copy import deepcopy
 from dataclasses import asdict
 import json
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -9,7 +8,7 @@ import pytest
 from gbv_experiments.common import ROOT, digest, file_hash, write_json
 from gbv_experiments.config import build_variants, load_config
 from gbv_experiments.data import DATASETS, format_record, formatter_id, load_prepared
-from gbv_experiments.report import clustered_ci, report, validate_results
+from gbv_experiments.report import report, validate_results
 from gbv_experiments.runner import make_plan, resume_records, stop_token_ids
 from gbv_experiments.scoring import make_program, math_score, evaluate_code
 
@@ -133,6 +132,45 @@ def test_report_refuses_partial_scores_and_duplicates(tmp_path):
     assert gbv["speedup_ci_low"] == gbv["speedup_ci_high"] == 2
     assert (tmp_path / "report/table.tex").exists()
     assert (tmp_path / "report/gsm8k_main.pdf").stat().st_size > 1000
+
+
+def test_result_validation_rejects_global_order_balance_with_dataset_bias():
+    names = ["a", "b", "c"]
+    prompt_ids = [[dataset, str(index), "h"]
+                  for dataset in ("d0", "d1") for index in range(3)]
+    manifest = {
+        "run_id":"run", "coverage":"full_evaluation_split",
+        "variants":[{"variant":{"name":name, "method":"target",
+                                  "temperature":1.0, "paths":1, "length":1},
+                     "groups":["main"]} for name in names],
+        "prompt_ids":prompt_ids, "seeds":[17], "max_new_tokens":1,
+        "dataset_names":["d0", "d1"],
+        "method_order":{"policy":"balanced_rotation", "seed":20260909},
+    }
+    rows = []
+    offsets = {"d0":[0, 0, 1], "d1":[1, 2, 2]}
+    for dataset, dataset_offsets in offsets.items():
+        for prompt, offset in enumerate(dataset_offsets):
+            for position, name in enumerate(names[offset:] + names[:offset]):
+                rows.append({
+                    "variant":name, "dataset":dataset, "source_id":str(prompt),
+                    "prompt_sha256":"h", "run_id":"run", "seed":17,
+                    "method_order_ordinal":offset,
+                    "method_execution_position":position,
+                    "generated_tokens":1, "generated_token_ids":[1],
+                    "decode_tokens":0, "prefill_ms":1.0, "decode_ms":0.0,
+                    "e2e_ms":1.0, "rounds":[], "target_forward_calls":1,
+                    "draft_forward_calls":0, "peak_allocated_bytes":None,
+                    "finish_reason":"eos", "text":"x",
+                })
+    # The two datasets together use each rotation offset twice, so the old
+    # global-only check accepted this deliberately dataset-biased schedule.
+    for name in names:
+        positions = [row["method_execution_position"] for row in rows
+                     if row["variant"] == name]
+        assert [positions.count(i) for i in range(3)] == [2, 2, 2]
+    with pytest.raises(ValueError, match="within dataset"):
+        validate_results(manifest, rows)
 
 
 def test_gbv_first_report_leaves_missing_ar_comparison_empty(tmp_path):

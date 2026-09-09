@@ -6,13 +6,14 @@ import math
 import os
 from pathlib import Path
 import re
+import shutil
 import signal
 import subprocess
 import sys
 import tempfile
 import uuid
 
-from .common import canonical, digest, read_jsonl, source_hashes, write_json
+from .common import canonical, digest, file_hash, read_jsonl, source_hashes, write_json
 from .data import load_prepared, resolve_evaluation
 from .runner import key, output_lock, resume_records
 
@@ -90,15 +91,8 @@ def run_sandbox(files, arguments, backend, timeout, image="gbv-code-eval:py311",
                        "-v", f"{tmp}:/work", "-w", "/work", image,
                        "python", "-I", "worker.py", *arguments]
         elif backend == "process":
-            process_python = os.environ.get("GBV_PROCESS_PYTHON", sys.executable)
-            if os.name == "posix" and os.geteuid() == 0:
-                resolved = Path(process_python).resolve()
-                if resolved == Path("/root") or Path("/root") in resolved.parents:
-                    raise RuntimeError(
-                        "Root process evaluation requires GBV_PROCESS_PYTHON outside /root "
-                        "so the dropped worker can import the standard library"
-                    )
-            command = [process_python, "-I", "worker.py", *arguments]
+            process_python, _ = _process_python_paths()
+            command = [str(process_python), "-I", "worker.py", *arguments]
         else:
             raise ValueError(f"Unknown code backend: {backend}")
         # No model credentials are forwarded to generated code.
@@ -134,6 +128,67 @@ def run_sandbox(files, arguments, backend, timeout, image="gbv-code-eval:py311",
         return json.loads(result.read_text())
 
 
+def _process_python_paths() -> tuple[Path, Path]:
+    """Return invocation and resolved paths without losing venv semantics."""
+    configured = os.environ.get("GBV_PROCESS_PYTHON", sys.executable)
+    candidate = Path(configured).expanduser()
+    if not candidate.is_absolute():
+        located = shutil.which(configured)
+        if located is None:
+            raise RuntimeError(f"Process evaluator Python does not exist: {configured}")
+        candidate = Path(located)
+    # abspath deliberately does not dereference a venv's bin/python symlink.
+    invocation = Path(os.path.abspath(candidate))
+    if not invocation.is_file():
+        raise RuntimeError(f"Process evaluator Python does not exist: {invocation}")
+    resolved = invocation.resolve(strict=True)
+    if os.name == "posix" and os.geteuid() == 0:
+        for path in (invocation, resolved):
+            if path == Path("/root") or Path("/root") in path.parents:
+                raise RuntimeError(
+                    "Root process evaluation requires GBV_PROCESS_PYTHON outside /root "
+                    "so the dropped worker can import the standard library"
+                )
+    return invocation, resolved
+
+
+def process_python_identity() -> dict:
+    """Bind the exact venv invocation and runtime used by process scoring."""
+    invocation, resolved = _process_python_paths()
+    probe = (
+        "import json, platform, sys, numpy, sympy; "
+        "print(json.dumps({"
+        "'executable':sys.executable,'prefix':sys.prefix,'base_prefix':sys.base_prefix,"
+        "'implementation':platform.python_implementation(),"
+        "'python':platform.python_version(),'numpy':numpy.__version__,"
+        "'sympy':sympy.__version__},sort_keys=True))"
+    )
+    clean_env = {key:value for key, value in os.environ.items()
+                 if key in {"PATH", "SYSTEMROOT"}}
+    clean_env.update({"OPENBLAS_NUM_THREADS":"1", "OMP_NUM_THREADS":"1"})
+    try:
+        runtime = json.loads(subprocess.check_output(
+            [str(invocation), "-I", "-c", probe], text=True, env=clean_env
+        ))
+    except (subprocess.CalledProcessError, json.JSONDecodeError) as exc:
+        raise RuntimeError(
+            f"Process evaluator Python environment probe failed: {invocation}"
+        ) from exc
+    required = {"executable", "prefix", "base_prefix", "implementation",
+                "python", "numpy", "sympy"}
+    if set(runtime) != required or not all(
+            isinstance(runtime[field], str) and runtime[field] for field in required):
+        raise RuntimeError("Process evaluator Python returned an invalid environment identity")
+    pyvenv = Path(runtime["prefix"]) / "pyvenv.cfg"
+    return {
+        "process_python":str(invocation),
+        "process_python_resolved":str(resolved),
+        "process_python_sha256":file_hash(resolved),
+        "process_python_runtime":runtime,
+        "process_pyvenv_cfg_sha256":file_hash(pyvenv) if pyvenv.is_file() else None,
+    }
+
+
 def math_score(text, answer):
     from math_verify import LatexExtractionConfig, parse, verify
     gold = parse("$" + str(answer) + "$", extraction_config=[LatexExtractionConfig()])
@@ -162,7 +217,13 @@ def _score_run(run_dir: Path, data_dir: Path, backend="docker", workers=4, timeo
     if len({key(r) for r in records}) != len(records):
         raise ValueError("Duplicate generation records")
     image_id = subprocess.check_output(["docker", "image", "inspect", "gbv-code-eval:py311", "--format", "{{.Id}}"], text=True).strip() if backend == "docker" else None
+    process_identity = process_python_identity() if backend == "process" else {
+        "process_python":None, "process_python_resolved":None,
+        "process_python_sha256":None, "process_python_runtime":None,
+        "process_pyvenv_cfg_sha256":None,
+    }
     scoring_id = digest({"run_id": manifest["run_id"], "backend": backend, "image_id": image_id,
+                         **process_identity,
                          "math_verify": math_version, "timeout": timeout,
                          "lcb_timeout_per_test": lcb_timeout, "scorer_sources": source_hashes()})
     path = run_dir / "scores.jsonl"
@@ -213,6 +274,7 @@ def _score_run(run_dir: Path, data_dir: Path, backend="docker", workers=4, timeo
     write_json(run_dir / "scoring_manifest.json", {"scoring_id": scoring_id,
                "backend": backend, "image_id": image_id, "math_verify": math_version, "timeout_seconds": timeout,
                "lcb_timeout_seconds_per_test": lcb_timeout,
+               **process_identity,
                "mt_bench_quality": "not_scored; export-mtbench can prepare official judge inputs"})
 
 

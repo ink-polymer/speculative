@@ -164,6 +164,23 @@ def test_exact_diffusion_keeps_full_block_acceptance(temperature, branches):
     assert len(accepted) == 15
 
 
+def test_single_path_scaffold_bypasses_multi_branch_transport(monkeypatch):
+    law = diffusion.DiffusionBlockLaw.from_logits(
+        torch.zeros((3, 2)).double(), torch.tensor([0, 1, 1, 1]), 1., 1,
+    )
+    proposal = diffusion.propose(law, 1, torch.Generator().manual_seed(37))
+    tree = diffusion.scaffold_tree(proposal, torch.zeros(3).long(), 9)
+
+    def unexpected_transport(*args, **kwargs):
+        raise AssertionError("K=1 must use the sparse block specialization")
+
+    monkeypatch.setattr(diffusion.transport, "plan", unexpected_transport)
+    _, accepted, _ = diffusion.verify_scaffold_logits(
+        torch.zeros((len(tree.parents), 2)).double(), tree, proposal, 1.,
+    )
+    assert len(accepted) == 3
+
+
 @pytest.mark.parametrize("temperature", [.3, .6, 1.])
 @pytest.mark.parametrize("method", sorted(DIFFUSION_SCAFFOLD_METHODS))
 @pytest.mark.parametrize("branches", [1, 2])
@@ -184,6 +201,28 @@ def test_scaffold_tiny_qwen_caches_eos_caps_and_checkpoint(tiny_engine, temperat
     end = result["generated_token_ids"].index(eos) + 1
     assert tiny_engine.generate(ids, v, 24, [eos], seed=42)["generated_token_ids"] == result["generated_token_ids"][:end]
     assert probe(tiny_engine, ids, v, tokens=18, seed=42, tv_limit=1e-6)["passed"]
+
+
+def test_scaffold_engine_does_not_eagerly_normalize_the_full_tree(tiny_engine, monkeypatch):
+    from gbv_experiments import engine as engine_module
+
+    original = engine_module.probabilities
+    shapes = []
+
+    def record_shape(logits, *args, **kwargs):
+        shapes.append(tuple(logits.shape))
+        return original(logits, *args, **kwargs)
+
+    monkeypatch.setattr(engine_module, "probabilities", record_shape)
+    variant = Variant(
+        name="lazy_scaffold_probabilities", method="diffusion_scaffold_bv",
+        paths=1, length=3, tree_budget=9, temperature=1., draft_temperature=1.,
+    )
+    result = tiny_engine.generate(torch.tensor([[1, 3, 5]]), variant, 18, [], seed=42)
+    full_tree_rows = {round_["tree_nodes"] + 1 for round_ in result["rounds"]}
+
+    assert result["rounds"]
+    assert not any(len(shape) == 2 and shape[0] in full_tree_rows for shape in shapes)
 
 
 @pytest.mark.parametrize("corruption", ["nan_leaf", "duplicate", "bad_parent", "bad_depth"])

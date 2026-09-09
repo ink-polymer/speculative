@@ -48,11 +48,14 @@ def compact_result(result: dict, *, prompt: int, repeat: int, variant) -> dict:
 
 @torch.inference_mode()
 def run(config_path: Path, output: Path, device: str, tokens: int, repeats: int,
-        search_grid: str = "coarse") -> dict:
+        search_grid: str = "coarse", temperatures: tuple[float, ...] = TEMPERATURES) -> dict:
     if not 32 <= tokens <= 256 or repeats not in (1, 2, 3):
         raise ValueError("tokens must be 32..256 and repeats must be 1..3")
     if search_grid not in {"coarse", "support", "terminal"}:
         raise ValueError("search_grid must be coarse, support or terminal")
+    if (not temperatures or len(set(temperatures)) != len(temperatures)
+            or any(temperature not in TEMPERATURES for temperature in temperatures)):
+        raise ValueError("temperatures must be a unique nonempty subset of 0.3, 0.6 and 1.0")
     cfg = load_config(config_path)
     variant_builder = {
         "coarse": optimization_variants,
@@ -72,7 +75,7 @@ def run(config_path: Path, output: Path, device: str, tokens: int, repeats: int,
             "config_sha256": file_hash(config_path),
             "model": cfg["model"],
             "device": device,
-            "temperatures": list(TEMPERATURES),
+            "temperatures": list(temperatures),
             "search_grid": search_grid,
             "baselines": list(BASELINE_NAMES),
             "grid": (
@@ -109,7 +112,7 @@ def run(config_path: Path, output: Path, device: str, tokens: int, repeats: int,
                                    cfg["model"], device)
                    for prompt in DIAGNOSTIC_PROMPTS]
         rows = []
-        for temperature in TEMPERATURES:
+        for temperature in temperatures:
             variants = variant_builder(temperature)
             by_name = {variant.name: variant for variant in variants}
             for variant in variants:
@@ -136,7 +139,7 @@ def run(config_path: Path, output: Path, device: str, tokens: int, repeats: int,
                         )
         summary = summarize(rows)
         profiles = []
-        for temperature in TEMPERATURES:
+        for temperature in temperatures:
             by_name = {variant.name: variant for variant in variant_builder(temperature)}
             for name in profile_names(summary, temperature):
                 result = engine.generate(
@@ -168,9 +171,11 @@ def main() -> None:
     parser.add_argument("--tokens", type=int, default=96)
     parser.add_argument("--repeats", type=int, default=2)
     parser.add_argument("--grid", choices=["coarse", "support", "terminal"], default="coarse")
+    parser.add_argument("--temperatures", type=float, nargs="+", choices=TEMPERATURES,
+                        default=list(TEMPERATURES))
     args = parser.parse_args()
     run(args.config.resolve(), args.output.resolve(), args.device, args.tokens,
-        args.repeats, args.grid)
+        args.repeats, args.grid, tuple(args.temperatures))
 
 
 if __name__ == "__main__":

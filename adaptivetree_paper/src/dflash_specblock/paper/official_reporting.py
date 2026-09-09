@@ -6,12 +6,22 @@ import math
 
 import torch
 
-from .common import atomic_json, digest, file_hash, load_json
+from .common import atomic_json, code_identity, digest, file_hash, load_json
 from .official_data import check_manifest
 from .official_spec import BUDGETS, LIMITS, MODELS, UPSTREAM, load_source, verify_sources
 from .official_worker import method_names, response_tokens
 from .official_audit import validate_hardware
-from .controller import COST_ATTRIBUTED_VARIANT
+from .controller import expected_official_controller_configs
+
+
+def method_role(key):
+    if key == "adaptive":
+        return "primary"
+    if key == "adaptive_legacy":
+        return "historical_control"
+    if key.startswith("adaptive_"):
+        return "ablation"
+    return "baseline"
 
 
 def run_stem(dataset, model_index, backend):
@@ -37,7 +47,8 @@ def load_completed(path, identity):
 
 def validate_run_contract(run, source_lock, nproc, smoke_count, environment,
                           greedy_audit_policy="strict", diagnostic_variants=(),
-                          wandb_settings=None, method_order_policy="official-fixed"):
+                          wandb_settings=None, method_order_policy="official-fixed",
+                          deprecated_cli_aliases=()):
     maximum = 32 if smoke_count else 2048
     args = run["args"]
     if (run["source_lock"] != source_lock or run["world_size"] != nproc
@@ -47,17 +58,34 @@ def validate_run_contract(run, source_lock, nproc, smoke_count, environment,
             or args["flash_attn"] != (run["target_attn_implementation"] == "flash_attention_2")
             or run.get("greedy_audit_policy", "strict") != greedy_audit_policy
             or run.get("method_order_policy", "official-fixed") != method_order_policy
-            or run.get("diagnostic_variants", []) != list(diagnostic_variants)
+            or diagnostic_variants
+            or "diagnostic_variants" in run
+            or "diagnostic_controllers" in run
+            or run.get("method_schema_version") != 2
+            or run.get("deprecated_cli_aliases", []) != list(deprecated_cli_aliases)
             or run.get("wandb") != wandb_settings
             or len(run["hardware"]) != nproc
             or {h["rank"] for h in run["hardware"]} != set(range(nproc))):
         raise ValueError("Run source, hardware or generation settings differ from contract")
+    controller_configs = run.get("controller_configs")
+    expected_controllers = (expected_official_controller_configs()
+        if run["target_attn_implementation"] == "sdpa" else {})
+    if controller_configs != expected_controllers:
+        raise ValueError("Run AdaptiveTree method schema differs from contract")
     validate_hardware(run["hardware"], environment, nproc)
 
 
 def validate_pair(sdpa, flash, dataset, model_index, variants, expected_rows,
                   greedy_audit_policy="strict"):
     expected_keys = {(r["index"], t) for r in expected_rows for t in range(len(r["turns"]))}
+    expected_prompt_hashes = {
+        (row["index"], turn): {
+            "source_turns_sha256": digest(row["turns"]),
+            "user_turn_sha256": digest(user_content),
+        }
+        for row in expected_rows
+        for turn, user_content in enumerate(row["turns"])
+    }
     indexed = []
     for backend, run in (("sdpa", sdpa), ("flash_attention_2", flash)):
         if (run["target_attn_implementation"] != backend
@@ -74,9 +102,13 @@ def validate_pair(sdpa, flash, dataset, model_index, variants, expected_rows,
         for response in run["responses"]:
             audit = response["_audit"]
             key = audit["index"], audit["turn"]
-            if (key in rows or type(audit.get("exact_match")) is not bool
+            if (key in rows or key not in expected_keys
+                    or type(audit.get("exact_match")) is not bool
                     or set(response) != {*methods, "_audit"}):
                 raise ValueError("Duplicate, failed or incomplete response")
+            if ({field:audit.get(field) for field in expected_prompt_hashes[key]}
+                    != expected_prompt_hashes[key]):
+                raise ValueError("Official source prompt identity changed")
             reference = response_tokens(response["baseline"])
             order = audit.get("method_order", methods)
             if (not isinstance(order, list) or len(order) != len(methods)
@@ -113,16 +145,34 @@ def validate_pair(sdpa, flash, dataset, model_index, variants, expected_rows,
             rows[key] = response
         if set(rows) != expected_keys:
             raise ValueError("Incomplete official sampled dataset or missing MT-Bench turn")
+        history_method = "ddtree_tb1024" if backend == "sdpa" else "dflash"
+        for index, turn in expected_keys:
+            expected_history = [
+                response_tokens(rows[(index, previous)][history_method])
+                for previous in range(turn)
+            ]
+            if rows[(index, turn)]["_audit"].get("conditioning_history_sha256") != digest(expected_history):
+                raise ValueError("Official multi-turn conditioning history changed")
         if run.get("method_order_policy") == "balanced-rotation":
             for positions in method_positions.values():
                 counts = [positions.count(position) for position in range(len(methods))]
                 if max(counts) - min(counts) > 1:
                     raise ValueError("Method execution positions are not balanced")
         indexed.append(rows)
+    cross_backend_inputs = 0
     for key in expected_keys:
         left, right = indexed[0][key], indexed[1][key]
         if left["_audit"]["input_sha256"] != right["_audit"]["input_sha256"]:
-            raise ValueError("SDPA/FA2 inputs or greedy outputs differ; no lossless comparative table")
+            cross_backend_inputs += 1
+            explained_mt_continuation = (
+                greedy_audit_policy == "record-bf16-mismatches"
+                and dataset == "mt-bench"
+                and key[1] > 0
+                and left["_audit"]["conditioning_history_sha256"]
+                    != right["_audit"]["conditioning_history_sha256"]
+            )
+            if not explained_mt_continuation:
+                raise ValueError("SDPA/FA2 inputs or greedy outputs differ; no lossless comparative table")
         if (greedy_audit_policy == "strict"
                 and response_tokens(left["baseline"]) != response_tokens(right["baseline"])):
             raise ValueError("SDPA/FA2 inputs or greedy outputs differ; no lossless comparative table")
@@ -133,6 +183,7 @@ def validate_pair(sdpa, flash, dataset, model_index, variants, expected_rows,
                         for key in expected_keys)
     return {"responses":total, "exact_responses":exact,
             "mismatching_responses":total-exact,
+            "cross_backend_input_mismatches":cross_backend_inputs,
             "cross_backend_baseline_mismatches":cross_backend}
 
 
@@ -151,6 +202,7 @@ def official_rows(sdpa, flash, variants):
             (key, sdpa, key) for key in keys + list(variants)]:
         tpot = table.mean_time_per_token(run, key)
         results.append({"method":label, "selected_key":key,
+            "method_role":method_role(key),
             "mean_decode_tpot_seconds":tpot, "speedup_vs_target":base_tpot/tpot,
             "speedup_vs_best_ddtree":dd_tpot/tpot,
             "mean_acceptance_length":table.mean_acceptance_length(run, key),
@@ -185,6 +237,7 @@ def controlled_sdpa_rows(sdpa, variants):
                        + [(key, key) for key in keys + list(variants)]):
         tpot = table.mean_time_per_token(sdpa, key)
         rows.append({"method":label, "selected_key":key,
+            "method_role":method_role(key),
             "mean_decode_tpot_seconds":tpot, "speedup_vs_target":base_tpot/tpot,
             "speedup_vs_best_ddtree":dd_tpot/tpot,
             "mean_acceptance_length":table.mean_acceptance_length(sdpa, key),
@@ -206,6 +259,7 @@ def controlled_exact_output_subset_rows(sdpa, variants):
         method_mean = (sum(response[key].time_per_output_token
                            for response in matched) / len(matched) if matched else None)
         rows.append({"method":label, "selected_key":key,
+            "method_role":method_role(key),
             **pairwise_exact_output_stats(sdpa, key),
             "baseline_mean_decode_tpot_seconds":baseline_mean,
             "method_mean_decode_tpot_seconds":method_mean,
@@ -218,9 +272,12 @@ def controlled_exact_output_subset_rows(sdpa, variants):
     return rows
 
 
-def diagnostic_budget_usage(run, method):
+def adaptive_budget_usage(run, method):
     """Summarize the per-response traces reset by ``adaptive_generate``."""
-    candidates = run["diagnostic_controllers"][method]["budget_candidates"]
+    # The fallback keeps pre-migration artifacts inspectable with an explicit
+    # historical field; new contracts never emit diagnostic_controllers.
+    controllers = run.get("controller_configs", run.get("diagnostic_controllers", {}))
+    candidates = controllers[method]["budget_candidates"]
     budgets = []
     for response in run["responses"]:
         result = response[method]
@@ -237,7 +294,7 @@ def diagnostic_budget_usage(run, method):
     if not budgets:
         raise ValueError(f"Empty AdaptiveTree decision trace for {method}")
     counts = {str(budget):budgets.count(budget) for budget in sorted(set(budgets))}
-    maximum = run["diagnostic_controllers"][method]["maximum_draft_nodes"]
+    maximum = controllers[method]["maximum_draft_nodes"]
     above_128 = sum(budget > 128 for budget in budgets)
     at_cap = sum(budget == maximum for budget in budgets)
     return {"method":method,
@@ -250,12 +307,17 @@ def diagnostic_budget_usage(run, method):
             "share_rounds_at_candidate_cap":at_cap/len(budgets)}
 
 
+# Public compatibility name for scripts that only inspect old diagnostic runs.
+diagnostic_budget_usage = adaptive_budget_usage
+
+
 def summarize(directory, data_dir, config, identity, model_indices, datasets, smoke_count=0):
     recorded = load_json(directory / "contract.json")
     metadata = recorded["metadata"]
     if (recorded["identity"] != identity or digest(metadata) != identity
             or metadata["config"] != config or metadata["model_indices"] != model_indices
             or metadata["datasets"] != datasets or metadata["smoke_count"] != smoke_count
+            or metadata.get("code_identity") != code_identity()
             or metadata["dataset_manifest"] != check_manifest(data_dir)
             or metadata["source_manifest"] != verify_sources()):
         raise ValueError("Summary inputs do not match the immutable run contract")
@@ -267,10 +329,15 @@ def summarize(directory, data_dir, config, identity, model_indices, datasets, sm
     rows = []
     audit_policy = metadata.get("greedy_audit_policy", "strict")
     method_order_policy = metadata.get("method_order_policy", "official-fixed")
-    diagnostic_variants = tuple(metadata.get("diagnostic_variants", ()))
-    variants = (*config["variants"], *diagnostic_variants)
+    if (metadata.get("method_schema_version") != 2
+            or metadata.get("primary_adaptive_method") != "adaptive"
+            or "diagnostic_variants" in metadata):
+        raise ValueError("Summary requires the canonical AdaptiveTree method schema")
+    deprecated_cli_aliases = tuple(metadata.get("deprecated_cli_aliases", ()))
+    variants = tuple(config["variants"])
     audit_stats = []
     budget_usage = []
+    input_artifacts = []
     controlled_rows = []
     controlled_exact_rows = []
     for dataset in datasets:
@@ -278,20 +345,42 @@ def summarize(directory, data_dir, config, identity, model_indices, datasets, sm
         if smoke_count:
             expected = expected[:smoke_count]
         for model_index in model_indices:
-            runs = [load_completed(directory / (run_stem(dataset, model_index, backend)+".pt"), identity)
-                    for backend in ("sdpa", "flash_attention_2")]
+            runs = []
+            for backend in ("sdpa", "flash_attention_2"):
+                path = directory / (run_stem(dataset, model_index, backend) + ".pt")
+                marker_path = path.with_suffix(".complete.json")
+                run = load_completed(path, identity)
+                marker = load_json(marker_path)
+                input_artifacts.append({
+                    "dataset":dataset,
+                    "model_index":model_index,
+                    "model":MODELS[model_index][0],
+                    "backend":backend,
+                    "artifact":path.name,
+                    "artifact_sha256":marker["sha256"],
+                    "completion_marker":marker_path.name,
+                    "completion_marker_sha256":file_hash(marker_path),
+                    "protocol_identity":marker["identity"],
+                })
+                runs.append(run)
             for run in runs:
                 validate_run_contract(run, source_lock, metadata["nproc_per_node"], smoke_count,
-                                      environment, audit_policy, diagnostic_variants,
-                                      metadata.get("wandb"), method_order_policy)
-            audit_stats.append(validate_pair(*runs, dataset, model_index, variants,
-                                             expected, audit_policy))
-            for method in diagnostic_variants:
+                                      environment, audit_policy, (),
+                                      metadata.get("wandb"), method_order_policy,
+                                      deprecated_cli_aliases)
+            pair_stats = validate_pair(*runs, dataset, model_index, variants,
+                                       expected, audit_policy)
+            audit_stats.append(pair_stats)
+            for method in variants:
                 budget_usage.append({"dataset":dataset, "model":MODELS[model_index][0],
-                                     **diagnostic_budget_usage(runs[0], method)})
+                                     **adaptive_budget_usage(runs[0], method)})
             for row in official_rows(*runs, variants):
                 rows.append({"dataset":dataset, "model":MODELS[model_index][0],
-                             "cases":len(expected), "turns":sum(len(r["turns"]) for r in expected), **row})
+                             "cases":len(expected), "turns":sum(len(r["turns"]) for r in expected),
+                             "comparison_scope":"upstream_best_backend_auxiliary",
+                             "cross_backend_inputs_identical":(
+                                 pair_stats["cross_backend_input_mismatches"] == 0),
+                             **row})
             for row in controlled_sdpa_rows(runs[0], variants):
                 controlled_rows.append({"dataset":dataset, "model":MODELS[model_index][0],
                     "cases":len(expected), "turns":sum(len(r["turns"]) for r in expected), **row})
@@ -299,16 +388,18 @@ def summarize(directory, data_dir, config, identity, model_indices, datasets, sm
                 controlled_exact_rows.append({"dataset":dataset,
                     "model":MODELS[model_index][0], "cases":len(expected),
                     "turns":sum(len(r["turns"]) for r in expected), **row})
-    diagnostic_protocol = ("ddtree_official_t0_diagnostic_cost_attribution"
-        if diagnostic_variants == (COST_ATTRIBUTED_VARIANT,)
-        else "ddtree_official_t0_diagnostic_extended_budget")
-    report = {"protocol":(diagnostic_protocol if diagnostic_variants else "ddtree_official_t0"),
+    report = {"protocol":"ddtree_official_t0",
               "training":False, "full_split":False,
+              "method_schema_version":2,
+              "primary_adaptive_method":"adaptive",
               "protocol_identity":identity, "environment_sha256":file_hash(directory / "environment.json"),
+              "dataset_manifest":metadata["dataset_manifest"],
+              "source_lock":source_lock,
+              "input_artifacts":input_artifacts,
               "official_samples":not bool(smoke_count),
               "greedy_audit_policy":audit_policy,
               "method_order_policy":method_order_policy,
-              "publication_gate_passed":(not diagnostic_variants and not bool(smoke_count)
+              "publication_gate_passed":(not bool(smoke_count)
                                            and audit_policy == "strict"
                                            and method_order_policy == "official-fixed"),
               "strict_lossless_claim_eligible":audit_policy == "strict",
@@ -321,25 +412,37 @@ def summarize(directory, data_dir, config, identity, model_indices, datasets, sm
                   and method_order_policy == "balanced-rotation"
                   and all(stat["mismatching_responses"] == 0 for stat in audit_stats)),
               "primary_fairness_table":"controlled_same_backend_rows",
+              "cross_backend_auxiliary_table_warning":(
+                  "MT-Bench continuation rows with different recorded SDPA/FA2 histories are not "
+                  "same-context pairs; the best-backend table is auxiliary. The controlled SDPA "
+                  "table remains the architecture-comparison table."
+                  if any(s["cross_backend_input_mismatches"] for s in audit_stats) else None
+              ),
               "numerical_audit":{"responses":sum(s["responses"] for s in audit_stats),
                   "exact_responses":sum(s["exact_responses"] for s in audit_stats),
                   "mismatching_responses":sum(s["mismatching_responses"] for s in audit_stats),
+                  "cross_backend_input_mismatches":sum(
+                      s["cross_backend_input_mismatches"] for s in audit_stats),
                   "cross_backend_baseline_mismatches":sum(s["cross_backend_baseline_mismatches"] for s in audit_stats)},
-              "full_official_t0_model_dataset_matrix":(not diagnostic_variants
-                  and model_indices==list(range(3)) and datasets==list(LIMITS)),
+              "full_official_t0_model_dataset_matrix":(
+                  model_indices==list(range(3)) and datasets==list(LIMITS)),
               "metric":"mean(per-response decode time/output tokens) ratio; excludes target prefill and first speculative draft",
               "baseline":"best mean-TPOT AR/DFlash backend independently; best DDTree budget, as upstream",
               "accuracy_scope":("exact agreement with official target-only baseline, not task grading or a BF16 mathematical guarantee"
                   if audit_policy == "strict" else
-                  "BF16 token mismatches are retained and counted; speed rows are not a strict lossless claim"),
+                  "token divergences observed during BF16 execution are retained and counted; "
+                  "their cause is not inferred, and speed rows are not a strict lossless claim"),
               "rows":rows, "controlled_same_backend_rows":controlled_rows,
+              "primary_rows":[row for row in controlled_rows
+                              if row["method_role"] == "primary"],
+              "ablation_rows":[row for row in controlled_rows
+                               if row["method_role"] in {"ablation", "historical_control"}],
               "controlled_exact_output_subset_rows":controlled_exact_rows,
               "exact_output_subset_warning":(
                   "Post-hoc content-matched rows are selection-biased diagnostics, not "
                   "population speedup estimates."
               )}
-    if diagnostic_variants:
-        report["diagnostic_budget_usage"] = budget_usage
+    report["adaptive_budget_usage"] = budget_usage
     atomic_json(directory / "tables.json", report)
     with (directory / "tables.csv").open("w", encoding="utf-8", newline="") as stream:
         writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
@@ -360,10 +463,14 @@ def summarize(directory, data_dir, config, identity, model_indices, datasets, sm
              "|---|---|---|---:|---:|---:|"]
     if smoke_count:
         lines[0] = "# SMOKE ONLY：不可用于论文"
-    elif diagnostic_variants:
-        lines[0] = "# DIAGNOSTIC：成本归因/扩展预算实验，不属于冻结官方矩阵"
     elif audit_policy != "strict":
-        lines[0] = "# BF16 mismatch-recording benchmark：不可声称严格无损"
+        lines[0] = "# BF16 执行中观察到输出差异的记录型 benchmark：不可声称严格无损"
+    if report["cross_backend_auxiliary_table_warning"]:
+        lines[3:3] = [
+            "警告：MT-Bench 后续轮存在已记录的跨后端上下文差异；下方最佳后端表不是同上下文配对。",
+            "公平架构比较请使用统一 SDPA 主表。",
+            "",
+        ]
     lines += [f"| {r['model']} | {r['dataset']} | {r['method']} | {r['speedup_vs_target']:.4f}× | {r['speedup_vs_best_ddtree']:.4f}× | {r['mean_acceptance_length']:.3f} |" for r in rows]
     lines += ["", "## 公平主表：统一 Target SDPA 后端", "",
               "此表才用于 AdaptiveTree、DFlash 与 DDTree 的架构对比；最佳后端结果仅为辅助表。", "",
@@ -380,7 +487,7 @@ def summarize(directory, data_dir, config, identity, model_indices, datasets, sm
               f"{r['exact_output_responses']}/{r['responses']} | "
               f"{fmt(r['exact_subset_speedup_vs_target'])} |" for r in controlled_exact_rows]
     if budget_usage:
-        lines += ["", "## 诊断预算使用", "",
+        lines += ["", "## AdaptiveTree 预算使用", "",
                   "| 模型 | 数据集 | 方法 | 轮数 | >128 占比 | 上限占比 | 选择计数 |",
                   "|---|---|---|---:|---:|---:|---|"]
         lines += [f"| {item['model']} | {item['dataset']} | {item['method']} | "

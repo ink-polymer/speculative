@@ -1,21 +1,23 @@
 {
   "schema": 1,
-  "study": "adaptive_tree_and_stochastic_block_verification",
+  "study": "adaptive_tree_ddtree_dflash_t0_t1",
   "adaptive": {
     "project": "../adaptivetree_paper",
     "config": "../adaptivetree_paper/configs/paper_t0_full.json",
     "temperature": 0.0,
     "greedy_audit_policy": "record-bf16-mismatches",
     "method_order_policy": "balanced-rotation",
-    "diagnostic_variants": ["cost_attributed_no_exploration", "cost_attributed_no_exploration_b256"]
+    "primary_method": "adaptive",
+    "method_schema_version": 2
   },
-  "block": {
-    "temperatures": [0.3, 0.6, 1.0],
-    "methods": ["target", "dflash", "ddtree", "ddtree_lazy_projection"],
+  "positive_temperature": {
+    "temperatures": [1.0],
+    "methods": ["target", "dflash", "ddtree"],
     "length": 15,
     "tree_budget": 45,
     "probability_dtype": "float64",
-    "method_order_policy": "balanced_rotation"
+    "method_order_policy": "balanced_rotation",
+    "tree_block_verification": "deferred_not_run"
   },
   "models": [
     {

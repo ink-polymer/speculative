@@ -8,8 +8,8 @@ import torch
 from transformers import DynamicCache, Qwen3Config, Qwen3ForCausalLM
 
 from dflash_specblock.paper.adaptive_official import adaptive_generate
-from dflash_specblock.paper.common import ROOT, VARIANTS, load_json
-from dflash_specblock.paper.controller import PaperAdaptiveBuilder
+from dflash_specblock.paper.common import OFFICIAL_VARIANTS, ROOT, load_json
+from dflash_specblock.paper.controller import make_paper_builder
 from dflash_specblock.paper.official_spec import upstream
 
 
@@ -70,8 +70,8 @@ def test_real_qwen_outputs_match_independent_serial(seed, dtype, ending, monkeyp
     for budget in (16,64,128):
         results[f"ddtree_{budget}"] = u.ddtree.ddtree_generate(**common, block_size=16, tree_budget=budget)
     cfg = load_json(ROOT/"configs/paper_t0_full.json")
-    for variant in VARIANTS:
-        builder = PaperAdaptiveBuilder(cfg["adaptive"], variant)
+    for variant in OFFICIAL_VARIANTS:
+        builder = make_paper_builder(cfg["adaptive"], variant)
         results[variant] = adaptive_generate(**common, block_size=16, builder=builder)
     for method, result in results.items():
         assert result.output_ids[0, result.num_input_tokens:].tolist() == ref, method

@@ -18,7 +18,7 @@ def wandb_contract(args):
 
 
 def initialize_wandb(args, *, model_name, draft_name, backend, rank, world_size,
-                     diagnostic_variants, controller_configs):
+                     controller_configs):
     settings = wandb_contract(args)
     if settings is None:
         return None
@@ -59,11 +59,11 @@ def initialize_wandb(args, *, model_name, draft_name, backend, rank, world_size,
             "world_size":world_size,
             "temperature":0,
             "smoke_count":args.smoke_count,
-            "diagnostic_variants":list(diagnostic_variants),
-            "diagnostic_controllers":controller_configs,
+            "method_schema_version":2,
+            "primary_adaptive_method":"adaptive",
+            "controller_configs":controller_configs,
         },
-        tags=["adaptivetree", "t0", backend,
-              "diagnostic" if diagnostic_variants else "official"],
+        tags=["adaptivetree", "t0", backend, "official"],
     )
     run.summary["status"] = "running"
     return run

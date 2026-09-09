@@ -1,4 +1,4 @@
-"""Original Adaptive DDTree inserted into the pinned official DDTree loop.
+"""Corrected AdaptiveTree inserted into the pinned official DDTree loop.
 
 The generation function below is derived from c96427a.../ddtree.py.
 Only tree construction, controller feedback and diagnostics are added.
@@ -214,8 +214,8 @@ def adaptive_generate(
                 accepted_draft_tokens=len(accepted_indices) - 1,
             )
         else:
-            # Diagnostic-only correction: tree construction varies with the
-            # selected budget and belongs in its per-budget latency estimate.
+            # Corrected formal path: tree construction varies with the selected
+            # budget and belongs in its per-budget latency estimate.
             builder.observe_stages(
                 tree_nodes=int(node_token_ids.numel()),
                 draft_ms=1000 * draft_stage_elapsed,

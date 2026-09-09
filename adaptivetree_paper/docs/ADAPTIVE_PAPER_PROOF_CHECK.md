@@ -2,12 +2,17 @@
 
 证明正文见 [论文版数学证明](ADAPTIVE_DDTREE_T0_PAPER_PROOF.md)。本文档是核校说明，不属于论文证明正文。
 
+> **归档说明：** 下列提交、169 项测试和公式核校是 2026-09-03 对 legacy
+> B≤128 控制器的历史记录，不能当作当前 canonical B≤256 控制器已经完成同等
+> 复验的证据。当前证明文档仅把预算无关的 T=0 树验证定理复用于合法树序列；
+> canonical 的成本归因修正及性能效果仍须由新合同和正式实验验证。
+
 ## 对应代码与范围
 
-- 对应新分支 codex/adaptivetree-official-t0-qwen3-8b-20260903 的实验代码提交 c9b711882e5d63a094ed3040060385030dabc712；本次后续提交只增加证明、入口链接和校验清单，不改变生成算法。
-- 原版非 RL、T=0、单次块草稿、最大 128 节点和六个嵌套预算；不是三路径 GBV、分层 RL 或 T>0 采样证明。
+- 历史核校对应分支 codex/adaptivetree-official-t0-qwen3-8b-20260903 的实验代码提交 c9b711882e5d63a094ed3040060385030dabc712；它不是当前 canonical 合同的代码身份。
+- 被核校对象是 legacy 非 RL、T=0、单次块草稿、最大 128 节点和六个嵌套预算；不是当前 B≤256 成本归因修正的性能证明，也不是三路径 GBV、分层 RL 或 T>0 采样证明。
 - [构树器](../src/dflash_specblock/ddtree_builder.py)：核对完整词表归一化、固定最大预算 top-k、兄弟/子节点入堆、前缀截断及概率质量近似。
-- [控制器](../src/dflash_specblock/paper/controller.py)：核对主方法沿用原版决策，以及四项消融只影响预算选择/统计量。
+- [控制器](../src/dflash_specblock/paper/controller.py)：历史核校当时覆盖原版决策与四项旧消融；当前代码注册 8 个正式键，需按当前 registry 与产物严格校验，不能沿用这条历史通过记录。
 - [实际生成循环](../src/dflash_specblock/paper/adaptive_official.py)：核对接受长度扣除锚点、bonus 尚未写入 KV、EOS/长度截断，以及反馈的耗时边界。
 - [固定版官方验证](../third_party/ddtree_pinned/ddtree.py)：核对位置为 start+depth、ancestor-only mask、唯一子词元查找、接受路径 KV 压缩。
 
@@ -23,6 +28,8 @@
 
 ## 已执行检查
 
+以下均为上述历史快照的已执行检查：
+
 - 独立发布包的 169 项测试再次全部通过（36.44 秒）。其中 16 项真实小型 Qwen3/DFlash 测试包含 160 次输出对比，覆盖 CPU FP32/BF16、固定树、Adaptive 和消融。
 - 既有构树测试包含小候选空间的穷举代理最优性检查；这些有限实例的测试用于发现错误，不代替数学证明。
 - 使用本机 VS Code LaTeX Workshop 安装中的 MathJax，逐项转换了论文证明的 136 处行内公式和 24 个公式块，零解析错误。
@@ -31,4 +38,9 @@
 
 ## 尚不能声称的结论
 
-没有运行真实 8B checkpoint 或 H200/CUDA/FA2/C++ 正式验收，也没有新的速度或任务精度结果。169 项测试、MathJax 检查及理想计算证明均不构成实际 BF16 完整数据实验必然无损的保证。
+该快照没有运行真实 8B checkpoint 或 H200/CUDA/FA2/C++ 正式验收，也没有新的速度或任务精度结果。169 项历史测试、MathJax 检查及理想计算证明均不构成当前 canonical 在实际 BF16 完整数据实验中必然无损的保证。
+
+当前 registry 是 1 个 primary（`adaptive`）、1 个 legacy 历史对照和 6 个
+消融/控制；canonical 固定 B≤256、预算相关 tree-build 成本归因、无周期探索。
+当前 integrated formal 矩阵只选择 Qwen3-4B/8B，并明确延期 30B 与树状块验证；
+独立包的原始完整配置仍可列出 30B，两者不是同一个“已完成范围”。

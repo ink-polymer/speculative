@@ -1,0 +1,131 @@
+{
+  "schema": 1,
+  "study": "adaptivetree_ddtree_dflash_complete_formal_matrix",
+  "models": [
+    {
+      "id": "qwen3_4b",
+      "adaptive_model_index": 0,
+      "t1_config": "adaptive_block_qwen3_4b.json",
+      "target": "Qwen/Qwen3-4B",
+      "target_revision": "1cfa9a7208912126459214e8b04321603b3df60c",
+      "draft": "z-lab/Qwen3-4B-DFlash-b16",
+      "draft_revision": "b74e3a329c4d963783143b1e970d95b002be72bd"
+    },
+    {
+      "id": "qwen3_8b",
+      "adaptive_model_index": 1,
+      "t1_config": "adaptive_block_qwen3_8b.json",
+      "target": "Qwen/Qwen3-8B",
+      "target_revision": "b968826d9c46dd6066d109eabc6255188de91218",
+      "draft": "z-lab/Qwen3-8B-DFlash-b16",
+      "draft_revision": "9b41424b7109f9c5413454f481b09a82b85333f4"
+    }
+  ],
+  "adaptive_t0": {
+    "config": "../adaptivetree_paper/configs/paper_t0_full.json",
+    "temperature": 0.0,
+    "datasets": {
+      "gsm8k": 128,
+      "math500": 128,
+      "aime24": 30,
+      "aime25": 30,
+      "humaneval": 164,
+      "mbpp": 128,
+      "livecodebench": 128,
+      "swe-bench": 128,
+      "mt-bench": 80,
+      "alpaca": 128
+    },
+    "target_backends": ["sdpa", "flash_attention_2"],
+    "primary_comparison_backend": "sdpa",
+    "draft_backend": "flash_attention_2",
+    "baselines": ["baseline", "dflash"],
+    "ddtree_budgets": [16, 32, 64, 128, 256, 512, 1024],
+    "adaptive_primary": "adaptive",
+    "adaptive_controls": [
+      "adaptive_legacy",
+      "adaptive_b128",
+      "adaptive_with_exploration"
+    ],
+    "adaptive_ablations": [
+      "adaptive_legacy_cost_attribution",
+      "adaptive_no_acceptance_calibration",
+      "adaptive_no_latency",
+      "adaptive_frozen_after_warmup"
+    ],
+    "sample_seed": 0,
+    "generation_seed": 0,
+    "max_new_tokens": 2048,
+    "method_order_policy": "balanced-rotation",
+    "greedy_audit_policy": "record-bf16-mismatches",
+    "timing_repeats": {
+      "count": 1,
+      "unit": "complete_model_dataset_backend_run",
+      "reason": "The pinned official protocol has one complete pass. T=0 tables are descriptive point estimates with no confidence interval; extra complete passes are an optional robustness study and must use separate contracts."
+    }
+  },
+  "stochastic_t1_baselines": {
+    "temperature": 1.0,
+    "datasets": {
+      "gsm8k": 128,
+      "math500": 128,
+      "aime24": 30,
+      "aime25": 30,
+      "humaneval": 164,
+      "mbpp_sanitized": 128,
+      "livecodebench": 128,
+      "mt-bench": 80
+    },
+    "methods": ["target", "dflash", "ddtree"],
+    "seeds": [17, 29, 43],
+    "max_new_tokens": 2048,
+    "target_backend": "sdpa",
+    "draft_backend": "sdpa",
+    "draft_proposal_policy": {
+      "dflash": "greedy_argmax",
+      "ddtree_temperature": 1.0
+    },
+    "method_order_policy": {
+      "policy": "balanced_rotation",
+      "seed": 20260909
+    },
+    "bootstrap": {
+      "samples": 10000,
+      "cluster": "source_id_with_all_seeds",
+      "paired_baseline": "same_model_dataset_source_id_seed"
+    },
+    "scoring_backend_policy": {
+      "config_default": "docker",
+      "allowed_runtime_backends": ["docker", "process"],
+      "runtime_identity_must_match_doctor_and_scoring_manifest": true,
+      "process_requires_dedicated_non_root_path_when_orchestrator_is_root": true,
+      "process_identity_fields": [
+        "venv_invocation_path",
+        "resolved_binary_path_and_sha256",
+        "pyvenv_cfg_sha256",
+        "python_numpy_sympy_runtime_versions"
+      ]
+    },
+    "correctness_audit": "distributional_and_task_quality",
+    "greedy_exact_match_applicable": false
+  },
+  "deferred": {
+    "tree_block_verification": {
+      "run_in_this_matrix": false,
+      "publication_claim_allowed": false,
+      "reason": "No registered and validated tree-block verifier is included in this run. ddtree_lazy_projection is only an implementation control and is not tree-block verification."
+    },
+    "qwen3_coder_30b": {
+      "run_in_this_matrix": false,
+      "publication_claim_allowed": false,
+      "reason": "A single H20 has not passed the memory and MoE-compatibility preflight for the target/draft pair."
+    }
+  },
+  "claim_policy": {
+    "pool_t0_and_t1_speedups": false,
+    "claim_adaptivetree_at_t1": false,
+    "claim_strict_lossless_when_bf16_mismatch_exists": false,
+    "claim_tree_block_results": false,
+    "reuse_old_server_timings": false
+  }
+}

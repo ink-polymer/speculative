@@ -2,12 +2,12 @@
 from __future__ import annotations
 
 import importlib.util
-import re
 import sys
 from functools import lru_cache
 from types import SimpleNamespace
 
-from .common import ROOT, VARIANTS, file_hash, load_json
+from .common import OFFICIAL_VARIANTS, ROOT, file_hash, load_json
+from .controller import EXTENDED_BUDGETS
 
 COMMIT = "c96427a185677bf4133ed865dd1626a5041aef9b"
 UPSTREAM = ROOT / "third_party/ddtree_pinned"
@@ -47,18 +47,18 @@ def load_config(path):
     if set(config) != {"version","protocol","official_commit","temperature","max_new_tokens",
                       "seed","datasets","sample_limits","tree_budgets","models","variants","adaptive"}:
         raise ValueError("Unexpected official protocol configuration fields")
-    if (config.get("version") != 4 or config.get("protocol") != "ddtree_official_t0"
+    if (config.get("version") != 5 or config.get("protocol") != "ddtree_official_t0"
             or config["official_commit"] != COMMIT or config["temperature"] != 0
             or config["max_new_tokens"] != 2048 or config["seed"] != 0
             or config["datasets"] != list(LIMITS) or config["sample_limits"] != LIMITS
             or config["tree_budgets"] != BUDGETS
             or config["models"] != [list(pair) for pair in MODELS]
-            or config["variants"] != list(VARIANTS)):
+            or config["variants"] != list(OFFICIAL_VARIANTS)):
         raise ValueError("Expected pinned DDTree official T=0 matrix, not full-split/learned-policy config")
     a = config["adaptive"]
-    if a != {"budget_candidates":[30,45,60,80,100,128], "initial_budget":60,
+    if a != {"budget_candidates":list(EXTENDED_BUDGETS), "initial_budget":60,
              "warmup_rounds_per_budget":1, "ewma_alpha":.2, "exploration_interval":64}:
-        raise ValueError("The original Adaptive DDTree parameters must be preserved")
+        raise ValueError("The registered corrected AdaptiveTree parameters must be preserved")
     return config
 
 
@@ -97,5 +97,8 @@ def upstream():
         if old is not None and not str(getattr(old, "__file__", "")).startswith(str(UPSTREAM)):
             raise RuntimeError(f"Official module namespace collision: {name}; use a fresh process")
     sys.path.insert(0, str(UPSTREAM))
-    import model, dflash, ddtree, distributed
+    import ddtree
+    import dflash
+    import distributed
+    import model
     return SimpleNamespace(model=model, dflash=dflash, ddtree=ddtree, dist=distributed)

@@ -26,7 +26,8 @@ from .sampling import (block_verify_batched, block_verify_sparse,
                        tree_verify_ancestral_batched,
                        token_verify)
 from .fused_tree_sampling import (tree_verify_ancestral_fused,
-                                  tree_verify_ancestral_fused_parallel)
+                                  tree_verify_ancestral_fused_parallel,
+                                  tree_verify_ancestral_fused_scan)
 from .tree import (adaptive_path_proposal, adaptive_prefix_proposal,
                    budgeted_prefix_proposal, compact_cache, probability_tree,
                    sampled_tree)
@@ -53,7 +54,9 @@ FINITE_TREE_METHODS.update(RECYCLE_TREE_METHODS)
 TERMINAL_TREE_METHODS = {
     "ddtree_terminal_block", "ddtree_terminal_serial", "ddtree_terminal_dense",
 }
-FUSED_TREE_METHODS = {"ddtree_fused", "ddtree_fused_parallel"}
+FUSED_TREE_METHODS = {
+    "ddtree_fused", "ddtree_fused_parallel", "ddtree_fused_scan",
+}
 LAZY_HEAD_TREE_METHODS = {"ddtree_lazy_projection"}
 
 
@@ -379,6 +382,10 @@ class Engine:
                 ids = torch.tensor([[generated[-1]] + tree.tokens], device=self.device)
                 positions = (torch.tensor(tree.depths, device=self.device) + prefix_len)[None]
                 mask = tree.mask(prefix_len, next(self.target.parameters()).dtype, self.device)
+                lazy_lm_head = (
+                    variant.method in LAZY_HEAD_TREE_METHODS
+                    or variant.method in DIFFUSION_SCAFFOLD_METHODS
+                )
             with meter.measure("verify"):
                 packed_cache = None
                 if variant.method in PACKED_TREE_METHODS:
@@ -418,7 +425,7 @@ class Engine:
                     ])
                     target_tokens += packed_ids.numel()
                 else:
-                    if variant.method in LAZY_HEAD_TREE_METHODS:
+                    if lazy_lm_head:
                         output = self.target_hidden_forward(
                             ids, target_cache, positions=positions, mask=mask
                         )
@@ -426,9 +433,13 @@ class Engine:
                     else:
                         output = self.target_forward(ids, target_cache, hidden=True,
                                                      positions=positions, mask=mask)
+                        # Diffusion BV only needs the labelled proposal rows up
+                        # front.  Its scaffold continuation normalizes the
+                        # reached subtree lazily, so materializing FP64
+                        # full-vocabulary probabilities for every tree row here
+                        # wastes bandwidth without changing the sampling law.
                         all_p = (None if variant.method in (ATOM_TREE_METHODS - {"atom_tree_ancestral"})
-                                 | (DIFFUSION_TREE_METHODS - DIFFUSION_SCAFFOLD_METHODS
-                                    - {"diffusion_tree_ancestral"})
+                                 | (DIFFUSION_TREE_METHODS - {"diffusion_tree_ancestral"})
                                  else probabilities(output.logits[0], variant.temperature, dtype))
                     target_tokens += ids.shape[1]
                 target_calls += 1
@@ -439,7 +450,7 @@ class Engine:
                               all_p if all_p is not None else probabilities(
                                   self.target.get_output_embeddings()(
                                       output.last_hidden_state[0]
-                                  ) if variant.method in LAZY_HEAD_TREE_METHODS
+                                  ) if lazy_lm_head
                                   else output.logits[0],
                                   variant.temperature, dtype,
                               ))
@@ -451,7 +462,12 @@ class Engine:
                 # Diagnostic-only: preserve the latent law, not only its marginals.
                 atom_observer(tree.parents, tree.tokens, tree_proposal, output.logits[0], variant.temperature)
             if diffusion_observer is not None and variant.method in DIFFUSION_TREE_METHODS:
-                diffusion_observer(tree, tree_proposal, output.logits[0], variant.temperature)
+                diffusion_observer(
+                    tree, tree_proposal,
+                    (self.target.get_output_embeddings()(output.last_hidden_state[0])
+                     if lazy_lm_head else output.logits[0]),
+                    variant.temperature,
+                )
             with meter.measure("select_and_correct"):
                 if variant.method in RECYCLE_TREE_METHODS:
                     node_paths = torch.tensor(
@@ -506,11 +522,11 @@ class Engine:
                     )
                     accepted = len(nodes)
                 elif variant.method in FUSED_TREE_METHODS:
-                    verifier = (
-                        tree_verify_ancestral_fused_parallel
-                        if variant.method == "ddtree_fused_parallel"
-                        else tree_verify_ancestral_fused
-                    )
+                    verifier = {
+                        "ddtree_fused": tree_verify_ancestral_fused,
+                        "ddtree_fused_parallel": tree_verify_ancestral_fused_parallel,
+                        "ddtree_fused_scan": tree_verify_ancestral_fused_scan,
+                    }[variant.method]
                     nodes, tokens, bonus = verifier(
                         tree.parents, tree.tokens, all_p, generator,
                         validate=False,
@@ -534,11 +550,16 @@ class Engine:
                     )
                     accepted = len(nodes)
                 elif variant.method in DIFFUSION_SCAFFOLD_METHODS:
-                    nodes, tokens, bonus = diffusion_tree_bv.verify_scaffold_logits(
-                        output.logits[0], tree, tree_proposal, variant.temperature, generator,
+                    nodes, tokens, bonus = diffusion_tree_bv.verify_scaffold_hidden(
+                        output.last_hidden_state[0],
+                        self.target.get_output_embeddings(),
+                        tree, tree_proposal, variant.temperature, generator,
                         recycle=variant.method != "diffusion_scaffold_no_recycle",
-                        continuation="ancestral" if variant.method == "diffusion_scaffold_ancestral" else "terminal",
-                        validate=False, node_probabilities=all_p)
+                        continuation=("ancestral"
+                                      if variant.method == "diffusion_scaffold_ancestral"
+                                      else "terminal"),
+                        validate=False,
+                    )
                     accepted = len(nodes)
                 elif variant.method in DIFFUSION_TREE_METHODS:
                     nodes, tokens, bonus = diffusion_tree_bv.verify_logits(
@@ -658,7 +679,7 @@ class Engine:
                     self.target.get_output_embeddings()(
                         output.last_hidden_state[0].index_select(0, row_index)
                     )
-                    if variant.method in LAZY_HEAD_TREE_METHODS
+                    if lazy_lm_head
                     else output.logits[0].index_select(0, row_index)
                 )
                 # Match the production AR baseline exactly: prompt prefill followed

@@ -1,39 +1,68 @@
-# DFlash-SpecBlock：面向 NVIDIA GPU 的动态树推测解码
+# DFlash-SpecBlock：AdaptiveTree T=0/T=1 正式实验
 
-本分支把冻结的原版 AdaptiveTree 论文包（[`adaptivetree_paper/`](adaptivetree_paper/)）
-与后续的正温度扩散树上块验证工程放在同一个可复现分支中。整合边界、GH200
-AdaptiveTree 部分结果和新方法的运行入口见
+## 当前正式实验（唯一口径）
+
+本分支当前用于从零重跑一套公平、可审计的 **T=0/T=1** 实验。正式模型仅为
+Qwen3-4B 与 Qwen3-8B；Qwen3-Coder-30B-A3B、树状块验证及其他温度均已延期，
+不进入本轮计划、计数或结论。
+
+- **T=0**：Target、DFlash、DDTree 的 7 个固定预算，以及修正后的 canonical
+  AdaptiveTree。canonical 方法允许 `B<=256`，把构树成本计入预算决策，并关闭周期探索。
+  同时运行固定的 8 方法注册表：主方法、`adaptive_legacy` 历史对照及 6 项消融/控制；
+  `adaptive_legacy_cost_attribution` 是只切换成本归因的严格单因素对照。
+- **T=1**：仅 Target、DFlash 与 DDTree-B45（`L=15`），在 3 个生成 seed 上运行。
+- **不在本轮运行**：树状块验证、旧扩散树实验、30B 模型及 T=0/T=1 以外的温度。
+
+权威范围、调用数和公平性约束见
+[`docs/FORMAL_EXPERIMENT_MATRIX.md`](docs/FORMAL_EXPERIMENT_MATRIX.md)；统一部署、审计、
+doctor 与启动流程见
+[`docs/INTEGRATED_ADAPTIVE_TREE_BLOCK_EXPERIMENT.md`](docs/INTEGRATED_ADAPTIVE_TREE_BLOCK_EXPERIMENT.md)。
+用 `bash scripts/run_integrated_fresh_server.sh plan` 查看计划；其他旧启动脚本只为历史复查保留，
+不得据此扩大当前正式矩阵。
+
+## 历史与延期研究
+
+以下内容记录此前独立研究线，**不属于当前正式实验**。AdaptiveTree 独立论文包（其中也保留
+历史入口，当前 integrated T=0 仍复用其修正版实现）位于 [`adaptivetree_paper/`](adaptivetree_paper/)；
+旧整合边界和 GH200 部分结果见
 [`docs/ADAPTIVETREE_DIFFUSION_TREE_BV_INTEGRATION.md`](docs/ADAPTIVETREE_DIFFUSION_TREE_BV_INTEGRATION.md)。
 
-新增独立理论原型：[固定覆盖核 + 预算停止的扩散块验证](docs/DIFFUSION_CORE_STOPPING.md)。
+历史理论原型：[固定覆盖核 + 预算停止的扩散块验证](docs/DIFFUSION_CORE_STOPPING.md)。
 给出可预测停止下完整序列等分布证明、精确有理数核对和有条件双基线优势；
 修复两个旧反例，同时保留新构造仍输给 DDTree 的反例。**查重显示大量框架重合，
 原创性尚未成立**。未接入/替换下列冻结 GPU 实验，不把理论接受数当作实测速度。
 
-当前改进候选：[保底路径与树内续接的扩散块验证](docs/DIFFUSION_SCAFFOLD_BV.md)。
+延期候选：[保底路径与树内续接的扩散块验证](docs/DIFFUSION_SCAFFOLD_BV.md)。
 L15/B45 下保留 DFlash 完整路径、随机扩散路径及高概率填充；证明固定上下文的
 DFlash 接受长度保底，并严格修复旧反例；但新版本仍有同预算输给 DDTree 的严格反例，
 不能声称普遍支配。尚未证明 GPU 速度或新颖性。
-`bash scripts/run_diffusion_tree.sh plan --study configs/diffusion_scaffold_t10.json` 查看新计划；
-t03/t06/t10 是独立新配置，旧注册不覆盖。
+对应脚本和 t03/t06/t10 配置仅供历史检查，本轮不得启动。
 
-上一版研究入口：**单步块扩散的树上块验证**，见 [完整推导与运行协议](docs/DIFFUSION_TREE_BV.md)。
+更早的研究入口：**单步块扩散的树上块验证**，见 [完整推导与运行协议](docs/DIFFUSION_TREE_BV.md)。
 从 DFlash 的 clean-anchor + masked-block 去噪核出发，所有候选位置随机耦合，
 共享前缀合并为 trie；保留联合潜变量后共同选择接受分支、深度与纠正 token。
 证明包含扩散块截断质量、完整输出分布守恒及依赖去噪交叉熵的接受下界。
-`bash scripts/run_diffusion_tree.sh` 只显示 T=0.3/0.6/1.0 三项计划。
+其 T=0.3/0.6/1.0 计划均已延期。
 新颖性和 GPU 速度尚未确立；旧 AC-TBV 与下面的历史实验保留为独立对照。
 新增 [理论对照审计](docs/DIFFUSION_TREE_THEORY_AUDIT.md)：无损的明确假设、
 同时优于两者的条件定理，以及驳倒“当前方法无条件总更好”的同预算严格反例。
 
-AdaptiveTree 新增 [Qwen3-8B 独立版本](docs/ADAPTIVE_QWEN3_8B.md)：`bash scripts/run_paper_t0_qwen3_8b.sh plan`。采用配套 8B DFlash 固定权重版本，包含同一套主实验与四项消融；无参数只显示计划，不启动 GPU。
+旧 Qwen3-8B 单模型入口与旧 T=0 三模型入口的参数、脚本和证明边界分别记录在
+[历史 8B 说明](docs/ADAPTIVE_QWEN3_8B.md) 与
+[历史 T=0 说明](docs/PAPER_T0_EXPERIMENTS.md)。它们不再定义当前正式实验；当前只使用上述
+统一入口和 8 方法注册表。
 
-新增 **原版 T=0 Adaptive DDTree 正式实验入口（非 RL）**：只自适应节点预算，不做策略训练。按用户确认，数据和评测采用 DDTree 官方协议：十数据集、seed=0 抽样，共 1,072 题/对话，含双轮后每方法 1,152 次回答；不是全量数据。三组模型、主实验与消融见 [运行与审计说明](docs/PAPER_T0_EXPERIMENTS.md)，[构树介绍](docs/ADAPTIVE_DDTREE_METHOD.md) 与 [论文证明](docs/ADAPTIVE_DDTREE_T0_PROOF.md)。使用 `bash scripts/run_paper_t0_full.sh plan` 查看矩阵；GPU 正式实验尚未运行。旧分层 RL 已归档，不与原版结果混用。下文其他历史实验不是这个入口的默认配置。
+历史三路径 GBV 论文实验的 12 配置方案见
+[归档说明](docs/GBV_PAPER_EXPERIMENTS.md)。该矩阵不属于本轮 T=1 正式范围；本轮 T=1
+只比较 Target、DFlash 与 DDTree-B45，并使用 3 个生成 seed。
 
-**三路径 GBV 论文实验（Qwen3-4B + Qwen3-8B，12 配置精简方案）**：两个模型均比较 AR、DFlash、单路径 BV、K=3 GBV 和 DDTree；4B 额外比较 K=2、K=4，共 4B 的 7 配置、8B 的 5 配置。正式温度固定 T=1，小规模上机贪心正确性检查保留。数据量继续对齐 DDTree，每个配置/种子 786 题或对话、866 次回答；三个种子共 31,176 次回答。默认 `bash scripts/run_gbv_paper.sh gbv-first` 先运行两模型的 K=3 GBV；随后 `main`、`complete` 复用已有结果补齐。详见 [正式实验说明](docs/GBV_PAPER_EXPERIMENTS.md)。下文的旧 2k / T=0 流程单独保留。
+## 历史工程实现说明（不属于本轮启动入口）
+
+下文保留旧 SpecBlock、独立 DDTree benchmark、rank-head 训练和 CUDA 优化流程，便于代码追溯。
+其中出现的“默认”“正式”均只描述各自历史流程；不得替代页首的 T=0/T=1 正式矩阵或统一入口。
 
 本工程把 DFlash 的 block diffusion drafter 与 SpecBlock 的动态树组织、ancestor-only 并行
-验证组合为一个可审计实现，并以 NVIDIA CUDA 作为正式训练、推理和性能后端。
+验证组合为一个可审计实现，并以 NVIDIA CUDA 作为其历史训练、推理和性能后端。
 
 - **DFlash**：目标模型多层隐藏状态注入 draft layer KV，未来 token 以扩散块一次产生；
 - **SpecBlock**：构建 greedy 主链和 rank-guided 兄弟分支，再用目标模型并行验证；
@@ -41,7 +70,7 @@ AdaptiveTree 新增 [Qwen3-8B 独立版本](docs/ADAPTIVE_QWEN3_8B.md)：`bash s
   预算内挑出概率最高的候选前缀集合；单块、无需 rank head，由 `tree_mode="ddtree"` 启用；
 - **GPU 优化**：PyTorch SDPA、Tensor Core/TF32、静态 KV cache、CUDA Graph，以及经过
   正确性验证后可选的 `torch.compile`；
-- **严格验证**：正式模式为 greedy lossless decoding，每个样本都与目标模型逐 token
+- **严格验证**：该历史模式为 greedy lossless decoding，每个样本都与目标模型逐 token
   baseline 比较。
 
 论文与官方实现：
@@ -70,7 +99,7 @@ DDTree 的正确性依据：在条件独立假设下，候选前缀的对数联�
 因此堆顶始终是全局最优的未生成节点。`tests/test_ddtree_builder.py` 用穷举验证了它在给定
 预算下最大化期望接受 token 数，并逐节点比对了 `third_party/ddtree_official` 的官方实现。
 
-运行 DDTree benchmark（无需先训练 rank head）：
+运行历史 DDTree benchmark（无需先训练 rank head）：
 
 ```bash
 bash scripts/run_ddtree_benchmark.sh
@@ -78,7 +107,7 @@ MAX_PROMPTS=2 MAX_NEW_TOKENS=32 bash scripts/run_ddtree_benchmark.sh  # smoke
 ```
 
 
-## 当前状态
+## 历史工程状态
 
 已实现：
 
@@ -94,7 +123,7 @@ MAX_PROMPTS=2 MAX_NEW_TOKENS=32 bash scripts/run_ddtree_benchmark.sh  # smoke
 本节旧流程只支持 `temperature=0`。随机采样需要 proposal probability 与 rejection sampling，不能
 复用 greedy 最长路径验证。
 
-正式默认配置是 [configs/qwen3_4b_cuda.json](configs/qwen3_4b_cuda.json)：
+该流程的历史默认配置是 [configs/qwen3_4b_cuda.json](configs/qwen3_4b_cuda.json)：
 
 - `device="cuda:0"`，CUDA 不可用时直接失败；
 - `dtype="bfloat16"`；
@@ -104,7 +133,7 @@ MAX_PROMPTS=2 MAX_NEW_TOKENS=32 bash scripts/run_ddtree_benchmark.sh  # smoke
 - `block_size=15`、`max_blocks=1`、`tree_budget=60`；
 - 固定 target/draft revision，保证权重可追溯。
 
-`max_blocks=1` 表示默认生产路径只启用单块树，跨块 continuation 虽已实现，但必须用
+`max_blocks=1` 表示该历史生产路径只启用单块树，跨块 continuation 虽已实现，但必须用
 `max_blocks>=2` 的独立配置重新训练 rank head 并做正确性/性能消融。
 
 吞吐优先的候选配置是
@@ -122,7 +151,7 @@ benchmark JSONL，确保 prompt、顺序和生成长度口径一致：
 ```bash
 bash scripts/setup_official_references.sh
 MAX_SAMPLES=2 MAX_NEW_TOKENS=32 bash scripts/run_official_comparison.sh  # smoke
-bash scripts/run_official_comparison.sh                                  # 200 条正式对照
+bash scripts/run_official_comparison.sh                                  # 200 条历史对照
 ```
 
 完整说明、commit、数据集差异和输出字段见
@@ -158,7 +187,7 @@ bash scripts/run_official_comparison.sh                                  # 200 �
 ## 工程结构
 
 ```text
-configs/                         CUDA 正式配置、消融配置与 smoke 配置
+configs/                         历史 CUDA 配置、消融配置与 smoke 配置
 data/                            rank-head 数据格式示例
 datasets/                        benchmark prompt 与生成训练集
 docs/METHOD.md                   论文逐项对应与组合边界
@@ -310,7 +339,7 @@ GPU 上重新训练/验证 checkpoint，并重新生成 benchmark 与报告。
 - 仅支持 batch=1、greedy decoding；多提示词 benchmark 仍逐条运行；
 - 自定义树 mask 不保证命中 Flash SDPA kernel，必须根据 profiler 实测；
 - CUDA Graph 需要固定 shape 和预分配 cache；
-- `max_blocks=1` 是正式默认，跨块路径收益尚需 GPU 消融；
+- `max_blocks=1` 是旧 SpecBlock 流程默认，跨块路径收益尚需 GPU 消融；
 - 不包含模型权重；heuristic 结果不可用于优于 DFlash/SpecBlock 的结论。
 
 方法对应、公式与创新边界见 [docs/METHOD.md](docs/METHOD.md) 与

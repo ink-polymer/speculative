@@ -70,6 +70,18 @@ def scheduled_variants(entries, method_order, ordinal, per_prompt_seed):
     return order[offset:] + order[:offset]
 
 
+def dataset_local_schedule(rows):
+    """Return each row's ordinal and row count within its own dataset."""
+    counts = {}
+    ordinals = []
+    for row in rows:
+        dataset = row["dataset"]
+        ordinal = counts.get(dataset, 0)
+        ordinals.append(ordinal)
+        counts[dataset] = ordinal + 1
+    return ordinals, counts
+
+
 def model_identity(cfg):
     from huggingface_hub import HfApi
     result = dict(cfg)
@@ -143,6 +155,7 @@ def _run(cfg, data_dir: Path, output: Path, device: str, groups=None, smoke=Fals
             "source_hashes": source_hashes(), "versions": versions,
             "python": platform.python_version(), "cuda": torch.version.cuda,
             "gpu": torch.cuda.get_device_name(torch.device(device)),
+            "gpu_uuid":str(getattr(device_properties, "uuid", "unknown")),
             "gpu_memory_bytes": device_properties.total_memory, "driver": driver,
             "torch_cpu_threads": torch.get_num_threads(),
             "expected_records": len(rows) * len(cfg["seeds"]) * len(entries),
@@ -194,11 +207,16 @@ def _run(cfg, data_dir: Path, output: Path, device: str, groups=None, smoke=Fals
     for entry in active_entries:
         engine.generate(warmup, Variant(**entry["variant"]), cfg.get("warmup_tokens", 16),
                         stop_ids, seed=0, profile=profile)
+    row_ordinals, dataset_counts = dataset_local_schedule(rows)
     with (output / "results.jsonl").open("a", encoding="utf-8") as stream:
         for seed_index, seed in enumerate(cfg["seeds"]):
             for row_index, row in enumerate(rows):
                 per_prompt_seed = prompt_seed(seed, row["dataset"], row["source_id"])
-                ordinal = seed_index * len(rows) + row_index
+                # Start each dataset at ordinal zero and continue its rotation
+                # across seeds.  A global ordinal can be balanced overall while
+                # systematically placing one method first inside a dataset.
+                ordinal = (seed_index * dataset_counts[row["dataset"]]
+                           + row_ordinals[row_index])
                 order = scheduled_variants(
                     entries, spec["method_order"], ordinal, per_prompt_seed
                 )
