@@ -16,11 +16,7 @@ class ZeroMass(Exception):
     pass
 
 
-@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA extension test")
-@pytest.mark.parametrize("function", [tree_verify_ancestral_fused,
-                                      tree_verify_ancestral_fused_parallel,
-                                      tree_verify_ancestral_fused_scan])
-def test_fused_tree_sampler_matches_inverse_cdf_paths(function):
+def _assert_fused_tree_sampler_matches_inverse_cdf_paths(function):
     parents = [-1, 0, 0, 1]
     tokens = [0, 1, 2]
     p = torch.tensor(
@@ -50,6 +46,21 @@ def test_fused_tree_sampler_matches_inverse_cdf_paths(function):
             [tokens[index - 1] for index in expected_nodes],
             expected_bonus,
         )
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA extension test")
+@pytest.mark.parametrize("function", [tree_verify_ancestral_fused,
+                                      tree_verify_ancestral_fused_parallel])
+def test_fused_tree_sampler_matches_inverse_cdf_paths(function):
+    _assert_fused_tree_sampler_matches_inverse_cdf_paths(function)
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA extension test")
+def test_fused_scan_sampler_matches_inverse_cdf_paths():
+    """Dedicated formal-doctor node for the registered fast verifier."""
+    _assert_fused_tree_sampler_matches_inverse_cdf_paths(
+        tree_verify_ancestral_fused_scan
+    )
 
 
 def test_official_ddtree_batched_posterior_has_exact_ancestral_law(monkeypatch):

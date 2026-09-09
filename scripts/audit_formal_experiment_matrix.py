@@ -41,7 +41,15 @@ EXPECTED_T0_VARIANTS = {
     "adaptive_no_latency",
     "adaptive_frozen_after_warmup",
 }
-EXPECTED_T1_METHODS = {"target", "dflash", "ddtree"}
+EXPECTED_T1_METHODS = {
+    "target", "dflash", "ddtree", "tree_block_verification",
+}
+EXPECTED_T1_IMPLEMENTATIONS = {
+    "target": "target",
+    "dflash": "dflash",
+    "ddtree": "ddtree",
+    "tree_block_verification": "ddtree_fused_scan",
+}
 EXPECTED_T1_SEEDS = [17, 29, 43]
 EXPECTED_T1_SCORING = {
     "code_backend": "docker",
@@ -95,10 +103,11 @@ def audit(matrix_path: Path) -> dict:
                 matrix.get("adaptive_t0", {}).get("config"),
                 "formal matrix and integrated suite select different T=0 configs")
         require(suite.get("positive_temperature") == {
-            "temperatures":[1.0], "methods":["target", "dflash", "ddtree"],
+            "temperatures":[1.0],
+            "methods":["target", "dflash", "ddtree", "tree_block_verification"],
             "length":15, "tree_budget":45, "probability_dtype":"float64",
             "method_order_policy":"balanced_rotation",
-            "tree_block_verification":"deferred_not_run",
+            "tree_block_verification":"registered_t1_same_tree_fused_scan",
         }, "formal matrix and integrated suite select different T=1 methods/settings")
         suite_models = suite.get("models", [])
         matrix_models = matrix.get("models", [])
@@ -161,7 +170,10 @@ def audit(matrix_path: Path) -> dict:
     t1 = matrix.get("stochastic_t1_baselines", {})
     require(t1.get("temperature") == 1.0, "positive-temperature baseline is registered only at T=1")
     require(t1.get("datasets") == EXPECTED_T1_DATASETS, "T=1 must contain all eight supported datasets/counts")
-    require(set(t1.get("methods", [])) == EXPECTED_T1_METHODS, "T=1 is limited to Target/DFlash/DDTree")
+    require(
+        set(t1.get("methods", [])) == EXPECTED_T1_METHODS,
+        "T=1 must contain Target/DFlash/DDTree and same-tree block verification",
+    )
     require(t1.get("seeds") == EXPECTED_T1_SEEDS, "T=1 requires three frozen sampling seeds")
     require(t1.get("max_new_tokens") == 2048, "T=1 max_new_tokens must be 2048")
     require(t1.get("target_backend") == "sdpa" and t1.get("draft_backend") == "sdpa",
@@ -169,6 +181,7 @@ def audit(matrix_path: Path) -> dict:
     require(t1.get("draft_proposal_policy") == {
         "dflash": "greedy_argmax",
         "ddtree_temperature": 1.0,
+        "tree_block_verification_temperature": 1.0,
     }, "T=1 DFlash/DDTree draft proposal policies drifted")
     require(t1.get("method_order_policy") == {"policy": "balanced_rotation", "seed": 20260909},
             "T=1 method positions must use the frozen balanced rotation")
@@ -217,8 +230,12 @@ def audit(matrix_path: Path) -> dict:
         require(cfg.get("scoring") == EXPECTED_T1_SCORING,
                 f"{model.get('id')} T=1 scoring settings drifted")
         variants = [entry.get("variant", {}) for entry in cfg.get("explicit_variants", [])]
-        require({v.get("method") for v in variants} == EXPECTED_T1_METHODS and len(variants) == 3,
-                f"{model.get('id')} T=1 must contain exactly Target/DFlash/DDTree")
+        require(
+            {v.get("method") for v in variants}
+            == set(EXPECTED_T1_IMPLEMENTATIONS.values())
+            and len(variants) == 4,
+            f"{model.get('id')} T=1 must contain the four registered controls",
+        )
         require(all(v.get("temperature") == 1.0 and v.get("paths") == 1
                     and v.get("length") == 15 and v.get("tree_budget") == 45
                     and v.get("probability_dtype") == "float64" for v in variants),
@@ -228,26 +245,57 @@ def audit(matrix_path: Path) -> dict:
                 f"{model.get('id')} T=1 DFlash must keep its greedy argmax draft")
         require(by_method.get("ddtree", {}).get("draft_temperature") == 1.0,
                 f"{model.get('id')} T=1 DDTree draft temperature drifted")
-        require(not any("adaptive" in str(v.get("name", "")) or "tree_block" in str(v.get("name", ""))
-                        or "lazy_projection" in str(v.get("name", "")) for v in variants),
-                f"{model.get('id')} T=1 contains an unregistered AdaptiveTree/tree-block claim")
+        tree_block = by_method.get("ddtree_fused_scan", {})
+        require(
+            tree_block.get("name") == "tree_block_verification_t1p0"
+            and tree_block.get("draft_temperature") == 1.0,
+            f"{model.get('id')} tree-block verifier identity drifted",
+        )
+        require(not any("adaptive" in str(v.get("name", ""))
+                        or "lazy_projection" in str(v.get("name", ""))
+                        for v in variants),
+                f"{model.get('id')} T=1 contains an unregistered AdaptiveTree/lazy projection")
     if len(t1_configs) == 2:
         fields = ("datasets", "seeds", "max_new_tokens", "warmup_tokens", "method_order",
                   "explicit_variants", "bootstrap_samples", "scoring", "evaluation")
         require(all(t1_configs[0].get(field) == t1_configs[1].get(field) for field in fields),
                 "4B and 8B T=1 experiment controls differ")
 
+    tree = matrix.get("tree_block_verification", {})
+    require(tree == {
+        "run_in_this_matrix": True,
+        "temperature": 1.0,
+        "registered_name": "tree_block_verification_t1p0",
+        "implementation": "ddtree_fused_scan",
+        "baseline": "ddtree_t1p0",
+        "same_tree_constructor": "probability_tree",
+        "length": 15,
+        "tree_budget": 45,
+        "probability_dtype": "float64",
+        "candidate_only_delta": (
+            "all-row batched multinomial to persistent CUDA block scanning "
+            "reached rows"
+        ),
+        "same_tree_runtime_witness_required": True,
+        "publication_claim_requires_completed_full_matrix": True,
+        "publication_claim_requires_all_integrity_and_fairness_gates": True,
+        "superiority_claim_requires_ci_lower_bound_above_one": True,
+    }, "tree-block verifier registration or same-tree contract drifted")
     deferred = matrix.get("deferred", {})
-    tree = deferred.get("tree_block_verification", {})
-    require(tree.get("run_in_this_matrix") is False and tree.get("publication_claim_allowed") is False,
-            "tree-block verification must stay explicitly deferred")
-    require("ddtree_lazy_projection" in tree.get("reason", ""),
-            "tree-block deferral must state that lazy projection is not tree-block verification")
+    require("tree_block_verification" not in deferred,
+            "registered tree-block verification must not remain deferred")
     coder = deferred.get("qwen3_coder_30b", {})
     require(coder.get("run_in_this_matrix") is False and coder.get("publication_claim_allowed") is False,
             "unverified 30B pair must stay outside the formal H20 matrix")
-    require(all(value is False for value in matrix.get("claim_policy", {}).values()),
-            "all forbidden cross-protocol/deferred claims must remain false")
+    require(matrix.get("claim_policy") == {
+        "pool_t0_and_t1_speedups": False,
+        "claim_adaptivetree_at_t1": False,
+        "claim_strict_lossless_when_bf16_mismatch_exists": False,
+        "claim_tree_block_results_from_pilots": False,
+        "claim_tree_block_results_before_completed_validated_full_matrix": False,
+        "claim_tree_block_superiority_when_ci_includes_one": False,
+        "reuse_old_server_timings": False,
+    }, "claim policy must fail closed before validated full-matrix evidence")
 
     t0_turns = sum(EXPECTED_T0_DATASETS.values()) + EXPECTED_T0_DATASETS["mt-bench"]
     t0_sdpa_methods = 2 + len(t0["ddtree_budgets"]) + len(registered_variants)

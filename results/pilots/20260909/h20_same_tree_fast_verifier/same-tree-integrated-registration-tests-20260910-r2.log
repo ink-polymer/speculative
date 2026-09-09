@@ -1,0 +1,54 @@
+.....F.........................                                          [100%]
+=================================== FAILURES ===================================
+________ test_process_scorer_identity_preserves_venv_invocation_symlink ________
+
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-3/test_process_scorer_identity_p0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f289c93fce0>
+
+    @pytest.mark.skipif(os.name != "posix", reason="formal process scorer is POSIX-only")
+    def test_process_scorer_identity_preserves_venv_invocation_symlink(tmp_path, monkeypatch):
+        from gbv_experiments.scoring import process_python_identity
+    
+        environment = tmp_path / "evaluator-venv"
+        venv.EnvBuilder(with_pip=False, system_site_packages=True, symlinks=True).create(
+            environment
+        )
+        invocation = environment / "bin" / "python"
+        assert invocation.is_symlink()
+        monkeypatch.setenv("GBV_PROCESS_PYTHON", str(invocation))
+>       identity = process_python_identity()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/gbv_paper/test_integrated_suite.py:53: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/gbv_experiments/scoring.py:157: in process_python_identity
+    invocation, resolved = _process_python_paths()
+                           ^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _process_python_paths() -> tuple[Path, Path]:
+        """Return invocation and resolved paths without losing venv semantics."""
+        configured = os.environ.get("GBV_PROCESS_PYTHON", sys.executable)
+        candidate = Path(configured).expanduser()
+        if not candidate.is_absolute():
+            located = shutil.which(configured)
+            if located is None:
+                raise RuntimeError(f"Process evaluator Python does not exist: {configured}")
+            candidate = Path(located)
+        # abspath deliberately does not dereference a venv's bin/python symlink.
+        invocation = Path(os.path.abspath(candidate))
+        if not invocation.is_file():
+            raise RuntimeError(f"Process evaluator Python does not exist: {invocation}")
+        resolved = invocation.resolve(strict=True)
+        if os.name == "posix" and os.geteuid() == 0:
+            for path in (invocation, resolved):
+                if path == Path("/root") or Path("/root") in path.parents:
+>                   raise RuntimeError(
+                        "Root process evaluation requires GBV_PROCESS_PYTHON outside /root "
+                        "so the dropped worker can import the standard library"
+                    )
+E                   RuntimeError: Root process evaluation requires GBV_PROCESS_PYTHON outside /root so the dropped worker can import the standard library
+
+src/gbv_experiments/scoring.py:148: RuntimeError
+=========================== short test summary info ============================
+FAILED tests/gbv_paper/test_integrated_suite.py::test_process_scorer_identity_preserves_venv_invocation_symlink

@@ -3,7 +3,8 @@ from dataclasses import replace
 import pytest
 
 from gbv_experiments.config import Variant
-from gbv_experiments.fairness import assert_architecture_only_pair
+from gbv_experiments.fairness import (assert_architecture_only_pair,
+                                      assert_official_dflash_control)
 from gbv_experiments.terminal_formal import verifier_implementation_manifest
 
 
@@ -64,6 +65,28 @@ def test_architecture_only_pair_rejects_backend_drift():
         assert_architecture_only_pair(
             baseline, candidate, {**MODEL, "target_attention": "eager"}
         )
+
+
+def test_official_dflash_control_records_greedy_draft():
+    baseline, _ = pair()
+    dflash = replace(
+        baseline, name="dflash", method="dflash", draft_temperature=None,
+    )
+    manifest = assert_official_dflash_control(baseline, dflash, MODEL)
+    assert manifest["comparison"] == "official_dflash_control"
+    assert manifest["recorded_draft_temperatures"] == {
+        "ddtree": 1.0, "dflash": None,
+    }
+    assert manifest["method_specific_proposals"]["dflash"] == (
+        "greedy_argmax masked block"
+    )
+
+
+def test_official_dflash_control_rejects_sampled_draft_metadata():
+    baseline, _ = pair()
+    dflash = replace(baseline, name="dflash", method="dflash")
+    with pytest.raises(ValueError, match="greedy Draft"):
+        assert_official_dflash_control(baseline, dflash, MODEL)
 
 
 def test_verifier_implementation_manifest_identifies_actual_kernel_source():

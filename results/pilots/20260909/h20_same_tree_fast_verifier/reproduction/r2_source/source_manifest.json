@@ -1,0 +1,28 @@
+{
+  "kind": "exact_source_identity_for_h20_same_tree_official_pilot_r2",
+  "pilot_manifest": "../../h20-same-tree-block-official-pilot-20260910-r2/manifest.json",
+  "engine": {
+    "path": "engine.py",
+    "sha256": "1874a873ab3940ca4d1c58a3cc0f9fb222a3c8599fc5a0efeed9305e1011ed86",
+    "identity": "exact retained-and-reconstructed server source"
+  },
+  "other_sources": {
+    "fused_verifier": {
+      "path": "../../../../../../src/gbv_experiments/fused_tree_sampling.py",
+      "sha256": "ddec9c5a42f5fcc6f2254c8e5858f01c094c2f39090fdf6fe689dcc3e4d75ba8"
+    },
+    "official_verifier": {
+      "path": "../../../../../../src/gbv_experiments/sampling.py",
+      "sha256": "43b246af3511f94a487fd462d8198ad574a71e8de407deb44f572ecbfe31a205"
+    },
+    "script": {
+      "path": "../../../../../../scripts/run_same_tree_official_pilot.py",
+      "sha256": "3c7cbf0995664159a0bd4702bd10af02b445a98a9fb47031142620c8369caef3"
+    },
+    "config": {
+      "path": "../../../../../../configs/same_tree_block_qwen3_4b_pilot.json",
+      "sha256": "9422b7114ddc70aa8d9065ef33132b1b90048eb26bbfdf07cfc6478478f311f6"
+    }
+  },
+  "note": "The main engine is a later diffusion-scaffold-only integration superset; use engine.py here for exact r2 source identity."
+}

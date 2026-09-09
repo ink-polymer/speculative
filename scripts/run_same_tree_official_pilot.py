@@ -17,7 +17,8 @@ from gbv_experiments.config import Variant, build_variants, load_config
 from gbv_experiments.conversation import encode_messages, generate_conversation
 from gbv_experiments.data import load_prepared, user_turns
 from gbv_experiments.engine import load_models
-from gbv_experiments.fairness import assert_architecture_only_pair
+from gbv_experiments.fairness import (assert_architecture_only_pair,
+                                      assert_official_dflash_control)
 from gbv_experiments.runner import output_lock, scheduled_variants, stop_token_ids
 from gbv_experiments.terminal_formal import allocation_gate, model_gate, telemetry
 
@@ -186,7 +187,7 @@ def run(config_path: Path, data_dir: Path, output: Path, device: str,
     fairness = assert_architecture_only_pair(
         variants["ddtree"], variants["tree_block_verification"], cfg["model"],
     )
-    dflash_match = assert_architecture_only_pair(
+    dflash_match = assert_official_dflash_control(
         variants["ddtree"], variants["dflash"], cfg["model"],
     )
     data_manifest, all_rows = load_prepared(

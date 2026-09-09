@@ -1,0 +1,488 @@
+{
+  "kind": "paired_official_dataset_same_tree_block_pilot",
+  "formal_complete": false,
+  "created_at_utc": "2026-09-09T16:22:21.189400+00:00",
+  "candidate_frozen_before_official_pilot": true,
+  "official_precision": {
+    "dtype": "bfloat16",
+    "target_attention": "sdpa",
+    "draft_attention": "sdpa",
+    "allow_tf32": false
+  },
+  "temperature": 1.0,
+  "datasets": [
+    "gsm8k",
+    "math500",
+    "aime25",
+    "humaneval",
+    "mbpp",
+    "livecodebench",
+    "mt-bench"
+  ],
+  "per_dataset": 8,
+  "seeds": [
+    17,
+    29,
+    43
+  ],
+  "max_new_tokens": 256,
+  "expected_paired_groups": 168,
+  "expected_records": 504,
+  "variants": [
+    {
+      "name": "dflash",
+      "method": "dflash",
+      "paths": 1,
+      "length": 15,
+      "temperature": 1.0,
+      "draft_temperature": null,
+      "share_prefixes": true,
+      "reuse_draft_cache": true,
+      "draft_attention": "bidirectional",
+      "condition_features": "target",
+      "probability_dtype": "float64",
+      "tree_budget": 45,
+      "diffusion_support_size": 8
+    },
+    {
+      "name": "ddtree",
+      "method": "ddtree",
+      "paths": 1,
+      "length": 15,
+      "temperature": 1.0,
+      "draft_temperature": 1.0,
+      "share_prefixes": true,
+      "reuse_draft_cache": true,
+      "draft_attention": "bidirectional",
+      "condition_features": "target",
+      "probability_dtype": "float64",
+      "tree_budget": 45,
+      "diffusion_support_size": 8
+    },
+    {
+      "name": "tree_block_verification",
+      "method": "ddtree_fused_scan",
+      "paths": 1,
+      "length": 15,
+      "temperature": 1.0,
+      "draft_temperature": 1.0,
+      "share_prefixes": true,
+      "reuse_draft_cache": true,
+      "draft_attention": "bidirectional",
+      "condition_features": "target",
+      "probability_dtype": "float64",
+      "tree_budget": 45,
+      "diffusion_support_size": 8
+    }
+  ],
+  "fairness": {
+    "comparison": "architecture_only",
+    "architecture_delta": {
+      "baseline": {
+        "method": "ddtree",
+        "name": "ddtree",
+        "paths": 1
+      },
+      "candidate": {
+        "method": "ddtree_fused_scan",
+        "name": "tree_block_verification",
+        "paths": 1
+      }
+    },
+    "frozen_variant_controls": {
+      "length": 15,
+      "temperature": 1.0,
+      "draft_temperature": 1.0,
+      "share_prefixes": true,
+      "reuse_draft_cache": true,
+      "draft_attention": "bidirectional",
+      "condition_features": "target",
+      "probability_dtype": "float64",
+      "tree_budget": 45,
+      "diffusion_support_size": 8
+    },
+    "frozen_model_controls": {
+      "dtype": "bfloat16",
+      "target_attention": "sdpa",
+      "draft_attention": "sdpa",
+      "enable_thinking": false,
+      "allow_tf32": false
+    }
+  },
+  "dflash_control_match": {
+    "comparison": "official_dflash_control",
+    "method_specific_proposals": {
+      "ddtree": "T=1 probability_tree",
+      "dflash": "greedy_argmax masked block"
+    },
+    "frozen_shared_variant_controls": {
+      "paths": 1,
+      "length": 15,
+      "temperature": 1.0,
+      "share_prefixes": true,
+      "reuse_draft_cache": true,
+      "draft_attention": "bidirectional",
+      "condition_features": "target",
+      "probability_dtype": "float64",
+      "tree_budget": 45,
+      "diffusion_support_size": 8
+    },
+    "recorded_draft_temperatures": {
+      "ddtree": 1.0,
+      "dflash": null
+    },
+    "frozen_model_controls": {
+      "dtype": "bfloat16",
+      "target_attention": "sdpa",
+      "draft_attention": "sdpa",
+      "enable_thinking": false,
+      "allow_tf32": false
+    }
+  },
+  "data_selection": {
+    "policy": "first N rows of the pinned DDTree-count selection in each dataset",
+    "source_ids_sha256": "5c48c2ff16285ca6ab6e018bdeef6ebf7cf28b3f355476a65b41804e68bc605f",
+    "prompt_ids": [
+      [
+        "gsm8k",
+        "264",
+        "1ad102b2a6887ea979f0027a88dd4b70fcf997e5753e25ea1d544cd6b1c0bc44"
+      ],
+      [
+        "gsm8k",
+        "725",
+        "7c7b3f93c1738a7d5765668772bfa25cfb38541698b53221448579b63deb9227"
+      ],
+      [
+        "gsm8k",
+        "996",
+        "20a060b4d2736e3acd0f6cbdf3d8ba7e75a966d948c58a8f5446b2fcb9ebef70"
+      ],
+      [
+        "gsm8k",
+        "586",
+        "b5a57631da29ac425fe738e000a3896c2420bb7dd12c300fb258f6979ab32536"
+      ],
+      [
+        "gsm8k",
+        "1010",
+        "77fe269430979d7636382c9b62abf04ce6cce58f0e1182cf2b95014b7c297c53"
+      ],
+      [
+        "gsm8k",
+        "12",
+        "75d4c75a0b07e66b1ed1e81b4a2c8cf07571905186d46c0d4e7c18799814ff46"
+      ],
+      [
+        "gsm8k",
+        "904",
+        "d8721f602ec05d27b8657e1281d29bd96dcb89dcef03c996bc9b98652a3bc846"
+      ],
+      [
+        "gsm8k",
+        "130",
+        "4fbb75ee08fa93530ab3be2373bcab0586bb076ab52fda1ead1f11c47e9cd039"
+      ],
+      [
+        "math500",
+        "221",
+        "006c293bc753255cf4b263e191a9b4c9c2ab24f7e545bb249d4e56867140ce8b"
+      ],
+      [
+        "math500",
+        "434",
+        "25107325659b7d8c242bd5887f5a52dbb5764ae7241c9c9501cb5865dde578d5"
+      ],
+      [
+        "math500",
+        "109",
+        "053be6459750ac2324df729d59cdf34fdb078cac2e60ef4e4c61fed5500a014f"
+      ],
+      [
+        "math500",
+        "334",
+        "2cbdaa746cb429a4376bbb51e5a96359eeea2273bbc6ed9bf1f5baba085fa966"
+      ],
+      [
+        "math500",
+        "375",
+        "e10723e57efd8c43cfa103efc3d5f909897a70c18bc4059d4fdcdde035a2e8ab"
+      ],
+      [
+        "math500",
+        "71",
+        "3a4eaa84356274997ba98d1d47ca61317c2b4dec87f5cb80405995652e2d956b"
+      ],
+      [
+        "math500",
+        "378",
+        "47bcef858f8ca7d458b5b30ebdead53b9a7cc77f5b55d4e76dc80683a5c0426d"
+      ],
+      [
+        "math500",
+        "205",
+        "37169a6b3b152244d4f588be551e9ac23e7b44275a876406a1aacacbb719aa7d"
+      ],
+      [
+        "aime25",
+        "1",
+        "a5da7144103cf170c2eba614f55066b19e73489c77f31e63b43ef966be32c6b0"
+      ],
+      [
+        "aime25",
+        "2",
+        "76d257511c1dd6b979b4c66e35e8e53458b328f02671f3ad3ef26ad4f8650c1d"
+      ],
+      [
+        "aime25",
+        "3",
+        "ad92444c464c281bc77ba44c17e8677e98ec0ec3648ccc484a42a5ca3db1c8ae"
+      ],
+      [
+        "aime25",
+        "4",
+        "904fbb9da8825b58674f3ccb16405f8526084263e7ff70b8962273ec8b4eb420"
+      ],
+      [
+        "aime25",
+        "5",
+        "00d596a55a172c5d7772263c92c62cb1e45cf56b62d51f00f6ee33296b557d11"
+      ],
+      [
+        "aime25",
+        "6",
+        "f5a87e6000a8e40ddf5996b4624d58889d72c6a7ab3815b656923f925948226d"
+      ],
+      [
+        "aime25",
+        "7",
+        "bc8b80b2ec65140b3cd56e8130225ee830d8482689a52822f593aea572b18826"
+      ],
+      [
+        "aime25",
+        "8",
+        "f2afc348c8f096a4ca448ae1685189ca9728ef4fc2eae77d01f0ff6e13acbc81"
+      ],
+      [
+        "humaneval",
+        "HumanEval/0",
+        "8f958f7f0a222345b1394bc1a3c2f5172e550f8acca497a9a8ebdb4e19611f81"
+      ],
+      [
+        "humaneval",
+        "HumanEval/1",
+        "d770789be6da02ca8da1106817c9079a620ee9248991c96167d4bd17b389461c"
+      ],
+      [
+        "humaneval",
+        "HumanEval/2",
+        "cb33bb7b87eab93c7e2d2cbe5671ee8a69ddbb31a383d4b846ca3837351557fc"
+      ],
+      [
+        "humaneval",
+        "HumanEval/3",
+        "78f62107ff8fc61f529573899a4e8055f54615ba652c5222169ababc0231e134"
+      ],
+      [
+        "humaneval",
+        "HumanEval/4",
+        "d1671c7e43a81632f6968df74b2512ca71bedcd83c5cc13ccaabe0f970bc9d31"
+      ],
+      [
+        "humaneval",
+        "HumanEval/5",
+        "c5703b1613477fe5b22a2b25075fdcc92ff5bdac45afcd8385f13bc5fbfc4add"
+      ],
+      [
+        "humaneval",
+        "HumanEval/6",
+        "d94d6e88c8e955e645a578e7f15addedf052133d22c5d2b612fd2bda14bc6756"
+      ],
+      [
+        "humaneval",
+        "HumanEval/7",
+        "f60046e9f26a82571aad25abfce66b96034cbd3d3769236eeaba83ce1c94189a"
+      ],
+      [
+        "mbpp",
+        "232",
+        "501a6eeb961bf4267995d927fe5de19ae279547183e20b656aa888051c0fac61"
+      ],
+      [
+        "mbpp",
+        "445",
+        "1044db14bbc826ea80d124fcad00b03feb8f58634270a90ffe4357036928ab39"
+      ],
+      [
+        "mbpp",
+        "120",
+        "e798e1e7f6b8ee91cab202d30106d3a5ced3b09e9658e991874f088087453b34"
+      ],
+      [
+        "mbpp",
+        "345",
+        "2aae4091a3efb11a90d6d0636eb18ecc5ad03bbb1630eeaed3865c6dcf23fcd1"
+      ],
+      [
+        "mbpp",
+        "386",
+        "55a0572b08cd8590ad9a2748a0826d468585ca320994850f1f82030e0f0aadc4"
+      ],
+      [
+        "mbpp",
+        "82",
+        "7f2b1d61122e5f963b415a271be5a0b3b618ab6181eaf5849d9ba5bbb54f948a"
+      ],
+      [
+        "mbpp",
+        "389",
+        "fd86f5f88c69e4ade60a8a65fd7a1fcc6543fc78ead6c96e6655ce8effa9aaef"
+      ],
+      [
+        "mbpp",
+        "216",
+        "537efbd2eea9a0db5d8329fe48292e89f29c290304b4525d16eaffb28031d9f2"
+      ],
+      [
+        "livecodebench",
+        "atcoder:abc305_a",
+        "9d00c5f9639fb4be8adc84a59fd270a539c26d7657562e34ceb72a044e13d80b"
+      ],
+      [
+        "livecodebench",
+        "atcoder:abc356_b",
+        "7a8defd56a49d182047e9d86fc654018db4aa728805434ce4df636058c1b3018"
+      ],
+      [
+        "livecodebench",
+        "atcoder:abc369_e",
+        "f1eaa53c3cafcb09072d82691f8b32858c6c1a4cc35817f2866f63dde2337954"
+      ],
+      [
+        "livecodebench",
+        "atcoder:abc377_c",
+        "c459e1325f66eb25a80fee03bbeaff27e54c34cd877ef51ffd0f24f3ba235e79"
+      ],
+      [
+        "livecodebench",
+        "atcoder:abc325_a",
+        "e14cab3b0e38b1dc8b95f99af0e3125c57f2bf2dc5c2cc8711a54aa3f990ab60"
+      ],
+      [
+        "livecodebench",
+        "atcoder:abc364_b",
+        "b97f4beb8227a79984775a204e214982fd37263929b6f57ff9844584e4146090"
+      ],
+      [
+        "livecodebench",
+        "atcoder:abc327_b",
+        "a74401d511a2f5683400bc03cae29ab5a6895fae9607b9ca8fe06936597f090c"
+      ],
+      [
+        "livecodebench",
+        "codeforces:1899_A",
+        "175495db0252121dc3a61fa2595322127061676af7dc6467119ae0b14a145f9d"
+      ],
+      [
+        "mt-bench",
+        "81",
+        "55a4ceefb5db93fcf4cfee32074d39f572a1ca09d9794538fc6d18e7841fcf8c"
+      ],
+      [
+        "mt-bench",
+        "82",
+        "4b5289cbad229e4ea6a09177ee4923ac95df48b9b30c38cfa1288f8f0f469008"
+      ],
+      [
+        "mt-bench",
+        "83",
+        "7202a76305126fcd16bcb33a86065be8ace865fb1ad8461b92a3b6799d994c16"
+      ],
+      [
+        "mt-bench",
+        "84",
+        "e1648fcc5df884940700258f064494153cdf8852bfe448b7eaa8b5d4b92aa95b"
+      ],
+      [
+        "mt-bench",
+        "85",
+        "5facac0e33d43b0463e573e97eeebba41368a361768fa32afa6fbad7f3d6b96d"
+      ],
+      [
+        "mt-bench",
+        "86",
+        "6253f4cd583c0c63cfbd3ca44b98bc6bb7298355c6ceed7c87e824dd2c8de6f6"
+      ],
+      [
+        "mt-bench",
+        "87",
+        "4e0e522f0e73324a80925a98c227b4a615d0fbc628305cb4b9bd71ac47a6bf5f"
+      ],
+      [
+        "mt-bench",
+        "88",
+        "57017cc96a0434e43983acbf45e5df0d2f65eec962f22e8cf9cf39ede532f481"
+      ]
+    ],
+    "prepared_manifest_sha256": "ec9dac99747989207a620713c174a7bccab36981e9abe9c2999222a2d74d6b31",
+    "prepared_coverage": "fixed_evaluation_subset"
+  },
+  "order_policy": {
+    "policy": "balanced_rotation",
+    "seed": 20260914
+  },
+  "success_rule": "candidate beats DDTree and DFlash and DDTree beats DFlash; every equal-dataset source-cluster bootstrap 95% CI lower bound > 1",
+  "same_tree_contract": {
+    "constructor": "probability_tree",
+    "draft_nodes": 45,
+    "target_rows": 46,
+    "candidate_only_delta": "official all-row batched multinomial -> one persistent CUDA block scanning reached FP64 rows",
+    "sampling_law": "identical ancestral categorical law with independently mapped random uniforms"
+  },
+  "limitations": [
+    "Performance pilot uses 8 pinned samples per dataset rather than every registered sample",
+    "Generation is capped at 256 new tokens, so this is not the 2048-token full study",
+    "Quality scoring is not claimed by this speed pilot",
+    "H20 measurements must not be relabelled as H200 measurements"
+  ],
+  "source_sha256": {
+    "engine": "1874a873ab3940ca4d1c58a3cc0f9fb222a3c8599fc5a0efeed9305e1011ed86",
+    "fused_verifier": "ddec9c5a42f5fcc6f2254c8e5858f01c094c2f39090fdf6fe689dcc3e4d75ba8",
+    "official_verifier": "43b246af3511f94a487fd462d8198ad574a71e8de407deb44f572ecbfe31a205",
+    "script": "3c7cbf0995664159a0bd4702bd10af02b445a98a9fb47031142620c8369caef3",
+    "config": "9422b7114ddc70aa8d9065ef33132b1b90048eb26bbfdf07cfc6478478f311f6"
+  },
+  "runtime": {
+    "gpu": "NVIDIA H20",
+    "gpu_memory_bytes": 102085623808,
+    "compute_capability": [
+      9,
+      0
+    ],
+    "driver_and_clocks_start": {
+      "utc": "2026-09-09T16:22:27.197212+00:00",
+      "hostname": "autodl-container-26d148a435-8171fde0",
+      "pid": 10516,
+      "slurm_job_id": null,
+      "gpu_uuid": "b32e1465-06c0-9da4-928e-ca196f12f2cf",
+      "nvidia_smi": "GPU-b32e1465-06c0-9da4-928e-ca196f12f2cf, NVIDIA H20, P0, 34, 119.35 W, 1980 MHz, 2619 MHz, 9099 MiB, 0 %"
+    },
+    "python": "3.12.3",
+    "versions": {
+      "torch": "2.8.0+cu128",
+      "transformers": "4.57.1",
+      "datasets": "3.6.0",
+      "huggingface-hub": "0.36.0",
+      "numpy": "2.2.6"
+    }
+  },
+  "same_tree_runtime_witness": {
+    "passed": true,
+    "tree_sha256": "f29066599c637e75f7fcce747f8cc40b92d7bf93c3495742660e0261c8ef2905",
+    "probability_shape": [
+      46,
+      151936
+    ],
+    "probability_dtype": "torch.float64"
+  }
+}

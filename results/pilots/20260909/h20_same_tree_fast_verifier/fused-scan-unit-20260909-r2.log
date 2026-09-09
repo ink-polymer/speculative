@@ -1,0 +1,405 @@
+FFF                                                                      [100%]
+=================================== FAILURES ===================================
+_ test_fused_tree_sampler_matches_inverse_cdf_paths[tree_verify_ancestral_fused] _
+
+build_directory = '/root/.cache/torch_extensions/py312_cu128/gbv_fused_tree_sampler_v4'
+verbose = False
+error_prefix = "Error building extension 'gbv_fused_tree_sampler_v4'"
+
+    def _run_ninja_build(build_directory: str, verbose: bool, error_prefix: str) -> None:
+        command = ['ninja', '-v']
+        num_workers = _get_num_workers(verbose)
+        if num_workers is not None:
+            command.extend(['-j', str(num_workers)])
+        env = os.environ.copy()
+        # Try to activate the vc env for the users
+        if IS_WINDOWS and 'VSCMD_ARG_TGT_ARCH' not in env:
+            from setuptools import distutils  # type: ignore[attr-defined]
+    
+            plat_name = distutils.util.get_platform()
+            plat_spec = PLAT_TO_VCVARS[plat_name]
+            vc_env = {k.upper(): v for k, v in _get_vc_env(plat_spec).items()}
+            for k, v in env.items():
+                uk = k.upper()
+                if uk not in vc_env:
+                    vc_env[uk] = v
+            env = vc_env
+        try:
+            sys.stdout.flush()
+            sys.stderr.flush()
+            # Warning: don't pass stdout=None to subprocess.run to get output.
+            # subprocess.run assumes that sys.__stdout__ has not been modified and
+            # attempts to write to it by default.  However, when we call _run_ninja_build
+            # from ahead-of-time cpp extensions, the following happens:
+            # 1) If the stdout encoding is not utf-8, setuptools detachs __stdout__.
+            #    https://github.com/pypa/setuptools/blob/7e97def47723303fafabe48b22168bbc11bb4821/setuptools/dist.py#L1110
+            #    (it probably shouldn't do this)
+            # 2) subprocess.run (on POSIX, with no stdout override) relies on
+            #    __stdout__ not being detached:
+            #    https://github.com/python/cpython/blob/c352e6c7446c894b13643f538db312092b351789/Lib/subprocess.py#L1214
+            # To work around this, we pass in the fileno directly and hope that
+            # it is valid.
+            stdout_fileno = 1
+>           subprocess.run(
+                command,
+                shell=IS_WINDOWS and IS_HIP_EXTENSION,
+                stdout=stdout_fileno if verbose else subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                cwd=build_directory,
+                check=True,
+                env=env)
+
+/root/miniconda3/lib/python3.12/site-packages/torch/utils/cpp_extension.py:2595: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+input = None, capture_output = False, timeout = None, check = True
+popenargs = (['ninja', '-v'],)
+kwargs = {'cwd': '/root/.cache/torch_extensions/py312_cu128/gbv_fused_tree_sampler_v4', 'env': {'AgentHost': '10.0.3.34', 'Auto...AutoDLContainerUUID': '26d148a435-8171fde0', 'AutoDLDataCenter': 'beijingDC1', ...}, 'shell': False, 'stderr': -2, ...}
+process = <Popen: returncode: 2 args: ['ninja', '-v']>
+stdout = b'[1/3] /usr/local/cuda/bin/nvcc --generate-dependencies-with-compile --dependency-output cuda.cuda.o.d -DTORCH_EXTENS...torch_extensions/py312_cu128/gbv_fused_tree_sampler_v4/main.cpp -o main.o \nninja: build stopped: subcommand failed.\n'
+stderr = None, retcode = 2
+
+    def run(*popenargs,
+            input=None, capture_output=False, timeout=None, check=False, **kwargs):
+        """Run command with arguments and return a CompletedProcess instance.
+    
+        The returned instance will have attributes args, returncode, stdout and
+        stderr. By default, stdout and stderr are not captured, and those attributes
+        will be None. Pass stdout=PIPE and/or stderr=PIPE in order to capture them,
+        or pass capture_output=True to capture both.
+    
+        If check is True and the exit code was non-zero, it raises a
+        CalledProcessError. The CalledProcessError object will have the return code
+        in the returncode attribute, and output & stderr attributes if those streams
+        were captured.
+    
+        If timeout is given, and the process takes too long, a TimeoutExpired
+        exception will be raised.
+    
+        There is an optional argument "input", allowing you to
+        pass bytes or a string to the subprocess's stdin.  If you use this argument
+        you may not also use the Popen constructor's "stdin" argument, as
+        it will be used internally.
+    
+        By default, all communication is in bytes, and therefore any "input" should
+        be bytes, and the stdout and stderr will be bytes. If in text mode, any
+        "input" should be a string, and stdout and stderr will be strings decoded
+        according to locale encoding, or by "encoding" if set. Text mode is
+        triggered by setting any of text, encoding, errors or universal_newlines.
+    
+        The other arguments are the same as for the Popen constructor.
+        """
+        if input is not None:
+            if kwargs.get('stdin') is not None:
+                raise ValueError('stdin and input arguments may not both be used.')
+            kwargs['stdin'] = PIPE
+    
+        if capture_output:
+            if kwargs.get('stdout') is not None or kwargs.get('stderr') is not None:
+                raise ValueError('stdout and stderr arguments may not be used '
+                                 'with capture_output.')
+            kwargs['stdout'] = PIPE
+            kwargs['stderr'] = PIPE
+    
+        with Popen(*popenargs, **kwargs) as process:
+            try:
+                stdout, stderr = process.communicate(input, timeout=timeout)
+            except TimeoutExpired as exc:
+                process.kill()
+                if _mswindows:
+                    # Windows accumulates the output in a single blocking
+                    # read() call run on child threads, with the timeout
+                    # being done in a join() on those threads.  communicate()
+                    # _after_ kill() is required to collect that and add it
+                    # to the exception.
+                    exc.stdout, exc.stderr = process.communicate()
+                else:
+                    # POSIX _communicate already populated the output so
+                    # far into the TimeoutExpired exception.
+                    process.wait()
+                raise
+            except:  # Including KeyboardInterrupt, communicate handled that.
+                process.kill()
+                # We don't call process.wait() as .__exit__ does that for us.
+                raise
+            retcode = process.poll()
+            if check and retcode:
+>               raise CalledProcessError(retcode, process.args,
+                                         output=stdout, stderr=stderr)
+E               subprocess.CalledProcessError: Command '['ninja', '-v']' returned non-zero exit status 2.
+
+/root/miniconda3/lib/python3.12/subprocess.py:571: CalledProcessError
+
+The above exception was the direct cause of the following exception:
+
+function = <function tree_verify_ancestral_fused at 0x7f04ce3d2fc0>
+
+    @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA extension test")
+    @pytest.mark.parametrize("function", [tree_verify_ancestral_fused,
+                                          tree_verify_ancestral_fused_parallel,
+                                          tree_verify_ancestral_fused_scan])
+    def test_fused_tree_sampler_matches_inverse_cdf_paths(function):
+        parents = [-1, 0, 0, 1]
+        tokens = [0, 1, 2]
+        p = torch.tensor(
+            [[0.2, 0.3, 0.5], [0.4, 0.1, 0.5],
+             [0.3, 0.6, 0.1], [0.7, 0.2, 0.1]],
+            dtype=torch.float64, device="cuda",
+        )
+        for seed in range(32):
+            first = torch.Generator(device="cuda").manual_seed(seed)
+            second = torch.Generator(device="cuda").manual_seed(seed)
+            uniforms = torch.rand(4, dtype=torch.float64, device="cuda", generator=first)
+            expected_nodes, node = [], 0
+            children = {(parent, tokens[index - 1]): index
+                        for index, parent in enumerate(parents[1:], 1)}
+            expected_bonus = None
+            for uniform in uniforms.cpu().tolist():
+                row = p[node].cpu()
+                expected_bonus = int(torch.searchsorted(row.cumsum(0), uniform))
+                child = children.get((node, expected_bonus))
+                if child is None:
+                    break
+                expected_nodes.append(child)
+                node = child
+>           result = function(parents, tokens, p, second, validate=True)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/gbv_paper/test_terminal_mass.py:47: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/gbv_experiments/fused_tree_sampling.py:577: in tree_verify_ancestral_fused
+    packed = load_fused_tree_sampler().fused_tree_sample_cuda(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/gbv_experiments/fused_tree_sampling.py:526: in load_fused_tree_sampler
+    return load_inline(
+/root/miniconda3/lib/python3.12/site-packages/torch/utils/cpp_extension.py:2057: in load_inline
+    return _jit_compile(
+/root/miniconda3/lib/python3.12/site-packages/torch/utils/cpp_extension.py:2138: in _jit_compile
+    _write_ninja_file_and_build_library(
+/root/miniconda3/lib/python3.12/site-packages/torch/utils/cpp_extension.py:2290: in _write_ninja_file_and_build_library
+    _run_ninja_build(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+build_directory = '/root/.cache/torch_extensions/py312_cu128/gbv_fused_tree_sampler_v4'
+verbose = False
+error_prefix = "Error building extension 'gbv_fused_tree_sampler_v4'"
+
+    def _run_ninja_build(build_directory: str, verbose: bool, error_prefix: str) -> None:
+        command = ['ninja', '-v']
+        num_workers = _get_num_workers(verbose)
+        if num_workers is not None:
+            command.extend(['-j', str(num_workers)])
+        env = os.environ.copy()
+        # Try to activate the vc env for the users
+        if IS_WINDOWS and 'VSCMD_ARG_TGT_ARCH' not in env:
+            from setuptools import distutils  # type: ignore[attr-defined]
+    
+            plat_name = distutils.util.get_platform()
+            plat_spec = PLAT_TO_VCVARS[plat_name]
+            vc_env = {k.upper(): v for k, v in _get_vc_env(plat_spec).items()}
+            for k, v in env.items():
+                uk = k.upper()
+                if uk not in vc_env:
+                    vc_env[uk] = v
+            env = vc_env
+        try:
+            sys.stdout.flush()
+            sys.stderr.flush()
+            # Warning: don't pass stdout=None to subprocess.run to get output.
+            # subprocess.run assumes that sys.__stdout__ has not been modified and
+            # attempts to write to it by default.  However, when we call _run_ninja_build
+            # from ahead-of-time cpp extensions, the following happens:
+            # 1) If the stdout encoding is not utf-8, setuptools detachs __stdout__.
+            #    https://github.com/pypa/setuptools/blob/7e97def47723303fafabe48b22168bbc11bb4821/setuptools/dist.py#L1110
+            #    (it probably shouldn't do this)
+            # 2) subprocess.run (on POSIX, with no stdout override) relies on
+            #    __stdout__ not being detached:
+            #    https://github.com/python/cpython/blob/c352e6c7446c894b13643f538db312092b351789/Lib/subprocess.py#L1214
+            # To work around this, we pass in the fileno directly and hope that
+            # it is valid.
+            stdout_fileno = 1
+            subprocess.run(
+                command,
+                shell=IS_WINDOWS and IS_HIP_EXTENSION,
+                stdout=stdout_fileno if verbose else subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                cwd=build_directory,
+                check=True,
+                env=env)
+        except subprocess.CalledProcessError as e:
+            # Python 2 and 3 compatible way of getting the error object.
+            _, error, _ = sys.exc_info()
+            # error.output contains the stdout and stderr of the build attempt.
+            message = error_prefix
+            # `error` is a CalledProcessError (which has an `output`) attribute, but
+            # mypy thinks it's Optional[BaseException] and doesn't narrow
+            if hasattr(error, 'output') and error.output:  # type: ignore[union-attr]
+                message += f": {error.output.decode(*SUBPROCESS_DECODE_ARGS)}"  # type: ignore[union-attr]
+>           raise RuntimeError(message) from e
+E           RuntimeError: Error building extension 'gbv_fused_tree_sampler_v4': [1/3] /usr/local/cuda/bin/nvcc --generate-dependencies-with-compile --dependency-output cuda.cuda.o.d -DTORCH_EXTENSION_NAME=gbv_fused_tree_sampler_v4 -DTORCH_API_INCLUDE_EXTENSION_H -DPYBIND11_COMPILER_TYPE=\"_gcc\" -DPYBIND11_STDLIB=\"_libstdcpp\" -DPYBIND11_BUILD_ABI=\"_cxxabi1018\" -isystem /root/miniconda3/lib/python3.12/site-packages/torch/include -isystem /root/miniconda3/lib/python3.12/site-packages/torch/include/torch/csrc/api/include -isystem /usr/local/cuda/include -isystem /root/miniconda3/include/python3.12 -D__CUDA_NO_HALF_OPERATORS__ -D__CUDA_NO_HALF_CONVERSIONS__ -D__CUDA_NO_BFLOAT16_CONVERSIONS__ -D__CUDA_NO_HALF2_OPERATORS__ --expt-relaxed-constexpr -gencode=arch=compute_90,code=compute_90 -gencode=arch=compute_90,code=sm_90 --compiler-options '-fPIC' -O3 -std=c++17 -c /root/.cache/torch_extensions/py312_cu128/gbv_fused_tree_sampler_v4/cuda.cu -o cuda.cuda.o 
+E           FAILED: [code=2] cuda.cuda.o 
+E           /usr/local/cuda/bin/nvcc --generate-dependencies-with-compile --dependency-output cuda.cuda.o.d -DTORCH_EXTENSION_NAME=gbv_fused_tree_sampler_v4 -DTORCH_API_INCLUDE_EXTENSION_H -DPYBIND11_COMPILER_TYPE=\"_gcc\" -DPYBIND11_STDLIB=\"_libstdcpp\" -DPYBIND11_BUILD_ABI=\"_cxxabi1018\" -isystem /root/miniconda3/lib/python3.12/site-packages/torch/include -isystem /root/miniconda3/lib/python3.12/site-packages/torch/include/torch/csrc/api/include -isystem /usr/local/cuda/include -isystem /root/miniconda3/include/python3.12 -D__CUDA_NO_HALF_OPERATORS__ -D__CUDA_NO_HALF_CONVERSIONS__ -D__CUDA_NO_BFLOAT16_CONVERSIONS__ -D__CUDA_NO_HALF2_OPERATORS__ --expt-relaxed-constexpr -gencode=arch=compute_90,code=compute_90 -gencode=arch=compute_90,code=sm_90 --compiler-options '-fPIC' -O3 -std=c++17 -c /root/.cache/torch_extensions/py312_cu128/gbv_fused_tree_sampler_v4/cuda.cu -o cuda.cuda.o 
+E           /root/.cache/torch_extensions/py312_cu128/gbv_fused_tree_sampler_v4/cuda.cu(449): error: a value of type "const int *" cannot be used to initialize an entity of type "void *"
+E              ; auto workspace = torch::empty( {blocks + 1}, torch::TensorOptions().dtype(torch::kFloat64).device(probabilities.device())); const scalar_t* probability_ptr = probabilities.data_ptr<scalar_t>(); const int64_t* parent_ptr = edge_parents.data_ptr<int64_t>(); const int64_t* token_ptr = edge_tokens.data_ptr<int64_t>(); const double* uniform_ptr = uniforms.data_ptr<double>(); int64_t* state_ptr = state.data_ptr<int64_t>(); double* workspace_ptr = workspace.data_ptr<double>(); const int nodes = static_cast<int>(node_count); const int vocab = static_cast<int>(vocabulary); const int depth = static_cast<int>(max_depth); void* arguments[] = { &probability_ptr, &parent_ptr, &token_ptr, &uniform_ptr, &state_ptr, &workspace_ptr, &nodes, &vocab, &depth}; 
+E                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ^
+E           
+E           /root/.cache/torch_extensions/py312_cu128/gbv_fused_tree_sampler_v4/cuda.cu(449): error: a value of type "const int *" cannot be used to initialize an entity of type "void *"
+E              ; auto workspace = torch::empty( {blocks + 1}, torch::TensorOptions().dtype(torch::kFloat64).device(probabilities.device())); const scalar_t* probability_ptr = probabilities.data_ptr<scalar_t>(); const int64_t* parent_ptr = edge_parents.data_ptr<int64_t>(); const int64_t* token_ptr = edge_tokens.data_ptr<int64_t>(); const double* uniform_ptr = uniforms.data_ptr<double>(); int64_t* state_ptr = state.data_ptr<int64_t>(); double* workspace_ptr = workspace.data_ptr<double>(); const int nodes = static_cast<int>(node_count); const int vocab = static_cast<int>(vocabulary); const int depth = static_cast<int>(max_depth); void* arguments[] = { &probability_ptr, &parent_ptr, &token_ptr, &uniform_ptr, &state_ptr, &workspace_ptr, &nodes, &vocab, &depth}; 
+E                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             ^
+E           
+E           /root/.cache/torch_extensions/py312_cu128/gbv_fused_tree_sampler_v4/cuda.cu(449): error: a value of type "const int *" cannot be used to initialize an entity of type "void *"
+E              ; auto workspace = torch::empty( {blocks + 1}, torch::TensorOptions().dtype(torch::kFloat64).device(probabilities.device())); const scalar_t* probability_ptr = probabilities.data_ptr<scalar_t>(); const int64_t* parent_ptr = edge_parents.data_ptr<int64_t>(); const int64_t* token_ptr = edge_tokens.data_ptr<int64_t>(); const double* uniform_ptr = uniforms.data_ptr<double>(); int64_t* state_ptr = state.data_ptr<int64_t>(); double* workspace_ptr = workspace.data_ptr<double>(); const int nodes = static_cast<int>(node_count); const int vocab = static_cast<int>(vocabulary); const int depth = static_cast<int>(max_depth); void* arguments[] = { &probability_ptr, &parent_ptr, &token_ptr, &uniform_ptr, &state_ptr, &workspace_ptr, &nodes, &vocab, &depth}; 
+E                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ^
+E           
+E           /root/.cache/torch_extensions/py312_cu128/gbv_fused_tree_sampler_v4/cuda.cu(449): error: a value of type "const int *" cannot be used to initialize an entity of type "void *"
+E              ; auto workspace = torch::empty( {blocks + 1}, torch::TensorOptions().dtype(torch::kFloat64).device(probabilities.device())); const scalar_t* probability_ptr = probabilities.data_ptr<scalar_t>(); const int64_t* parent_ptr = edge_parents.data_ptr<int64_t>(); const int64_t* token_ptr = edge_tokens.data_ptr<int64_t>(); const double* uniform_ptr = uniforms.data_ptr<double>(); int64_t* state_ptr = state.data_ptr<int64_t>(); double* workspace_ptr = workspace.data_ptr<double>(); const int nodes = static_cast<int>(node_count); const int vocab = static_cast<int>(vocabulary); const int depth = static_cast<int>(max_depth); void* arguments[] = { &probability_ptr, &parent_ptr, &token_ptr, &uniform_ptr, &state_ptr, &workspace_ptr, &nodes, &vocab, &depth}; 
+E                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ^
+E           
+E           /root/.cache/torch_extensions/py312_cu128/gbv_fused_tree_sampler_v4/cuda.cu(449): error: a value of type "const int *" cannot be used to initialize an entity of type "void *"
+E              ; auto workspace = torch::empty( {blocks + 1}, torch::TensorOptions().dtype(torch::kFloat64).device(probabilities.device())); const scalar_t* probability_ptr = probabilities.data_ptr<scalar_t>(); const int64_t* parent_ptr = edge_parents.data_ptr<int64_t>(); const int64_t* token_ptr = edge_tokens.data_ptr<int64_t>(); const double* uniform_ptr = uniforms.data_ptr<double>(); int64_t* state_ptr = state.data_ptr<int64_t>(); double* workspace_ptr = workspace.data_ptr<double>(); const int nodes = static_cast<int>(node_count); const int vocab = static_cast<int>(vocabulary); const int depth = static_cast<int>(max_depth); void* arguments[] = { &probability_ptr, &parent_ptr, &token_ptr, &uniform_ptr, &state_ptr, &workspace_ptr, &nodes, &vocab, &depth}; 
+E                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             ^
+E           
+E           /root/.cache/torch_extensions/py312_cu128/gbv_fused_tree_sampler_v4/cuda.cu(449): error: a value of type "const int *" cannot be used to initialize an entity of type "void *"
+E              ; auto workspace = torch::empty( {blocks + 1}, torch::TensorOptions().dtype(torch::kFloat64).device(probabilities.device())); const scalar_t* probability_ptr = probabilities.data_ptr<scalar_t>(); const int64_t* parent_ptr = edge_parents.data_ptr<int64_t>(); const int64_t* token_ptr = edge_tokens.data_ptr<int64_t>(); const double* uniform_ptr = uniforms.data_ptr<double>(); int64_t* state_ptr = state.data_ptr<int64_t>(); double* workspace_ptr = workspace.data_ptr<double>(); const int nodes = static_cast<int>(node_count); const int vocab = static_cast<int>(vocabulary); const int depth = static_cast<int>(max_depth); void* arguments[] = { &probability_ptr, &parent_ptr, &token_ptr, &uniform_ptr, &state_ptr, &workspace_ptr, &nodes, &vocab, &depth}; 
+E                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ^
+E           
+E           6 errors detected in the compilation of "/root/.cache/torch_extensions/py312_cu128/gbv_fused_tree_sampler_v4/cuda.cu".
+E           [2/3] c++ -MMD -MF main.o.d -DTORCH_EXTENSION_NAME=gbv_fused_tree_sampler_v4 -DTORCH_API_INCLUDE_EXTENSION_H -DPYBIND11_COMPILER_TYPE=\"_gcc\" -DPYBIND11_STDLIB=\"_libstdcpp\" -DPYBIND11_BUILD_ABI=\"_cxxabi1018\" -isystem /root/miniconda3/lib/python3.12/site-packages/torch/include -isystem /root/miniconda3/lib/python3.12/site-packages/torch/include/torch/csrc/api/include -isystem /usr/local/cuda/include -isystem /root/miniconda3/include/python3.12 -fPIC -std=c++17 -O3 -c /root/.cache/torch_extensions/py312_cu128/gbv_fused_tree_sampler_v4/main.cpp -o main.o 
+E           ninja: build stopped: subcommand failed.
+
+/root/miniconda3/lib/python3.12/site-packages/torch/utils/cpp_extension.py:2612: RuntimeError
+----------------------------- Captured stderr call -----------------------------
+W0909 22:59:13.682000 6470 site-packages/torch/utils/cpp_extension.py:2425] TORCH_CUDA_ARCH_LIST is not set, all archs for visible cards are included for compilation. 
+W0909 22:59:13.682000 6470 site-packages/torch/utils/cpp_extension.py:2425] If this is not desired, please set os.environ['TORCH_CUDA_ARCH_LIST'] to specific architectures.
+_ test_fused_tree_sampler_matches_inverse_cdf_paths[tree_verify_ancestral_fused_parallel] _
+
+function = <function tree_verify_ancestral_fused_parallel at 0x7f04ce3d3060>
+
+    @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA extension test")
+    @pytest.mark.parametrize("function", [tree_verify_ancestral_fused,
+                                          tree_verify_ancestral_fused_parallel,
+                                          tree_verify_ancestral_fused_scan])
+    def test_fused_tree_sampler_matches_inverse_cdf_paths(function):
+        parents = [-1, 0, 0, 1]
+        tokens = [0, 1, 2]
+        p = torch.tensor(
+            [[0.2, 0.3, 0.5], [0.4, 0.1, 0.5],
+             [0.3, 0.6, 0.1], [0.7, 0.2, 0.1]],
+            dtype=torch.float64, device="cuda",
+        )
+        for seed in range(32):
+            first = torch.Generator(device="cuda").manual_seed(seed)
+            second = torch.Generator(device="cuda").manual_seed(seed)
+            uniforms = torch.rand(4, dtype=torch.float64, device="cuda", generator=first)
+            expected_nodes, node = [], 0
+            children = {(parent, tokens[index - 1]): index
+                        for index, parent in enumerate(parents[1:], 1)}
+            expected_bonus = None
+            for uniform in uniforms.cpu().tolist():
+                row = p[node].cpu()
+                expected_bonus = int(torch.searchsorted(row.cumsum(0), uniform))
+                child = children.get((node, expected_bonus))
+                if child is None:
+                    break
+                expected_nodes.append(child)
+                node = child
+>           result = function(parents, tokens, p, second, validate=True)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/gbv_paper/test_terminal_mass.py:47: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/gbv_experiments/fused_tree_sampling.py:611: in tree_verify_ancestral_fused_parallel
+    packed = load_fused_tree_sampler().fused_tree_sample_parallel_cuda(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/gbv_experiments/fused_tree_sampling.py:526: in load_fused_tree_sampler
+    return load_inline(
+/root/miniconda3/lib/python3.12/site-packages/torch/utils/cpp_extension.py:2057: in load_inline
+    return _jit_compile(
+/root/miniconda3/lib/python3.12/site-packages/torch/utils/cpp_extension.py:2164: in _jit_compile
+    return _import_module_from_library(name, build_directory, is_python_module)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/miniconda3/lib/python3.12/site-packages/torch/utils/cpp_extension.py:2632: in _import_module_from_library
+    module = importlib.util.module_from_spec(spec)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:813: in module_from_spec
+    ???
+<frozen importlib._bootstrap_external>:1289: in create_module
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+f = <built-in function create_dynamic>
+args = (ModuleSpec(name='gbv_fused_tree_sampler_v4', loader=<_frozen_importlib_external.ExtensionFileLoader object at 0x7f04ce4fd940>, origin='/root/.cache/torch_extensions/py312_cu128/gbv_fused_tree_sampler_v4/gbv_fused_tree_sampler_v4.so'),)
+kwds = {}
+
+>   ???
+E   ImportError: /root/.cache/torch_extensions/py312_cu128/gbv_fused_tree_sampler_v4/gbv_fused_tree_sampler_v4.so: cannot open shared object file: No such file or directory
+
+<frozen importlib._bootstrap>:488: ImportError
+_ test_fused_tree_sampler_matches_inverse_cdf_paths[tree_verify_ancestral_fused_scan] _
+
+function = <function tree_verify_ancestral_fused_scan at 0x7f04ce3d3100>
+
+    @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA extension test")
+    @pytest.mark.parametrize("function", [tree_verify_ancestral_fused,
+                                          tree_verify_ancestral_fused_parallel,
+                                          tree_verify_ancestral_fused_scan])
+    def test_fused_tree_sampler_matches_inverse_cdf_paths(function):
+        parents = [-1, 0, 0, 1]
+        tokens = [0, 1, 2]
+        p = torch.tensor(
+            [[0.2, 0.3, 0.5], [0.4, 0.1, 0.5],
+             [0.3, 0.6, 0.1], [0.7, 0.2, 0.1]],
+            dtype=torch.float64, device="cuda",
+        )
+        for seed in range(32):
+            first = torch.Generator(device="cuda").manual_seed(seed)
+            second = torch.Generator(device="cuda").manual_seed(seed)
+            uniforms = torch.rand(4, dtype=torch.float64, device="cuda", generator=first)
+            expected_nodes, node = [], 0
+            children = {(parent, tokens[index - 1]): index
+                        for index, parent in enumerate(parents[1:], 1)}
+            expected_bonus = None
+            for uniform in uniforms.cpu().tolist():
+                row = p[node].cpu()
+                expected_bonus = int(torch.searchsorted(row.cumsum(0), uniform))
+                child = children.get((node, expected_bonus))
+                if child is None:
+                    break
+                expected_nodes.append(child)
+                node = child
+>           result = function(parents, tokens, p, second, validate=True)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/gbv_paper/test_terminal_mass.py:47: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/gbv_experiments/fused_tree_sampling.py:644: in tree_verify_ancestral_fused_scan
+    packed = load_fused_tree_sampler().fused_tree_sample_scan_cuda(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/gbv_experiments/fused_tree_sampling.py:526: in load_fused_tree_sampler
+    return load_inline(
+/root/miniconda3/lib/python3.12/site-packages/torch/utils/cpp_extension.py:2057: in load_inline
+    return _jit_compile(
+/root/miniconda3/lib/python3.12/site-packages/torch/utils/cpp_extension.py:2164: in _jit_compile
+    return _import_module_from_library(name, build_directory, is_python_module)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/miniconda3/lib/python3.12/site-packages/torch/utils/cpp_extension.py:2632: in _import_module_from_library
+    module = importlib.util.module_from_spec(spec)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:813: in module_from_spec
+    ???
+<frozen importlib._bootstrap_external>:1289: in create_module
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+f = <built-in function create_dynamic>
+args = (ModuleSpec(name='gbv_fused_tree_sampler_v4', loader=<_frozen_importlib_external.ExtensionFileLoader object at 0x7f028d9bda00>, origin='/root/.cache/torch_extensions/py312_cu128/gbv_fused_tree_sampler_v4/gbv_fused_tree_sampler_v4.so'),)
+kwds = {}
+
+>   ???
+E   ImportError: /root/.cache/torch_extensions/py312_cu128/gbv_fused_tree_sampler_v4/gbv_fused_tree_sampler_v4.so: cannot open shared object file: No such file or directory
+
+<frozen importlib._bootstrap>:488: ImportError
+=========================== short test summary info ============================
+FAILED tests/gbv_paper/test_terminal_mass.py::test_fused_tree_sampler_matches_inverse_cdf_paths[tree_verify_ancestral_fused]
+FAILED tests/gbv_paper/test_terminal_mass.py::test_fused_tree_sampler_matches_inverse_cdf_paths[tree_verify_ancestral_fused_parallel]
+FAILED tests/gbv_paper/test_terminal_mass.py::test_fused_tree_sampler_matches_inverse_cdf_paths[tree_verify_ancestral_fused_scan]

@@ -23,7 +23,8 @@ from gbv_experiments.common import digest, file_hash, write_json
 from gbv_experiments.config import Variant, load_config
 from gbv_experiments.conversation import encode_messages
 from gbv_experiments.engine import load_models
-from gbv_experiments.fairness import assert_architecture_only_pair
+from gbv_experiments.fairness import (assert_architecture_only_pair,
+                                      assert_official_dflash_control)
 from gbv_experiments.runner import output_lock, stop_token_ids
 from gbv_experiments.terminal_formal import allocation_gate, model_gate, telemetry
 
@@ -60,7 +61,7 @@ def variants() -> list[Variant]:
         probability_dtype="float64",
     )
     declared = [
-        replace(base, name="dflash", method="dflash"),
+        replace(base, name="dflash", method="dflash", draft_temperature=None),
         replace(base, name="ddtree", method="ddtree"),
         replace(base, name="tree_block_verification", method="ddtree_fused_scan"),
     ]
@@ -168,7 +169,7 @@ def run(config_path: Path, output: Path, device: str,
     ddtree = by_name["ddtree"]
     candidate = by_name["tree_block_verification"]
     fairness = assert_architecture_only_pair(ddtree, candidate, cfg["model"])
-    dflash_fairness = assert_architecture_only_pair(
+    dflash_fairness = assert_official_dflash_control(
         ddtree, by_name["dflash"], cfg["model"],
     )
 

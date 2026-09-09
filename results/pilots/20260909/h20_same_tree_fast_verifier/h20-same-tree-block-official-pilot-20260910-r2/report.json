@@ -1,0 +1,136 @@
+{
+  "gate_passed": true,
+  "formal_complete": false,
+  "comparisons": {
+    "ddtree": {
+      "candidate": "tree_block_verification",
+      "baseline": "ddtree",
+      "metric": "equal_dataset_geomean_decode_speedup",
+      "speedup": 1.0252666832721833,
+      "ci95": [
+        1.0073116145390422,
+        1.0435348459602165
+      ],
+      "per_dataset": {
+        "gsm8k": 1.0245028527980717,
+        "math500": 1.020881309797008,
+        "aime25": 1.0605269816343266,
+        "humaneval": 1.0049928522244407,
+        "mbpp": 1.015947064633144,
+        "livecodebench": 1.0318550660713435,
+        "mt-bench": 1.0190488746116464
+      },
+      "source_clusters_per_dataset": {
+        "gsm8k": 8,
+        "math500": 8,
+        "aime25": 8,
+        "humaneval": 8,
+        "mbpp": 8,
+        "livecodebench": 8,
+        "mt-bench": 8
+      },
+      "seeds_per_source": 3,
+      "bootstrap_samples": 10000
+    },
+    "dflash": {
+      "candidate": "tree_block_verification",
+      "baseline": "dflash",
+      "metric": "equal_dataset_geomean_decode_speedup",
+      "speedup": 1.1970623079867768,
+      "ci95": [
+        1.1633749394791233,
+        1.2321128595224038
+      ],
+      "per_dataset": {
+        "gsm8k": 1.1553984127713404,
+        "math500": 1.209283793273669,
+        "aime25": 1.2306707850173162,
+        "humaneval": 1.2153973472443378,
+        "mbpp": 1.069088564857951,
+        "livecodebench": 1.1540558652478805,
+        "mt-bench": 1.366018570284205
+      },
+      "source_clusters_per_dataset": {
+        "gsm8k": 8,
+        "math500": 8,
+        "aime25": 8,
+        "humaneval": 8,
+        "mbpp": 8,
+        "livecodebench": 8,
+        "mt-bench": 8
+      },
+      "seeds_per_source": 3,
+      "bootstrap_samples": 10000
+    }
+  },
+  "baseline_sanity": {
+    "candidate": "ddtree",
+    "baseline": "dflash",
+    "metric": "equal_dataset_geomean_decode_speedup",
+    "speedup": 1.1675618914742263,
+    "ci95": [
+      1.133700517241549,
+      1.2028903039028385
+    ],
+    "per_dataset": {
+      "gsm8k": 1.12776495410996,
+      "math500": 1.1845488615264423,
+      "aime25": 1.1604332622643785,
+      "humaneval": 1.209359195494963,
+      "mbpp": 1.0523073515094963,
+      "livecodebench": 1.1184282591563957,
+      "mt-bench": 1.340483861291527
+    },
+    "source_clusters_per_dataset": {
+      "gsm8k": 8,
+      "math500": 8,
+      "aime25": 8,
+      "humaneval": 8,
+      "mbpp": 8,
+      "livecodebench": 8,
+      "mt-bench": 8
+    },
+    "seeds_per_source": 3,
+    "bootstrap_samples": 10000
+  },
+  "aggregate": {
+    "dflash": {
+      "records": 168,
+      "decode_tokens": 37468,
+      "decode_ms": 289669.30862143636,
+      "tokens_per_second": 129.34749690367184,
+      "mean_accepted_draft_tokens_per_round": 3.3168631006346327,
+      "mean_committed_tokens_per_round": 4.246146872166817,
+      "rounds": 8824
+    },
+    "ddtree": {
+      "records": 168,
+      "decode_tokens": 37644,
+      "decode_ms": 237160.93311831355,
+      "tokens_per_second": 158.7276601801038,
+      "mean_accepted_draft_tokens_per_round": 4.8238334093327255,
+      "mean_committed_tokens_per_round": 5.721842225262198,
+      "rounds": 6579
+    },
+    "tree_block_verification": {
+      "records": 168,
+      "decode_tokens": 37627,
+      "decode_ms": 231000.77868625522,
+      "tokens_per_second": 162.88689680611387,
+      "mean_accepted_draft_tokens_per_round": 4.814809183518322,
+      "mean_committed_tokens_per_round": 5.720997415234909,
+      "rounds": 6577
+    }
+  },
+  "records": 504,
+  "paired_groups": 168,
+  "telemetry_end": {
+    "utc": "2026-09-09T16:35:39.272567+00:00",
+    "hostname": "autodl-container-26d148a435-8171fde0",
+    "pid": 10516,
+    "slurm_job_id": null,
+    "gpu_uuid": "b32e1465-06c0-9da4-928e-ca196f12f2cf",
+    "nvidia_smi": "GPU-b32e1465-06c0-9da4-928e-ca196f12f2cf, NVIDIA H20, P0, 40, 174.73 W, 1980 MHz, 2619 MHz, 9987 MiB, 0 %"
+  },
+  "decision": "proceed_to_full_registered_suite"
+}

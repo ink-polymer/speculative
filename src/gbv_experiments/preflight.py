@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+import hashlib
 import importlib.metadata
 import math
 from pathlib import Path
@@ -13,6 +14,85 @@ from .config import Variant, build_variants
 
 
 BF16_NUMERICAL_LOGIT_ERROR_LIMIT = 0.5
+SAME_TREE_WITNESS_PROMPT = "Compute 19 + 23. Give a brief explanation."
+SAME_TREE_WITNESS_SEED = 205
+
+
+def _tensor_sha256(value) -> str:
+    """Hash a detached CPU tensor together with its numerical representation."""
+    tensor = value.detach().cpu().contiguous()
+    payload = hashlib.sha256()
+    payload.update(str(tensor.dtype).encode())
+    payload.update(str(tuple(tensor.shape)).encode())
+    payload.update(tensor.numpy().tobytes())
+    return payload.hexdigest()
+
+
+def _same_tree_runtime_witness(engine, tokenizer, model, variants, stop_ids,
+                               device) -> dict | None:
+    """Compare the real T=1 DDTree tree and Target rows before verification."""
+    by_name = {variant.name: variant for variant in variants}
+    names = ("ddtree_t1p0", "tree_block_verification_t1p0")
+    if not set(names) <= set(by_name):
+        return None
+
+    import torch
+
+    ids = tokenizer.apply_chat_template(
+        [{"role":"user", "content":SAME_TREE_WITNESS_PROMPT}],
+        tokenize=True, add_generation_prompt=True,
+        enable_thinking=bool(model.get("enable_thinking", False)),
+        return_tensors="pt",
+    ).to(device)
+    captured = {}
+    for name in names:
+        def observe(parents, tree_tokens, all_p, witness_name=name):
+            if witness_name not in captured:
+                captured[witness_name] = (
+                    list(parents), list(tree_tokens),
+                    all_p.detach().cpu().clone(),
+                )
+
+        engine.generate(
+            ids, by_name[name], 32, stop_ids,
+            seed=SAME_TREE_WITNESS_SEED, tree_observer=observe,
+        )
+
+    if set(captured) != set(names):
+        return {
+            "passed":False,
+            "failure":"a registered method did not expose its first probability tree",
+            "captured_variants":sorted(captured),
+        }
+    baseline = captured[names[0]]
+    candidate = captured[names[1]]
+    parents_equal = baseline[0] == candidate[0]
+    tokens_equal = baseline[1] == candidate[1]
+    probabilities_equal = torch.equal(baseline[2], candidate[2])
+
+    def identity(name, state):
+        return {
+            "name":name,
+            "method":by_name[name].method,
+            "variant":by_name[name].to_dict(),
+            "parents":state[0],
+            "tree_tokens":state[1],
+            "tree_sha256":digest([state[0], state[1]]),
+            "probabilities_sha256":_tensor_sha256(state[2]),
+        }
+
+    return {
+        "passed":parents_equal and tokens_equal and probabilities_equal,
+        "prompt_sha256":digest(SAME_TREE_WITNESS_PROMPT),
+        "seed":SAME_TREE_WITNESS_SEED,
+        "parents_equal":parents_equal,
+        "tree_tokens_equal":tokens_equal,
+        "target_probabilities_equal":probabilities_equal,
+        "probability_shape":list(baseline[2].shape),
+        "probability_dtype":str(baseline[2].dtype),
+        "baseline":identity(names[0], baseline),
+        "candidate":identity(names[1], candidate),
+    }
 
 
 def classify_greedy_mismatch(mismatch, reference_trace, *, dtype,
@@ -222,8 +302,15 @@ def check_model(cfg, output: Path, device="cuda:0", code_backend="docker", only_
             sequential = engine.target(sequence).logits[:, -1]
             checks.append({"check": "compacted_cache_argmax", "passed": bool((actual.argmax(-1) == sequential.argmax(-1)).all()),
                            "max_absolute_logit_error": float((actual - sequential).abs().max())})
+        same_tree_runtime_witness = _same_tree_runtime_witness(
+            engine, tokenizer, model, variants, stop_ids, device,
+        )
     generation_checks = [check for check in checks if "greedy_equal" in check]
-    passed = all(c.get("gate_passed", c.get("passed", False)) for c in checks)
+    passed = (
+        all(c.get("gate_passed", c.get("passed", False)) for c in checks)
+        and (same_tree_runtime_witness is None
+             or same_tree_runtime_witness.get("passed") is True)
+    )
     greedy_exact_passed = all(check["greedy_equal"] for check in generation_checks)
     numerical_ambiguities = sum(bool(check.get("numerical_ambiguity")) for check in generation_checks)
     result = {"passed": passed, "greedy_exact_passed": greedy_exact_passed,
@@ -235,7 +322,8 @@ def check_model(cfg, output: Path, device="cuda:0", code_backend="docker", only_
               },
               "scope": "checkpoint structural and bounded-numerical smoke gate, not full benchmark results",
               "environment": environment, "model": model, "stop_token_ids": stop_ids,
-              "source_hashes": source_hashes(), "checks": checks}
+              "source_hashes": source_hashes(), "checks": checks,
+              "same_tree_runtime_witness":same_tree_runtime_witness}
     write_json(output, result)
     if not passed:
         raise RuntimeError(f"GPU correctness gate failed; inspect {output}. Do not launch formal timing runs.")

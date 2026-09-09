@@ -18,7 +18,8 @@
   "explicit_variants": [
     {"groups": ["main", "t10"], "variant": {"name": "target_t1p0", "method": "target", "paths": 1, "length": 15, "temperature": 1.0, "probability_dtype": "float64", "tree_budget": 45}},
     {"groups": ["main", "t10"], "variant": {"name": "dflash_t1p0", "method": "dflash", "paths": 1, "length": 15, "temperature": 1.0, "draft_temperature": null, "probability_dtype": "float64", "tree_budget": 45}},
-    {"groups": ["main", "t10"], "variant": {"name": "ddtree_t1p0", "method": "ddtree", "paths": 1, "length": 15, "temperature": 1.0, "draft_temperature": 1.0, "probability_dtype": "float64", "tree_budget": 45}}
+    {"groups": ["main", "t10"], "variant": {"name": "ddtree_t1p0", "method": "ddtree", "paths": 1, "length": 15, "temperature": 1.0, "draft_temperature": 1.0, "probability_dtype": "float64", "tree_budget": 45}},
+    {"groups": ["main", "t10"], "variant": {"name": "tree_block_verification_t1p0", "method": "ddtree_fused_scan", "paths": 1, "length": 15, "temperature": 1.0, "draft_temperature": 1.0, "probability_dtype": "float64", "tree_budget": 45}}
   ],
   "bootstrap_samples": 10000,
   "scoring": {"code_backend": "docker", "workers": 4, "timeout_seconds": 10, "lcb_timeout_seconds": 6},

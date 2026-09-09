@@ -76,14 +76,15 @@
       "livecodebench": 128,
       "mt-bench": 80
     },
-    "methods": ["target", "dflash", "ddtree"],
+    "methods": ["target", "dflash", "ddtree", "tree_block_verification"],
     "seeds": [17, 29, 43],
     "max_new_tokens": 2048,
     "target_backend": "sdpa",
     "draft_backend": "sdpa",
     "draft_proposal_policy": {
       "dflash": "greedy_argmax",
-      "ddtree_temperature": 1.0
+      "ddtree_temperature": 1.0,
+      "tree_block_verification_temperature": 1.0
     },
     "method_order_policy": {
       "policy": "balanced_rotation",
@@ -109,12 +110,23 @@
     "correctness_audit": "distributional_and_task_quality",
     "greedy_exact_match_applicable": false
   },
+  "tree_block_verification": {
+    "run_in_this_matrix": true,
+    "temperature": 1.0,
+    "registered_name": "tree_block_verification_t1p0",
+    "implementation": "ddtree_fused_scan",
+    "baseline": "ddtree_t1p0",
+    "same_tree_constructor": "probability_tree",
+    "length": 15,
+    "tree_budget": 45,
+    "probability_dtype": "float64",
+    "candidate_only_delta": "all-row batched multinomial to persistent CUDA block scanning reached rows",
+    "same_tree_runtime_witness_required": true,
+    "publication_claim_requires_completed_full_matrix": true,
+    "publication_claim_requires_all_integrity_and_fairness_gates": true,
+    "superiority_claim_requires_ci_lower_bound_above_one": true
+  },
   "deferred": {
-    "tree_block_verification": {
-      "run_in_this_matrix": false,
-      "publication_claim_allowed": false,
-      "reason": "No registered and validated tree-block verifier is included in this run. ddtree_lazy_projection is only an implementation control and is not tree-block verification."
-    },
     "qwen3_coder_30b": {
       "run_in_this_matrix": false,
       "publication_claim_allowed": false,
@@ -125,7 +137,9 @@
     "pool_t0_and_t1_speedups": false,
     "claim_adaptivetree_at_t1": false,
     "claim_strict_lossless_when_bf16_mismatch_exists": false,
-    "claim_tree_block_results": false,
+    "claim_tree_block_results_from_pilots": false,
+    "claim_tree_block_results_before_completed_validated_full_matrix": false,
+    "claim_tree_block_superiority_when_ci_includes_one": false,
     "reuse_old_server_timings": false
   }
 }

@@ -12,12 +12,12 @@
   },
   "positive_temperature": {
     "temperatures": [1.0],
-    "methods": ["target", "dflash", "ddtree"],
+    "methods": ["target", "dflash", "ddtree", "tree_block_verification"],
     "length": 15,
     "tree_budget": 45,
     "probability_dtype": "float64",
     "method_order_policy": "balanced_rotation",
-    "tree_block_verification": "deferred_not_run"
+    "tree_block_verification": "registered_t1_same_tree_fused_scan"
   },
   "models": [
     {

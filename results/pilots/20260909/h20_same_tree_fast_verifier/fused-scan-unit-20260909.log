@@ -1,0 +1,191 @@
+FFF                                                                      [100%]
+=================================== FAILURES ===================================
+_ test_fused_tree_sampler_matches_inverse_cdf_paths[tree_verify_ancestral_fused] _
+
+function = <function tree_verify_ancestral_fused at 0x7f7d92606f20>
+
+    @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA extension test")
+    @pytest.mark.parametrize("function", [tree_verify_ancestral_fused,
+                                          tree_verify_ancestral_fused_parallel,
+                                          tree_verify_ancestral_fused_scan])
+    def test_fused_tree_sampler_matches_inverse_cdf_paths(function):
+        parents = [-1, 0, 0, 1]
+        tokens = [0, 1, 2]
+        p = torch.tensor(
+            [[0.2, 0.3, 0.5], [0.4, 0.1, 0.5],
+             [0.3, 0.6, 0.1], [0.7, 0.2, 0.1]],
+            dtype=torch.float64, device="cuda",
+        )
+        for seed in range(32):
+            first = torch.Generator(device="cuda").manual_seed(seed)
+            second = torch.Generator(device="cuda").manual_seed(seed)
+            uniforms = torch.rand(4, dtype=torch.float64, device="cuda", generator=first)
+            expected_nodes, node = [], 0
+            children = {(parent, tokens[index - 1]): index
+                        for index, parent in enumerate(parents[1:], 1)}
+            expected_bonus = None
+            for uniform in uniforms.cpu().tolist():
+                row = p[node].cpu()
+                expected_bonus = int(torch.searchsorted(row.cumsum(0), uniform))
+                child = children.get((node, expected_bonus))
+                if child is None:
+                    break
+                expected_nodes.append(child)
+                node = child
+>           result = function(parents, tokens, p, second, validate=True)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/gbv_paper/test_terminal_mass.py:47: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/gbv_experiments/fused_tree_sampling.py:577: in tree_verify_ancestral_fused
+    packed = load_fused_tree_sampler().fused_tree_sample_cuda(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/gbv_experiments/fused_tree_sampling.py:526: in load_fused_tree_sampler
+    return load_inline(
+/root/miniconda3/lib/python3.12/site-packages/torch/utils/cpp_extension.py:2057: in load_inline
+    return _jit_compile(
+/root/miniconda3/lib/python3.12/site-packages/torch/utils/cpp_extension.py:2138: in _jit_compile
+    _write_ninja_file_and_build_library(
+/root/miniconda3/lib/python3.12/site-packages/torch/utils/cpp_extension.py:2248: in _write_ninja_file_and_build_library
+    verify_ninja_availability()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def verify_ninja_availability():
+        """Raise ``RuntimeError`` if `ninja <https://ninja-build.org/>`_ build system is not available on the system, does nothing otherwise."""
+        if not is_ninja_available():
+>           raise RuntimeError("Ninja is required to load C++ extensions (pip install ninja to get it)")
+E           RuntimeError: Ninja is required to load C++ extensions (pip install ninja to get it)
+
+/root/miniconda3/lib/python3.12/site-packages/torch/utils/cpp_extension.py:2309: RuntimeError
+_ test_fused_tree_sampler_matches_inverse_cdf_paths[tree_verify_ancestral_fused_parallel] _
+
+function = <function tree_verify_ancestral_fused_parallel at 0x7f7d92606fc0>
+
+    @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA extension test")
+    @pytest.mark.parametrize("function", [tree_verify_ancestral_fused,
+                                          tree_verify_ancestral_fused_parallel,
+                                          tree_verify_ancestral_fused_scan])
+    def test_fused_tree_sampler_matches_inverse_cdf_paths(function):
+        parents = [-1, 0, 0, 1]
+        tokens = [0, 1, 2]
+        p = torch.tensor(
+            [[0.2, 0.3, 0.5], [0.4, 0.1, 0.5],
+             [0.3, 0.6, 0.1], [0.7, 0.2, 0.1]],
+            dtype=torch.float64, device="cuda",
+        )
+        for seed in range(32):
+            first = torch.Generator(device="cuda").manual_seed(seed)
+            second = torch.Generator(device="cuda").manual_seed(seed)
+            uniforms = torch.rand(4, dtype=torch.float64, device="cuda", generator=first)
+            expected_nodes, node = [], 0
+            children = {(parent, tokens[index - 1]): index
+                        for index, parent in enumerate(parents[1:], 1)}
+            expected_bonus = None
+            for uniform in uniforms.cpu().tolist():
+                row = p[node].cpu()
+                expected_bonus = int(torch.searchsorted(row.cumsum(0), uniform))
+                child = children.get((node, expected_bonus))
+                if child is None:
+                    break
+                expected_nodes.append(child)
+                node = child
+>           result = function(parents, tokens, p, second, validate=True)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/gbv_paper/test_terminal_mass.py:47: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/gbv_experiments/fused_tree_sampling.py:611: in tree_verify_ancestral_fused_parallel
+    packed = load_fused_tree_sampler().fused_tree_sample_parallel_cuda(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/gbv_experiments/fused_tree_sampling.py:526: in load_fused_tree_sampler
+    return load_inline(
+/root/miniconda3/lib/python3.12/site-packages/torch/utils/cpp_extension.py:2057: in load_inline
+    return _jit_compile(
+/root/miniconda3/lib/python3.12/site-packages/torch/utils/cpp_extension.py:2164: in _jit_compile
+    return _import_module_from_library(name, build_directory, is_python_module)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/miniconda3/lib/python3.12/site-packages/torch/utils/cpp_extension.py:2632: in _import_module_from_library
+    module = importlib.util.module_from_spec(spec)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:813: in module_from_spec
+    ???
+<frozen importlib._bootstrap_external>:1289: in create_module
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+f = <built-in function create_dynamic>
+args = (ModuleSpec(name='gbv_fused_tree_sampler_v4', loader=<_frozen_importlib_external.ExtensionFileLoader object at 0x7f7b51b8af00>, origin='/root/.cache/torch_extensions/py312_cu128/gbv_fused_tree_sampler_v4/gbv_fused_tree_sampler_v4.so'),)
+kwds = {}
+
+>   ???
+E   ImportError: /root/.cache/torch_extensions/py312_cu128/gbv_fused_tree_sampler_v4/gbv_fused_tree_sampler_v4.so: cannot open shared object file: No such file or directory
+
+<frozen importlib._bootstrap>:488: ImportError
+_ test_fused_tree_sampler_matches_inverse_cdf_paths[tree_verify_ancestral_fused_scan] _
+
+function = <function tree_verify_ancestral_fused_scan at 0x7f7d92607060>
+
+    @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA extension test")
+    @pytest.mark.parametrize("function", [tree_verify_ancestral_fused,
+                                          tree_verify_ancestral_fused_parallel,
+                                          tree_verify_ancestral_fused_scan])
+    def test_fused_tree_sampler_matches_inverse_cdf_paths(function):
+        parents = [-1, 0, 0, 1]
+        tokens = [0, 1, 2]
+        p = torch.tensor(
+            [[0.2, 0.3, 0.5], [0.4, 0.1, 0.5],
+             [0.3, 0.6, 0.1], [0.7, 0.2, 0.1]],
+            dtype=torch.float64, device="cuda",
+        )
+        for seed in range(32):
+            first = torch.Generator(device="cuda").manual_seed(seed)
+            second = torch.Generator(device="cuda").manual_seed(seed)
+            uniforms = torch.rand(4, dtype=torch.float64, device="cuda", generator=first)
+            expected_nodes, node = [], 0
+            children = {(parent, tokens[index - 1]): index
+                        for index, parent in enumerate(parents[1:], 1)}
+            expected_bonus = None
+            for uniform in uniforms.cpu().tolist():
+                row = p[node].cpu()
+                expected_bonus = int(torch.searchsorted(row.cumsum(0), uniform))
+                child = children.get((node, expected_bonus))
+                if child is None:
+                    break
+                expected_nodes.append(child)
+                node = child
+>           result = function(parents, tokens, p, second, validate=True)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/gbv_paper/test_terminal_mass.py:47: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/gbv_experiments/fused_tree_sampling.py:644: in tree_verify_ancestral_fused_scan
+    packed = load_fused_tree_sampler().fused_tree_sample_scan_cuda(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/gbv_experiments/fused_tree_sampling.py:526: in load_fused_tree_sampler
+    return load_inline(
+/root/miniconda3/lib/python3.12/site-packages/torch/utils/cpp_extension.py:2057: in load_inline
+    return _jit_compile(
+/root/miniconda3/lib/python3.12/site-packages/torch/utils/cpp_extension.py:2164: in _jit_compile
+    return _import_module_from_library(name, build_directory, is_python_module)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/miniconda3/lib/python3.12/site-packages/torch/utils/cpp_extension.py:2632: in _import_module_from_library
+    module = importlib.util.module_from_spec(spec)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:813: in module_from_spec
+    ???
+<frozen importlib._bootstrap_external>:1289: in create_module
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+f = <built-in function create_dynamic>
+args = (ModuleSpec(name='gbv_fused_tree_sampler_v4', loader=<_frozen_importlib_external.ExtensionFileLoader object at 0x7f7b51b8a2d0>, origin='/root/.cache/torch_extensions/py312_cu128/gbv_fused_tree_sampler_v4/gbv_fused_tree_sampler_v4.so'),)
+kwds = {}
+
+>   ???
+E   ImportError: /root/.cache/torch_extensions/py312_cu128/gbv_fused_tree_sampler_v4/gbv_fused_tree_sampler_v4.so: cannot open shared object file: No such file or directory
+
+<frozen importlib._bootstrap>:488: ImportError
+=========================== short test summary info ============================
+FAILED tests/gbv_paper/test_terminal_mass.py::test_fused_tree_sampler_matches_inverse_cdf_paths[tree_verify_ancestral_fused]
+FAILED tests/gbv_paper/test_terminal_mass.py::test_fused_tree_sampler_matches_inverse_cdf_paths[tree_verify_ancestral_fused_parallel]
+FAILED tests/gbv_paper/test_terminal_mass.py::test_fused_tree_sampler_matches_inverse_cdf_paths[tree_verify_ancestral_fused_scan]

@@ -1,13 +1,19 @@
 # AdaptiveTree / DDTree / DFlash 正式实验矩阵
 
+> 本分支的 65,280-call 矩阵只用于未来树状块服务器的全新运行。不得用它
+> 续跑或覆盖已由 `16c0e91` 启动的 59,904-call、不含树状块的正式运行。
+> 未来运行必须使用新输出目录并重做全部输入/源码完整性门禁。
+
 本文件是本轮新服务器实验的唯一范围合同。机器可读版本为
 `configs/formal_experiment_matrix.json`。实验分为两个不可混合的协议：
 
 1. **T=0 主实验**：正式修正版 AdaptiveTree、DDTree、DFlash 与消融；
-2. **T=1 随机基线**：只比较已经支持随机采样的 Target、DFlash、DDTree。
+2. **T=1 随机实验**：比较 Target、DFlash、DDTree，以及只替换 DDTree
+   验证器的 `tree_block_verification`。
 
-本轮不运行树状块验证，也不把 `ddtree_lazy_projection` 改名成树状块验证。
-AdaptiveTree 当前只注册在 T=0，因此 T=1 表不能出现 AdaptiveTree 列。
+树状块验证的外部名称固定为 `tree_block_verification_t1p0`，内部实现固定为
+`ddtree_fused_scan`；`ddtree_lazy_projection` 仍只是另一种实现控制，不能使用树状
+块验证的名称。AdaptiveTree 当前只注册在 T=0，因此 T=1 表不能出现 AdaptiveTree 列。
 
 ## 1. 模型范围
 
@@ -73,15 +79,15 @@ MoE 路径也未完成相同实现审计。正式结论只能覆盖 4B 与 8B；
 T=0 两模型合计生成调用数为 43,776：每轮 SDPA 有 2 个基础方法、7 个固定
 DDTree 和 8 个 AdaptiveTree/消融方法；FA2 只运行 Target 与 DFlash。
 
-## 3. T=1 随机采样基线
+## 3. T=1 随机采样实验
 
 T=1 是独立的随机采样稳健性基线，不是 AdaptiveTree 的跨温度实验。
 
 | 项目 | 冻结设置 |
 |---|---|
 | 模型 | 同一 4B/8B revision 对 |
-| 方法 | Target、DFlash、DDTree |
-| 温度/提议 | Target=1.0；DFlash Draft 保持 greedy argmax；DDTree 构树温度=1.0 |
+| 方法 | Target、DFlash、DDTree、tree_block_verification |
+| 温度/提议 | Target=1.0；DFlash Draft 保持 greedy argmax；DDTree 与树块候选共用 Draft T=1 概率树 |
 | 后端 | Target=SDPA、Draft=SDPA |
 | 数据 | 8 个已注册数据集，DDTree 官方数量 |
 | 随机重复 | seed 17、29、43 |
@@ -89,8 +95,8 @@ T=1 是独立的随机采样稳健性基线，不是 AdaptiveTree 的跨温度�
 | 统计 | 与同模型/数据/样本/seed 的 Target 成对；按 source_id 聚簇，10,000 次 bootstrap |
 
 八个数据集为 GSM8K、MATH-500、AIME24、AIME25、HumanEval、MBPP sanitized、
-LiveCodeBench、MT-Bench，共 816 个问题/对话、896 个生成轮次。三种方法、三颗
-随机 seed、两个模型合计 16,128 次生成。
+LiveCodeBench、MT-Bench，共 816 个问题/对话、896 个生成轮次。四种方法、三颗
+随机 seed、两个模型合计 21,504 次生成。
 
 SWE-bench 与 Alpaca 没有被“忘记”：当前 T=1 质量评测管线没有注册这两项。
 SWE-bench 需要独立的软件仓库执行环境，Alpaca 需要外部主观评审；在评分合同
@@ -99,6 +105,11 @@ SWE-bench 需要独立的软件仓库执行环境，Alpaca 需要外部主观评
 这里的 DFlash `draft_temperature` 必须为空：实现固定从 masked-block logits 取
 argmax，再用 T=1 Target 分布做标准 matching verification；该字段即使误填为 1
 也不会改变当前实现，但会错误描述方法。DDTree 才使用 T=1 Draft 概率分布构树。
+树状块验证与 DDTree 一样记录 `draft_temperature=1.0`，并运行相同
+`probability_tree`；唯一允许的差异是把所有行的 batched multinomial 改为一个
+常驻 CUDA block，只扫描实际到达的 FP64 概率行。每个正式模型在计时前还必须
+用真实 checkpoint 生成运行时 witness，逐项证明两者的父节点、树 token 和完整
+FP64 Target 概率张量相同；缺失或任一字节不一致都会停止实验。
 
 随机采样即使使用相同 seed，也不要求不同算法逐 token 完全相同。T=1 禁止使用
 greedy exact-match 作为通过条件；应报告吞吐、接受长度、任务质量、生成长度，
@@ -111,10 +122,19 @@ Docker 绑定不可变镜像 ID；process 分别绑定不解引用的虚拟环�
 路径与 SHA-256、`pyvenv.cfg`，以及实际子解释器的 Python/NumPy/SymPy 版本。若编排
 进程是 root，process 评分必须使用专用非 root 执行身份，不能在 root 权限下运行参赛代码。
 
+### 树状块验证的发布门槛
+
+4B H20 的 8 样本/数据集资格试跑只能用于决定是否进入完整矩阵，不能替代完整
+2,048-token、八数据集、4B/8B 正式结果。正式报告必须从原始记录重算候选相对
+DDTree 和 DFlash 的配对 source 聚类区间；不能只用微基准，也不能只看点估计。
+资格试跑永久不能支持论文结论。只有未来服务器完成全部 4B/8B、八数据集、
+三个 seed 和 2,048-token 矩阵，且所有完整性、公平性与原始记录重算门禁通过后，
+才能报告树块正式结果；若要声称优于某基线，对应聚类 95% CI 下界还必须大于 1。
+H20 资格试跑的完整表格、失败记录、限制和复核命令见
+`docs/SAME_TREE_FAST_BLOCK_H20_RESULTS_20260910.md`。
+
 ## 4. 明确延期的内容
 
-- **树状块验证**：本轮不运行、不出表、不作论文结论。`ddtree_lazy_projection`
-  只能作为 DDTree 实现优化对照，不能用作树状块验证的别名。
 - **AdaptiveTree at T=1**：当前生成器明确只支持 T=0。若未来扩展，需要新的随机
   接受/残差算法和分布正确性测试，不能只解除温度检查。
 - **30B**：等待更大显存或经过验证的模型并行方案及 MoE 兼容性预检。
@@ -142,5 +162,5 @@ T=1 的两份冻结配置为：
 - `configs/adaptive_block_qwen3_4b.json`
 - `configs/adaptive_block_qwen3_8b.json`
 
-完整注册范围共 59,904 次生成调用。这个数字不包括 warmup、失败后从组头重跑，
-也不包括明确延期的树状块验证或 30B。
+完整注册范围共 65,280 次生成调用。这个数字不包括 warmup、失败后从组头重跑，
+也不包括明确延期的 30B。

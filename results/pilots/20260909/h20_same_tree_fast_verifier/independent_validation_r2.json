@@ -1,0 +1,258 @@
+{
+  "artifact_sha256": {
+    "manifest.json": "5297a29d8c66c86692f953f1e712806e6bc089f54a5ce8b18e1197137914dc43",
+    "report.json": "dc1944452d68c33b6e5cedf7c5af2d7479a25ed2cd18f56a3ec728c276dfb401",
+    "rows.json": "67a9389704f854158ca69dd5be73a57cad8d3849d116d764844b9d76a920e0f0"
+  },
+  "balanced_positions": "PASS_8_PER_POSITION_CELL",
+  "dflash_metadata": "PASS_NULL_DRAFT_TEMPERATURE_AND_GREEDY_ARGMAX",
+  "formal_complete": false,
+  "independent_recalculation": {
+    "candidate_vs_ddtree": {
+      "baseline": "ddtree",
+      "bootstrap_samples": 10000,
+      "candidate": "tree_block_verification",
+      "ci95": [
+        1.0073116145390422,
+        1.0435348459602165
+      ],
+      "per_dataset": {
+        "aime25": 1.0605269816343266,
+        "gsm8k": 1.0245028527980717,
+        "humaneval": 1.0049928522244407,
+        "livecodebench": 1.0318550660713435,
+        "math500": 1.020881309797008,
+        "mbpp": 1.015947064633144,
+        "mt-bench": 1.0190488746116464
+      },
+      "seeds_per_source": 3,
+      "source_clusters_per_dataset": {
+        "aime25": 8,
+        "gsm8k": 8,
+        "humaneval": 8,
+        "livecodebench": 8,
+        "math500": 8,
+        "mbpp": 8,
+        "mt-bench": 8
+      },
+      "speedup": 1.0252666832721833
+    },
+    "candidate_vs_dflash": {
+      "baseline": "dflash",
+      "bootstrap_samples": 10000,
+      "candidate": "tree_block_verification",
+      "ci95": [
+        1.1633749394791233,
+        1.2321128595224038
+      ],
+      "per_dataset": {
+        "aime25": 1.2306707850173162,
+        "gsm8k": 1.1553984127713404,
+        "humaneval": 1.2153973472443378,
+        "livecodebench": 1.1540558652478805,
+        "math500": 1.209283793273669,
+        "mbpp": 1.069088564857951,
+        "mt-bench": 1.366018570284205
+      },
+      "seeds_per_source": 3,
+      "source_clusters_per_dataset": {
+        "aime25": 8,
+        "gsm8k": 8,
+        "humaneval": 8,
+        "livecodebench": 8,
+        "math500": 8,
+        "mbpp": 8,
+        "mt-bench": 8
+      },
+      "speedup": 1.1970623079867768
+    },
+    "ddtree_vs_dflash": {
+      "baseline": "dflash",
+      "bootstrap_samples": 10000,
+      "candidate": "ddtree",
+      "ci95": [
+        1.133700517241549,
+        1.2028903039028385
+      ],
+      "per_dataset": {
+        "aime25": 1.1604332622643785,
+        "gsm8k": 1.12776495410996,
+        "humaneval": 1.209359195494963,
+        "livecodebench": 1.1184282591563957,
+        "math500": 1.1845488615264423,
+        "mbpp": 1.0523073515094963,
+        "mt-bench": 1.340483861291527
+      },
+      "seeds_per_source": 3,
+      "source_clusters_per_dataset": {
+        "aime25": 8,
+        "gsm8k": 8,
+        "humaneval": 8,
+        "livecodebench": 8,
+        "math500": 8,
+        "mbpp": 8,
+        "mt-bench": 8
+      },
+      "speedup": 1.1675618914742263
+    }
+  },
+  "integrity": "PASS",
+  "kind": "independent_same_tree_pilot_validation",
+  "manifest_prompt_and_seed_coverage": "PASS_EXACT_SOURCE_PROMPT_SET_AND_ALL_REGISTERED_SEEDS",
+  "official_precision": "PASS_BF16_SDPA_SDPA_TF32_FALSE",
+  "paired_group_integrity": "PASS_SAME_PROMPT_SAME_SEED_THREE_METHODS",
+  "paired_groups": 168,
+  "position_counts": {
+    "aime25": {
+      "ddtree": {
+        "0": 8,
+        "1": 8,
+        "2": 8
+      },
+      "dflash": {
+        "0": 8,
+        "1": 8,
+        "2": 8
+      },
+      "tree_block_verification": {
+        "0": 8,
+        "1": 8,
+        "2": 8
+      }
+    },
+    "gsm8k": {
+      "ddtree": {
+        "0": 8,
+        "1": 8,
+        "2": 8
+      },
+      "dflash": {
+        "0": 8,
+        "1": 8,
+        "2": 8
+      },
+      "tree_block_verification": {
+        "0": 8,
+        "1": 8,
+        "2": 8
+      }
+    },
+    "humaneval": {
+      "ddtree": {
+        "0": 8,
+        "1": 8,
+        "2": 8
+      },
+      "dflash": {
+        "0": 8,
+        "1": 8,
+        "2": 8
+      },
+      "tree_block_verification": {
+        "0": 8,
+        "1": 8,
+        "2": 8
+      }
+    },
+    "livecodebench": {
+      "ddtree": {
+        "0": 8,
+        "1": 8,
+        "2": 8
+      },
+      "dflash": {
+        "0": 8,
+        "1": 8,
+        "2": 8
+      },
+      "tree_block_verification": {
+        "0": 8,
+        "1": 8,
+        "2": 8
+      }
+    },
+    "math500": {
+      "ddtree": {
+        "0": 8,
+        "1": 8,
+        "2": 8
+      },
+      "dflash": {
+        "0": 8,
+        "1": 8,
+        "2": 8
+      },
+      "tree_block_verification": {
+        "0": 8,
+        "1": 8,
+        "2": 8
+      }
+    },
+    "mbpp": {
+      "ddtree": {
+        "0": 8,
+        "1": 8,
+        "2": 8
+      },
+      "dflash": {
+        "0": 8,
+        "1": 8,
+        "2": 8
+      },
+      "tree_block_verification": {
+        "0": 8,
+        "1": 8,
+        "2": 8
+      }
+    },
+    "mt-bench": {
+      "ddtree": {
+        "0": 8,
+        "1": 8,
+        "2": 8
+      },
+      "dflash": {
+        "0": 8,
+        "1": 8,
+        "2": 8
+      },
+      "tree_block_verification": {
+        "0": 8,
+        "1": 8,
+        "2": 8
+      }
+    }
+  },
+  "records": 504,
+  "result_dir": "results/pilots/20260909/h20_same_tree_fast_verifier/h20-same-tree-block-official-pilot-20260910-r2",
+  "same_tree_runtime_witness": "PASS_46_BY_151936_FP64",
+  "source_hashes": {
+    "files": {
+      "config": {
+        "path": "configs/same_tree_block_qwen3_4b_pilot.json",
+        "sha256": "9422b7114ddc70aa8d9065ef33132b1b90048eb26bbfdf07cfc6478478f311f6"
+      },
+      "engine": {
+        "path": "results/pilots/20260909/h20_same_tree_fast_verifier/reproduction/r2_source/engine.py",
+        "sha256": "1874a873ab3940ca4d1c58a3cc0f9fb222a3c8599fc5a0efeed9305e1011ed86"
+      },
+      "fused_verifier": {
+        "path": "src/gbv_experiments/fused_tree_sampling.py",
+        "sha256": "ddec9c5a42f5fcc6f2254c8e5858f01c094c2f39090fdf6fe689dcc3e4d75ba8"
+      },
+      "official_verifier": {
+        "path": "src/gbv_experiments/sampling.py",
+        "sha256": "43b246af3511f94a487fd462d8198ad574a71e8de407deb44f572ecbfe31a205"
+      },
+      "script": {
+        "path": "scripts/run_same_tree_official_pilot.py",
+        "sha256": "3c7cbf0995664159a0bd4702bd10af02b445a98a9fb47031142620c8369caef3"
+      }
+    },
+    "status": "PASS"
+  },
+  "strict_speed_gate": {
+    "passed": true,
+    "rule": "all three independently recalculated 95% CI lower bounds > 1"
+  }
+}

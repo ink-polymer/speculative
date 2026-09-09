@@ -1,0 +1,205 @@
+{
+  "kind": "heldout_same_ddtree_fast_block_validation_gate",
+  "formal_complete": false,
+  "created_at_utc": "2026-09-09T15:27:18.366756+00:00",
+  "candidate_frozen_before_end_to_end_prompt_timing": true,
+  "official_precision": {
+    "dtype": "bfloat16",
+    "target_attention": "sdpa",
+    "draft_attention": "sdpa",
+    "allow_tf32": false
+  },
+  "temperature": 1.0,
+  "tokens": 128,
+  "repeats": 6,
+  "variants": [
+    {
+      "name": "dflash",
+      "method": "dflash",
+      "paths": 1,
+      "length": 15,
+      "temperature": 1.0,
+      "draft_temperature": 1.0,
+      "share_prefixes": true,
+      "reuse_draft_cache": true,
+      "draft_attention": "bidirectional",
+      "condition_features": "target",
+      "probability_dtype": "float64",
+      "tree_budget": 45,
+      "diffusion_support_size": 8
+    },
+    {
+      "name": "ddtree",
+      "method": "ddtree",
+      "paths": 1,
+      "length": 15,
+      "temperature": 1.0,
+      "draft_temperature": 1.0,
+      "share_prefixes": true,
+      "reuse_draft_cache": true,
+      "draft_attention": "bidirectional",
+      "condition_features": "target",
+      "probability_dtype": "float64",
+      "tree_budget": 45,
+      "diffusion_support_size": 8
+    },
+    {
+      "name": "tree_block_verification",
+      "method": "ddtree_fused_scan",
+      "paths": 1,
+      "length": 15,
+      "temperature": 1.0,
+      "draft_temperature": 1.0,
+      "share_prefixes": true,
+      "reuse_draft_cache": true,
+      "draft_attention": "bidirectional",
+      "condition_features": "target",
+      "probability_dtype": "float64",
+      "tree_budget": 45,
+      "diffusion_support_size": 8
+    }
+  ],
+  "fairness": {
+    "comparison": "architecture_only",
+    "architecture_delta": {
+      "baseline": {
+        "method": "ddtree",
+        "name": "ddtree",
+        "paths": 1
+      },
+      "candidate": {
+        "method": "ddtree_fused_scan",
+        "name": "tree_block_verification",
+        "paths": 1
+      }
+    },
+    "frozen_variant_controls": {
+      "length": 15,
+      "temperature": 1.0,
+      "draft_temperature": 1.0,
+      "share_prefixes": true,
+      "reuse_draft_cache": true,
+      "draft_attention": "bidirectional",
+      "condition_features": "target",
+      "probability_dtype": "float64",
+      "tree_budget": 45,
+      "diffusion_support_size": 8
+    },
+    "frozen_model_controls": {
+      "dtype": "bfloat16",
+      "target_attention": "sdpa",
+      "draft_attention": "sdpa",
+      "enable_thinking": false,
+      "allow_tf32": false
+    }
+  },
+  "dflash_control_match": {
+    "comparison": "architecture_only",
+    "architecture_delta": {
+      "baseline": {
+        "method": "ddtree",
+        "name": "ddtree",
+        "paths": 1
+      },
+      "candidate": {
+        "method": "dflash",
+        "name": "dflash",
+        "paths": 1
+      }
+    },
+    "frozen_variant_controls": {
+      "length": 15,
+      "temperature": 1.0,
+      "draft_temperature": 1.0,
+      "share_prefixes": true,
+      "reuse_draft_cache": true,
+      "draft_attention": "bidirectional",
+      "condition_features": "target",
+      "probability_dtype": "float64",
+      "tree_budget": 45,
+      "diffusion_support_size": 8
+    },
+    "frozen_model_controls": {
+      "dtype": "bfloat16",
+      "target_attention": "sdpa",
+      "draft_attention": "sdpa",
+      "enable_thinking": false,
+      "allow_tf32": false
+    }
+  },
+  "same_tree_contract": {
+    "constructor": "probability_tree",
+    "tree_budget": 45,
+    "target_probability_rows": "identical FP64 tensor for either verifier",
+    "candidate_only_delta": "official all-row batched multinomial -> one persistent CUDA block with a CUB FP64 scan over reached rows",
+    "sampling_law": "same ancestral categorical distribution; realized paths need not match because RNG algorithms consume streams differently"
+  },
+  "prompt_sha256": [
+    "7eb50a888a2a0645c9cdf5396c640137a0481e5a3471671ccc22990bdd0b7e27",
+    "7aa8985f7fd23b5da9c60a95332ac8fb8f8511c073dbff66ba4784398db343c6",
+    "e5befd35635b9a5511c8332a4e6f8b4b97ba50edac1978295156e2d9015d52c3",
+    "a25affffbf92f5cd4243cf09cc08da49f048dbd1425dd09e8ff9187cc9e7c281",
+    "44581e468986113fa0098951daa15ca6d29195fb8cc65b155ebf5c72b14368e7",
+    "d9467cc886b1d9e689d068ff9a5d4cf78bed3de3a4390ede1f8b1f7caf7f4e32",
+    "c8b10b9882bea94fa60ade01cc1acf9c99f7153f92273307c76e514c27d4aa13",
+    "efbf30b28b7cb960a151f1db3ad282a5245b88d7250ed571a247727e5a44c1e5",
+    "3da27d3d4db7b517d75c51f91c0fad76640774bd3bf55136088fb2cc6416fda3",
+    "3d34059ad0054434300f01edb83e105eff62eb540cdeb2a3fff522d1cadf5573",
+    "e695297f312ea435687a39633408cba0d256d3e99ae7bb6a1af64b822f9e5992",
+    "fdf5b5669849bc152db56df5ec1c2ef4a0695b1ba026cd50ef8af1543c186df6",
+    "bc99d01dd764ce18f10b85c5bb990da868d9aad5375901e43f97270f7903ae25",
+    "598603a3d88ddda81086200f036c2e62ea57ccdad56ad88ca41fbcf1b2d55039",
+    "72f53bad7971858fde291eba2c0ffbe36e48a11cd794235adbd849c655f258a5",
+    "4d3307a6330fb7824a5fda8f130e25c6246e13c807215e7ea1d275df2c32b03f",
+    "dcdc33ff6659f496fcf8a2d555cae0612b30e79c4d90c39599a9cb49f2084117",
+    "eedcf1ae4b5849a9e7b457a515d02a61dec3add1fca6657f15f8fd332c5c4b97"
+  ],
+  "prompt_policy": "frozen disjoint bank; prompt text is not serialized into outputs",
+  "order_policy": "seeded per-prompt shuffle with balanced cyclic rotation",
+  "success_rule": "candidate must beat DDTree and DFlash and DDTree must beat DFlash; all prompt-bootstrap 95% CI lower bounds > 1",
+  "limitations": [
+    "Held-out hand-written validation pilot, not the formal seven-dataset experiment",
+    "H20 result must not be relabelled as an H200 result",
+    "Model-level BF16 tree rows can differ numerically from sequential autoregressive rows; all compared methods retain the official BF16+SDPA execution"
+  ],
+  "source_sha256": {
+    "engine": "1874a873ab3940ca4d1c58a3cc0f9fb222a3c8599fc5a0efeed9305e1011ed86",
+    "fused_verifier": "85b726b841d041b5a29b6b7d26f8446949bda3944cefa251bb92293ed5ad2526",
+    "official_verifier": "43b246af3511f94a487fd462d8198ad574a71e8de407deb44f572ecbfe31a205",
+    "script": "06834828aa31cdeadb4b7369c882db998a3486266003dbc7d0d70c670e4fafbd",
+    "config": "ffb45dc9393d92f9eaf2fb02ee868eb819b5fd730b75c8ae9791c0c5153a84d4"
+  },
+  "runtime": {
+    "gpu": "NVIDIA H20",
+    "gpu_memory_bytes": 102085623808,
+    "compute_capability": [
+      9,
+      0
+    ],
+    "driver_and_clocks_start": {
+      "utc": "2026-09-09T15:27:25.702460+00:00",
+      "hostname": "autodl-container-26d148a435-8171fde0",
+      "pid": 7574,
+      "slurm_job_id": null,
+      "gpu_uuid": "b32e1465-06c0-9da4-928e-ca196f12f2cf",
+      "nvidia_smi": "GPU-b32e1465-06c0-9da4-928e-ca196f12f2cf, NVIDIA H20, P0, 34, 119.37 W, 1980 MHz, 2619 MHz, 9099 MiB, 0 %"
+    },
+    "python": "3.12.3",
+    "versions": {
+      "torch": "2.8.0+cu128",
+      "transformers": "4.57.1",
+      "huggingface-hub": "0.36.0",
+      "numpy": "2.2.6"
+    }
+  },
+  "same_tree_runtime_witness": {
+    "passed": true,
+    "nodes": 46,
+    "tree_sha256": "c50aa94dcfe26eec118cb35d88ccf33a938ba1838ae75fba066cacd13f692e40",
+    "probability_shape": [
+      46,
+      151936
+    ],
+    "probability_dtype": "torch.float64"
+  }
+}

@@ -21,6 +21,7 @@ from gbv_experiments.integrated_suite import (
     _adaptive_contract_digest,
     _literal_assignment,
     _run_distribution_law_audit,
+    _tree_block_pairwise_rows,
     _validate_adaptive_summary,
     _validate_sampling_manifest,
     _validate_scoring_manifest,
@@ -31,6 +32,10 @@ from gbv_experiments.integrated_suite import (
     plan_integrated_suite,
     run_integrated_suite,
     validate_block_order,
+)
+from gbv_experiments.preflight import (
+    SAME_TREE_WITNESS_PROMPT,
+    SAME_TREE_WITNESS_SEED,
 )
 from gbv_experiments.runner import dataset_local_schedule, make_plan, scheduled_variants
 
@@ -69,11 +74,13 @@ def test_integrated_plan_keeps_protocol_families_separate_and_complete():
     assert plan["adaptive_t0"]["greedy_audit_policy"] == "record-bf16-mismatches"
     assert not plan["adaptive_t0"]["strict_lossless_claim_allowed"]
     assert plan["positive_temperature_t1"]["temperatures"] == [1.0]
-    assert plan["positive_temperature_t1"]["methods"] == ["target", "dflash", "ddtree"]
-    assert plan["positive_temperature_t1"]["expected_records"] == 14688
-    assert plan["positive_temperature_t1"]["expected_generations"] == 16128
-    assert plan["tree_block_verification"] == "deferred_not_run"
-    assert plan["total_generation_calls"] == 59904
+    assert plan["positive_temperature_t1"]["methods"] == [
+        "target", "dflash", "ddtree", "tree_block_verification",
+    ]
+    assert plan["positive_temperature_t1"]["expected_records"] == 19584
+    assert plan["positive_temperature_t1"]["expected_generations"] == 21504
+    assert plan["tree_block_verification"] == "registered_t1_same_tree_fused_scan"
+    assert plan["total_generation_calls"] == 65280
     assert plan["cross_protocol_aggregate"] is None
     assert plan["fairness_audit"]["passed"]
     assert not plan["fairness_audit"]["claim_boundaries"][
@@ -97,13 +104,17 @@ def test_models_revisions_backends_and_t1_controls_are_exactly_matched():
         assert cfg["model"]["draft_attention"] == "sdpa"
         variants = {entry["variant"]["name"]:entry["variant"]
                     for entry in build_variants(cfg)}
-        assert set(variants) == {"target_t1p0", "dflash_t1p0", "ddtree_t1p0"}
+        assert set(variants) == {
+            "target_t1p0", "dflash_t1p0", "ddtree_t1p0",
+            "tree_block_verification_t1p0",
+        }
         assert {variant["temperature"] for variant in variants.values()} == {1.0}
         assert {variant["method"] for variant in variants.values()} == {
-            "target", "dflash", "ddtree"
+            "target", "dflash", "ddtree", "ddtree_fused_scan",
         }
         assert variants["dflash_t1p0"]["draft_temperature"] is None
         assert variants["ddtree_t1p0"]["draft_temperature"] == 1.0
+        assert variants["tree_block_verification_t1p0"]["draft_temperature"] == 1.0
         assert cfg["datasets"] == [
             "gsm8k", "math500", "aime24", "aime25", "humaneval", "mbpp_sanitized",
             "livecodebench", "mt-bench",
@@ -173,7 +184,7 @@ def test_integrated_suite_fails_closed_on_revision_or_method_drift(tmp_path):
     spec = json.loads(path.read_text())
     spec["positive_temperature"]["tree_block_verification"] = "enabled"
     write_json(path, spec)
-    with pytest.raises(ValueError, match="tree-block deferral"):
+    with pytest.raises(ValueError, match="registered tree-block controls"):
         load_integrated_suite(path)
 
     path = _portable_suite(tmp_path)
@@ -187,7 +198,9 @@ def test_integrated_suite_fails_closed_on_revision_or_method_drift(tmp_path):
 def test_source_and_baseline_audit_is_fail_closed():
     result = audit_integrated_suite(SUITE)
     assert result["passed"] and all(result["checks"].values())
-    assert result["claim_boundaries"]["tree_block_verification"] == "deferred_not_run"
+    assert result["claim_boundaries"]["tree_block_verification"] == (
+        "registered_t1_same_tree_fused_scan"
+    )
     assert result["pinned_ddtree_commit"] == "c96427a185677bf4133ed865dd1626a5041aef9b"
     assert any(path.endswith("official_worker.py") for path in result["source_sha256"])
 
@@ -237,6 +250,32 @@ def test_post_run_order_rejects_global_balance_that_is_biased_by_dataset(tmp_pat
     )
     with pytest.raises(ValueError, match="within dataset"):
         validate_block_order(tmp_path)
+
+
+def test_tree_block_pairwise_table_uses_complete_source_seed_pairs():
+    cfg = {"datasets":["d"], "seeds":[17, 29], "bootstrap_samples":100}
+    timings = {
+        "tree_block_verification_t1p0":1.0,
+        "ddtree_t1p0":2.0,
+        "dflash_t1p0":3.0,
+    }
+    records = [
+        {"dataset":"d", "variant":variant, "source_id":source,
+         "seed":seed, "decode_ms":milliseconds, "decode_tokens":10}
+        for source in ("a", "b") for seed in cfg["seeds"]
+        for variant, milliseconds in timings.items()
+    ]
+    rows = _tree_block_pairwise_rows(records, cfg)
+    assert len(rows) == 2
+    by_baseline = {row["baseline"]:row for row in rows}
+    assert by_baseline["ddtree"]["speedup"] == pytest.approx(2.0)
+    assert by_baseline["dflash"]["speedup"] == pytest.approx(3.0)
+    assert by_baseline["ddtree"]["speedup_ci_low"] == pytest.approx(2.0)
+    assert by_baseline["ddtree"]["paired_samples"] == 4
+    assert by_baseline["ddtree"]["source_clusters"] == 2
+
+    with pytest.raises(ValueError, match="Incomplete"):
+        _tree_block_pairwise_rows(records[:-1], cfg)
 
 
 def test_doctor_distribution_gate_executes_both_exact_law_tests():
@@ -393,6 +432,10 @@ def test_t1_gpu_preflight_is_bound_to_model_source_backend_and_gpu():
             "datasets":"3.6.0", "numpy":"2.2.6", "math-verify":"0.8.0",
         },
     }
+    registered_variants = {
+        entry["variant"]["name"]:entry["variant"]
+        for entry in build_variants(cfg)
+    }
     variants = [
         replace(Variant(**entry["variant"]), temperature=0.0,
                 draft_temperature=1.0).to_dict()
@@ -418,6 +461,20 @@ def test_t1_gpu_preflight_is_bound_to_model_source_backend_and_gpu():
          "max_absolute_logit_error":0.01}
         for _ in prompts
     ]
+    parents = [-1] + [0] * 45
+    tree_tokens = list(range(45))
+    tree_sha256 = digest([parents, tree_tokens])
+    probabilities_sha256 = "a" * 64
+
+    def witness_identity(name, method):
+        return {
+            "name":name, "method":method,
+            "variant":registered_variants[name],
+            "parents":parents, "tree_tokens":tree_tokens,
+            "tree_sha256":tree_sha256,
+            "probabilities_sha256":probabilities_sha256,
+        }
+
     preflight = {
         "passed":True, "greedy_exact_passed":True, "numerical_ambiguities":0,
         "numerical_policy":{
@@ -427,6 +484,19 @@ def test_t1_gpu_preflight_is_bound_to_model_source_backend_and_gpu():
         "scope":"checkpoint structural and bounded-numerical smoke gate, not full benchmark results",
         "model":cfg["model"], "stop_token_ids":[151645],
         "source_hashes":source_hashes(), "checks":checks,
+        "same_tree_runtime_witness":{
+            "passed":True,
+            "prompt_sha256":digest(SAME_TREE_WITNESS_PROMPT),
+            "seed":SAME_TREE_WITNESS_SEED,
+            "parents_equal":True, "tree_tokens_equal":True,
+            "target_probabilities_equal":True,
+            "probability_shape":[46, 151936],
+            "probability_dtype":"torch.float64",
+            "baseline":witness_identity("ddtree_t1p0", "ddtree"),
+            "candidate":witness_identity(
+                "tree_block_verification_t1p0", "ddtree_fused_scan",
+            ),
+        },
         "environment":{
             "versions":{
                 "torch":doctor["torch"], "transformers":"4.57.1",
@@ -453,6 +523,12 @@ def test_t1_gpu_preflight_is_bound_to_model_source_backend_and_gpu():
     broken = json.loads(json.dumps(preflight))
     broken["environment"]["gpu_uuid"] = "GPU-other"
     with pytest.raises(ValueError, match="preflight environment"):
+        _validate_t1_preflight(broken, cfg, doctor)
+    broken = json.loads(json.dumps(preflight))
+    broken["same_tree_runtime_witness"]["candidate"][
+        "probabilities_sha256"
+    ] = "b" * 64
+    with pytest.raises(ValueError, match="same-tree runtime witness"):
         _validate_t1_preflight(broken, cfg, doctor)
 
 

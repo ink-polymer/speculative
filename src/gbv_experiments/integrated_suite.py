@@ -1,8 +1,8 @@
-"""Fair, fail-closed orchestration for AdaptiveTree, DDTree, and DFlash.
+"""Fair, fail-closed orchestration for AdaptiveTree and T=1 controls.
 
 This server runs only the registered T=0 AdaptiveTree matrix and the matched
-T=1 Target/DFlash/DDTree sampling controls. Tree-block verification is a
-separate experiment and is deliberately not scheduled or reported here.
+T=1 Target/DFlash/DDTree sampling controls, plus a verifier-only candidate
+that consumes DDTree's exact same tree and Target probability rows.
 """
 from __future__ import annotations
 
@@ -26,14 +26,24 @@ import tempfile
 from .common import ROOT, digest, file_hash, read_jsonl, source_hashes, write_json
 from .config import Variant, build_variants, load_config
 from .data import DATASETS, evaluation_policy
-from .report import summarize as summarize_results, validate_results
+from .preflight import SAME_TREE_WITNESS_PROMPT, SAME_TREE_WITNESS_SEED
+from .report import (clustered_ci, speedup,
+                     summarize as summarize_results, validate_results)
 from .runner import make_plan
 
 
 STUDY = "adaptive_tree_ddtree_dflash_t0_t1"
 TEMPERATURES = (1.0,)
-SAMPLING_METHODS = ("target", "dflash", "ddtree")
-TREE_BLOCK_STATUS = "deferred_not_run"
+SAMPLING_METHODS = (
+    "target", "dflash", "ddtree", "tree_block_verification",
+)
+SAMPLING_IMPLEMENTATIONS = {
+    "target": "target",
+    "dflash": "dflash",
+    "ddtree": "ddtree",
+    "tree_block_verification": "ddtree_fused_scan",
+}
+TREE_BLOCK_STATUS = "registered_t1_same_tree_fused_scan"
 FORMAL_MODEL_IDS = ("qwen3_4b", "qwen3_8b")
 T1_DATASET_COUNTS = {
     "gsm8k":128, "math500":128, "aime24":30, "aime25":30,
@@ -51,6 +61,7 @@ DISTRIBUTION_LAW_TESTS = (
 )
 T1_IMPLEMENTATION_TESTS = (
     "tests/gbv_paper/test_engine.py::test_dflash_uses_greedy_draft_at_nonzero_target_temperature",
+    "tests/gbv_paper/test_terminal_mass.py::test_fused_scan_sampler_matches_inverse_cdf_paths",
 )
 T1_DOCTOR_TESTS = DISTRIBUTION_LAW_TESTS + T1_IMPLEMENTATION_TESTS
 
@@ -107,7 +118,7 @@ def _formal_matrix_audit() -> dict:
 
 
 def _run_distribution_law_audit() -> dict:
-    """Execute exact T=1 law checks plus the DFlash proposal-policy check."""
+    """Execute exact T=1 laws and both registered implementation checks."""
     command = [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider",
                *T1_DOCTOR_TESTS]
     env = os.environ.copy()
@@ -281,6 +292,62 @@ def _doctor_process_identity(doctor: dict) -> dict:
     }
 
 
+def _validate_same_tree_runtime_witness(witness: dict, cfg: dict) -> None:
+    """Bind the formal candidate to a real-checkpoint, same-tree T=1 replay."""
+    variants = {
+        entry["variant"]["name"]:entry["variant"]
+        for entry in build_variants(cfg)
+    }
+    names = ("ddtree_t1p0", "tree_block_verification_t1p0")
+    baseline = witness.get("baseline", {})
+    candidate = witness.get("candidate", {})
+    shape = witness.get("probability_shape")
+
+    def valid_sha256(value) -> bool:
+        return (
+            isinstance(value, str) and len(value) == 64
+            and all(character in "0123456789abcdef" for character in value)
+        )
+
+    identities = ((baseline, names[0], "ddtree"),
+                  (candidate, names[1], "ddtree_fused_scan"))
+    invalid_identity = any(
+        identity.get("name") != name
+        or identity.get("method") != method
+        or identity.get("variant") != variants.get(name)
+        or not isinstance(identity.get("parents"), list)
+        or not isinstance(identity.get("tree_tokens"), list)
+        or len(identity.get("parents", []))
+           != variants[names[0]]["tree_budget"] + 1
+        or len(identity.get("tree_tokens", []))
+           != variants[names[0]]["tree_budget"]
+        or identity.get("tree_sha256") != digest([
+            identity.get("parents"), identity.get("tree_tokens")
+        ])
+        or not valid_sha256(identity.get("probabilities_sha256"))
+        for identity, name, method in identities
+    )
+    if (witness.get("passed") is not True
+            or witness.get("prompt_sha256") != digest(SAME_TREE_WITNESS_PROMPT)
+            or witness.get("seed") != SAME_TREE_WITNESS_SEED
+            or witness.get("parents_equal") is not True
+            or witness.get("tree_tokens_equal") is not True
+            or witness.get("target_probabilities_equal") is not True
+            or witness.get("probability_dtype") != "torch.float64"
+            or not isinstance(shape, list) or len(shape) != 2
+            or shape[0] != variants[names[0]]["tree_budget"] + 1
+            or not isinstance(shape[1], int) or shape[1] < 1
+            or invalid_identity
+            or baseline.get("parents") != candidate.get("parents")
+            or baseline.get("tree_tokens") != candidate.get("tree_tokens")
+            or baseline.get("tree_sha256") != candidate.get("tree_sha256")
+            or baseline.get("probabilities_sha256")
+               != candidate.get("probabilities_sha256")):
+        raise ValueError(
+            "T=1 same-tree runtime witness is missing, stale, or unequal"
+        )
+
+
 def _validate_t1_preflight(preflight: dict, cfg: dict, doctor: dict) -> None:
     """Bind the real-checkpoint/tree/cache gate to the final T=1 report."""
     environment = preflight.get("environment", {})
@@ -326,6 +393,10 @@ def _validate_t1_preflight(preflight: dict, cfg: dict, doctor: dict) -> None:
             or any(check.get("result", {}).get("passed") is not check["expected_pass"]
                    for check in evaluator_checks)):
         raise ValueError("T=1 GPU preflight environment or evaluator evidence is invalid")
+
+    _validate_same_tree_runtime_witness(
+        preflight.get("same_tree_runtime_witness", {}), cfg,
+    )
 
     expected_variants = {}
     for entry in build_variants(cfg):
@@ -885,16 +956,22 @@ def _validate_sampling_config(cfg: dict) -> None:
             if set(by_name[variant["name"]]["groups"]) != {"main", _group_tag(temperature)}:
                 raise ValueError("Every T=1 control requires main and temperature groups")
             # Official DFlash remains a greedy argmax draft at sampled Target
-            # T=1; only DDTree consumes the stochastic draft distribution.
-            expected_draft_temperature = temperature if method == "ddtree" else None
-            if (variant["method"] != method or variant["temperature"] != temperature
+            # T=1. DDTree and its verifier-only candidate consume the same
+            # stochastic Draft tree.
+            expected_draft_temperature = (
+                temperature
+                if method in {"ddtree", "tree_block_verification"}
+                else None
+            )
+            if (variant["method"] != SAMPLING_IMPLEMENTATIONS[method]
+                    or variant["temperature"] != temperature
                     or variant["draft_temperature"] != expected_draft_temperature
                     or variant["paths"] != 1 or variant["length"] != 15
                     or variant["tree_budget"] != 45
                     or variant["probability_dtype"] != "float64"):
                 raise ValueError(f"Unfair or invalid T=1 control: {variant['name']}")
         reference = variants["ddtree"]
-        for method in ("dflash",):
+        for method in ("dflash", "tree_block_verification"):
             if not _matched_variant(reference, variants[method]):
                 raise ValueError(f"{method} and DDTree differ in more than implementation")
 
@@ -929,7 +1006,7 @@ def load_integrated_suite(path: Path, model_ids=None) -> dict:
                 sampling_spec["probability_dtype"], sampling_spec["method_order_policy"],
                 sampling_spec["tree_block_verification"])
                != (15, 45, "float64", "balanced_rotation", TREE_BLOCK_STATUS)):
-        raise ValueError("Invalid T=1 sampling controls or tree-block deferral status")
+        raise ValueError("Invalid T=1 sampling or registered tree-block controls")
 
     adaptive_root = (path.parent / adaptive_spec["project"]).resolve()
     adaptive_config_path = (path.parent / adaptive_spec["config"]).resolve()
@@ -1018,8 +1095,10 @@ def audit_integrated_suite(path: Path, output: Path | None = None, model_ids=Non
         adaptive_root / "src/dflash_specblock/paper/adaptive_official.py",
         adaptive_root / "src/dflash_specblock/paper/official_worker.py",
         ROOT / "src/gbv_experiments/engine.py",
+        ROOT / "src/gbv_experiments/fused_tree_sampling.py",
         ROOT / "src/gbv_experiments/sampling.py",
         ROOT / "src/gbv_experiments/config.py",
+        ROOT / "src/gbv_experiments/preflight.py",
         ROOT / "src/gbv_experiments/runner.py",
         ROOT / "src/gbv_experiments/report.py",
         ROOT / "src/gbv_experiments/integrated_suite.py",
@@ -1040,11 +1119,11 @@ def audit_integrated_suite(path: Path, output: Path | None = None, model_ids=Non
             "adaptive_primary_table_same_target_backend_sdpa":True,
             "t1_same_target_and_draft_backend_sdpa":True,
             "t1_same_data_seeds_limits_and_order":True,
-            "t1_only_target_dflash_ddtree_registered":True,
+            "t1_target_dflash_ddtree_and_tree_block_registered":True,
             "t1_official_dflash_greedy_draft":True,
             "t1_fp64_probability_math":True,
             "lazy_projection_excluded":True,
-            "tree_block_verification_deferred_not_run":True,
+            "tree_block_verification_same_ddtree_tree_only_delta_configured":True,
             "pinned_ddtree_sources_identical":True,
         },
         "claim_boundaries":{
@@ -1055,7 +1134,10 @@ def audit_integrated_suite(path: Path, output: Path | None = None, model_ids=Non
             ),
             "adaptive_strict_lossless_claim_allowed":False,
             "adaptive_best_backend":"auxiliary table only; never mixed into the primary architecture table",
-            "positive_temperature":"T=1 Target/DFlash/DDTree within one SDPA/SDPA engine; DFlash draft is greedy",
+            "positive_temperature":(
+                "T=1 Target/DFlash/DDTree/tree-block verifier within one "
+                "SDPA/SDPA engine; DFlash Draft is greedy"
+            ),
             "tree_block_verification":TREE_BLOCK_STATUS,
             "cross_protocol_speedup_pooling_allowed":False,
             "old_server_result_reuse_allowed":False,
@@ -1284,7 +1366,12 @@ def plan_integrated_suite(path: Path, model_ids=None) -> dict:
         "total_generation_calls":adaptive_calls + sampling_generations,
         "cross_protocol_aggregate":None,
         "old_server_results_imported":False,
-        "note":"Use a fresh output directory on new hardware. This server runs T=0 AdaptiveTree and T=1 Target/DFlash/DDTree only; tree-block verification is deferred to a separate server and speedups are never pooled across protocols.",
+        "note":(
+            "Use a fresh output directory on new hardware. T=0 AdaptiveTree "
+            "and T=1 sampling remain separate; the T=1 tree-block method is "
+            "a same-DDTree-tree verifier-only comparison, and speedups are "
+            "never pooled across protocols."
+        ),
     }
 
 
@@ -1346,7 +1433,7 @@ def run_integrated_suite(path: Path, adaptive_data_dir: Path, block_data_dir: Pa
     # multi-day T=0 timing phase.  Unsupported evaluators, corrupt data, and
     # incompatible SDPA checkpoints therefore fail before formal timing begins.
     if suite["spec"]["positive_temperature"]["tree_block_verification"] != TREE_BLOCK_STATUS:
-        raise RuntimeError("Tree-block verification must remain deferred on this server")
+        raise RuntimeError("Registered same-tree block verifier is missing")
     first = suite["models"][0]["config"]
     prepare(first["datasets"], block_data_dir, first.get("evaluation"))
     audit(first, block_data_dir, [], output / "sampling_data_audit.json")
@@ -1493,6 +1580,53 @@ def validate_block_order(run_dir: Path) -> dict:
     return {"passed":True, "prompts":len(groups), "methods":len(names)}
 
 
+def _tree_block_pairwise_rows(records: list[dict], cfg: dict) -> list[dict]:
+    """Recompute candidate-vs-DDTree/DFlash timing directly from raw rows."""
+    candidate_name = _expected_name("tree_block_verification", 1.0)
+    baseline_names = {
+        baseline: _expected_name(baseline, 1.0)
+        for baseline in ("ddtree", "dflash")
+    }
+    result = []
+    for dataset in cfg["datasets"]:
+        candidate = {
+            (str(row["source_id"]), row["seed"]): row
+            for row in records
+            if row["dataset"] == dataset and row["variant"] == candidate_name
+        }
+        for baseline, baseline_name in baseline_names.items():
+            reference = {
+                (str(row["source_id"]), row["seed"]): row
+                for row in records
+                if row["dataset"] == dataset and row["variant"] == baseline_name
+            }
+            if not candidate or set(candidate) != set(reference):
+                raise ValueError(
+                    f"Incomplete tree-block/{baseline} pairs for {dataset}"
+                )
+            ordered_keys = sorted(candidate)
+            candidate_rows = [candidate[key] for key in ordered_keys]
+            baseline_rows = [reference[key] for key in ordered_keys]
+            interval = clustered_ci(
+                candidate_rows, baseline_rows, cfg["bootstrap_samples"], seed=0,
+            )
+            result.append({
+                "dataset": dataset,
+                "candidate": "tree_block_verification",
+                "baseline": baseline,
+                "speedup": speedup(candidate_rows, baseline_rows),
+                "speedup_ci_low": interval[0],
+                "speedup_ci_high": interval[1],
+                "paired_samples": len(candidate_rows),
+                "source_clusters": len({
+                    row["source_id"] for row in candidate_rows
+                }),
+                "seeds_per_source": len(cfg["seeds"]),
+                "bootstrap_samples": cfg["bootstrap_samples"],
+            })
+    return result
+
+
 def report_integrated_suite(path: Path, run_dir: Path, output: Path,
                             model_ids=None) -> dict:
     """Validate finished artifacts and write separate, non-pooled result tables."""
@@ -1540,6 +1674,8 @@ def report_integrated_suite(path: Path, run_dir: Path, output: Path,
     adaptive_exact_subset_rows = []
     adaptive_auxiliary_rows = []
     sampling_rows = []
+    tree_block_pairwise_rows = []
+    tree_block_runtime_witnesses = {}
     gates = {}
     adaptive_data_dir = Path(run_inputs["adaptive_data_dir"])
     sampling_data_audit = _load_json(run_dir / "sampling_data_audit.json")
@@ -1577,6 +1713,9 @@ def report_integrated_suite(path: Path, run_dir: Path, output: Path,
         sampling_run = run_dir / "sampling_t1" / model_id
         preflight = _load_json(sampling_run / "gpu_preflight.json")
         _validate_t1_preflight(preflight, model["config"], doctor)
+        tree_block_runtime_witnesses[model_id] = preflight[
+            "same_tree_runtime_witness"
+        ]
         order_audit = validate_block_order(sampling_run)
         sampling_report = _load_json(sampling_run / "report/summary.json")
         manifest = _load_json(sampling_run / "run_manifest.json")
@@ -1603,16 +1742,23 @@ def report_integrated_suite(path: Path, run_dir: Path, output: Path,
             scoring_manifest, scores, model["config"], doctor, manifest
         )
         rows = _validate_sampling_summary(sampling_report, manifest, model["config"])
-        if ({row.get("method") for row in rows} != set(SAMPLING_METHODS)
+        if ({row.get("method") for row in rows}
+                != set(SAMPLING_IMPLEMENTATIONS.values())
                 or {row.get("temperature") for row in rows} != set(TEMPERATURES)):
             raise ValueError(f"Unregistered method or temperature in T=1 results for {model_id}")
         sampling_rows.extend({"model_id":model_id, **row} for row in rows)
+        tree_block_pairwise_rows.extend(
+            {"model_id":model_id, **row}
+            for row in _tree_block_pairwise_rows(records, model["config"])
+        )
         gates[model_id] = {
             "adaptive_same_backend_balanced_divergence_audited":True,
             "t1_gpu_preflight_passed":True,
             "t1_data_and_gold_audits_passed":True,
             "t1_controls_complete_balanced":order_audit["passed"],
-            "tree_block_verification_deferred_not_run":True,
+            "t1_tree_block_same_tree_runtime_witness_validated":(
+                preflight["same_tree_runtime_witness"]["passed"]
+            ),
             "adaptive_strict_lossless":(
                 adaptive.get("greedy_audit_policy") == "strict"
                 and numerical.get("mismatching_responses") == 0
@@ -1628,7 +1774,7 @@ def report_integrated_suite(path: Path, run_dir: Path, output: Path,
         "t1_gpu_preflight_passed",
         "t1_data_and_gold_audits_passed",
         "t1_controls_complete_balanced",
-        "tree_block_verification_deferred_not_run",
+        "t1_tree_block_same_tree_runtime_witness_validated",
     )
     result = {
         "study":STUDY,
@@ -1639,11 +1785,14 @@ def report_integrated_suite(path: Path, run_dir: Path, output: Path,
             values["adaptive_strict_lossless"] for values in gates.values()
         ),
         "gates":gates,
+        "tree_block_runtime_witnesses":tree_block_runtime_witnesses,
         "fairness_audit":audit,
         "server_doctor_distribution_law_audit":doctor["distribution_law_audit"],
         "primary_tables":{
             "adaptive_t0_same_backend_sdpa_with_exact_output_rates":adaptive_rows,
-            "sampling_t1_target_dflash_ddtree_sdpa":sampling_rows,
+            "sampling_t1_target_dflash_ddtree_tree_block_sdpa":sampling_rows,
+            "tree_block_t1_pairwise_vs_ddtree_and_dflash":
+                tree_block_pairwise_rows,
         },
         "auxiliary_tables":{
             "adaptive_t0_pairwise_exact_output_subset_selection_biased":
@@ -1660,7 +1809,9 @@ def report_integrated_suite(path: Path, run_dir: Path, output: Path,
             ("adaptive_t0_controlled_sdpa.csv", adaptive_rows),
             ("adaptive_t0_exact_output_subset_diagnostic.csv", adaptive_exact_subset_rows),
             ("adaptive_t0_best_backend_auxiliary.csv", adaptive_auxiliary_rows),
-            ("sampling_t1_target_dflash_ddtree_sdpa.csv", sampling_rows)):
+            ("tree_block_t1_pairwise_vs_ddtree_and_dflash.csv",
+             tree_block_pairwise_rows),
+            ("sampling_t1_target_dflash_ddtree_tree_block_sdpa.csv", sampling_rows)):
         if not rows:
             raise ValueError(f"No rows for {filename}")
         with (output / filename).open("w", encoding="utf-8", newline="") as stream:
@@ -1674,14 +1825,15 @@ def report_integrated_suite(path: Path, run_dir: Path, output: Path,
             "target":"Target",
             "dflash":"DFlash (greedy Draft)",
             "ddtree":"DDTree-B45 (L=15)",
+            "ddtree_fused_scan":"Tree-block verification (same DDTree tree)",
         }[row["method"]]
 
-    lines = ["# AdaptiveTree、DDTree 与 DFlash：公平实验汇总", "",
+    lines = ["# AdaptiveTree、DDTree、DFlash 与树状块验证：公平实验汇总", "",
              "所有主表均已通过同 revision、同后端、完整性、均衡顺序和差异审计门禁。",
              "T=0 在 BF16 执行中观察到的输出差异被保留并逐方法报告；"
              "本报告不推断差异成因，也不声称严格无损。",
              "T=0 与 T=1 属于不同协议，禁止汇总成一个跨协议加速比。",
-             "树状块验证状态：deferred_not_run；本服务器未运行、未汇报该方法。", ""]
+             "T=1 树状块验证只替换 DDTree 验证器，共用同一概率树和 Target 行。", ""]
     lines += ["## T=0 主表：统一 SDPA 后端（全样本，非无损声明）", "",
               "| 模型 | 数据集 | 方法 | 相对 Target | 相对最佳 DDTree | 接受长度 | 精确输出率 |",
               "|---|---|---|---:|---:|---:|---:|"]
@@ -1696,8 +1848,8 @@ def report_integrated_suite(path: Path, run_dir: Path, output: Path,
               f"{row['exact_output_responses']}/{row['responses']} | "
               f"{fmt(row['exact_subset_speedup_vs_target'])}× |"
               for row in adaptive_exact_subset_rows]
-    lines += ["", "## T=1 主表：Target / DFlash / DDTree，统一 SDPA/SDPA", "",
-              "DDTree 固定使用 L=15、B=45 和 FP64 概率计算；DFlash 使用贪心 Draft。", "",
+    lines += ["", "## T=1 主表：Target / DFlash / DDTree / 树状块验证，统一 SDPA/SDPA", "",
+              "DDTree 与树状块验证固定使用 L=15、B=45 和 FP64 概率计算；DFlash 使用贪心 Draft。", "",
               "接受/提议比的分母在 DFlash（路径 token）与 DDTree（树节点）间不同，故不作横向比较；下表统一报告每次 Target 验证接受的 token 数。", "",
               "| 模型 | 数据集 | 温度 | 方法 | Decode tok/s | 相对 Target | 95% CI | 质量 | 平均生成长度 | 每次验证接受 token |",
               "|---|---|---:|---|---:|---:|---:|---:|---:|---:|"]
@@ -1707,5 +1859,15 @@ def report_integrated_suite(path: Path, run_dir: Path, output: Path,
               f"{fmt(row['quality'])} | {fmt(row['mean_generation_length'])} | "
               f"{fmt(row['accepted_per_verify'])} |"
               for row in sampling_rows]
+    lines += ["", "## T=1 树状块验证配对主检验", "",
+              "以下区间从完整原始记录重新计算，并按 source_id 聚簇；"
+              "不以点估计大于 1 代替置信区间。", "",
+              "| 模型 | 数据集 | 基线 | 加速比 | 95% CI | 配对样本 | source 簇 |",
+              "|---|---|---|---:|---:|---:|---:|"]
+    lines += [f"| {row['model_id']} | {row['dataset']} | {row['baseline']} | "
+              f"{fmt(row['speedup'])}× | [{fmt(row['speedup_ci_low'])}, "
+              f"{fmt(row['speedup_ci_high'])}] | {row['paired_samples']} | "
+              f"{row['source_clusters']} |"
+              for row in tree_block_pairwise_rows]
     (output / "integrated_results.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     return result

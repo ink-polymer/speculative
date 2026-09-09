@@ -31,7 +31,7 @@
         "paths": 1,
         "length": 15,
         "temperature": 1.0,
-        "draft_temperature": 1.0,
+        "draft_temperature": null,
         "probability_dtype": "float64",
         "tree_budget": 45
       }

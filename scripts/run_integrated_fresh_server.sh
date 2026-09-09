@@ -18,7 +18,7 @@ SUITE="${INTEGRATED_SUITE:-$REPOSITORY_ROOT/configs/adaptive_tree_block_suite.js
 RUN_DIR="${INTEGRATED_RUN_DIR:-$REPOSITORY_ROOT/outputs/integrated-adaptive-ddtree-dflash-t0-t1}"
 ADAPTIVE_DATA_DIR="${ADAPTIVE_DATA_DIR:-$REPOSITORY_ROOT/adaptivetree_paper/datasets/ddtree_official_t0}"
 # BLOCK_DATA_DIR remains a compatibility alias for older launch commands. This
-# phase contains only T=1 Target/DFlash/DDTree; tree-block verification is not run.
+# phase contains T=1 Target/DFlash/DDTree plus the registered same-tree verifier.
 SAMPLING_DATA_DIR="${SAMPLING_DATA_DIR:-${BLOCK_DATA_DIR:-$REPOSITORY_ROOT/datasets/gbv_paper_ddtree_counts}}"
 DEVICE="${INTEGRATED_DEVICE:-cuda:0}"
 CODE_BACKEND="${CODE_BACKEND:-docker}"

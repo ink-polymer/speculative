@@ -1,17 +1,22 @@
 # AdaptiveTree、DDTree 与 DFlash：T=0 / T=1 正式实验
 
+> 本文档对应未来服务器分支。当前由 `16c0e91` 启动的正式任务不含树状块，
+> 不得用本分支去 `resume` 它。树状块全矩阵必须在未来服务器使用全新输出目录启动。
+
 ## 本服务器的实验边界
 
 本套件只运行两组不能混合统计的正式实验：
 
 - T=0：Qwen3-4B 与 Qwen3-8B 上的修正版 `adaptive` 主方法、冻结的 AdaptiveTree 消融、Target、DFlash，以及七个固定预算 DDTree。
-- T=1：同一组 Qwen3-4B 与 Qwen3-8B revision 上的 Target、DFlash、DDTree；DDTree 固定 L=15、B=45、FP64 概率计算。
+- T=1：同一组 Qwen3-4B 与 Qwen3-8B revision 上的 Target、DFlash、DDTree 和 `tree_block_verification`；DDTree 与候选固定 L=15、B=45、FP64 概率计算。
 
-树状块验证在本服务器明确为 `deferred_not_run`，不会启动，也不会出现在结果表中。T=0 与 T=1 使用不同采样律，禁止合并加速比或置信区间。30B 不属于本轮正式矩阵。
+树状块验证固定使用 `ddtree_fused_scan`，与 DDTree 共用同一棵 `probability_tree`
+及全部 Target 概率行，仅替换祖先采样验证器。T=0 与 T=1 使用不同采样律，禁止
+合并加速比或置信区间。30B 不属于本轮正式矩阵。
 
 ## 公平性与失败即停止门禁
 
-所有模型固定 40 位 Hugging Face revision、BF16、关闭 thinking 和 TF32。T=1 三个方法共享 Target=SDPA、Draft=SDPA、数据、三个种子、生成上限和评分器。DFlash 在 T=1 仍使用官方贪心 Draft；DDTree 使用 T=1 Draft 分布。
+所有模型固定 40 位 Hugging Face revision、BF16、关闭 thinking 和 TF32。T=1 四个方法共享 Target=SDPA、Draft=SDPA、数据、三个种子、生成上限和评分器。DFlash 在 T=1 仍使用官方贪心 Draft；DDTree 与树块候选使用同一个 T=1 Draft 概率树。
 
 方法执行顺序按数据集分别从 ordinal 0 开始，并跨 seeds 连续循环。报告会逐数据集检查每个方法落在每个计时位置的次数，最大差必须不超过 1；仅在全局看似均衡、但某个数据集有位置偏差的结果会被拒绝。
 
@@ -26,7 +31,9 @@
 - DDTree batched ancestral verifier 的输出律等于逐节点 Target ancestral sampling。
 
 此外还会用真实微型 Qwen3 前向检查 T=1 DFlash 的 Draft 确实保持 greedy
-argmax，而不是误用 Target 的采样温度。
+argmax，而不是误用 Target 的采样温度。随后每个正式 4B/8B checkpoint 都会分别
+执行 DDTree 与树块候选，保存首棵树的父节点、树 token、FP64 Target 概率张量哈希
+和形状；完整张量必须逐元素相同，运行时 witness 才通过。
 
 测试 node ID、测试源码 SHA-256 和退出状态写入 `server_doctor.json`。随后在任何正式
 计时之前，套件先完成 T=1 的真实数据/答案审计及两个真实模型预检，再用两个真实模型对
@@ -72,12 +79,17 @@ bash scripts/run_integrated_fresh_server.sh resume
 - `sampling_data_audit.json` / `sampling_gold_audit.json`：T=1 数据与客观评分答案审计。
 - `adaptive_gpu_preflight.json`：两个真实模型的 T=0 双后端、全方法 GPU smoke 证据。
 - `adaptive/<model>/tables.json`：T=0 全样本、输出差异及消融结果。
+- `sampling_t1/<model>/gpu_preflight.json`：真实 checkpoint 的结构检查及 DDTree/树块同树运行时 witness。
 - `sampling_t1/<model>/report/summary.json`：T=1 完整质量与性能统计。
 - `report/integrated_results.md`：通过全部门禁后的 T=0/T=1 并列表格。
-- `report/integrated_results.json`：机器可读结果，固定记录 `tree_block_verification=deferred_not_run` 和 `cross_protocol_speedup_pooling_allowed=false`。
+- `report/integrated_results.json`：机器可读结果，固定记录 `tree_block_verification=registered_t1_same_tree_fused_scan` 和 `cross_protocol_speedup_pooling_allowed=false`。
+- `report/tree_block_t1_pairwise_vs_ddtree_and_dflash.csv`：从完整原始记录重算的 source 聚类配对区间。
 
 汇总时不会信任已有表格：T=0 从所有原始 `.pt` 与完成标记重新建表，T=1 从
 `results.jsonl` 和 `scores.jsonl` 重算覆盖与统计；重算结果必须与落盘表逐字段相同。
+历史 pilot 只能用于工程资格判断，不会导入未来正式计时。完整矩阵和
+所有完整性/公平性门禁通过前，禁止把树块 pilot 数值当作正式结果；声称
+优于某个基线时，该配对 source 聚类 95% CI 下界必须大于 1。
 T=0 只有一次完整确定性 pass，只给描述性点估计、不提供置信区间；T=1 才报告冻结的
 配对聚簇 bootstrap 区间。
 

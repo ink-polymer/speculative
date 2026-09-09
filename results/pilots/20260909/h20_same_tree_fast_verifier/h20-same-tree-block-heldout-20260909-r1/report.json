@@ -1,0 +1,79 @@
+{
+  "gate_passed": false,
+  "formal_complete": false,
+  "within_method_repeat_equal": true,
+  "comparisons": {
+    "ddtree": {
+      "candidate": "tree_block_verification",
+      "baseline": "ddtree",
+      "metric": "equal_prompt_geomean_decode_speedup",
+      "speedup": 1.021796745239483,
+      "ci95": [
+        0.9587551537571999,
+        1.0870696265050128
+      ],
+      "prompt_clusters": 18,
+      "bootstrap_samples": 20000
+    },
+    "dflash": {
+      "candidate": "tree_block_verification",
+      "baseline": "dflash",
+      "metric": "equal_prompt_geomean_decode_speedup",
+      "speedup": 1.263377295488943,
+      "ci95": [
+        1.1882376133219699,
+        1.3382771596394052
+      ],
+      "prompt_clusters": 18,
+      "bootstrap_samples": 20000
+    }
+  },
+  "baseline_sanity": {
+    "candidate": "ddtree",
+    "baseline": "dflash",
+    "metric": "equal_prompt_geomean_decode_speedup",
+    "speedup": 1.2364272066582478,
+    "ci95": [
+      1.151091606882049,
+      1.3305616460517131
+    ],
+    "prompt_clusters": 18,
+    "bootstrap_samples": 20000
+  },
+  "aggregate": {
+    "dflash": {
+      "decode_tokens": 13038,
+      "decode_ms": 109537.85398602486,
+      "tokens_per_second": 119.02734557556171,
+      "mean_accepted_draft_tokens_per_round": 2.9590747330960854,
+      "mean_committed_tokens_per_round": 3.8665480427046264,
+      "rounds": 3372
+    },
+    "ddtree": {
+      "decode_tokens": 13014,
+      "decode_ms": 85122.41986766458,
+      "tokens_per_second": 152.88569122250274,
+      "mean_accepted_draft_tokens_per_round": 4.64070351758794,
+      "mean_committed_tokens_per_round": 5.449748743718593,
+      "rounds": 2388
+    },
+    "tree_block_verification": {
+      "decode_tokens": 13014,
+      "decode_ms": 84803.8179576397,
+      "tokens_per_second": 153.46007188615746,
+      "mean_accepted_draft_tokens_per_round": 4.578817733990148,
+      "mean_committed_tokens_per_round": 5.342364532019705,
+      "rounds": 2436
+    }
+  },
+  "records": 324,
+  "telemetry_end": {
+    "utc": "2026-09-09T15:32:26.055169+00:00",
+    "hostname": "autodl-container-26d148a435-8171fde0",
+    "pid": 7574,
+    "slurm_job_id": null,
+    "gpu_uuid": "b32e1465-06c0-9da4-928e-ca196f12f2cf",
+    "nvidia_smi": "GPU-b32e1465-06c0-9da4-928e-ca196f12f2cf, NVIDIA H20, P0, 40, 175.96 W, 1980 MHz, 2619 MHz, 9451 MiB, 20 %"
+  },
+  "decision": "stop_and_optimize_or_increase_power"
+}

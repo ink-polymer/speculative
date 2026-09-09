@@ -1,0 +1,19 @@
+{
+  "kind": "full_vocabulary_fused_scan_inverse_cdf_audit",
+  "created_at_utc": "2026-09-09T15:57:29.855108+00:00",
+  "passed": true,
+  "seeds": 1024,
+  "vocabulary": 151936,
+  "tree_probability_shape": [
+    46,
+    151936
+  ],
+  "max_depth": 15,
+  "probability_dtype": "torch.float64",
+  "gpu": "NVIDIA H20",
+  "accepted_length_min": 0,
+  "accepted_length_max": 15,
+  "accepted_length_mean": 3.90234375,
+  "source_sha256": "ddec9c5a42f5fcc6f2254c8e5858f01c094c2f39090fdf6fe689dcc3e4d75ba8",
+  "script_sha256": "5ea02820a3653aee829201805cfd9fe27ffa7560f084d3b9a205b37018dceab9"
+}
