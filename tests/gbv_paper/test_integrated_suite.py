@@ -50,16 +50,15 @@ def test_process_scorer_identity_preserves_venv_invocation_symlink(tmp_path, mon
     from gbv_experiments.scoring import process_python_identity
 
     environment = tmp_path / "evaluator-venv"
-    venv.EnvBuilder(with_pip=False, system_site_packages=True, symlinks=True).create(
+    venv.EnvBuilder(with_pip=False, system_site_packages=True, symlinks=False).create(
         environment
     )
-    invocation = environment / "bin" / "python"
+    copied = environment / "bin" / "python"
+    invocation = environment / "bin" / "python-invocation"
+    invocation.symlink_to(copied.name)
     assert invocation.is_symlink()
+    assert not copied.is_symlink()
     monkeypatch.setenv("GBV_PROCESS_PYTHON", str(invocation))
-    # This test isolates venv-symlink identity semantics.  A root pytest process
-    # whose base interpreter lives below /root would otherwise (correctly) trip
-    # the independent production safety gate before reaching that behavior.
-    monkeypatch.setattr("gbv_experiments.scoring.os.geteuid", lambda: 65534)
     identity = process_python_identity()
 
     assert identity["process_python"] == str(invocation)
