@@ -43,10 +43,13 @@ T=0 与 T>0 的数据矩阵、随机性和 Draft 注意力后端不同，因此�
 python3.11 -m venv .venv-integrated
 source .venv-integrated/bin/activate
 
-# 按新服务器 CUDA/驱动选择正确的 PyTorch wheel；不要照抄另一台机器的 wheel。
+# H20/CUDA 12.8 的冻结环境：与官方 FlashAttention 2.8.3 wheel 匹配。
+python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu128
 python -m pip install -r requirements-gbv-paper.txt
 python -m pip install -r adaptivetree_paper/requirements-paper.txt
-# 安装与当前 torch/CUDA ABI 匹配的 flash-attn wheel，或在本机编译。
+# 安装官方 v2.8.3 的 cu12/torch2.8/cxx11abiTRUE/cp311 x86_64 wheel；
+# 正式安装前核对 SHA-256：
+# 3d41b2fc55753faa7f45d6568ea73a96b96afb48b82994ab9b49bcbcb6c87588
 
 docker build -t gbv-code-eval:py311 experiments/gbv_paper
 ```

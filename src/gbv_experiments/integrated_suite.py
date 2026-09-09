@@ -289,8 +289,8 @@ def doctor_integrated_suite(path: Path, output: Path | None = None,
         raise RuntimeError(f"Pinned Python dependency mismatch: {wrong}")
     if not torch.cuda.is_available() or torch.device(device).type != "cuda":
         raise RuntimeError("Integrated formal runs require an NVIDIA CUDA GPU")
-    if torch.__version__.split("+", 1)[0] != "2.9.1":
-        raise RuntimeError(f"Expected torch 2.9.1, found {torch.__version__}")
+    if torch.__version__.split("+", 1)[0] != "2.8.0":
+        raise RuntimeError(f"Expected torch 2.8.0, found {torch.__version__}")
     properties = torch.cuda.get_device_properties(torch.device(device))
     uuid = str(getattr(properties, "uuid", "unknown"))
     if uuid.lower() in {"", "none", "unknown", "unavailable"}:
