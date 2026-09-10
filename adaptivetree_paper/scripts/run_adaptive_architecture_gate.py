@@ -22,7 +22,7 @@ import torch
 from dflash_specblock.paper.adaptive_official import adaptive_generate
 from dflash_specblock.paper.common import (PRIMARY_ADAPTIVE_METHOD, atomic_json,
                                            code_identity, load_json)
-from dflash_specblock.paper.controller import PaperAdaptiveBuilder, make_paper_builder
+from dflash_specblock.paper.controller import make_paper_builder
 from dflash_specblock.paper.official_spec import (MODELS, PINNED_MODEL_REVISIONS,
                                                   upstream)
 
@@ -128,92 +128,22 @@ def main():
                   stop_token_ids=[tokenizer.eos_token_id], temperature=0.)
     records = []
     exact = True
-    temperature_methods = {}
-    extended_cfg = {
-        **adaptive_cfg,
-        "budget_candidates":[30,45,60,80,100,128,160,192],
-        "initial_budget":128,
-    }
-    method_names = ("ddtree_b128", "ddtree_b160", "ddtree_b192",
-                    "adaptive_raw_b128", "adaptive_guarded_raw",
-                    "adaptive_raw_b192", "adaptive_guarded_b192")
+    method_names = ("ddtree_b128", "adaptive_guarded_raw")
     started = time.time()
     for repeat in range(args.repeats):
-        previous = PaperAdaptiveBuilder(
-            adaptive_cfg, "no_exploration", timing_partition="budget_aware")
         guarded = make_paper_builder(adaptive_cfg, PRIMARY_ADAPTIVE_METHOD)
-        raw_fixed = make_paper_builder(adaptive_cfg, PRIMARY_ADAPTIVE_METHOD)
-        raw_fixed.initial_latency_samples = 0
-        raw_fixed.minimum_latency_samples = 0
-        raw_fixed.minimum_latency_saving_ratio = 1.
-        raw_fixed.minimum_utility_gain_ratio = 1.
-        tempered = {}
-        for name, temperature in temperature_methods.items():
-            builder = make_paper_builder(adaptive_cfg, PRIMARY_ADAPTIVE_METHOD)
-            builder.initial_latency_samples = 0
-            builder.minimum_latency_samples = 0
-            builder.minimum_latency_saving_ratio = 1.
-            builder.minimum_utility_gain_ratio = 1.
-            builder.proposal_temperature = temperature
-            tempered[name] = builder
-        guarded192 = PaperAdaptiveBuilder(
-            extended_cfg, "guarded_raw_prefix", timing_partition="budget_aware")
-        raw192 = PaperAdaptiveBuilder(
-            extended_cfg, "guarded_raw_prefix", timing_partition="budget_aware")
-        raw192.initial_latency_samples = 0
-        raw192.minimum_latency_samples = 0
-        raw192.minimum_latency_saving_ratio = 1.
-        raw192.minimum_utility_gain_ratio = 1.
-
         def generate(method, ids, maximum):
             kwargs = {**common, "input_ids":ids, "max_new_tokens":maximum}
             if method.startswith("ddtree_b"):
                 return u.ddtree.ddtree_generate(
                     **kwargs, tree_budget=int(method.removeprefix("ddtree_b")))
-            if method == "adaptive_previous":
-                builder = previous
-            elif method == "adaptive_raw_b128":
-                builder = raw_fixed
-            elif method in tempered:
-                builder = tempered[method]
-            elif method == "adaptive_raw_b192":
-                builder = raw192
-            elif method == "adaptive_guarded_b192":
-                builder = guarded192
-            else:
-                builder = guarded
-            return adaptive_generate(**kwargs, builder=builder)
+            return adaptive_generate(**kwargs, builder=guarded)
 
         warmup = encode("Warmup")
         for method in method_names:
             generate(method, warmup, min(args.max_new_tokens, 32))
         # Hardware warmup must not pretrain either online controller.
-        previous = PaperAdaptiveBuilder(
-            adaptive_cfg, "no_exploration", timing_partition="budget_aware")
         guarded = make_paper_builder(adaptive_cfg, PRIMARY_ADAPTIVE_METHOD)
-        raw_fixed = make_paper_builder(adaptive_cfg, PRIMARY_ADAPTIVE_METHOD)
-        raw_fixed.initial_latency_samples = 0
-        raw_fixed.minimum_latency_samples = 0
-        raw_fixed.minimum_latency_saving_ratio = 1.
-        raw_fixed.minimum_utility_gain_ratio = 1.
-        tempered = {}
-        for name, temperature in temperature_methods.items():
-            builder = make_paper_builder(adaptive_cfg, PRIMARY_ADAPTIVE_METHOD)
-            builder.initial_latency_samples = 0
-            builder.minimum_latency_samples = 0
-            builder.minimum_latency_saving_ratio = 1.
-            builder.minimum_utility_gain_ratio = 1.
-            builder.proposal_temperature = temperature
-            tempered[name] = builder
-        guarded192 = PaperAdaptiveBuilder(
-            extended_cfg, "guarded_raw_prefix", timing_partition="budget_aware")
-        raw192 = PaperAdaptiveBuilder(
-            extended_cfg, "guarded_raw_prefix", timing_partition="budget_aware")
-        raw192.initial_latency_samples = 0
-        raw192.minimum_latency_samples = 0
-        raw192.minimum_latency_saving_ratio = 1.
-        raw192.minimum_utility_gain_ratio = 1.
-
         for ordinal, index in enumerate(indices):
             prompt = (questions[index]
                       + "\nPlease reason step by step, and put your final answer within \\boxed{}.")
@@ -241,16 +171,19 @@ def main():
                         str(budget): sum(
                             (row.get("decision") or {}).get("budget") == budget
                             for row in decisions)
-                        for budget in extended_cfg["budget_candidates"]
+                        for budget in adaptive_cfg["budget_candidates"]
+                    } if decisions else {},
+                    "topk_width_counts": {
+                        str(width): sum(row.get("topk_width") == width
+                                        for row in decisions)
+                        for width in (128,)
                     } if decisions else {},
                 })
             reference = outputs["ddtree_b128"]
             for row in records[record_start:]:
                 row["matches_ddtree"] = outputs[row["method"]] == reference
-                same_cap = ("ddtree_b192" if row["method"] in {
-                    "adaptive_raw_b192", "adaptive_guarded_b192"
-                } else (row["method"] if row["method"].startswith("ddtree_b")
-                        else "ddtree_b128"))
+                same_cap = (row["method"] if row["method"].startswith("ddtree_b")
+                            else "ddtree_b128")
                 row["equal_cap_reference"] = same_cap
                 row["matches_reference"] = (
                     outputs[row["method"]] == outputs[same_cap])
@@ -282,7 +215,7 @@ def main():
         "method_order":"balanced cyclic rotation",
         "includes_tree_build_and_controller_in_tpot":True,
         "exact_output_match":exact,
-        "pass_rule":"exact outputs and guarded-spine mean TPOT at least 1% below DDTree B128",
+        "pass_rule":"exact outputs and guarded raw-prefix mean TPOT at least 1% below DDTree B128",
         "performance_passed":bool(speedup >= 1.01),
         "strict_output_passed":exact,
         "passed":bool(exact and speedup >= 1.01),

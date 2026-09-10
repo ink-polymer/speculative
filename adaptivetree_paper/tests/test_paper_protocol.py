@@ -139,15 +139,19 @@ def test_budget_extension_ablation_builds_all_256_nodes():
 def test_guarded_raw_prefix_calibrates_robustly_and_resumes():
     builder = make_paper_builder(cfg(), B128_ABLATION_VARIANT)
     scores = np.concatenate((np.full(80, -2.), np.full(48, -20.)))
-    warmup = []
     latency = {30:4., 45:4.5, 60:5., 80:5.5, 100:9., 128:10.}
-    for _ in range(6):
-        budget = builder._select_node_count(scores)
-        warmup.append(budget)
-        builder.observe(tree_nodes=budget, draft_ms=2.,
-                        verify_ms=latency[budget],
-                        accepted_draft_tokens=5)
-    assert warmup == [128,100,80,60,45,30]
+    budget = builder._select_node_count(scores)
+    assert budget == 128
+    builder.observe(tree_nodes=budget, draft_ms=2., verify_ms=latency[budget],
+                    accepted_draft_tokens=5,
+                    accepted_node_indices=[0, 1, 2, 3, 4, 5])
+    assert all(builder._acceptance_observations[value] == 1
+               for value in builder.budget_candidates)
+    assert [builder._select_node_count(scores) for _ in range(3)] == [128] * 3
+    builder._decision_count = builder.reevaluation_interval
+    pilot = builder._select_node_count(scores)
+    assert pilot < 128
+    assert builder._guard_diagnostics["reason"] == "counterfactual_pilot"
     # With materially lower end-to-end latency and essentially the same
     # proposal mass, B80 is an admissible challenger.
     for budget in builder.budget_candidates:

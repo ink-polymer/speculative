@@ -15,6 +15,7 @@ import torch
 
 from ..ddtree_builder import BudgetDecision, DDTreeBuilder, LatencyAwareDDTreeBuilder
 from .common import BASELINES, K, OFFICIAL_VARIANTS, VARIANTS, digest
+from .cpp_raw_tree import load_cpp_raw_tree_module
 
 TIMING_PARTITIONS = ("legacy", "budget_aware")
 # Canonical formal method names.  The primary name is defined in common.py;
@@ -62,7 +63,7 @@ OFFICIAL_CONTROLLER_REGISTRY = {
         "timing_partition": "budget_aware",
         "controller_variant": "guarded_raw_prefix",
         "exploration_interval": 0,
-        "architecture": "guarded_raw_prefix_v3",
+        "architecture": "guarded_raw_prefix_v7",
         "initial_latency_samples": 1,
         "minimum_latency_samples": 3,
         "latency_window": 9,
@@ -121,7 +122,7 @@ def controller_config(builder):
     }
     if builder.variant == "guarded_raw_prefix":
         result.update({
-            "architecture": "guarded_raw_prefix_v3",
+            "architecture": "guarded_raw_prefix_v7",
             "initial_latency_samples": builder.initial_latency_samples,
             "minimum_latency_samples": builder.minimum_latency_samples,
             "latency_window": builder.latency_window,
@@ -195,6 +196,17 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
             self._raw_visibility = np.empty(
                 (self.tree_budget + 1, self.tree_budget + 1), dtype=np.bool_)
             self._raw_child_maps = [{} for _ in range(self.tree_budget + 1)]
+            self._raw_tree_backend = "python"
+            self._raw_topk_width = self.tree_budget
+            self._raw_compiled_nodes = None
+            self._raw_compiled_parents = None
+            self._raw_posterior_host = None
+            self._cpp_node_tokens = torch.empty(self.tree_budget, dtype=torch.long)
+            self._cpp_node_depths = torch.empty(self.tree_budget, dtype=torch.long)
+            self._cpp_node_scores = torch.empty(self.tree_budget, dtype=torch.float64)
+            self._cpp_parents = torch.empty(self.tree_budget + 1, dtype=torch.long)
+            self._cpp_visibility = torch.empty(
+                (self.tree_budget + 1, self.tree_budget + 1), dtype=torch.bool)
         identity = {"variant": variant, "budgets": self.budget_candidates,
             "initial": self.initial_budget, "warmup": self.warmup_rounds_per_budget,
             "alpha": self.ewma_alpha, "explore": self.exploration_interval}
@@ -204,7 +216,7 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
             identity["timing_partition"] = timing_partition
         if variant == "guarded_raw_prefix":
             identity.update({
-                "architecture": "guarded_raw_prefix_v3",
+                "architecture": "guarded_raw_prefix_v7",
                 "initial_latency_samples": self.initial_latency_samples,
                 "minimum_latency_samples": self.minimum_latency_samples,
                 "latency_window": self.latency_window,
@@ -216,6 +228,26 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
             })
         self.identity = digest(identity)
         self.trace = []
+
+    def _raw_topk_to_host(self, top_log_probs, top_token_ids):
+        """Private tensor-preserving D2H path; the frozen DDTree stays untouched."""
+        tensors = (top_log_probs, top_token_ids)
+        if top_log_probs.device.type == "cuda":
+            if top_token_ids.device != top_log_probs.device:
+                raise ValueError("AdaptiveTree top-k tensors must share one device")
+            signature = tuple((tuple(t.shape), t.dtype) for t in tensors)
+            if self._host_buffers is None or signature != self._host_signature:
+                self._host_buffers = tuple(
+                    torch.empty(t.shape, dtype=t.dtype, device="cpu",
+                                pin_memory=True)
+                    for t in tensors
+                )
+                self._host_signature = signature
+            for host, source in zip(self._host_buffers, tensors):
+                host.copy_(source, non_blocking=True)
+            torch.cuda.current_stream(top_log_probs.device).synchronize()
+            return self._host_buffers
+        return tuple(t.detach().cpu() for t in tensors)
 
     def build_official_tree_from_logits(self, draft_logits):
         """Build one max-budget official tree and materialize only its prefix.
@@ -234,12 +266,49 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
             raise ValueError("proposal_temperature must be finite and positive")
         budget = self.tree_budget
         depth_limit = min(int(draft_logits.shape[0]), self.block_size)
-        topk = min(budget, int(draft_logits.shape[-1]))
+        maximum_topk = min(budget, int(draft_logits.shape[-1]))
         logits = draft_logits.float() / self.proposal_temperature
-        top_values, top_token_ids = torch.topk(logits, k=topk, dim=-1)
         log_z = torch.logsumexp(logits, dim=-1, keepdim=True)
-        top_log_probs, top_token_ids = self._to_host(
+
+        # CUDA experiments use a compiled CPU enumerator after the unavoidable
+        # top-k metadata transfer.  It preserves Python heap tuple ordering but
+        # removes per-node interpreter traffic from the timed hot path.  CPU
+        # tests and toolchains without an extension compiler retain the exact
+        # reference implementation below.
+        cpp_module = (load_cpp_raw_tree_module()
+                      if draft_logits.device.type == "cuda" else None)
+        if cpp_module is not None:
+            topk = maximum_topk
+            top_values, top_token_ids = torch.topk(logits, k=topk, dim=-1)
+            top_log_probs_host, top_token_ids_host = self._raw_topk_to_host(
+                top_values - log_z, top_token_ids.to(torch.int64))
+            (node_token_tensor, node_depth_tensor, node_score_tensor,
+             parent_tensor, visibility_tensor) = cpp_module.build_raw_prefix_tree(
+                 top_log_probs_host, top_token_ids_host, budget,
+                 self._cpp_node_tokens, self._cpp_node_depths,
+                 self._cpp_node_scores, self._cpp_parents,
+                 self._cpp_visibility)
+            node_scores = node_score_tensor.numpy()
+            selected = self._select_node_count(node_scores)
+            if not 0 <= selected <= budget:
+                raise AssertionError("Adaptive budget is outside the enumerated tree")
+            length = selected + 1
+            visibility = visibility_tensor[:length, :length]
+            if length != budget + 1:
+                visibility = visibility.contiguous()
+            self._raw_tree_backend = "cpp"
+            self._raw_topk_width = topk
+            self._raw_compiled_nodes = node_token_tensor[:selected]
+            self._raw_compiled_parents = parent_tensor[:length]
+            return (node_token_tensor[:selected], node_depth_tensor[:selected],
+                    parent_tensor[:length], None, visibility, {})
+
+        topk = maximum_topk
+        top_values, top_token_ids = torch.topk(logits, k=topk, dim=-1)
+        top_log_probs_host, top_token_ids_host = self._raw_topk_to_host(
             top_values - log_z, top_token_ids.to(torch.int64))
+        top_log_probs = top_log_probs_host.numpy()
+        top_token_ids = top_token_ids_host.numpy()
 
         node_token_ids = self._raw_node_token_ids
         node_depths = self._raw_node_depths
@@ -288,6 +357,27 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
                 torch.from_numpy(node_depths[:selected]),
                 parents[:length].tolist(), child_maps,
                 torch.from_numpy(visibility), {})
+
+    def follow_compiled_tree(self, posterior):
+        """Follow a compiled raw tree without materializing Python child maps."""
+        if self._raw_compiled_nodes is None or self._raw_compiled_parents is None:
+            raise RuntimeError("No compiled raw tree is available")
+        source = posterior[0]
+        length = int(source.numel())
+        if (self._raw_posterior_host is None
+                or self._raw_posterior_host.numel() < length):
+            self._raw_posterior_host = torch.empty(
+                length, dtype=torch.long, device="cpu", pin_memory=True)
+        host = self._raw_posterior_host[:length]
+        host.copy_(source, non_blocking=True)
+        torch.cuda.current_stream(source.device).synchronize()
+        module = load_cpp_raw_tree_module()
+        if module is None:
+            raise RuntimeError("Compiled raw-tree backend disappeared")
+        followed = module.follow_raw_tree(
+            self._raw_compiled_nodes, self._raw_compiled_parents, host,
+            int(self._raw_compiled_nodes.numel()))
+        return followed[1:], followed[0]
 
     def _select_node_count(self, scores):
         if self.variant == "guarded_raw_prefix":
@@ -346,10 +436,13 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
         if not available:
             return node_count
 
-        calibration = [budget for budget in self._warmup_order
-                       if budget in available and
-                       self._observations[budget] < self.initial_latency_samples]
         safe_budget = available[-1]
+        # Calibrate the equal-capacity arm first. Smaller arms receive free
+        # counterfactual acceptance observations from the accepted B128 path;
+        # they are not blindly sampled at startup.
+        calibration = ([safe_budget]
+                       if self._observations[safe_budget]
+                       < self.initial_latency_samples else [])
         if (not calibration and self._decision_count % self.reevaluation_interval):
             # Most rounds take the equal-capacity safe arm without computing
             # proposal mass or refitting latency.  This keeps the online policy
@@ -421,8 +514,39 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
                 _, selected = max(probes)
                 guard.update({"reason": "targeted_latency_probe",
                               "latency_saving_ratio": max(probes)[0]})
+            measured_challengers = [
+                budget for budget in available[:-1]
+                if self._observations[budget] > 0
+            ]
+            if not probes and not measured_challengers:
+                # One conservative pilot is allowed only if it can beat the
+                # safe arm even after charging the fixed draft cost. The
+                # remaining variable cost is scaled linearly with node count,
+                # an optimistic bound; failure under it rules the arm out
+                # without executing it.
+                optimistic = []
+                variable_safe_ms = max(safe_ms - self._fixed_ms, 0.)
+                for budget in available[:-1]:
+                    if self._acceptance_observations[budget] < 1:
+                        continue
+                    expected_tokens = 1. + min(
+                        float(self.block_size),
+                        self._acceptance_scale_by_budget[budget]
+                        * mass_by_budget[budget],
+                    )
+                    estimated_ms = (self._fixed_ms + variable_safe_ms
+                                    * budget / safe_budget)
+                    estimated_utility = expected_tokens / max(estimated_ms, 1e-6)
+                    gain = ((estimated_utility - safe_utility)
+                            / max(safe_utility, 1e-9))
+                    if gain >= self.minimum_utility_gain_ratio:
+                        optimistic.append((estimated_utility, budget, gain))
+                if optimistic:
+                    _, selected, gain = max(optimistic)
+                    guard.update({"reason": "counterfactual_pilot",
+                                  "optimistic_utility_gain_ratio": gain})
             qualified = []
-            if not probes:
+            if selected is None:
                 for budget in available[:-1]:
                     if (self._observations[budget] < self.minimum_latency_samples
                             or budget not in utilities):
@@ -523,6 +647,8 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
                  **kwargs}
         if self.variant == "guarded_raw_prefix":
             trace["guard"] = self._guard_diagnostics
+            trace["tree_backend"] = self._raw_tree_backend
+            trace["topk_width"] = self._raw_topk_width
             trace["counterfactual_acceptance_budgets"] = list(observed_budgets)
         self.trace.append(trace)
 
@@ -657,7 +783,7 @@ def make_builder(cfg, method):
 def make_paper_builder(cfg, method):
     """Build a canonical official controller or a historical reproduction.
 
-    The formal primary ``adaptive_b128`` is the guarded greedy-spine
+    The formal primary ``adaptive_b128`` is the guarded raw-prefix
     architecture.  It charges tree construction to the selected budget,
     uses B128 as a safe arm, and only admits a smaller challenger after robust
     latency calibration.  ``adaptive_b256`` remains the historical

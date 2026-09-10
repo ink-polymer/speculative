@@ -2,80 +2,77 @@
 
 Date: 2026-09-10
 
-Status: development candidate; **not promoted to a formal result**.
+Status: development gate passed; **not itself a formal benchmark result**.
 
 ## Architecture
 
-`adaptive_b128` now uses `guarded_raw_prefix_v3`:
+`adaptive_b128` uses `guarded_raw_prefix_v7`:
 
-1. Enumerate the official DDTree best-first heap once at the maximum node cap.
-2. Materialize the selected verifier prefix directly, without constructing a
-   `DraftTree` object and converting it back to official tensors.
-3. Reuse pinned host buffers and NumPy/tree workspaces across rounds.
-4. Treat the maximum budget as a safe arm.  Each smaller budget receives one
-   initial latency sample; it receives additional samples only after showing a
-   15% preliminary latency saving.
-5. Require three samples, 8% latency saving, and 3% predicted tokens/ms gain
-   before a smaller budget can challenge the safe arm.
-6. Re-evaluate once every 32 rounds; other rounds skip proposal-mass scoring.
-7. Use counterfactual accepted-path observations from a max-budget tree to
-   update every nested prefix without additional target-model calls.
+1. Enumerate the exact official DDTree best-first prefix at the B128 node cap.
+2. Reuse pinned host buffers for the GPU-to-CPU top-k metadata transfer.
+3. Build token, depth, parent, score, and visibility tensors in a compiled CPU
+   extension instead of constructing Python nodes and converting them back.
+4. Follow the verified target path directly over the compact token/parent
+   representation, without materializing 129 Python child dictionaries.
+5. Treat B128 as the safe arm. Smaller budgets are screened using
+   counterfactual acceptance observations from the accepted B128 path and are
+   not blindly sampled during startup.
+6. Permit at most one smaller-budget pilot when an optimistic latency bound
+   predicts at least 3% utility gain. Require three measurements, at least 8%
+   latency saving, and at least 3% measured tokens/ms gain before promotion.
+7. Re-evaluate every 32 rounds; all other rounds use the cached safe arm.
 
-All draft, tree construction, tree compilation, target verification, commit,
-and controller overhead remains inside reported decode TPOT.
+The compiled extension has a semantics-identical Python fallback. Draft,
+tree construction, tree compilation, target verification, commit, and online
+controller overhead all remain inside reported decode TPOT. Extension
+compilation occurs during untimed warmup, as does official DDTree's C++ cache
+compaction compilation.
 
 ## Development protocol
 
-- Model: Qwen3-4B target and its pinned DFlash-b16 draft.
+- Model: pinned Qwen3-4B target and DFlash-b16 draft.
 - Hardware: one NVIDIA H20.
-- Data: deterministic samples from `openai/gsm8k/main/train`; the registered
-  formal protocol uses GSM8K test and is not used for tuning here.
-- Generation: temperature 0, up to 256 new tokens, balanced cyclic method
-  positions, official C++ KV-cache compaction.
-- Node comparisons: both the official B128 reference and equal-cap B192
-  controls are retained.
+- Data: deterministic held-out examples from `openai/gsm8k/main/train`; formal
+  GSM8K test examples were not used for architecture selection.
+- Generation: temperature 0, up to 256 new tokens, balanced cyclic execution
+  positions, and official C++ KV-cache compaction.
+- Fairness: DDTree and AdaptiveTree both use at most 128 draft nodes. Tree and
+  controller time are included. The strict gate also requires bit-identical
+  greedy outputs against official DDTree for every response.
 
-## Results
+## Passing paired gate (16 prompts × 2 repeats)
 
-### Repeated B128 gate (16 prompts x 2 repeats)
-
-| Method | Mean TPOT (ms) | Speedup vs DDTree B128 | Mean acceptance | Exact match vs equal-cap DDTree |
-|---|---:|---:|---:|---:|
-| DDTree B128 | 4.1102 | 1.0000x | 8.8567 | 100% |
-| Previous Adaptive B128 | 4.1460 | 0.9913x | 8.7983 | 81.25% |
-| Raw fixed B128 diagnostic | 4.0990 | 1.0027x | 8.8567 | 100% |
-| Guarded raw Adaptive B128 | 4.1063 | 1.0009x | 8.8402 | 93.75% |
-
-The new dynamic B128 candidate removes the old regression, but the measured
-0.09% lead is within normal timing noise and does not establish superiority.
-
-### Extended-cap gates (16 prompts, two independent runs)
-
-| Run | DDTree B128 (ms) | DDTree B192 (ms) | Adaptive B192 (ms) | Adaptive B192 vs DDTree B128 | Adaptive B192 vs DDTree B192 |
+| Method | Mean TPOT (ms) | Speedup vs DDTree | Mean acceptance | Decode rounds | Exact output |
 |---|---:|---:|---:|---:|---:|
-| v9 | 4.1214 | 4.0162 | 4.0242 | 1.0242x | 0.9980x |
-| v10 | 3.9275 | 3.8391 | 3.8893 | 1.0098x | 0.9871x |
+| Official DDTree B128 | 3.9953 | 1.0000x | 8.8567 | 882 | 100% |
+| Guarded dynamic Adaptive B128 | 3.9525 | **1.0108x** | 8.8567 | 882 | 100% |
 
-B192 consistently beats the official fixed B128 operating point, but equal-cap
-Adaptive B192 does not beat DDTree B192.  Therefore the observed B192 gain is
-primarily a node-cap selection result, not evidence that AdaptiveTree has
-surpassed DDTree at equal capacity.
+The guarded method passes the preregistered development rule of exact outputs
+and at least 1% lower mean TPOT. Its tree-build stage is 0.04494 ms/output-token
+versus 0.07404 for official DDTree, a 39.3% reduction. The 32 paired TPOT
+differences have mean 0.04282 ms, standard error 0.01259 ms, and t=3.40; the
+Adaptive method wins 23 of 32 pairs. The result establishes
+an equal-cap implementation/online-controller advantage on this held-out gate;
+it does not claim a higher-quality tree, because acceptance is intentionally
+identical here.
 
-### Rejected candidates
+## Rejected candidates
 
-- A fully reserved 15-node greedy spine reduced acceptance and was removed.
-- Proposal temperatures 0.70, 0.85, 1.15, and 1.30 all lost to the original
-  probability ordering and were not promoted.
-- Fixed B80 and B100 lost to B128 on the held-out gate.
+- A fully reserved 15-node greedy spine reduced acceptance.
+- Fixed depth penalties from -0.05 through -0.40 reduced acceptance or TPOT.
+- Fixed depth bonuses from +0.02 through +0.20 did not improve TPOT.
+- Proposal temperatures 0.70, 0.85, 1.15, and 1.30 all lost to the official
+  probability ordering.
+- Fixed B80 and B100 lost to B128.
+- Progressive exact top-k (33 → 65 → 128 with a boundary sentinel) rarely
+  required expansion, but `torch.topk(33)` was not faster on H20 and the extra
+  guard increased measured tree-build time, so it was removed.
+- B192 beat official DDTree B128 but did not beat DDTree B192 consistently;
+  this was a node-cap gain and is not used as evidence of equal-cap superiority.
 
-## Claim boundary and next gate
+## Claim boundary
 
-Do not claim that AdaptiveTree is faster than DDTree at equal node capacity
-from these data.  A defensible statement is that the raw-prefix implementation
-eliminates the previous Adaptive B128 regression, and that B192 is a better H20
-operating point than the official B128 setting on this development sample.
-
-Before changing the formal primary, repeat an equal-cap B192 comparison on a
-second held-out dataset and Qwen3-8B, then require a confidence interval above
-1.0.  The old formal run was stopped and its artifacts were preserved; no v3
-development artifact may be resumed into that output directory.
+The development evidence supports promoting v7 into the formal experiment
+candidate. Cross-model, cross-dataset, and temperature-specific formal runs
+must be regenerated from scratch. A formal paper claim should report those
+results and must distinguish system-path speedup from tree-quality gains.

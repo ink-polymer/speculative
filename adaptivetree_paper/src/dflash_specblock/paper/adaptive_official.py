@@ -190,7 +190,10 @@ def adaptive_generate(
 
         commit_stage_start = cuda_time()
         posterior = sample(output.logits, temperature)
-        accepted_indices, next_token = follow_verified_tree(child_maps, posterior)
+        if child_maps is None:
+            accepted_indices, next_token = builder.follow_compiled_tree(posterior)
+        else:
+            accepted_indices, next_token = follow_verified_tree(child_maps, posterior)
         accepted_index_tensor = torch.tensor(accepted_indices, dtype=torch.long, device=verify_input_ids.device)
         accepted_tokens = verify_input_ids.index_select(1, accepted_index_tensor)
 
