@@ -27,7 +27,9 @@ from .sampling import (block_verify_batched, block_verify_sparse,
                        token_verify)
 from .fused_tree_sampling import (tree_verify_ancestral_fused,
                                   tree_verify_ancestral_fused_parallel,
-                                  tree_verify_ancestral_fused_scan)
+                                  tree_verify_ancestral_fused_scan,
+                                  tree_verify_ancestral_lazy_projection_fused_scan,
+                                  tree_verify_ancestral_lazy_softmax_fused_scan)
 from .tree import (adaptive_path_proposal, adaptive_prefix_proposal,
                    budgeted_prefix_proposal, compact_cache, probability_tree,
                    sampled_tree)
@@ -57,7 +59,10 @@ TERMINAL_TREE_METHODS = {
 FUSED_TREE_METHODS = {
     "ddtree_fused", "ddtree_fused_parallel", "ddtree_fused_scan",
 }
-LAZY_HEAD_TREE_METHODS = {"ddtree_lazy_projection"}
+LAZY_HEAD_TREE_METHODS = {
+    "ddtree_lazy_projection", "ddtree_lazy_projection_fused_scan",
+}
+LAZY_SOFTMAX_TREE_METHODS = {"ddtree_lazy_softmax_fused_scan"}
 
 
 class StageMeter:
@@ -390,7 +395,8 @@ class Engine:
                 draft_calls += 1
             with meter.measure("tree_build"):
                 if (variant.method == "ddtree" or variant.method in
-                        TERMINAL_TREE_METHODS | FUSED_TREE_METHODS | LAZY_HEAD_TREE_METHODS):
+                        TERMINAL_TREE_METHODS | FUSED_TREE_METHODS
+                        | LAZY_HEAD_TREE_METHODS | LAZY_SOFTMAX_TREE_METHODS):
                     tree = probability_tree(q, variant.tree_budget)
                     paths = None
                     tree_proposal = None
@@ -515,6 +521,7 @@ class Engine:
                         # wastes bandwidth without changing the sampling law.
                         all_p = (None if variant.method in (ATOM_TREE_METHODS - {"atom_tree_ancestral"})
                                  | (DIFFUSION_TREE_METHODS - {"diffusion_tree_ancestral"})
+                                 | LAZY_SOFTMAX_TREE_METHODS
                                  else probabilities(output.logits[0], variant.temperature, dtype))
                     target_tokens += ids.shape[1]
                 target_calls += 1
@@ -616,11 +623,23 @@ class Engine:
                     if generator_before is not None:
                         executed_verifier = (verifier, generator_before)
                 elif variant.method in LAZY_HEAD_TREE_METHODS:
+                    lazy_verifier = (
+                        tree_verify_ancestral_lazy_projection_fused_scan
+                        if variant.method == "ddtree_lazy_projection_fused_scan"
+                        else tree_verify_ancestral_lazy_projection
+                    )
+                    nodes, tokens, bonus, lazy_projection_stats = lazy_verifier(
+                        tree.parents, tree.tokens,
+                        output.last_hidden_state[0],
+                        self.target.get_output_embeddings(),
+                        variant.temperature, dtype, generator,
+                        validate=False,
+                    )
+                    accepted = len(nodes)
+                elif variant.method in LAZY_SOFTMAX_TREE_METHODS:
                     nodes, tokens, bonus, lazy_projection_stats = (
-                        tree_verify_ancestral_lazy_projection(
-                            tree.parents, tree.tokens,
-                            output.last_hidden_state[0],
-                            self.target.get_output_embeddings(),
+                        tree_verify_ancestral_lazy_softmax_fused_scan(
+                            tree.parents, tree.tokens, output.logits[0],
                             variant.temperature, dtype, generator,
                             validate=False,
                         )
@@ -881,9 +900,14 @@ class Engine:
                                             "scaffold_fill": variant.method != "diffusion_scaffold_no_fill",
                                             "correction_recycling": variant.method != "diffusion_scaffold_no_recycle",
                                             "continuation_backend": "ancestral" if variant.method == "diffusion_scaffold_ancestral" else "terminal"})
-                if variant.method in LAZY_HEAD_TREE_METHODS:
+                if variant.method in LAZY_HEAD_TREE_METHODS | LAZY_SOFTMAX_TREE_METHODS:
                     round_stats.update({
-                        "vocabulary_projection_rows": lazy_projection_stats["projected_rows"],
+                        "posterior_probability_rows": lazy_projection_stats.get(
+                            "probability_rows", lazy_projection_stats["projected_rows"]
+                        ),
+                        "lm_head_projection_rows": lazy_projection_stats.get(
+                            "lm_head_rows", lazy_projection_stats["projected_rows"]
+                        ),
                         "full_vocabulary_projection_rows": lazy_projection_stats["total_tree_rows"],
                         "internal_projection_rows": lazy_projection_stats["internal_projected_rows"],
                         "leaf_projection_rows": lazy_projection_stats["leaf_projected_rows"],

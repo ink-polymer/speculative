@@ -32,7 +32,8 @@ def test_tree_merge_keeps_candidate_multiplicity():
 @pytest.mark.parametrize(
     "method",
     ["ddtree_fused", "ddtree_fused_parallel", "ddtree_fused_scan",
-     "ddtree_lazy_projection"],
+     "ddtree_lazy_projection", "ddtree_lazy_softmax_fused_scan",
+     "ddtree_lazy_projection_fused_scan"],
 )
 def test_fused_tree_methods_are_valid_probability_tree_variants(method):
     variant = Variant(
@@ -85,6 +86,52 @@ def test_fused_tree_methods_dispatch_in_generation(
     assert event["input"]["generator_before"]["device"] == "cpu"
     assert len(event["input"]["generator_before"]["state_sha256"]) == 64
     assert event["input"]["validate"] is False
+
+
+@pytest.mark.parametrize("method,attribute", [
+    ("ddtree_lazy_softmax_fused_scan",
+     "tree_verify_ancestral_lazy_softmax_fused_scan"),
+    ("ddtree_lazy_projection_fused_scan",
+     "tree_verify_ancestral_lazy_projection_fused_scan"),
+])
+def test_lazy_fused_tree_methods_dispatch_and_record_saved_rows(
+        tiny_engine, monkeypatch, method, attribute):
+    calls = []
+
+    def fake_verifier(parents, tokens, *args, **kwargs):
+        calls.append((list(parents), list(tokens), kwargs))
+        internal = len(set(parents[1:]))
+        return [], [], 0, {
+            "internal_projected_rows": internal,
+            "leaf_projected_rows": 0,
+            "projected_rows": internal,
+            "total_tree_rows": len(parents),
+            "lm_head_rows": internal,
+            "probability_rows": internal,
+        }
+
+    monkeypatch.setattr(engine_module, attribute, fake_verifier)
+    result = tiny_engine.generate(
+        torch.tensor([[1, 4, 2, 6]]),
+        Variant(
+            name=method, method=method, paths=1, length=3,
+            temperature=1.0, draft_temperature=1.0,
+            probability_dtype="float64", tree_budget=12,
+        ),
+        6, [], seed=19,
+    )
+    assert calls
+    assert all(call[2]["validate"] is False for call in calls)
+    assert all(
+        row["posterior_probability_rows"]
+        <= row["full_vocabulary_projection_rows"]
+        for row in result["rounds"]
+    )
+    assert any(
+        row["posterior_probability_rows"]
+        < row["full_vocabulary_projection_rows"]
+        for row in result["rounds"]
+    )
 
 
 @pytest.mark.parametrize(

@@ -9,7 +9,9 @@ import torch
 from gbv_experiments import sampling
 from gbv_experiments.fused_tree_sampling import (tree_verify_ancestral_fused,
                                                  tree_verify_ancestral_fused_parallel,
-                                                 tree_verify_ancestral_fused_scan)
+                                                 tree_verify_ancestral_fused_scan,
+                                                 tree_verify_ancestral_lazy_projection_fused_scan,
+                                                 tree_verify_ancestral_lazy_softmax_fused_scan)
 
 
 class ZeroMass(Exception):
@@ -61,6 +63,66 @@ def test_fused_scan_sampler_matches_inverse_cdf_paths():
     _assert_fused_tree_sampler_matches_inverse_cdf_paths(
         tree_verify_ancestral_fused_scan
     )
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA extension test")
+def test_lazy_softmax_fused_scan_matches_inverse_cdf_and_skips_leaf_rows():
+    parents = [-1, 0, 0, 1]
+    tokens = [0, 1, 2]
+    logits = torch.tensor(
+        [[2., 3., 5.], [4., 1., 5.], [3., 6., 1.], [7., 2., 1.]],
+        dtype=torch.float64, device="cuda",
+    ).log()
+    p = torch.softmax(logits, dim=-1, dtype=torch.float64)
+    children = {(parent, tokens[index - 1]): index
+                for index, parent in enumerate(parents[1:], 1)}
+    saw_leaf = False
+    for seed in range(64):
+        expected_generator = torch.Generator(device="cuda").manual_seed(seed)
+        actual_generator = torch.Generator(device="cuda").manual_seed(seed)
+        uniforms = torch.rand(
+            4, dtype=torch.float64, device="cuda",
+            generator=expected_generator,
+        ).cpu().tolist()
+        expected_nodes, node, bonus = [], 0, None
+        for uniform in uniforms:
+            bonus = int(torch.searchsorted(
+                p[node].cpu().cumsum(0),
+                torch.tensor(uniform, dtype=torch.float64),
+            ))
+            child = children.get((node, bonus))
+            if child is None:
+                break
+            expected_nodes.append(child)
+            node = child
+        actual_nodes, actual_tokens, actual_bonus, stats = (
+            tree_verify_ancestral_lazy_softmax_fused_scan(
+                parents, tokens, logits, 1.0, torch.float64,
+                actual_generator, validate=True,
+            )
+        )
+        assert (actual_nodes, actual_tokens, actual_bonus) == (
+            expected_nodes,
+            [tokens[index - 1] for index in expected_nodes],
+            bonus,
+        )
+        assert stats["internal_projected_rows"] == 2
+        assert stats["projected_rows"] < stats["total_tree_rows"]
+        saw_leaf |= bool(stats["leaf_projected_rows"])
+
+        projection_result = tree_verify_ancestral_lazy_projection_fused_scan(
+            parents, tokens, logits, torch.nn.Identity(), 1.0,
+            torch.float64,
+            torch.Generator(device="cuda").manual_seed(seed),
+            validate=True,
+        )
+        assert projection_result[:3] == (
+            expected_nodes,
+            [tokens[index - 1] for index in expected_nodes],
+            bonus,
+        )
+        assert projection_result[3]["lm_head_rows"] < len(parents)
+    assert saw_leaf
 
 
 def test_official_ddtree_batched_posterior_has_exact_ancestral_law(monkeypatch):

@@ -61,7 +61,9 @@ class Variant:
                                "ddtree_terminal_serial", "ddtree_terminal_dense",
                                "ddtree_fused", "ddtree_fused_parallel",
                                "ddtree_fused_scan",
-                               "ddtree_lazy_projection"} | SHARED_SUFFIX_METHODS | ATOM_TREE_METHODS | DIFFUSION_LAW_METHODS:
+                               "ddtree_lazy_projection",
+                               "ddtree_lazy_softmax_fused_scan",
+                               "ddtree_lazy_projection_fused_scan"} | SHARED_SUFFIX_METHODS | ATOM_TREE_METHODS | DIFFUSION_LAW_METHODS:
             raise ValueError(f"Unknown method: {self.method}")
         if self.paths < 1 or self.length < 1 or self.temperature < 0:
             raise ValueError("paths/length must be positive and temperature nonnegative")
@@ -80,6 +82,12 @@ class Variant:
             raise ValueError("Invalid condition_features")
         if self.probability_dtype not in {"float32", "float64"} or self.tree_budget < 1:
             raise ValueError("Invalid numerical precision/tree budget")
+        if (self.method in {"ddtree_lazy_softmax_fused_scan",
+                            "ddtree_lazy_projection_fused_scan"}
+                and (self.temperature <= 0 or self.probability_dtype != "float64")):
+            raise ValueError(
+                "Lazy-softmax fused DDTree requires T>0 and FP64 probabilities"
+            )
         if self.method in DIFFUSION_LAW_METHODS:
             if self.temperature <= 0 or self.probability_dtype != "float64":
                 raise ValueError("Diffusion tree verification requires T>0 and FP64 probabilities")
