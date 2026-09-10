@@ -53,12 +53,14 @@ def doctor(nproc):
     import torch
     result = environment(require_gpu=True)
     import flash_attn
+    import triton
     for dependency in ("ninja", "loguru"):
         importlib.import_module(dependency)
     if torch.cuda.device_count() < nproc:
         raise RuntimeError(f"Official default requests {nproc} GPUs; only {torch.cuda.device_count()} visible. "
                            "An explicit --nproc-per-node override is recorded as a hardware deviation.")
     result["flash_attn"] = getattr(flash_attn, "__version__", "unknown")
+    result["triton"] = getattr(triton, "__version__", "unknown")
     result["visible_gpus"] = [torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())]
     result["nproc_per_node"] = nproc
     result["benchmark_gpus"] = [gpu_identity(i, i) for i in range(nproc)]

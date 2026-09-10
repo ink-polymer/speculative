@@ -68,7 +68,7 @@ OFFICIAL_CONTROLLER_REGISTRY = {
         "timing_partition": "budget_aware",
         "controller_variant": "guarded_raw_prefix",
         "exploration_interval": 0,
-        "architecture": "guarded_raw_prefix_v7",
+        "architecture": "guarded_raw_prefix_batched_commit_v10",
         "initial_latency_samples": 1,
         "minimum_latency_samples": 3,
         "latency_window": 9,
@@ -127,7 +127,7 @@ def controller_config(builder):
     }
     if builder.variant == "guarded_raw_prefix":
         result.update({
-            "architecture": "guarded_raw_prefix_v7",
+            "architecture": "guarded_raw_prefix_batched_commit_v10",
             "initial_latency_samples": builder.initial_latency_samples,
             "minimum_latency_samples": builder.minimum_latency_samples,
             "latency_window": builder.latency_window,
@@ -221,6 +221,7 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
             self._raw_compiled_nodes = None
             self._raw_compiled_parents = None
             self._raw_posterior_host = None
+            self._raw_accepted_indices_host = None
             self._cpp_node_tokens = torch.empty(self.tree_budget, dtype=torch.long)
             self._cpp_node_depths = torch.empty(self.tree_budget, dtype=torch.long)
             self._cpp_node_scores = torch.empty(self.tree_budget, dtype=torch.float64)
@@ -254,7 +255,7 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
             identity["timing_partition"] = timing_partition
         if variant == "guarded_raw_prefix":
             identity.update({
-                "architecture": "guarded_raw_prefix_v7",
+                "architecture": "guarded_raw_prefix_batched_commit_v10",
                 "initial_latency_samples": self.initial_latency_samples,
                 "minimum_latency_samples": self.minimum_latency_samples,
                 "latency_window": self.latency_window,
@@ -412,7 +413,7 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
                 torch.from_numpy(visibility), {})
 
     def follow_compiled_tree(self, posterior):
-        """Follow a compiled raw tree without materializing Python child maps."""
+        """Follow a compiled raw tree into a reusable pinned host buffer."""
         if self._raw_compiled_nodes is None or self._raw_compiled_parents is None:
             raise RuntimeError("No compiled raw tree is available")
         source = posterior[0]
@@ -427,10 +428,16 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
         module = load_cpp_raw_tree_module()
         if module is None:
             raise RuntimeError("Compiled raw-tree backend disappeared")
-        followed = module.follow_raw_tree(
+        if (self._raw_accepted_indices_host is None
+                or self._raw_accepted_indices_host.numel() < length):
+            self._raw_accepted_indices_host = torch.empty(
+                length, dtype=torch.long, device="cpu", pin_memory=True)
+        accepted = self._raw_accepted_indices_host[:length]
+        followed = module.follow_raw_tree_into(
             self._raw_compiled_nodes, self._raw_compiled_parents, host,
-            int(self._raw_compiled_nodes.numel()))
-        return followed[1:], followed[0]
+            int(self._raw_compiled_nodes.numel()), accepted)
+        accepted_count, next_token = int(followed[0]), int(followed[1])
+        return accepted[:accepted_count], next_token
 
     def _select_node_count(self, scores):
         if self.variant == "guarded_raw_prefix":

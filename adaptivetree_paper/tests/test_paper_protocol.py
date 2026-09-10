@@ -16,9 +16,12 @@ from dflash_specblock.paper.controller import (B128_ABLATION_VARIANT,
     B256_ABLATION_VARIANT,
     CONTEXTUAL_V8_VARIANT, EXTENDED_BUDGETS, FixedBudgetBuilder,
     PaperAdaptiveBuilder, make_builder, make_paper_builder)
+from dflash_specblock.paper.adaptive_official import (
+    _compact_dynamic_cache_with_tensor)
 from dflash_specblock.paper.data import make_row
 from dflash_specblock.paper.evaluation import evaluate, paired_bootstrap, summarize, validate_states
 from dflash_specblock.paper.runtime import PaperRuntime, commit
+from dflash_specblock.paper.triton_cache import BatchedTritonCacheCompactor
 
 torch.set_num_threads(1)
 
@@ -32,6 +35,62 @@ def paths(tree):
     for n in tree.nodes:
         result.append((() if n.parent < 0 else result[n.parent]) + (n.token_id,))
     return result
+
+
+def test_adaptive_cache_compaction_reuses_supplied_index_tensor():
+    class Cache:
+        def __init__(self):
+            base = torch.arange(8, dtype=torch.float32).view(1, 1, 8, 1)
+            self.key_cache = [base.clone()]
+            self.value_cache = [(base + 100).clone()]
+
+        def crop(self, length):
+            self.key_cache = [tensor[..., :length, :]
+                              for tensor in self.key_cache]
+            self.value_cache = [tensor[..., :length, :]
+                                for tensor in self.value_cache]
+
+    seen_indices = []
+
+    def compact(cache_tensor, past_length, keep_indices):
+        seen_indices.append(keep_indices)
+        selected = cache_tensor[..., past_length:, :].index_select(
+            -2, keep_indices)
+        cache_tensor[..., past_length:past_length + keep_indices.numel(), :].copy_(
+            selected)
+
+    cache = Cache()
+    indices = torch.tensor([0, 2, 4], dtype=torch.long)
+    _compact_dynamic_cache_with_tensor(
+        SimpleNamespace(_compact_appended_window=compact), cache, 2, indices)
+
+    assert all(item is indices for item in seen_indices)
+    assert cache.key_cache[0].flatten().tolist() == [0, 1, 2, 4, 6]
+    assert cache.value_cache[0].flatten().tolist() == [100, 101, 102, 104, 106]
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA is unavailable")
+def test_batched_triton_cache_compaction_is_bit_exact():
+    compactor = BatchedTritonCacheCompactor(
+        6, torch.device("cuda"), maximum_copy_elements=6 * 2 * 4 * 4,
+        element_size=2)
+    if not compactor.enabled:
+        pytest.skip("Triton is unavailable")
+    caches = [
+        (torch.arange(2 * 17 * 4, device="cuda", dtype=torch.int32)
+         .add(1000 * index).to(torch.bfloat16).view(2, 17, 4).contiguous())
+        for index in range(6)
+    ]
+    originals = [cache.clone() for cache in caches]
+    accepted = torch.tensor([0, 2, 8, 13], device="cuda", dtype=torch.long)
+
+    assert compactor.compact(caches, 3, accepted)
+    torch.cuda.synchronize()
+
+    for actual, original in zip(caches, originals):
+        expected = original[:, 3:, :].index_select(1, accepted)
+        assert torch.equal(actual[:, 3:7, :], expected)
+    assert compactor.batched_calls == 1
 
 
 def test_full_method_matches_original_150_rounds_and_resume():

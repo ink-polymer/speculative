@@ -159,7 +159,15 @@ def worker(args, config):
             return u.dflash.dflash_generate(**kwargs)
         if method.startswith("ddtree_tb"):
             return u.ddtree.ddtree_generate(**kwargs, tree_budget=int(method.removeprefix("ddtree_tb")))
-        return adaptive_generate(**kwargs, builder=controllers[method])
+        result = adaptive_generate(**kwargs, builder=controllers[method])
+        if method == PRIMARY_ADAPTIVE_METHOD and target.device.type == "cuda":
+            compaction = result.cache_compaction
+            if (compaction["backend"] != "triton_batched"
+                    or compaction["batched_calls"] != result.decode_rounds):
+                raise RuntimeError(
+                    "Formal adaptive_b128 requires batched Triton KV-cache "
+                    "compaction on every decode round")
+        return result
 
     def encode(messages):
         text = tokenizer.apply_chat_template(messages, tokenize=False,

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 from pathlib import Path
 import random
@@ -41,6 +42,7 @@ def parse_args():
     parser.add_argument("--seed", type=int, default=20260910)
     parser.add_argument("--candidate", choices=("primary", "contextual-v8"),
                         default="primary")
+    parser.add_argument("--proposal-temperature", type=float)
     parser.add_argument("--contextual-mass-retention-ratio", type=float)
     parser.add_argument("--contextual-minimum-history", type=int)
     parser.add_argument("--contextual-refresh-interval", type=int)
@@ -91,6 +93,10 @@ def main():
     if (args.contextual_mass_retention_ratio is not None
             and not 0. < args.contextual_mass_retention_ratio <= 1.):
         raise ValueError("contextual mass retention must be in (0, 1]")
+    if (args.proposal_temperature is not None
+            and (not math.isfinite(args.proposal_temperature)
+                 or args.proposal_temperature <= 0.)):
+        raise ValueError("proposal temperature must be finite and positive")
     for value in (args.contextual_minimum_history,
                   args.contextual_refresh_interval,
                   args.contextual_floor_budget):
@@ -149,24 +155,28 @@ def main():
                                 if args.candidate == "primary"
                                 else CONTEXTUAL_V8_VARIANT)
     method_names = ("ddtree_b128", candidate_method)
-    contextual_overrides = {
+    candidate_overrides = {
+        "proposal_temperature": args.proposal_temperature,
         "contextual_mass_retention_ratio": args.contextual_mass_retention_ratio,
         "contextual_minimum_history": args.contextual_minimum_history,
         "contextual_refresh_interval": args.contextual_refresh_interval,
         "contextual_floor_budget": args.contextual_floor_budget,
     }
-    contextual_overrides = {
-        key:value for key,value in contextual_overrides.items()
+    candidate_overrides = {
+        key:value for key,value in candidate_overrides.items()
         if value is not None
     }
 
     def candidate_builder():
         builder = make_paper_builder(adaptive_cfg, candidate_builder_method)
-        if contextual_overrides:
-            if args.candidate != "contextual-v8":
-                raise ValueError("Contextual overrides require --candidate contextual-v8")
-            for key, value in contextual_overrides.items():
-                setattr(builder, key, value)
+        contextual_keys = {
+            key for key in candidate_overrides
+            if key.startswith("contextual_")
+        }
+        if contextual_keys and args.candidate != "contextual-v8":
+            raise ValueError("Contextual overrides require --candidate contextual-v8")
+        for key, value in candidate_overrides.items():
+            setattr(builder, key, value)
         return builder
     started = time.time()
     for repeat in range(args.repeats):
@@ -226,6 +236,8 @@ def main():
                         })
                     } if decisions else {},
                     "adaptive_decisions": decisions,
+                    "cache_compaction": getattr(
+                        result, "cache_compaction", None),
                     "topk_width_counts": {
                         str(width): sum(row.get("topk_width") == width
                                         for row in decisions)
@@ -266,7 +278,7 @@ def main():
         "draft_model":draft_name,
         "node_cap":128,
         "candidate":candidate_method,
-        "candidate_overrides":contextual_overrides,
+        "candidate_overrides":candidate_overrides,
         "method_order":"balanced cyclic rotation",
         "includes_tree_build_and_controller_in_tpot":True,
         "exact_output_match":exact,

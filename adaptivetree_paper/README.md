@@ -2,13 +2,14 @@
 
 新增 [Qwen3-8B 独立版本](docs/ADAPTIVE_QWEN3_8B.md)：bash scripts/run_paper_t0_qwen3_8b.sh plan。包含同一套正式方法、历史控制及六项消融，默认独立输出；不传参数仅显示计划，不启动 GPU。8B 权重 revision 与已上传 GBV 配置一致。
 
-本包以修正成本归因、保留原始六候选预算的动态 `adaptive_b128` 作为正式主方法，同时保留明确命名的历史对照、单因素消融、数学证明、正式评测和测试。`adaptive_b256` 只用于检验扩大预算上限。**没有 RL 训练、GBV、模型权重、数据文件或新 GPU 实验结果。** 文件名中的 full 指完整实验矩阵，采样数量按用户要求采用 DDTree 官方设置，并非全量数据集。
+本包以修正成本归因、保留原始六候选预算的动态 `adaptive_b128` 作为正式主方法，同时保留明确命名的历史对照、单因素消融、数学证明、正式评测和测试。`adaptive_b256` 只用于检验扩大预算上限。当前 v10 开发门禁结果不是正式论文结果；全套 GPU 实验必须从头重跑。**没有 RL 训练、GBV、模型权重或数据文件。** 文件名中的 full 指完整实验矩阵，采样数量按用户要求采用 DDTree 官方设置，并非全量数据集。
 
 [构树与流程图](docs/ADAPTIVE_DDTREE_METHOD.md) · [论文版数学证明](docs/ADAPTIVE_DDTREE_T0_PAPER_PROOF.md) · [控制器公式与实现边界](docs/ADAPTIVE_DDTREE_T0_PROOF.md) · [完整实验说明](docs/PAPER_T0_EXPERIMENTS.md) · [官方对齐核对](docs/DDTREE_PROTOCOL_ALIGNMENT.md)
 
 ## 方法与评测
 
 - 保留原版 DDTree best-first；正式 `adaptive_b128` 最多枚举 128 节点，在 30/45/60/80/100/128 的嵌套树间按校准接受收益与完整预算相关实测成本动态选预算并持续更新。没有 policy 网络、训练集或 checkpoint。
+- v10 不改 B128 树和目标验证，使用复用索引缓冲与两阶段 Triton gather/scatter 批量压缩 KV cache；不支持的普通调用自动回退官方逐张量实现，正式主方法则失败即停。绑定最终代码哈希的开发集 16×4 公平门禁为 64/64 输出一致、1,764/1,764 轮使用批量后端、相对官方 DDTree B128 提升 2.64%；该数字不得作为正式跨模型结论。
 - 官方十数据集：GSM8K 128、MATH-500 128、AIME24 30、AIME25 30、HumanEval 164、MBPP-sanitized 128、LiveCodeBench 128、SWE-bench 128、MT-Bench 80、Alpaca 128。
 - 共 1,072 题/对话，含 MT-Bench 双轮后每方法 1,152 次回答。直接执行固定版官方数据处理和 seed=0 抽样，不是全量测试集。
 - 三组原始 Target/DFlash 模型：Qwen3-4B、Qwen3-8B、Qwen3-Coder-30B-A3B-Instruct。T=0、BF16、每回答最多 2,048 新 token。

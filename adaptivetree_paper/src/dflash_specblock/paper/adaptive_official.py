@@ -12,6 +12,74 @@ from types import SimpleNamespace
 import torch
 
 from .official_spec import upstream
+from .triton_cache import BatchedTritonCacheCompactor
+
+
+def _compact_dynamic_cache_with_tensor(
+    ddtree_module, past_key_values, past_length, keep_current_indices,
+    batched_compactor=None,
+):
+    """Adaptive-only cache compaction reusing an existing device index tensor."""
+    keep_count = int(keep_current_indices.numel())
+    if keep_count == 0:
+        past_key_values.crop(past_length)
+        return
+
+    keep_tensor_by_device = {keep_current_indices.device: keep_current_indices}
+
+    def get_keep_tensor(device):
+        if device not in keep_tensor_by_device:
+            keep_tensor_by_device[device] = keep_current_indices.to(device)
+        return keep_tensor_by_device[device]
+
+    if hasattr(past_key_values, "key_cache") and hasattr(
+            past_key_values, "value_cache"):
+        cache_tensors = [
+            tensor
+            for pair in zip(past_key_values.key_cache,
+                            past_key_values.value_cache)
+            for tensor in pair
+        ]
+        if (batched_compactor is not None
+                and batched_compactor.compact(
+                    cache_tensors, past_length, keep_current_indices)):
+            past_key_values.crop(past_length + keep_count)
+            return
+        for key_cache, value_cache in zip(
+                past_key_values.key_cache, past_key_values.value_cache):
+            keep_tensor = get_keep_tensor(key_cache.device)
+            ddtree_module._compact_appended_window(
+                key_cache, past_length, keep_tensor)
+            ddtree_module._compact_appended_window(
+                value_cache, past_length, keep_tensor)
+        past_key_values.crop(past_length + keep_count)
+        return
+
+    if hasattr(past_key_values, "layers"):
+        populated_layers = [
+            layer for layer in past_key_values.layers
+            if (hasattr(layer, "keys") and layer.keys is not None
+                and layer.keys.numel() > 0)
+        ]
+        cache_tensors = [
+            tensor for layer in populated_layers
+            for tensor in (layer.keys, layer.values)
+        ]
+        if (batched_compactor is not None
+                and batched_compactor.compact(
+                    cache_tensors, past_length, keep_current_indices)):
+            past_key_values.crop(past_length + keep_count)
+            return
+        for layer in populated_layers:
+            keep_tensor = get_keep_tensor(layer.keys.device)
+            ddtree_module._compact_appended_window(
+                layer.keys, past_length, keep_tensor)
+            ddtree_module._compact_appended_window(
+                layer.values, past_length, keep_tensor)
+        past_key_values.crop(past_length + keep_count)
+        return
+
+    raise RuntimeError("Unsupported DynamicCache layout for AdaptiveTree cache compaction.")
 
 
 def build_with_controller(logits, builder):
@@ -99,6 +167,24 @@ def adaptive_generate(
         device=model.device,
     )
     tree_visibility_buffer = torch.empty((max_tree_nodes, max_tree_nodes), dtype=torch.bool, device=model.device)
+    accepted_index_buffer = torch.empty(
+        max_tree_nodes, dtype=torch.long, device=model.device)
+    if model.device.type == "cuda":
+        target_layers = int(target.config.num_hidden_layers)
+        key_value_heads = int(target.config.num_key_value_heads)
+        head_dimension = int(getattr(
+            target.config, "head_dim",
+            target.config.hidden_size // target.config.num_attention_heads))
+        cache_compactor = BatchedTritonCacheCompactor(
+            2 * target_layers, model.device,
+            maximum_copy_elements=(
+                2 * target_layers * key_value_heads * block_size
+                * head_dimension
+            ),
+            element_size=torch.empty((), dtype=target.dtype).element_size(),
+        )
+    else:
+        cache_compactor = BatchedTritonCacheCompactor(0, model.device)
 
     past_key_values_target = DynamicCache()
     past_key_values_draft = DynamicCache()
@@ -192,20 +278,35 @@ def adaptive_generate(
         commit_stage_start = cuda_time()
         posterior = sample(output.logits, temperature)
         if child_maps is None:
-            accepted_indices, next_token = builder.follow_compiled_tree(posterior)
+            accepted_indices_host, next_token = builder.follow_compiled_tree(
+                posterior)
+            accepted_count = int(accepted_indices_host.numel())
+            accepted_index_tensor = accepted_index_buffer[:accepted_count]
+            accepted_index_tensor.copy_(accepted_indices_host, non_blocking=True)
+            accepted_indices = accepted_indices_host.tolist()
         else:
             accepted_indices, next_token = follow_verified_tree(child_maps, posterior)
-        accepted_index_tensor = torch.tensor(accepted_indices, dtype=torch.long, device=verify_input_ids.device)
+            accepted_count = len(accepted_indices)
+            accepted_index_tensor = torch.tensor(
+                accepted_indices, dtype=torch.long,
+                device=verify_input_ids.device)
         accepted_tokens = verify_input_ids.index_select(1, accepted_index_tensor)
 
-        output_ids[:, start : start + len(accepted_indices)] = accepted_tokens
-        output_ids[:, start + len(accepted_indices)] = next_token
+        output_ids[:, start : start + accepted_count] = accepted_tokens
+        output_ids[:, start + accepted_count] = next_token
 
-        compact_dynamic_cache(past_key_values_target, start, accepted_indices)
-        target_hidden = extract_context_feature(output.hidden_states, model.target_layer_ids).index_select(1, accepted_index_tensor)
+        if child_maps is None:
+            _compact_dynamic_cache_with_tensor(
+                u.ddtree, past_key_values_target, start,
+                accepted_index_tensor, cache_compactor)
+        else:
+            compact_dynamic_cache(past_key_values_target, start, accepted_indices)
+        target_hidden = extract_context_feature(
+            output.hidden_states, model.target_layer_ids
+        ).index_select(1, accepted_index_tensor)
 
-        acceptance_lengths.append(len(accepted_indices))
-        start += len(accepted_indices)
+        acceptance_lengths.append(accepted_count)
+        start += accepted_count
         stage_times["commit"] += cuda_time() - commit_stage_start
         if getattr(builder, "timing_partition", "legacy") == "legacy":
             # Preserve the frozen protocol's exact expression grouping and trace
@@ -217,7 +318,7 @@ def adaptive_generate(
                                    - stage_before["tree_build"]),
                 verify_ms=1000 * sum(stage_times[k] - stage_before[k]
                                      for k in ("tree_compile", "verify", "commit")),
-                accepted_draft_tokens=len(accepted_indices) - 1,
+                accepted_draft_tokens=accepted_count - 1,
             )
         else:
             # Corrected formal path: tree construction varies with the selected
@@ -230,7 +331,7 @@ def adaptive_generate(
                 tree_compile_ms=1000 * (stage_times["tree_compile"] - stage_before["tree_compile"]),
                 target_verify_ms=1000 * (stage_times["verify"] - stage_before["verify"]),
                 commit_ms=1000 * (stage_times["commit"] - stage_before["commit"]),
-                accepted_draft_tokens=len(accepted_indices) - 1,
+                accepted_draft_tokens=accepted_count - 1,
                 accepted_node_indices=accepted_indices,
             )
         round_timestamps.append(cuda_time() - round_clock_start)
@@ -245,7 +346,7 @@ def adaptive_generate(
             })
 
         if stop_token_ids_tensor is not None:
-            new_tokens = output_ids[:, start - len(accepted_indices) : start + 1]
+            new_tokens = output_ids[:, start - accepted_count : start + 1]
             if torch.isin(new_tokens[0], stop_token_ids_tensor).any():
                 break
 
@@ -272,4 +373,10 @@ def adaptive_generate(
         round_timestamps=round_timestamps,
         round_trees=round_trees,
         adaptive_decisions=list(builder.trace),
+        cache_compaction={
+            "backend": ("triton_batched" if cache_compactor.batched_calls
+                        else "official_per_tensor_fallback"),
+            "batched_calls": cache_compactor.batched_calls,
+            "decode_rounds": len(acceptance_lengths),
+        },
     )

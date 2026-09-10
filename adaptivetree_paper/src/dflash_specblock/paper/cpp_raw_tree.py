@@ -201,12 +201,60 @@ std::vector<int64_t> follow_raw_tree(
     accepted.insert(accepted.begin(), next_token);
     return accepted;
 }
+
+std::vector<int64_t> follow_raw_tree_into(
+    torch::Tensor node_token_ids,
+    torch::Tensor parents,
+    torch::Tensor posterior_tokens,
+    int64_t node_count,
+    torch::Tensor accepted_indices) {
+    TORCH_CHECK(!node_token_ids.is_cuda() && !parents.is_cuda()
+                && !posterior_tokens.is_cuda() && !accepted_indices.is_cuda(),
+                "tree, posterior, and output metadata must be on CPU");
+    TORCH_CHECK(node_token_ids.scalar_type() == torch::kLong
+                && parents.scalar_type() == torch::kLong
+                && posterior_tokens.scalar_type() == torch::kLong
+                && accepted_indices.scalar_type() == torch::kLong,
+                "tree, posterior, and output metadata must be int64");
+    TORCH_CHECK(node_token_ids.is_contiguous() && parents.is_contiguous()
+                && posterior_tokens.is_contiguous()
+                && accepted_indices.is_contiguous(),
+                "tree, posterior, and output metadata must be contiguous");
+    TORCH_CHECK(node_count >= 0 && node_count <= node_token_ids.numel()
+                && node_count + 1 <= parents.numel()
+                && node_count + 1 <= posterior_tokens.numel()
+                && node_count + 1 <= accepted_indices.numel(),
+                "node count is outside the metadata bounds");
+    const auto* token = node_token_ids.data_ptr<int64_t>();
+    const auto* parent = parents.data_ptr<int64_t>();
+    const auto* target = posterior_tokens.data_ptr<int64_t>();
+    auto* accepted = accepted_indices.data_ptr<int64_t>();
+    int64_t accepted_count = 1;
+    accepted[0] = 0;
+    int64_t current = 0;
+    int64_t next_token = target[0];
+    while (true) {
+        int64_t child = -1;
+        for (int64_t index = 1; index <= node_count; ++index) {
+            if (parent[index] == current && token[index - 1] == next_token) {
+                child = index;
+                break;
+            }
+        }
+        if (child < 0) break;
+        current = child;
+        accepted[accepted_count++] = current;
+        next_token = target[current];
+    }
+    return {accepted_count, next_token};
+}
 """
     try:
         return load_inline(
-            name="adaptive_raw_prefix_ext_v8",
+            name="adaptive_raw_prefix_ext_v9",
             cpp_sources=[source],
-            functions=["build_raw_prefix_tree", "follow_raw_tree"],
+            functions=["build_raw_prefix_tree", "follow_raw_tree",
+                       "follow_raw_tree_into"],
             extra_cflags=["-O3"],
             verbose=False,
         )
