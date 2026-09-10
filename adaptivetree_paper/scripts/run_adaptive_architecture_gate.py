@@ -4,7 +4,7 @@
 This is deliberately separate from the registered formal test protocol.  It
 uses deterministic examples from GSM8K *train*, balances method execution
 order, includes every decode/tree/controller cost in TPOT, and refuses to pass
-unless all greedy outputs exactly match official DDTree B128.
+unless all greedy outputs exactly match an equal-node-cap official DDTree.
 """
 from __future__ import annotations
 
@@ -24,6 +24,9 @@ from dflash_specblock.paper.adaptive_official import adaptive_generate
 from dflash_specblock.paper.common import (PRIMARY_ADAPTIVE_METHOD, atomic_json,
                                            code_identity, load_json)
 from dflash_specblock.paper.controller import (CONTEXTUAL_V8_VARIANT,
+                                                DYNAMIC_B192_V12_VARIANT,
+                                                PREBUILD_V11_VARIANT,
+                                                controller_config,
                                                 make_paper_builder)
 from dflash_specblock.paper.official_spec import (MODELS, PINNED_MODEL_REVISIONS,
                                                   upstream)
@@ -40,13 +43,26 @@ def parse_args():
     parser.add_argument("--repeats", type=int, default=2)
     parser.add_argument("--max-new-tokens", type=int, default=256)
     parser.add_argument("--seed", type=int, default=20260910)
-    parser.add_argument("--candidate", choices=("primary", "contextual-v8"),
+    parser.add_argument("--temperature", type=float, default=0.0)
+    parser.add_argument("--experimental-positive-temperature", action="store_true")
+    parser.add_argument("--candidate", choices=("primary", "contextual-v8",
+                                                 "prebuild-v11",
+                                                 "dynamic-b192-v12"),
                         default="primary")
+    parser.add_argument("--reference-budget", type=int, choices=(128, 192),
+                        default=128)
+    parser.add_argument("--additional-ddtree-budget", type=int,
+                        choices=(128, 160), action="append", default=[])
     parser.add_argument("--proposal-temperature", type=float)
     parser.add_argument("--contextual-mass-retention-ratio", type=float)
     parser.add_argument("--contextual-minimum-history", type=int)
+    parser.add_argument("--contextual-minimum-support", type=float)
     parser.add_argument("--contextual-refresh-interval", type=int)
     parser.add_argument("--contextual-floor-budget", type=int)
+    parser.add_argument("--prebuild-min-top1-mean", type=float)
+    parser.add_argument("--include-primary-control", action="store_true")
+    parser.add_argument("--include-fixed-b192-control", action="store_true")
+    parser.add_argument("--save-output-token-ids", action="store_true")
     return parser.parse_args()
 
 
@@ -90,13 +106,24 @@ def main():
     args = parse_args()
     if min(args.samples, args.repeats, args.max_new_tokens) < 1:
         raise ValueError("samples, repeats, and max-new-tokens must be positive")
+    if not math.isfinite(args.temperature) or args.temperature < 0:
+        raise ValueError("temperature must be finite and nonnegative")
+    if args.temperature > 0 and not args.experimental_positive_temperature:
+        raise ValueError("T>0 requires --experimental-positive-temperature")
     if (args.contextual_mass_retention_ratio is not None
             and not 0. < args.contextual_mass_retention_ratio <= 1.):
         raise ValueError("contextual mass retention must be in (0, 1]")
+    if (args.contextual_minimum_support is not None
+            and not 0. < args.contextual_minimum_support <= 1.):
+        raise ValueError("contextual minimum support must be in (0, 1]")
     if (args.proposal_temperature is not None
             and (not math.isfinite(args.proposal_temperature)
                  or args.proposal_temperature <= 0.)):
         raise ValueError("proposal temperature must be finite and positive")
+    if (args.prebuild_min_top1_mean is not None
+            and (not math.isfinite(args.prebuild_min_top1_mean)
+                 or not 0. <= args.prebuild_min_top1_mean <= 1.)):
+        raise ValueError("prebuild minimum top-1 mean must be in [0, 1]")
     for value in (args.contextual_minimum_history,
                   args.contextual_refresh_interval,
                   args.contextual_floor_budget):
@@ -146,21 +173,53 @@ def main():
                   mask_token_id=draft.mask_token_id,
                   max_new_tokens=args.max_new_tokens,
                   block_size=draft.block_size,
-                  stop_token_ids=[tokenizer.eos_token_id], temperature=0.)
+                  stop_token_ids=[tokenizer.eos_token_id],
+                  temperature=args.temperature)
     records = []
     exact = True
-    candidate_method = ("adaptive_guarded_raw" if args.candidate == "primary"
-                        else CONTEXTUAL_V8_VARIANT)
-    candidate_builder_method = (PRIMARY_ADAPTIVE_METHOD
-                                if args.candidate == "primary"
-                                else CONTEXTUAL_V8_VARIANT)
-    method_names = ("ddtree_b128", candidate_method)
+    candidate_method = {
+        "primary": "adaptive_guarded_raw",
+        "contextual-v8": CONTEXTUAL_V8_VARIANT,
+        "prebuild-v11": PREBUILD_V11_VARIANT,
+        "dynamic-b192-v12": DYNAMIC_B192_V12_VARIANT,
+    }[args.candidate]
+    candidate_builder_method = {
+        "primary": PRIMARY_ADAPTIVE_METHOD,
+        "contextual-v8": CONTEXTUAL_V8_VARIANT,
+        "prebuild-v11": PREBUILD_V11_VARIANT,
+        "dynamic-b192-v12": DYNAMIC_B192_V12_VARIANT,
+    }[args.candidate]
+    reference_method = f"ddtree_b{args.reference_budget}"
+    if args.include_primary_control and args.candidate == "primary":
+        raise ValueError("Primary candidate cannot also be its own control")
+    if ((args.candidate == "dynamic-b192-v12")
+            != (args.reference_budget == 192)):
+        raise ValueError("Dynamic B192 must use DDTree B192, and only it may use that cap")
+    if args.include_primary_control and args.reference_budget != 128:
+        raise ValueError("The B128 primary control requires DDTree B128")
+    if args.include_fixed_b192_control and args.candidate != "dynamic-b192-v12":
+        raise ValueError("The fixed B192 control is only valid for dynamic B192")
+    controls = []
+    if args.include_primary_control:
+        controls.append("adaptive_guarded_raw")
+    if args.include_fixed_b192_control:
+        controls.append("adaptive_fixed_b192_control")
+    additional_references = tuple(
+        f"ddtree_b{budget}" for budget in args.additional_ddtree_budget)
+    if len(additional_references) != len(set(additional_references)):
+        raise ValueError("Additional DDTree budgets must be unique")
+    if reference_method in additional_references:
+        raise ValueError("Additional DDTree budget duplicates the reference")
+    method_names = (reference_method, *additional_references, *controls,
+                    candidate_method)
     candidate_overrides = {
         "proposal_temperature": args.proposal_temperature,
         "contextual_mass_retention_ratio": args.contextual_mass_retention_ratio,
         "contextual_minimum_history": args.contextual_minimum_history,
+        "contextual_minimum_support": args.contextual_minimum_support,
         "contextual_refresh_interval": args.contextual_refresh_interval,
         "contextual_floor_budget": args.contextual_floor_budget,
+        "prebuild_min_top1_mean": args.prebuild_min_top1_mean,
     }
     candidate_overrides = {
         key:value for key,value in candidate_overrides.items()
@@ -173,26 +232,51 @@ def main():
             key for key in candidate_overrides
             if key.startswith("contextual_")
         }
-        if contextual_keys and args.candidate != "contextual-v8":
-            raise ValueError("Contextual overrides require --candidate contextual-v8")
+        if contextual_keys and args.candidate not in {
+                "contextual-v8", "prebuild-v11", "dynamic-b192-v12"}:
+            raise ValueError("Contextual overrides require a contextual candidate")
         for key, value in candidate_overrides.items():
             setattr(builder, key, value)
+        if builder.tree_budget != args.reference_budget:
+            raise ValueError("Candidate and DDTree must have the same maximum node cap")
+        return builder
+
+    def fixed_b192_control_builder():
+        builder = make_paper_builder(adaptive_cfg, DYNAMIC_B192_V12_VARIANT)
+        # The impossible threshold forces B192 while retaining the identical
+        # top-k, transfer, controller and raw-tree implementation as v12.
+        builder.prebuild_min_top1_mean = 2.
         return builder
     started = time.time()
     for repeat in range(args.repeats):
-        guarded = candidate_builder()
+        guarded_by_method = {candidate_method: candidate_builder()}
+        if args.include_primary_control:
+            guarded_by_method["adaptive_guarded_raw"] = make_paper_builder(
+                adaptive_cfg, PRIMARY_ADAPTIVE_METHOD)
+        if args.include_fixed_b192_control:
+            guarded_by_method["adaptive_fixed_b192_control"] = (
+                fixed_b192_control_builder())
         def generate(method, ids, maximum):
             kwargs = {**common, "input_ids":ids, "max_new_tokens":maximum}
             if method.startswith("ddtree_b"):
                 return u.ddtree.ddtree_generate(
                     **kwargs, tree_budget=int(method.removeprefix("ddtree_b")))
-            return adaptive_generate(**kwargs, builder=guarded)
+            return adaptive_generate(
+                **kwargs, builder=guarded_by_method[method],
+                experimental_allow_positive_temperature=(args.temperature > 0),
+            )
 
         warmup = encode("Warmup")
         for method in method_names:
             generate(method, warmup, min(args.max_new_tokens, 32))
         # Hardware warmup must not pretrain either online controller.
-        guarded = candidate_builder()
+        guarded_by_method = {candidate_method: candidate_builder()}
+        if args.include_primary_control:
+            guarded_by_method["adaptive_guarded_raw"] = make_paper_builder(
+                adaptive_cfg, PRIMARY_ADAPTIVE_METHOD)
+        if args.include_fixed_b192_control:
+            guarded_by_method["adaptive_fixed_b192_control"] = (
+                fixed_b192_control_builder())
         for ordinal, index in enumerate(indices):
             prompt = (questions[index]
                       + "\nPlease reason step by step, and put your final answer within \\boxed{}.")
@@ -202,6 +286,10 @@ def main():
             outputs = {}
             record_start = len(records)
             for method in order:
+                if args.temperature > 0:
+                    pair_seed = args.seed + repeat * len(questions) + index
+                    torch.manual_seed(pair_seed)
+                    torch.cuda.manual_seed_all(pair_seed)
                 result = generate(method, ids, args.max_new_tokens)
                 tokens = result.output_ids[0, result.num_input_tokens:].tolist()
                 outputs[method] = tokens
@@ -213,6 +301,8 @@ def main():
                     "execution_position": order.index(method),
                     "tpot_ms": 1000 * result.time_per_output_token,
                     "output_tokens": result.num_output_tokens,
+                    **({"output_token_ids": tokens}
+                       if args.save_output_token_ids else {}),
                     "decode_rounds": result.decode_rounds,
                     "acceptance_length": mean(result.acceptance_lengths),
                     "stage_times": result.stage_times,
@@ -220,7 +310,11 @@ def main():
                         str(budget): sum(
                             (row.get("decision") or {}).get("budget") == budget
                             for row in decisions)
-                        for budget in adaptive_cfg["budget_candidates"]
+                        for budget in sorted({
+                            (row.get("decision") or {}).get("budget")
+                            for row in decisions
+                            if (row.get("decision") or {}).get("budget") is not None
+                        })
                     } if decisions else {},
                     "selected_budget_sequence": [
                         (row.get("decision") or {}).get("budget")
@@ -241,14 +335,16 @@ def main():
                     "topk_width_counts": {
                         str(width): sum(row.get("topk_width") == width
                                         for row in decisions)
-                        for width in (128,)
+                        for width in sorted({row.get("topk_width")
+                                           for row in decisions
+                                           if row.get("topk_width") is not None})
                     } if decisions else {},
                 })
-            reference = outputs["ddtree_b128"]
+            reference = outputs[reference_method]
             for row in records[record_start:]:
                 row["matches_ddtree"] = outputs[row["method"]] == reference
                 same_cap = (row["method"] if row["method"].startswith("ddtree_b")
-                            else "ddtree_b128")
+                            else reference_method)
                 row["equal_cap_reference"] = same_cap
                 row["matches_reference"] = (
                     outputs[row["method"]] == outputs[same_cap])
@@ -258,12 +354,13 @@ def main():
                   flush=True)
 
     summary = {method:aggregate(records, method) for method in method_names}
-    reference_tpot = summary["ddtree_b128"]["mean_tpot_ms"]
+    reference_tpot = summary[reference_method]["mean_tpot_ms"]
     for method in method_names:
-        if method != "ddtree_b128":
+        if method != reference_method:
             summary[method]["speedup_vs_ddtree"] = (
                 reference_tpot / summary[method]["mean_tpot_ms"])
     speedup = summary[candidate_method]["speedup_vs_ddtree"]
+    greedy_gate = args.temperature == 0
     artifact = {
         "kind":"adaptive_architecture_development_gate_v1",
         "formal_result":False,
@@ -276,19 +373,28 @@ def main():
         "max_new_tokens":args.max_new_tokens,
         "model":target_name,
         "draft_model":draft_name,
-        "node_cap":128,
+        "node_cap":args.reference_budget,
+        "temperature":args.temperature,
+        "experimental_positive_temperature":bool(args.temperature > 0),
         "candidate":candidate_method,
+        "included_primary_control":args.include_primary_control,
+        "included_fixed_b192_control":args.include_fixed_b192_control,
         "candidate_overrides":candidate_overrides,
+        "candidate_controller_config":controller_config(candidate_builder()),
+        "fixed_b192_control_config":(
+            controller_config(fixed_b192_control_builder())
+            if args.include_fixed_b192_control else None),
         "method_order":"balanced cyclic rotation",
         "includes_tree_build_and_controller_in_tpot":True,
         "exact_output_match":exact,
-        "pass_rule":(
+        "pass_rule":((
             "exact outputs and the selected candidate mean TPOT at least 1% "
-            "below DDTree B128"
-        ),
-        "performance_passed":bool(speedup >= 1.01),
-        "strict_output_passed":exact,
-        "passed":bool(exact and speedup >= 1.01),
+            f"below DDTree B{args.reference_budget}"
+        ) if greedy_gate else
+            "exploratory T>0 smoke only; never passes the T=0 development gate"),
+        "performance_passed":bool(greedy_gate and speedup >= 1.01),
+        "strict_output_passed":bool(greedy_gate and exact),
+        "passed":bool(greedy_gate and exact and speedup >= 1.01),
         "summary":summary,
         "records":records,
         "code_identity":code_identity(),

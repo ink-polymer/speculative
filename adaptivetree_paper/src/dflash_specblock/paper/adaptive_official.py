@@ -7,6 +7,7 @@ See third_party/ddtree_pinned/LICENSE (MIT, Copyright 2026 Liran Ringel).
 """
 from __future__ import annotations
 
+import math
 from types import SimpleNamespace
 
 import torch
@@ -84,7 +85,8 @@ def _compact_dynamic_cache_with_tensor(
 
 def build_with_controller(logits, builder):
     if getattr(builder, "variant", None) in {
-            "guarded_raw_prefix", "contextual_prefix_v8"}:
+            "guarded_raw_prefix", "contextual_prefix_v8",
+            "prebuild_contextual_v11", "prebuild_contextual_v12"}:
         return builder.build_official_tree_from_logits(logits)
     tree = builder.build_from_logits(logits)
     nodes = tree.nodes
@@ -116,6 +118,7 @@ def adaptive_generate(
     tree_budget: int | None = None,
     save_tree_traces: bool = False,
     builder: object | None = None,
+    experimental_allow_positive_temperature: bool = False,
 ) -> SimpleNamespace:
     from transformers import DynamicCache
 
@@ -128,8 +131,16 @@ def adaptive_generate(
     dflash_generate = u.dflash.dflash_generate
     DDTREE_STAGE_ORDER = u.ddtree.DDTREE_STAGE_ORDER
     DDTREE_TREE_BUILD_STAGE_ORDER = u.ddtree.DDTREE_TREE_BUILD_STAGE_ORDER
-    if builder is None or temperature != 0 or block_size - 1 != builder.block_size:
-        raise ValueError("Adaptive requires the original T=0 controller and matching draft horizon")
+    if (builder is None or not math.isfinite(temperature) or temperature < 0
+            or block_size - 1 != builder.block_size):
+        raise ValueError(
+            "Adaptive requires a finite nonnegative temperature and matching draft horizon"
+        )
+    if temperature != 0 and not experimental_allow_positive_temperature:
+        raise ValueError(
+            "Positive-temperature AdaptiveTree is experimental; pass the explicit "
+            "opt-in only from a distribution-audited smoke test"
+        )
     tree_budget = builder.tree_budget
     builder.trace = []
     if block_size <= 1:

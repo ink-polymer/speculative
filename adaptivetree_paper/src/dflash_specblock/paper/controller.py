@@ -29,6 +29,8 @@ NO_ACCEPTANCE_ABLATION_VARIANT = "adaptive_no_acceptance_calibration"
 NO_LATENCY_ABLATION_VARIANT = "adaptive_no_latency"
 FROZEN_ABLATION_VARIANT = "adaptive_frozen_after_warmup"
 CONTEXTUAL_V8_VARIANT = "adaptive_contextual_v8"
+PREBUILD_V11_VARIANT = "adaptive_prebuild_v11"
+DYNAMIC_B192_V12_VARIANT = "adaptive_dynamic_b192_v12"
 
 # Read-only/reproduction aliases emitted by the pre-migration diagnostic
 # runner.  They remain constructible so old artifacts are intelligible, but
@@ -37,10 +39,13 @@ COST_ATTRIBUTED_VARIANT = "cost_attributed_no_exploration"
 EXTENDED_BUDGET_VARIANT = "cost_attributed_no_exploration_b256"
 LEGACY_BUDGETS = (30, 45, 60, 80, 100, 128)
 EXTENDED_BUDGETS = (30, 45, 60, 80, 100, 128, 160, 192, 256)
+DYNAMIC_B192_BUDGETS = (128, 160, 192)
 DIAGNOSTIC_VARIANTS = (
     COST_ATTRIBUTED_VARIANT,
     EXTENDED_BUDGET_VARIANT,
     CONTEXTUAL_V8_VARIANT,
+    PREBUILD_V11_VARIANT,
+    DYNAMIC_B192_V12_VARIANT,
 )
 
 # This registry is deliberately independent of the factory below.  It is the
@@ -137,9 +142,13 @@ def controller_config(builder):
             "reevaluation_interval": builder.reevaluation_interval,
             "proposal_temperature": builder.proposal_temperature,
         })
-    elif builder.variant == "contextual_prefix_v8":
+    elif builder.variant in {"contextual_prefix_v8", "prebuild_contextual_v11",
+                             "prebuild_contextual_v12"}:
         result.update({
-            "architecture": "contextual_prefix_guard_v8",
+            "architecture": ({
+                "prebuild_contextual_v11": "prebuild_contextual_v11",
+                "prebuild_contextual_v12": "dynamic_b192_prebuild_v12",
+            }.get(builder.variant, "contextual_prefix_guard_v8")),
             "contextual_warmup_rounds": builder.contextual_warmup_rounds,
             "contextual_refresh_interval": builder.contextual_refresh_interval,
             "contextual_history_window": builder.contextual_history_window,
@@ -152,6 +161,8 @@ def controller_config(builder):
             "contextual_fallback_rounds": builder.contextual_fallback_rounds,
             "proposal_temperature": builder.proposal_temperature,
         })
+        if builder.variant.startswith("prebuild_contextual_"):
+            result["prebuild_min_top1_mean"] = builder.prebuild_min_top1_mean
     return result
 
 
@@ -178,7 +189,8 @@ class FixedBudgetBuilder(DDTreeBuilder):
 
 class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
     def __init__(self, cfg, variant="adaptive", timing_partition="legacy"):
-        if variant not in (*VARIANTS, "guarded_raw_prefix", "contextual_prefix_v8"):
+        if variant not in (*VARIANTS, "guarded_raw_prefix", "contextual_prefix_v8",
+                           "prebuild_contextual_v11", "prebuild_contextual_v12"):
             raise ValueError(f"Unknown controller variant: {variant}")
         if timing_partition not in TIMING_PARTITIONS:
             raise ValueError(f"Unknown timing partition: {timing_partition}")
@@ -187,7 +199,8 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
                          cfg["ewma_alpha"], 0 if variant == "no_exploration" else cfg["exploration_interval"])
         self.variant = variant
         self.timing_partition = timing_partition
-        if variant in {"guarded_raw_prefix", "contextual_prefix_v8"}:
+        if variant in {"guarded_raw_prefix", "contextual_prefix_v8",
+                       "prebuild_contextual_v11", "prebuild_contextual_v12"}:
             # The production path materializes the official verifier tensors
             # directly.  Avoiding DraftTree construction followed by an
             # immediate conversion removes work that fixed DDTree never pays.
@@ -222,13 +235,15 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
             self._raw_compiled_parents = None
             self._raw_posterior_host = None
             self._raw_accepted_indices_host = None
+            self._raw_host_buffer_cache = {}
             self._cpp_node_tokens = torch.empty(self.tree_budget, dtype=torch.long)
             self._cpp_node_depths = torch.empty(self.tree_budget, dtype=torch.long)
             self._cpp_node_scores = torch.empty(self.tree_budget, dtype=torch.float64)
             self._cpp_parents = torch.empty(self.tree_budget + 1, dtype=torch.long)
             self._cpp_visibility = torch.empty(
                 (self.tree_budget + 1, self.tree_budget + 1), dtype=torch.bool)
-        if variant == "contextual_prefix_v8":
+        if variant in {"contextual_prefix_v8", "prebuild_contextual_v11",
+                       "prebuild_contextual_v12"}:
             # The current proposal mass is an exact expectation under the
             # factorized draft distribution.  B128 verification additionally
             # reveals, for free, the smallest nested prefix that would have
@@ -238,10 +253,14 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
             self.contextual_refresh_interval = 4
             self.contextual_history_window = 12
             self.contextual_minimum_history = 6
-            self.contextual_minimum_support = 1.
+            self.contextual_minimum_support = (
+                .9 if variant == "prebuild_contextual_v12" else 1.)
             self.contextual_mass_retention_ratio = .999
-            self.contextual_floor_budget = 100
+            self.contextual_floor_budget = (
+                160 if variant == "prebuild_contextual_v12" else 100)
             self.contextual_fallback_rounds = 2
+            self.prebuild_min_top1_mean = (
+                .95 if variant == "prebuild_contextual_v12" else 0.)
             self._safe_required_budgets = []
             self._rounds_since_safe = 0
             self._force_safe_rounds = 0
@@ -265,9 +284,13 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
                 "reevaluation_interval": self.reevaluation_interval,
                 "proposal_temperature": self.proposal_temperature,
             })
-        elif variant == "contextual_prefix_v8":
+        elif variant in {"contextual_prefix_v8", "prebuild_contextual_v11",
+                         "prebuild_contextual_v12"}:
             identity.update({
-                "architecture": "contextual_prefix_guard_v8",
+                "architecture": ({
+                    "prebuild_contextual_v11": "prebuild_contextual_v11",
+                    "prebuild_contextual_v12": "dynamic_b192_prebuild_v12",
+                }.get(variant, "contextual_prefix_guard_v8")),
                 "contextual_warmup_rounds": self.contextual_warmup_rounds,
                 "contextual_refresh_interval": self.contextual_refresh_interval,
                 "contextual_history_window": self.contextual_history_window,
@@ -280,6 +303,8 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
                 "contextual_fallback_rounds": self.contextual_fallback_rounds,
                 "proposal_temperature": self.proposal_temperature,
             })
+            if variant.startswith("prebuild_contextual_"):
+                identity["prebuild_min_top1_mean"] = self.prebuild_min_top1_mean
         self.identity = digest(identity)
         self.trace = []
 
@@ -290,17 +315,18 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
             if top_token_ids.device != top_log_probs.device:
                 raise ValueError("AdaptiveTree top-k tensors must share one device")
             signature = tuple((tuple(t.shape), t.dtype) for t in tensors)
-            if self._host_buffers is None or signature != self._host_signature:
-                self._host_buffers = tuple(
+            buffers = self._raw_host_buffer_cache.get(signature)
+            if buffers is None:
+                buffers = tuple(
                     torch.empty(t.shape, dtype=t.dtype, device="cpu",
                                 pin_memory=True)
                     for t in tensors
                 )
-                self._host_signature = signature
-            for host, source in zip(self._host_buffers, tensors):
+                self._raw_host_buffer_cache[signature] = buffers
+            for host, source in zip(buffers, tensors):
                 host.copy_(source, non_blocking=True)
             torch.cuda.current_stream(top_log_probs.device).synchronize()
-            return self._host_buffers
+            return buffers
         return tuple(t.detach().cpu() for t in tensors)
 
     def build_official_tree_from_logits(self, draft_logits):
@@ -311,13 +337,17 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
         reconstruct verifier tensors from them.  All candidate budgets remain
         nested prefixes of the one max-budget heap enumeration.
         """
-        if self.variant not in {"guarded_raw_prefix", "contextual_prefix_v8"}:
+        if self.variant not in {"guarded_raw_prefix", "contextual_prefix_v8",
+                                "prebuild_contextual_v11",
+                                "prebuild_contextual_v12"}:
             raise ValueError("Raw official-tree path is reserved for guarded_raw_prefix")
         if draft_logits.ndim != 2:
             raise ValueError("draft_logits must be [K, V]")
         if (not math.isfinite(self.proposal_temperature)
                 or self.proposal_temperature <= 0):
             raise ValueError("proposal_temperature must be finite and positive")
+        prebuild = self.variant in {"prebuild_contextual_v11",
+                                    "prebuild_contextual_v12"}
         budget = self.tree_budget
         depth_limit = min(int(draft_logits.shape[0]), self.block_size)
         maximum_topk = min(budget, int(draft_logits.shape[-1]))
@@ -332,10 +362,15 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
         cpp_module = (load_cpp_raw_tree_module()
                       if draft_logits.device.type == "cuda" else None)
         if cpp_module is not None:
-            topk = maximum_topk
+            topk = min(self.tree_budget if prebuild else budget,
+                       int(draft_logits.shape[-1]))
             top_values, top_token_ids = torch.topk(logits, k=topk, dim=-1)
             top_log_probs_host, top_token_ids_host = self._raw_topk_to_host(
                 top_values - log_z, top_token_ids.to(torch.int64))
+            if prebuild:
+                top1_mean = float(
+                    np.exp(top_log_probs_host[:, 0].numpy()).mean())
+                budget = self._select_prebuild_node_count(top1_mean)
             (node_token_tensor, node_depth_tensor, node_score_tensor,
              parent_tensor, visibility_tensor) = cpp_module.build_raw_prefix_tree(
                  top_log_probs_host, top_token_ids_host, budget,
@@ -343,7 +378,8 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
                  self._cpp_node_scores, self._cpp_parents,
                  self._cpp_visibility)
             node_scores = node_score_tensor.numpy()
-            selected = self._select_node_count(node_scores)
+            selected = (budget if prebuild
+                        else self._select_node_count(node_scores))
             if not 0 <= selected <= budget:
                 raise AssertionError("Adaptive budget is outside the enumerated tree")
             length = selected + 1
@@ -357,10 +393,15 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
             return (node_token_tensor[:selected], node_depth_tensor[:selected],
                     parent_tensor[:length], None, visibility, {})
 
-        topk = maximum_topk
+        topk = min(self.tree_budget if prebuild else budget,
+                   int(draft_logits.shape[-1]))
+        self._raw_topk_width = topk
         top_values, top_token_ids = torch.topk(logits, k=topk, dim=-1)
         top_log_probs_host, top_token_ids_host = self._raw_topk_to_host(
             top_values - log_z, top_token_ids.to(torch.int64))
+        if prebuild:
+            top1_mean = float(np.exp(top_log_probs_host[:, 0].numpy()).mean())
+            budget = self._select_prebuild_node_count(top1_mean)
         top_log_probs = top_log_probs_host.numpy()
         top_token_ids = top_token_ids_host.numpy()
 
@@ -391,7 +432,8 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
                 heapq.heappush(heap, (-child_logw, ranks + (0,), current,
                                       depth + 1, 0, child_logw))
 
-        selected = self._select_node_count(node_scores[:node_count])
+        selected = (budget if prebuild
+                    else self._select_node_count(node_scores[:node_count]))
         if not 0 <= selected <= node_count:
             raise AssertionError("Adaptive budget is outside the enumerated tree")
         length = selected + 1
@@ -650,6 +692,74 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
         self._evaluated_last_decision = True
         return selected
 
+    def _select_prebuild_node_count(self, current_top1_mean):
+        """Choose the verifier cap before paying the tree-construction cost.
+
+        A safe maximum-cap round reveals the smallest nested prefix that retained
+        its realized path.  Recent high-support evidence schedules a smaller
+        prefix, while periodic maximum-cap refreshes and an acceptance fallback
+        bound the cost of a stale prediction.  Unlike the v8 policy, this decision
+        intentionally uses no current-tree statistic: those statistics are only
+        available after the cost that this controller is designed to avoid.
+        """
+        safe_budget = self.budget_candidates[-1]
+        selected = safe_budget
+        reason = "prebuild_safe_fallback"
+        history = self._safe_required_budgets[-self.contextual_history_window:]
+        support = None
+        if (not math.isfinite(current_top1_mean)
+                or not 0. <= current_top1_mean <= 1.):
+            raise ValueError("Prebuild top-1 mean must be a probability")
+
+        if self._observations[safe_budget] < self.contextual_warmup_rounds:
+            reason = "prebuild_safe_warmup"
+        elif len(history) < self.contextual_minimum_history:
+            reason = "prebuild_history_warmup"
+        elif self._force_safe_rounds > 0:
+            reason = "prebuild_acceptance_fallback"
+            self._force_safe_rounds -= 1
+        elif self._rounds_since_safe >= self.contextual_refresh_interval - 1:
+            reason = "prebuild_periodic_refresh"
+        elif current_top1_mean < self.prebuild_min_top1_mean:
+            reason = "prebuild_low_current_confidence"
+        else:
+            eligible = []
+            for budget in self.budget_candidates[:-1]:
+                if budget < self.contextual_floor_budget:
+                    continue
+                candidate_support = sum(
+                    required <= budget for required in history) / len(history)
+                if candidate_support >= self.contextual_minimum_support:
+                    eligible.append((budget, candidate_support))
+            if eligible:
+                selected, support = min(eligible)
+                reason = "prebuild_high_support_prefix"
+
+        previous = self.last_decision
+        self._last_mass_by_budget = {}
+        self._last_selected_budget = selected
+        self._last_expected_draft_tokens = None
+        self._decision_count += 1
+        self.last_decision = BudgetDecision(
+            budget=selected,
+            expected_draft_tokens=(previous.expected_draft_tokens
+                                   if previous is not None else 0.),
+            predicted_round_ms=None,
+            predicted_tokens_per_ms=None,
+        )
+        self._guard_diagnostics = {
+            "safe_budget": safe_budget,
+            "reason": reason,
+            "historical_support": support,
+            "safe_history_size": len(history),
+            "rounds_since_safe": self._rounds_since_safe,
+            "decision_timing": "before_tree_build",
+            "current_top1_mean": current_top1_mean,
+            "minimum_top1_mean": self.prebuild_min_top1_mean,
+        }
+        self._evaluated_last_decision = True
+        return selected
+
     def _select_contextual_node_count(self, node_scores):
         """Select B80/B100 only when present and historical evidence agree.
 
@@ -746,10 +856,15 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
 
     def observe(self, **kwargs):
         accepted_node_indices = kwargs.pop("accepted_node_indices", None)
+        accepted_required_node_index = max(
+            (int(index) for index in (accepted_node_indices or ())
+             if int(index) > 0), default=0)
         frozen = self.variant == "frozen_after_warmup" and all(
             n >= self.warmup_rounds_per_budget for n in self._observations.values())
         previous = self._fixed_ms, self._verify_ms.copy(), self._acceptance_scale
-        if self.variant in {"guarded_raw_prefix", "contextual_prefix_v8"}:
+        if self.variant in {"guarded_raw_prefix", "contextual_prefix_v8",
+                            "prebuild_contextual_v11",
+                            "prebuild_contextual_v12"}:
             selected = self._last_selected_budget
             if selected is not None:
                 self._observations[selected] += 1
@@ -765,7 +880,9 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
             self._fixed_ms, self._verify_ms, self._acceptance_scale = previous
         if self.variant == "no_acceptance_calibration":
             self._acceptance_scale = 1.
-        if self.variant in {"guarded_raw_prefix", "contextual_prefix_v8"}:
+        if self.variant in {"guarded_raw_prefix", "contextual_prefix_v8",
+                            "prebuild_contextual_v11",
+                            "prebuild_contextual_v12"}:
             selected = self._last_selected_budget
             if selected is not None:
                 samples = self._latency_samples[selected]
@@ -799,7 +916,8 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
                         self.ewma_alpha)
                     self._acceptance_observations[selected] += 1
                     observed_budgets = (selected,)
-            if self.variant == "contextual_prefix_v8" and selected is not None:
+            if self.variant in {"contextual_prefix_v8", "prebuild_contextual_v11",
+                                "prebuild_contextual_v12"} and selected is not None:
                 safe_budget = self.budget_candidates[-1]
                 accepted = max(float(kwargs["accepted_draft_tokens"]), 0.)
                 if selected == safe_budget:
@@ -818,8 +936,11 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
                             and accepted + 1. < self._safe_acceptance_ewma):
                         self._force_safe_rounds = self.contextual_fallback_rounds
         trace = {"decision": asdict(self.last_decision) if self.last_decision else None,
+                 "accepted_required_node_index": accepted_required_node_index,
                  **kwargs}
-        if self.variant in {"guarded_raw_prefix", "contextual_prefix_v8"}:
+        if self.variant in {"guarded_raw_prefix", "contextual_prefix_v8",
+                            "prebuild_contextual_v11",
+                            "prebuild_contextual_v12"}:
             trace["guard"] = self._guard_diagnostics
             trace["tree_backend"] = self._raw_tree_backend
             trace["topk_width"] = self._raw_topk_width
@@ -871,7 +992,9 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
                 "last_selected_budget": self._last_selected_budget,
                 "last_expected_draft_tokens": self._last_expected_draft_tokens,
                 "last_decision": asdict(self.last_decision) if self.last_decision else None}
-        if self.variant in {"guarded_raw_prefix", "contextual_prefix_v8"}:
+        if self.variant in {"guarded_raw_prefix", "contextual_prefix_v8",
+                            "prebuild_contextual_v11",
+                            "prebuild_contextual_v12"}:
             state.update({
                 "version": 2,
                 "latency_samples": {str(k): list(v)
@@ -884,7 +1007,8 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
                 },
                 "evaluated_last_decision": self._evaluated_last_decision,
             })
-        if self.variant == "contextual_prefix_v8":
+        if self.variant in {"contextual_prefix_v8", "prebuild_contextual_v11",
+                            "prebuild_contextual_v12"}:
             state.update({
                 "version": 3,
                 "safe_required_budgets": list(self._safe_required_budgets),
@@ -895,7 +1019,9 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
         return state
 
     def load_state_dict(self, state):
-        expected_version = (3 if self.variant == "contextual_prefix_v8" else
+        expected_version = (3 if self.variant in {"contextual_prefix_v8",
+                                                  "prebuild_contextual_v11",
+                                                  "prebuild_contextual_v12"} else
                             2 if self.variant == "guarded_raw_prefix" else 1)
         if (set(state) != set(self.state_dict())
                 or state["version"] != expected_version
@@ -922,7 +1048,9 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
         self._last_selected_budget = state["last_selected_budget"]
         self._last_expected_draft_tokens = state["last_expected_draft_tokens"]
         self.last_decision = BudgetDecision(**state["last_decision"]) if state["last_decision"] else None
-        if self.variant in {"guarded_raw_prefix", "contextual_prefix_v8"}:
+        if self.variant in {"guarded_raw_prefix", "contextual_prefix_v8",
+                            "prebuild_contextual_v11",
+                            "prebuild_contextual_v12"}:
             latency_samples = {int(k): list(v)
                                for k, v in state["latency_samples"].items()}
             scales = {int(k): v for k, v in
@@ -950,7 +1078,8 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
             if type(state["evaluated_last_decision"]) is not bool:
                 raise ValueError("Invalid guarded controller state")
             self._evaluated_last_decision = state["evaluated_last_decision"]
-        if self.variant == "contextual_prefix_v8":
+        if self.variant in {"contextual_prefix_v8", "prebuild_contextual_v11",
+                            "prebuild_contextual_v12"}:
             required = list(state["safe_required_budgets"])
             counters = (state["rounds_since_safe"], state["force_safe_rounds"])
             safe_acceptance = state["safe_acceptance_ewma"]
@@ -1029,6 +1158,18 @@ def make_paper_builder(cfg, method):
         return PaperAdaptiveBuilder(
             with_budgets(LEGACY_BUDGETS, exploration=False),
             "contextual_prefix_v8", timing_partition="budget_aware",
+        )
+    if method == PREBUILD_V11_VARIANT:
+        return PaperAdaptiveBuilder(
+            with_budgets(LEGACY_BUDGETS, exploration=False),
+            "prebuild_contextual_v11", timing_partition="budget_aware",
+        )
+    if method == DYNAMIC_B192_V12_VARIANT:
+        builder_cfg = with_budgets(DYNAMIC_B192_BUDGETS, exploration=False)
+        builder_cfg["initial_budget"] = DYNAMIC_B192_BUDGETS[-1]
+        return PaperAdaptiveBuilder(
+            builder_cfg, "prebuild_contextual_v12",
+            timing_partition="budget_aware",
         )
     raise ValueError(f"Unknown paper controller: {method}")
 

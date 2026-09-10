@@ -14,7 +14,9 @@ from dflash_specblock.ddtree_builder import DDTreeBuilder, LatencyAwareDDTreeBui
 from dflash_specblock.paper.common import BASELINES, ROOT, VARIANTS, atomic_json, contract, load_config, load_json
 from dflash_specblock.paper.controller import (B128_ABLATION_VARIANT,
     B256_ABLATION_VARIANT,
-    CONTEXTUAL_V8_VARIANT, EXTENDED_BUDGETS, FixedBudgetBuilder,
+    CONTEXTUAL_V8_VARIANT, DYNAMIC_B192_BUDGETS,
+    DYNAMIC_B192_V12_VARIANT, EXTENDED_BUDGETS, FixedBudgetBuilder,
+    PREBUILD_V11_VARIANT,
     PaperAdaptiveBuilder, make_builder, make_paper_builder)
 from dflash_specblock.paper.adaptive_official import (
     _compact_dynamic_cache_with_tensor)
@@ -272,6 +274,79 @@ def test_contextual_v8_uses_free_safe_labels_refreshes_and_falls_back():
     assert restored.state_dict() == builder.state_dict()
     assert restored.identity != make_paper_builder(
         cfg(), B128_ABLATION_VARIANT).identity
+
+
+def test_prebuild_v11_caps_construction_before_tree_enumeration_and_falls_back():
+    from dflash_specblock.paper.adaptive_official import build_with_controller
+
+    builder = make_paper_builder(cfg(), PREBUILD_V11_VARIANT)
+    logits = torch.randn(15, 256, generator=torch.Generator().manual_seed(913))
+
+    def observe(node_count, accepted):
+        builder.observe_stages(
+            tree_nodes=node_count, draft_ms=2., tree_build_ms=.5,
+            tree_compile_ms=.2, target_verify_ms=8., commit_ms=.4,
+            accepted_draft_tokens=len(accepted) - 1,
+            accepted_node_indices=accepted,
+        )
+
+    for _ in range(builder.contextual_minimum_history):
+        tree = build_with_controller(logits, builder)
+        assert tree[0].numel() == 128
+        observe(128, [0, 1, 2, 3, 4, 5, 6])
+
+    tree = build_with_controller(logits, builder)
+    assert tree[0].numel() == 100
+    assert builder._raw_topk_width == 128
+    assert builder._guard_diagnostics["decision_timing"] == "before_tree_build"
+    observe(100, [0, 1])
+
+    fallback = build_with_controller(logits, builder)
+    assert fallback[0].numel() == 128
+    assert builder._guard_diagnostics["reason"] == "prebuild_acceptance_fallback"
+
+    restored = make_paper_builder(cfg(), PREBUILD_V11_VARIANT)
+    restored.load_state_dict(json.loads(json.dumps(builder.state_dict())))
+    assert restored.state_dict() == builder.state_dict()
+
+
+def test_dynamic_b192_v12_selects_before_enumeration_and_preserves_equal_cap():
+    from dflash_specblock.paper.adaptive_official import build_with_controller
+
+    builder = make_paper_builder(cfg(), DYNAMIC_B192_V12_VARIANT)
+    assert builder.budget_candidates == DYNAMIC_B192_BUDGETS
+    assert builder.tree_budget == 192
+    builder.prebuild_min_top1_mean = 0.
+    builder.contextual_floor_budget = 128
+    logits = torch.randn(15, 256, generator=torch.Generator().manual_seed(914))
+
+    def observe(node_count, accepted):
+        builder.observe_stages(
+            tree_nodes=node_count, draft_ms=2., tree_build_ms=.5,
+            tree_compile_ms=.2, target_verify_ms=8., commit_ms=.4,
+            accepted_draft_tokens=len(accepted) - 1,
+            accepted_node_indices=accepted,
+        )
+
+    for _ in range(builder.contextual_minimum_history):
+        tree = build_with_controller(logits, builder)
+        assert tree[0].numel() == 192
+        observe(192, [0, 1, 2, 3, 4, 5, 120])
+
+    tree = build_with_controller(logits, builder)
+    assert tree[0].numel() == 128
+    assert builder._raw_topk_width == 192
+    assert builder._guard_diagnostics["decision_timing"] == "before_tree_build"
+    observe(128, [0, 1])
+
+    fallback = build_with_controller(logits, builder)
+    assert fallback[0].numel() == 192
+    assert builder._guard_diagnostics["reason"] == "prebuild_acceptance_fallback"
+
+    restored = make_paper_builder(cfg(), DYNAMIC_B192_V12_VARIANT)
+    restored.prebuild_min_top1_mean = 0.
+    restored.load_state_dict(json.loads(json.dumps(builder.state_dict())))
+    assert restored.state_dict() == builder.state_dict()
 
 
 def test_guarded_raw_tree_matches_fixed_ddtree_at_b128():
