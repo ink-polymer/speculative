@@ -186,14 +186,15 @@ def test_contextual_v8_uses_free_safe_labels_refreshes_and_falls_back():
 
     # Three B128 rounds warm the safe arm and label every nested prefix without
     # spending an additional target verification.
-    for _ in range(builder.contextual_warmup_rounds):
+    for _ in range(builder.contextual_minimum_history):
         budget = builder._select_node_count(scores)
         assert budget == 128
         builder.observe(tree_nodes=budget, draft_ms=2., verify_ms=10.,
                         accepted_draft_tokens=6,
                         accepted_node_indices=safe_path)
-    assert builder._safe_required_budgets == [6, 6, 6]
-    assert all(builder._acceptance_observations[value] == 3
+    assert builder._safe_required_budgets == [6] * builder.contextual_minimum_history
+    assert all(builder._acceptance_observations[value]
+               == builder.contextual_minimum_history
                for value in builder.budget_candidates)
 
     # The tail carries negligible mass and every safe label fits, so B100 is

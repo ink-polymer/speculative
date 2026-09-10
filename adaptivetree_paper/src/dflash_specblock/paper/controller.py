@@ -143,6 +143,7 @@ def controller_config(builder):
             "contextual_warmup_rounds": builder.contextual_warmup_rounds,
             "contextual_refresh_interval": builder.contextual_refresh_interval,
             "contextual_history_window": builder.contextual_history_window,
+            "contextual_minimum_history": builder.contextual_minimum_history,
             "contextual_minimum_support": builder.contextual_minimum_support,
             "contextual_mass_retention_ratio": (
                 builder.contextual_mass_retention_ratio
@@ -235,8 +236,9 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
             self.contextual_warmup_rounds = 3
             self.contextual_refresh_interval = 4
             self.contextual_history_window = 12
-            self.contextual_minimum_support = .90
-            self.contextual_mass_retention_ratio = .995
+            self.contextual_minimum_history = 6
+            self.contextual_minimum_support = 1.
+            self.contextual_mass_retention_ratio = .999
             self.contextual_floor_budget = 100
             self.contextual_fallback_rounds = 2
             self._safe_required_budgets = []
@@ -268,6 +270,7 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
                 "contextual_warmup_rounds": self.contextual_warmup_rounds,
                 "contextual_refresh_interval": self.contextual_refresh_interval,
                 "contextual_history_window": self.contextual_history_window,
+                "contextual_minimum_history": self.contextual_minimum_history,
                 "contextual_minimum_support": self.contextual_minimum_support,
                 "contextual_mass_retention_ratio": (
                     self.contextual_mass_retention_ratio
@@ -682,7 +685,8 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
                 * mass_by_budget[safe_budget],
             )
             for budget in available[:-1]:
-                if budget < self.contextual_floor_budget or not history:
+                if (budget < self.contextual_floor_budget
+                        or len(history) < self.contextual_minimum_history):
                     continue
                 support = sum(required <= budget for required in history) / len(history)
                 expected = 1. + min(

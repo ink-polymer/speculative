@@ -194,6 +194,7 @@ def main():
                             if (row.get("guard") or {}).get("reason") is not None
                         })
                     } if decisions else {},
+                    "adaptive_decisions": decisions,
                     "topk_width_counts": {
                         str(width): sum(row.get("topk_width") == width
                                         for row in decisions)
