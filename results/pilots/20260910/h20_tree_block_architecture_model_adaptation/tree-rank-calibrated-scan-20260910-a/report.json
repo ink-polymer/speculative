@@ -1,0 +1,79 @@
+{
+  "kind": "architecture_level_ddtree_tbv_budget_scan",
+  "formal_complete": false,
+  "created_at_utc": "2026-09-10T12:37:17.948462+00:00",
+  "uses_cuda_graph": false,
+  "official_precision": {
+    "dtype": "bfloat16",
+    "target_attention": "sdpa",
+    "draft_attention": "sdpa",
+    "allow_tf32": false
+  },
+  "temperature": 1.0,
+  "length": 15,
+  "baseline_budget": 45,
+  "candidate_budgets": [],
+  "candidate_tree_proposal_temperatures": [],
+  "candidate_sparse_exit_temperatures": [],
+  "temperature_budget_grid": false,
+  "candidate_tree_depth_rewards": [],
+  "candidate_tree_temperature_schedules": [],
+  "candidate_learned_temperature_schedule": null,
+  "candidate_learned_bias_path": null,
+  "candidate_adaptive_budgets": [],
+  "rank_checkpoint": "/root/autodl-tmp/outputs/parallel-rank-calibrated-20260910-b.pt",
+  "target_sampling_temperature": 1.0,
+  "tokens": 64,
+  "repeats": 3,
+  "prompt_count": 3,
+  "prompt_policy": "synthetic development prompts only",
+  "comparisons": {
+    "adaptive_rank_calibrated_tree": {
+      "versus_ddtree": {
+        "candidate": "adaptive_rank_calibrated_tree",
+        "baseline": "ddtree_b45",
+        "speedup": 0.8709499807395651,
+        "ci95": [
+          0.8015647817763618,
+          0.9178660957474949
+        ],
+        "prompt_clusters": 3
+      },
+      "versus_dflash": {
+        "candidate": "adaptive_rank_calibrated_tree",
+        "baseline": "dflash",
+        "speedup": 1.450297646978434,
+        "ci95": [
+          1.1801014098015632,
+          1.8196018834031336
+        ],
+        "prompt_clusters": 3
+      }
+    }
+  },
+  "best_point_estimate": "adaptive_rank_calibrated_tree",
+  "ddtree_vs_dflash": {
+    "candidate": "ddtree_b45",
+    "baseline": "dflash",
+    "speedup": 1.6651905150131783,
+    "ci95": [
+      1.4722470804996193,
+      2.0263510769414568
+    ],
+    "prompt_clusters": 3
+  },
+  "decision": "reject_budget_only_architecture",
+  "source_sha256": {
+    "engine": "845913f637a324609e5e2f1d65222550c744f2cc880478408c6d0f34bccbfdeb",
+    "script": "4c07e913a4031afe4d1e1ecdd32f0ddd609f9f071075556368ce034bc47d5e27",
+    "config": "b8e0043d0866289aefd8155dc5e5e496689315db7add78ff4a34fa0c85616641"
+  },
+  "telemetry_end": {
+    "utc": "2026-09-10T12:37:17.949930+00:00",
+    "hostname": "autodl-container-26d148a435-8171fde0",
+    "pid": 50255,
+    "slurm_job_id": null,
+    "gpu_uuid": "b32e1465-06c0-9da4-928e-ca196f12f2cf",
+    "nvidia_smi": "GPU-b32e1465-06c0-9da4-928e-ca196f12f2cf, NVIDIA H20, P0, 38, 177.32 W, 1980 MHz, 2619 MHz, 9461 MiB, 47 %"
+  }
+}

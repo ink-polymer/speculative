@@ -1,0 +1,91 @@
+{
+  "kind": "depthwise_tree_proposal_temperature_calibrator",
+  "formal_complete": false,
+  "created_at_utc": "2026-09-10T11:32:27.330518+00:00",
+  "official_precision": {
+    "dtype": "bfloat16",
+    "target_attention": "sdpa",
+    "draft_attention": "sdpa",
+    "allow_tf32": false
+  },
+  "target_sampling_temperature": 1.0,
+  "changes_target_distribution": false,
+  "adds_model_forward_at_runtime": false,
+  "length": 15,
+  "temperatures": [
+    1.361261010169983,
+    1.3688035011291504,
+    1.334934949874878,
+    1.3979991674423218,
+    1.372629165649414,
+    1.5218902826309204,
+    1.2683467864990234,
+    1.3205064535140991,
+    1.2607465982437134,
+    1.3339974880218506,
+    1.3704044818878174,
+    1.1596986055374146,
+    1.2632206678390503,
+    1.2890883684158325,
+    1.211582899093628
+  ],
+  "training": {
+    "corpus": "/root/autodl-tmp/speculative-timing-5637051/datasets/generated/rank_train_tree15.jsonl",
+    "corpus_sha256": "66a1a2cfdb5713744886256d9ba073f100be97f5e3c02b13d2ee1f1701b454f5",
+    "examples": 128,
+    "epochs": 2,
+    "updates": 256,
+    "learning_rate": 0.03,
+    "seed": 20260910,
+    "mean_online_nll": 5.195318242785106,
+    "mean_online_baseline_nll": 5.479956871796674
+  },
+  "holdout": {
+    "examples": 32,
+    "per_depth_nll": [
+      3.2845046520233154,
+      3.3829705715179443,
+      4.1289215087890625,
+      4.746211051940918,
+      4.406635284423828,
+      5.009359836578369,
+      5.276001453399658,
+      5.193843364715576,
+      5.370213985443115,
+      5.797473907470703,
+      5.953280925750732,
+      6.155243396759033,
+      5.843766212463379,
+      6.790924549102783,
+      5.277562618255615
+    ],
+    "per_depth_baseline_nll": [
+      3.738586187362671,
+      3.5945987701416016,
+      4.408848762512207,
+      5.133641242980957,
+      4.641778469085693,
+      5.246151447296143,
+      5.5933756828308105,
+      5.524358749389648,
+      5.676225185394287,
+      6.164343357086182,
+      6.333342552185059,
+      6.436224937438965,
+      6.133896350860596,
+      7.338136196136475,
+      5.374222755432129
+    ],
+    "mean_nll": 5.107794284820557,
+    "mean_baseline_nll": 5.422515869140625,
+    "improved": true
+  },
+  "telemetry_end": {
+    "utc": "2026-09-10T11:32:27.332339+00:00",
+    "hostname": "autodl-container-26d148a435-8171fde0",
+    "pid": 48028,
+    "slurm_job_id": null,
+    "gpu_uuid": "b32e1465-06c0-9da4-928e-ca196f12f2cf",
+    "nvidia_smi": "GPU-b32e1465-06c0-9da4-928e-ca196f12f2cf, NVIDIA H20, P0, 36, 181.08 W, 1980 MHz, 2619 MHz, 9419 MiB, 54 %"
+  }
+}

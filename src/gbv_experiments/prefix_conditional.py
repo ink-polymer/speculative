@@ -23,6 +23,69 @@ from .diffusion_tree_bv import DiffusionBlockLaw, DiffusionProposal
 from .tree import Tree
 
 
+class RankCalibratedHead(nn.Module):
+    """One-shot context-dependent reranker for Draft top-R candidates."""
+
+    def __init__(self, hidden_size: int, rank: int = 64,
+                 support_size: int = 32, max_length: int = 15):
+        super().__init__()
+        self.hidden_size = int(hidden_size)
+        self.rank = int(rank)
+        self.support_size = int(support_size)
+        self.max_length = int(max_length)
+        if min(self.hidden_size, self.rank, self.support_size,
+               self.max_length) < 1:
+            raise ValueError("Invalid rank-calibrator dimensions")
+        self.norm = nn.RMSNorm(hidden_size)
+        self.down = nn.Linear(hidden_size, rank, bias=False)
+        self.out = nn.Linear(rank, support_size, bias=False)
+        self.depth_bias = nn.Parameter(torch.zeros(max_length, support_size))
+        nn.init.zeros_(self.out.weight)
+
+    def scores(self, hidden: torch.Tensor, draft_logits: torch.Tensor):
+        if (hidden.ndim != 3 or draft_logits.ndim != 3
+                or hidden.shape[:2] != draft_logits.shape[:2]
+                or hidden.shape[-1] != self.hidden_size
+                or hidden.shape[1] > self.max_length):
+            raise ValueError("Rank-calibrator inputs disagree")
+        values, tokens = draft_logits.topk(
+            self.support_size, dim=-1, sorted=True,
+        )
+        state = F.silu(self.down(self.norm(hidden.float())))
+        correction = self.out(state) + self.depth_bias[
+            :hidden.shape[1]
+        ][None]
+        return values.float() + correction, tokens
+
+    @torch.inference_mode()
+    def build_tree(self, hidden: torch.Tensor, draft_logits: torch.Tensor,
+                   budget: int, temperature: float) -> Tree:
+        scores, tokens = self.scores(hidden, draft_logits[None])
+        probabilities = torch.softmax(
+            scores[0].double() / float(temperature), dim=-1,
+        )
+        return PrefixConditionalHead._sparse_probability_tree(
+            tokens[0], probabilities, budget,
+        )
+
+
+def load_rank_calibrated_head(checkpoint: str | Path, hidden_size: int,
+                              device: torch.device) -> RankCalibratedHead:
+    payload = torch.load(Path(checkpoint), map_location="cpu", weights_only=True)
+    metadata = payload.get("metadata", {}) if isinstance(payload, dict) else {}
+    if (metadata.get("architecture") != "parallel_rank_calibrator_v1"
+            or metadata.get("hidden_size") != int(hidden_size)
+            or int(metadata.get("updates", 0)) < 1):
+        raise ValueError("Rank-calibrator checkpoint contract failed")
+    model = RankCalibratedHead(
+        hidden_size, rank=int(metadata["rank"]),
+        support_size=int(metadata["support_size"]),
+        max_length=int(metadata["max_length"]),
+    )
+    model.load_state_dict(payload["state_dict"], strict=True)
+    return model.to(device=device, dtype=torch.float32).eval()
+
+
 class PrefixConditionalHead(nn.Module):
     """Low-rank recurrent correction over frozen DFlash candidate supports."""
 

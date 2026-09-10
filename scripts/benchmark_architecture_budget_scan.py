@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 from dataclasses import replace
 from datetime import datetime, timezone
+import json
 import math
 from pathlib import Path
 import random
@@ -24,6 +25,7 @@ from gbv_experiments.common import digest, file_hash, write_json
 from gbv_experiments.config import Variant, load_config
 from gbv_experiments.conversation import encode_messages
 from gbv_experiments.engine import load_models
+from gbv_experiments.prefix_conditional import load_rank_calibrated_head
 from gbv_experiments.runner import output_lock, stop_token_ids
 from gbv_experiments.terminal_formal import allocation_gate, model_gate, telemetry
 
@@ -48,9 +50,44 @@ def temperature_name(value: float) -> str:
     return f"adaptive_tbv_pt{value:.3f}".replace(".", "p")
 
 
+def depth_reward_name(value: float) -> str:
+    return f"adaptive_utility_r{value:+.3f}".replace("+", "p").replace(
+        "-", "m"
+    ).replace(".", "p")
+
+
+def schedule_name(start: float, end: float) -> str:
+    return f"adaptive_schedule_{start:.2f}_{end:.2f}".replace(".", "p")
+
+
+def adaptive_budget_name(minimum: int, threshold: float) -> str:
+    return f"adaptive_cost_b{minimum}_c{threshold:.3f}".replace(".", "p")
+
+
+def learned_calibration(path: Path) -> tuple[tuple[float, ...], str | None]:
+    payload = json.loads(path.read_text())
+    values = tuple(float(value) for value in payload["temperatures"])
+    if (payload.get("holdout", {}).get("improved") is not True
+            or payload.get("adds_model_forward_at_runtime") is not False
+            or payload.get("changes_target_distribution") is not False):
+        raise ValueError("Calibration artifact did not pass its holdout/runtime gates")
+    bias_path = str(path) if isinstance(payload.get("vocab_bias"), list) else None
+    return values, bias_path
+
+
 def variants(budgets: list[int], tree_temperatures: list[float],
              sparse_temperatures: list[float],
-             temperature_budget_grid: bool = False) -> list[Variant]:
+             temperature_budget_grid: bool = False,
+             depth_rewards: list[float] | None = None,
+             temperature_schedules: list[tuple[float, float]] | None = None,
+             learned_temperature_schedule: tuple[float, ...] | None = None,
+             learned_bias_path: str | None = None,
+             adaptive_budgets: list[tuple[int, float]] | None = None,
+             rank_calibrated: bool = False,
+             ) -> list[Variant]:
+    depth_rewards = depth_rewards or []
+    temperature_schedules = temperature_schedules or []
+    adaptive_budgets = adaptive_budgets or []
     base = Variant(
         name="base", method="ddtree", paths=1, length=15,
         temperature=1.0, draft_temperature=1.0, tree_budget=45,
@@ -83,6 +120,45 @@ def variants(budgets: list[int], tree_temperatures: list[float],
             )
             for value in tree_temperatures for budget in budgets
         ] if temperature_budget_grid else []),
+        *[
+            replace(
+                base, name=depth_reward_name(value),
+                method="ddtree_fused_scan", tree_depth_reward=value,
+            )
+            for value in depth_rewards
+        ],
+        *[
+            replace(
+                base, name=schedule_name(start, end),
+                method="ddtree_fused_scan",
+                tree_proposal_temperature=start,
+                tree_proposal_temperature_end=end,
+            )
+            for start, end in temperature_schedules
+        ],
+        *([] if learned_temperature_schedule is None else [
+            replace(
+                base, name="adaptive_learned_depth_calibration",
+                method="ddtree_fused_scan",
+                tree_proposal_temperature_schedule=learned_temperature_schedule,
+                tree_proposal_bias_path=learned_bias_path,
+            )
+        ]),
+        *[
+            replace(
+                base, name=adaptive_budget_name(minimum, threshold),
+                method="ddtree_fused_scan",
+                tree_adaptive_min_budget=minimum,
+                tree_adaptive_confidence_threshold=threshold,
+            )
+            for minimum, threshold in adaptive_budgets
+        ],
+        *([] if not rank_calibrated else [
+            replace(
+                base, name="adaptive_rank_calibrated_tree",
+                method="rank_calibrated_tree",
+            )
+        ]),
         *[
             replace(
                 base,
@@ -134,9 +210,19 @@ def run(config: Path, output: Path, budgets: list[int], tokens: int,
         tree_temperatures: list[float] | None = None,
         sparse_temperatures: list[float] | None = None,
         prompt_count: int = 3,
-        temperature_budget_grid: bool = False) -> dict:
+        temperature_budget_grid: bool = False,
+        depth_rewards: list[float] | None = None,
+        temperature_schedules: list[tuple[float, float]] | None = None,
+        learned_temperature_schedule: tuple[float, ...] | None = None,
+        learned_bias_path: str | None = None,
+        adaptive_budgets: list[tuple[int, float]] | None = None,
+        rank_checkpoint: Path | None = None,
+        ) -> dict:
     tree_temperatures = tree_temperatures or []
     sparse_temperatures = sparse_temperatures or []
+    depth_rewards = depth_rewards or []
+    temperature_schedules = temperature_schedules or []
+    adaptive_budgets = adaptive_budgets or []
     if (len(set(budgets)) != len(budgets)
             or any(not 1 <= budget <= 45 for budget in budgets)):
         raise ValueError("Budgets must be unique integers in 1..45")
@@ -146,8 +232,16 @@ def run(config: Path, output: Path, budgets: list[int], tokens: int,
             or len(set(sparse_temperatures)) != len(sparse_temperatures)
             or any(not 0.1 <= value <= 4.0
                    for value in sparse_temperatures)
+            or len(set(depth_rewards)) != len(depth_rewards)
+            or any(not -2.0 <= value <= 2.0 for value in depth_rewards)
+            or len(set(temperature_schedules)) != len(temperature_schedules)
+            or any(not 0.1 <= value <= 4.0
+                   for pair in temperature_schedules for value in pair)
             or (not budgets and not tree_temperatures
-                and not sparse_temperatures)):
+                and not sparse_temperatures and not depth_rewards
+                and not temperature_schedules
+                and learned_temperature_schedule is None
+                and not adaptive_budgets and rank_checkpoint is None)):
         raise ValueError(
             "Tree temperatures must be unique values in 0.1..4.0, and at "
             "least one scan value is required"
@@ -168,7 +262,9 @@ def run(config: Path, output: Path, budgets: list[int], tokens: int,
         raise ValueError(f"Official precision controls changed: {precision}")
     declared = variants(
         budgets, tree_temperatures, sparse_temperatures,
-        temperature_budget_grid,
+        temperature_budget_grid, depth_rewards, temperature_schedules,
+        learned_temperature_schedule, learned_bias_path, adaptive_budgets,
+        rank_checkpoint is not None,
     )
     by_name = {value.name: value for value in declared}
     with output_lock(output):
@@ -177,6 +273,11 @@ def run(config: Path, output: Path, budgets: list[int], tokens: int,
         allocation_gate(device)
         engine, tokenizer = load_models(cfg["model"], device)
         model_gate(engine)
+        if rank_checkpoint is not None:
+            engine.proposal_adapter = load_rank_calibrated_head(
+                rank_checkpoint, int(engine.draft.config.hidden_size),
+                engine.device,
+            )
         stops = stop_token_ids(engine, tokenizer)
         encoded = [
             encode_messages(
@@ -253,6 +354,16 @@ def run(config: Path, output: Path, budgets: list[int], tokens: int,
             "candidate_tree_proposal_temperatures": tree_temperatures,
             "candidate_sparse_exit_temperatures": sparse_temperatures,
             "temperature_budget_grid": temperature_budget_grid,
+            "candidate_tree_depth_rewards": depth_rewards,
+            "candidate_tree_temperature_schedules": temperature_schedules,
+            "candidate_learned_temperature_schedule": (
+                learned_temperature_schedule
+            ),
+            "candidate_learned_bias_path": learned_bias_path,
+            "candidate_adaptive_budgets": adaptive_budgets,
+            "rank_checkpoint": (
+                str(rank_checkpoint) if rank_checkpoint is not None else None
+            ),
             "target_sampling_temperature": 1.0,
             "tokens": tokens,
             "repeats": repeats,
@@ -262,9 +373,11 @@ def run(config: Path, output: Path, budgets: list[int], tokens: int,
             "best_point_estimate": best,
             "ddtree_vs_dflash": compare(rows, "ddtree_b45", "dflash"),
             "decision": (
-                "continue_to_dynamic_budget_policy"
+                "continue_to_disjoint_confirmation"
+                if comparisons[best]["versus_ddtree"]["ci95"][0] > 1
+                else "exploratory_point_estimate_only"
                 if comparisons[best]["versus_ddtree"]["speedup"] > 1
-                else "reject_budget_only_architecture"
+                else "reject_architecture_candidate"
             ),
             "source_sha256": {
                 "engine": file_hash(
@@ -273,6 +386,10 @@ def run(config: Path, output: Path, budgets: list[int], tokens: int,
                 ),
                 "script": file_hash(Path(__file__).resolve()),
                 "config": file_hash(config),
+                "rank_checkpoint": (
+                    file_hash(rank_checkpoint)
+                    if rank_checkpoint is not None else None
+                ),
             },
             "telemetry_end": telemetry(device),
         }
@@ -295,8 +412,41 @@ def main() -> None:
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--prompt-count", type=int, default=3)
     parser.add_argument("--temperature-budget-grid", action="store_true")
+    parser.add_argument("--depth-rewards", type=float, nargs="*", default=[])
+    parser.add_argument(
+        "--temperature-schedules", nargs="*", default=[],
+        metavar="START:END",
+    )
+    parser.add_argument("--learned-schedule", type=Path)
+    parser.add_argument(
+        "--adaptive-budgets", nargs="*", default=[], metavar="MIN:THRESHOLD",
+    )
+    parser.add_argument("--rank-checkpoint", type=Path)
     parser.add_argument("--device", default="cuda:0")
     args = parser.parse_args()
+    schedules = []
+    for value in args.temperature_schedules:
+        try:
+            start, end = (float(part) for part in value.split(":"))
+        except (TypeError, ValueError) as error:
+            raise ValueError(
+                f"Invalid temperature schedule {value!r}; use START:END"
+            ) from error
+        schedules.append((start, end))
+    learned, learned_bias_path = (
+        learned_calibration(args.learned_schedule.resolve())
+        if args.learned_schedule is not None else (None, None)
+    )
+    adaptive_budgets = []
+    for value in args.adaptive_budgets:
+        try:
+            minimum_text, threshold_text = value.split(":")
+            pair = (int(minimum_text), float(threshold_text))
+        except (TypeError, ValueError) as error:
+            raise ValueError(
+                f"Invalid adaptive budget {value!r}; use MIN:THRESHOLD"
+            ) from error
+        adaptive_budgets.append(pair)
     run(
         args.config.resolve(), args.output.resolve(), args.budgets,
         args.tokens, args.repeats, args.device,
@@ -304,6 +454,15 @@ def main() -> None:
         sparse_temperatures=args.sparse_temperatures,
         prompt_count=args.prompt_count,
         temperature_budget_grid=args.temperature_budget_grid,
+        depth_rewards=args.depth_rewards,
+        temperature_schedules=schedules,
+        learned_temperature_schedule=learned,
+        learned_bias_path=learned_bias_path,
+        adaptive_budgets=adaptive_budgets,
+        rank_checkpoint=(
+            args.rank_checkpoint.resolve()
+            if args.rank_checkpoint is not None else None
+        ),
     )
 
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from contextlib import contextmanager
 import importlib.util
+import json
 import sys
 import time
 
@@ -242,6 +243,24 @@ class Engine:
             cache_factory = DynamicCache
         self.cache_factory = cache_factory
         self.proposal_adapter = None
+        self._tree_proposal_bias_cache = {}
+
+    def tree_proposal_bias(self, path: str | None):
+        if path is None:
+            return None
+        if path not in self._tree_proposal_bias_cache:
+            with open(path) as stream:
+                payload = json.load(stream)
+            values = payload.get("vocab_bias")
+            if not isinstance(values, list):
+                raise ValueError("Tree calibration artifact has no vocabulary bias")
+            bias = torch.tensor(
+                values, dtype=torch.float32, device=self.device,
+            )
+            if bias.shape != (self.target.config.vocab_size,):
+                raise ValueError("Tree proposal bias has the wrong vocabulary size")
+            self._tree_proposal_bias_cache[path] = bias
+        return self._tree_proposal_bias_cache[path]
 
     def sync(self):
         if self.device.type == "cuda":
@@ -375,6 +394,9 @@ class Engine:
                  ar_observer=None, scaffold_observer=None, verifier_observer=None,
                  lazy_target_observer=None):
         variant.validate()
+        proposal_bias = self.tree_proposal_bias(
+            variant.tree_proposal_bias_path
+        )
         if input_ids.shape[0] != 1 or max_new_tokens < 1:
             raise ValueError("Expected one prompt and max_new_tokens >= 1")
         if input_ids.shape[1] + max_new_tokens + self.draft.block_size > self.target.config.max_position_embeddings:
@@ -491,13 +513,35 @@ class Engine:
                         proposal_hidden, logits[None],
                         self.target.get_output_embeddings().weight,
                     )[0]
+                if proposal_bias is not None:
+                    logits = logits.float() + proposal_bias[None]
                 draft_cache.crop(prefix_len)
                 draft_temp = variant.draft_temperature or variant.temperature or 1.0
                 tree_proposal_temp = (
                     variant.tree_proposal_temperature or draft_temp
                 )
-                q = (None if variant.method == "dflash" or variant.method in DIFFUSION_TREE_METHODS
-                     else probabilities(logits, tree_proposal_temp, dtype))
+                if (variant.method in {"dflash", "rank_calibrated_tree"}
+                        or variant.method in DIFFUSION_TREE_METHODS):
+                    q = None
+                elif variant.tree_proposal_temperature_schedule is not None:
+                    tree_temperatures = torch.tensor(
+                        variant.tree_proposal_temperature_schedule,
+                        dtype=dtype, device=logits.device,
+                    )
+                    q = torch.softmax(
+                        logits.to(dtype) / tree_temperatures[:, None], dim=-1,
+                    )
+                elif variant.tree_proposal_temperature_end is not None:
+                    tree_temperatures = torch.linspace(
+                        tree_proposal_temp,
+                        variant.tree_proposal_temperature_end,
+                        logits.shape[0], dtype=dtype, device=logits.device,
+                    )
+                    q = torch.softmax(
+                        logits.to(dtype) / tree_temperatures[:, None], dim=-1,
+                    )
+                else:
+                    q = probabilities(logits, tree_proposal_temp, dtype)
                 if variant.method in DIFFUSION_TREE_METHODS:
                     law_length = (
                         variant.diffusion_spur_length
@@ -523,12 +567,30 @@ class Engine:
                         TERMINAL_TREE_METHODS | FUSED_TREE_METHODS
                         | LAZY_HEAD_TREE_METHODS | LAZY_SOFTMAX_TREE_METHODS
                         | DIRECT_LOGITS_TREE_METHODS | LAZY_TARGET_TREE_METHODS):
-                    tree = probability_tree(q, variant.tree_budget)
+                    tree = probability_tree(
+                        q, variant.tree_budget,
+                        depth_reward=variant.tree_depth_reward,
+                        adaptive_min_budget=variant.tree_adaptive_min_budget,
+                        confidence_threshold=(
+                            variant.tree_adaptive_confidence_threshold
+                        ),
+                    )
                     paths = None
                     tree_proposal = None
                 elif variant.method == "dflash":
                     paths = logits.argmax(-1)[None]
                     tree = sampled_tree(paths)
+                    tree_proposal = None
+                elif variant.method == "rank_calibrated_tree":
+                    if self.proposal_adapter is None:
+                        raise RuntimeError(
+                            "rank_calibrated_tree requires a trained rank head"
+                        )
+                    tree = self.proposal_adapter.build_tree(
+                        proposal_hidden, logits, variant.tree_budget,
+                        draft_temp,
+                    )
+                    paths = None
                     tree_proposal = None
                 elif variant.method in SHARED_SUFFIX_METHODS:
                     paths = root_marginal.propose(q, variant.paths, generator)
@@ -922,6 +984,7 @@ class Engine:
                 elif variant.method in {
                         "ddtree", "root_shared_ddtree", "atom_tree_ancestral",
                         "diffusion_tree_ancestral", "prefix_core_spur_tree",
+                        "rank_calibrated_tree",
                         "prefix_sampled_spur_tree"} | PREFIX_RESCORED_TREE_METHODS:
                     verifier = tree_verify_ancestral_batched
                     generator_before = (

@@ -144,14 +144,32 @@ def sampled_tree(paths, share=True):
     return Tree(tokens, parents, depths, path_nodes)
 
 
-def probability_tree(q, budget: int):
-    """Best-first product-probability prefix tree, as in DDTree."""
+def probability_tree(q, budget: int, depth_reward: float = 0.0,
+                     adaptive_min_budget: int | None = None,
+                     confidence_threshold: float | None = None):
+    """Best-first prefix tree with an optional per-committed-token utility.
+
+    ``depth_reward=0`` is exactly DDTree's product-probability tree.  A positive
+    reward changes only which proposal prefixes receive the fixed node budget;
+    exact Target verification remains independent of this ranking heuristic.
+    """
+    if not math.isfinite(depth_reward):
+        raise ValueError("Tree depth reward must be finite")
     length, vocab = q.shape
     values, indices = torch.topk(q, min(budget, vocab), dim=-1, sorted=True)
     logs, ids = values.log().tolist(), indices.tolist()
+    if adaptive_min_budget is not None:
+        if confidence_threshold is None:
+            raise ValueError("Adaptive tree budget requires a confidence threshold")
+        confidence_depths = min(4, len(logs))
+        greedy_log_mean = sum(
+            logs[depth][0] for depth in range(confidence_depths)
+        ) / confidence_depths
+        if greedy_log_mean >= math.log(confidence_threshold):
+            budget = adaptive_min_budget
     tokens, parents, depths = [], [-1], [0]
     # Sibling alternatives are expanded lazily; descendants retain parent mass.
-    heap = [(-logs[0][0], 0, 0, 0, 0.0)]
+    heap = [(-(logs[0][0] + depth_reward), 0, 0, 0, 0.0)]
     while heap and len(tokens) < budget:
         neg_score, parent, depth, rank, parent_log = heapq.heappop(heap)
         node = len(parents)
@@ -159,10 +177,12 @@ def probability_tree(q, budget: int):
         parents.append(parent)
         depths.append(depth + 1)
         if rank + 1 < len(ids[depth]):
-            heapq.heappush(heap, (-(parent_log + logs[depth][rank + 1]),
+            heapq.heappush(heap, (-(parent_log + logs[depth][rank + 1]
+                                    + depth_reward),
                                  parent, depth, rank + 1, parent_log))
         if depth + 1 < length:
-            heapq.heappush(heap, (neg_score - logs[depth + 1][0],
+            heapq.heappush(heap, (neg_score - logs[depth + 1][0]
+                                  - depth_reward,
                                  node, depth + 1, 0, -neg_score))
     return Tree(tokens, parents, depths, [])
 

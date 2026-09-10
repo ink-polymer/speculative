@@ -56,6 +56,84 @@ def test_tree_proposal_temperature_is_an_audited_architecture_delta():
     ]
 
 
+def test_tree_depth_reward_is_an_audited_architecture_delta():
+    baseline, _ = pair()
+    candidate = replace(
+        baseline, name="utility_tree", method="ddtree_fused_scan",
+        tree_depth_reward=0.25,
+    )
+    manifest = assert_architecture_only_pair(baseline, candidate, MODEL)
+    assert manifest["architecture_delta"]["baseline"][
+        "tree_depth_reward"
+    ] == 0.0
+    assert manifest["architecture_delta"]["candidate"][
+        "tree_depth_reward"
+    ] == 0.25
+
+
+def test_tree_temperature_schedule_is_an_audited_architecture_delta():
+    baseline, _ = pair()
+    candidate = replace(
+        baseline, name="scheduled_tree", method="ddtree_fused_scan",
+        tree_proposal_temperature=1.0,
+        tree_proposal_temperature_end=0.4,
+    )
+    manifest = assert_architecture_only_pair(baseline, candidate, MODEL)
+    assert manifest["architecture_delta"]["candidate"][
+        "tree_proposal_temperature_end"
+    ] == 0.4
+
+
+def test_learned_depth_temperature_schedule_is_an_audited_delta():
+    baseline, _ = pair()
+    schedule = tuple(1.0 + depth / 100 for depth in range(15))
+    candidate = replace(
+        baseline, name="calibrated_tree", method="ddtree_fused_scan",
+        tree_proposal_temperature_schedule=schedule,
+    )
+    candidate.validate()
+    manifest = assert_architecture_only_pair(baseline, candidate, MODEL)
+    assert tuple(manifest["architecture_delta"]["candidate"][
+        "tree_proposal_temperature_schedule"
+    ]) == schedule
+
+
+def test_proposal_vocabulary_bias_is_an_audited_architecture_delta():
+    baseline, _ = pair()
+    candidate = replace(
+        baseline, name="biased_tree", method="ddtree_fused_scan",
+        tree_proposal_bias_path="calibration.json",
+    )
+    candidate.validate()
+    manifest = assert_architecture_only_pair(baseline, candidate, MODEL)
+    assert manifest["architecture_delta"]["candidate"][
+        "tree_proposal_bias_path"
+    ] == "calibration.json"
+
+
+def test_adaptive_budget_is_an_audited_architecture_delta():
+    baseline, _ = pair()
+    candidate = replace(
+        baseline, name="cost_tree", method="ddtree_fused_scan",
+        tree_adaptive_min_budget=24,
+        tree_adaptive_confidence_threshold=0.2,
+    )
+    candidate.validate()
+    manifest = assert_architecture_only_pair(baseline, candidate, MODEL)
+    assert manifest["architecture_delta"]["candidate"][
+        "tree_adaptive_min_budget"
+    ] == 24
+
+
+@pytest.mark.parametrize("schedule", [(1.0,), (1.0,) * 14 + (0.0,)])
+def test_learned_depth_temperature_schedule_is_validated(schedule):
+    with pytest.raises(ValueError, match="one positive finite value"):
+        Variant(
+            name="bad_schedule", method="ddtree_fused_scan", length=15,
+            tree_proposal_temperature_schedule=schedule,
+        ).validate()
+
+
 @pytest.mark.parametrize(
     "field,value",
     [

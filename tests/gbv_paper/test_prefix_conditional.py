@@ -6,6 +6,7 @@ import torch
 
 from gbv_experiments.prefix_conditional import (
     PrefixConditionalHead,
+    RankCalibratedHead,
     load_prefix_conditional_head,
 )
 from gbv_experiments.train_prefix_conditional import distillation_loss
@@ -242,3 +243,16 @@ def test_prefix_core_spur_engine_uses_one_draft_and_target_forward(
         )["passed"]
     finally:
         tiny_engine.proposal_adapter = None
+
+
+def test_parallel_rank_calibrator_starts_at_sparse_draft_tree():
+    torch.manual_seed(17)
+    head = RankCalibratedHead(12, rank=5, support_size=4, max_length=5)
+    hidden = torch.randn(1, 5, 12)
+    logits = torch.randn(1, 5, 17)
+    scores, tokens = head.scores(hidden, logits)
+    values, expected_tokens = logits.topk(4, dim=-1, sorted=True)
+    torch.testing.assert_close(scores, values)
+    assert torch.equal(tokens, expected_tokens)
+    tree = head.build_tree(hidden, logits[0], budget=8, temperature=1.0)
+    assert len(tree.tokens) == 8

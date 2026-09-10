@@ -1,0 +1,92 @@
+{
+  "kind": "architecture_level_ddtree_tbv_budget_scan",
+  "formal_complete": false,
+  "created_at_utc": "2026-09-10T11:37:19.315967+00:00",
+  "uses_cuda_graph": false,
+  "official_precision": {
+    "dtype": "bfloat16",
+    "target_attention": "sdpa",
+    "draft_attention": "sdpa",
+    "allow_tf32": false
+  },
+  "temperature": 1.0,
+  "length": 15,
+  "baseline_budget": 45,
+  "candidate_budgets": [],
+  "candidate_tree_proposal_temperatures": [],
+  "candidate_sparse_exit_temperatures": [],
+  "temperature_budget_grid": false,
+  "candidate_tree_depth_rewards": [],
+  "candidate_tree_temperature_schedules": [],
+  "candidate_learned_temperature_schedule": [
+    1.361261010169983,
+    1.3688035011291504,
+    1.334934949874878,
+    1.3979991674423218,
+    1.372629165649414,
+    1.5218902826309204,
+    1.2683467864990234,
+    1.3205064535140991,
+    1.2607465982437134,
+    1.3339974880218506,
+    1.3704044818878174,
+    1.1596986055374146,
+    1.2632206678390503,
+    1.2890883684158325,
+    1.211582899093628
+  ],
+  "target_sampling_temperature": 1.0,
+  "tokens": 64,
+  "repeats": 3,
+  "prompt_count": 3,
+  "prompt_policy": "synthetic development prompts only",
+  "comparisons": {
+    "adaptive_learned_depth_calibration": {
+      "versus_ddtree": {
+        "candidate": "adaptive_learned_depth_calibration",
+        "baseline": "ddtree_b45",
+        "speedup": 0.9615157102242775,
+        "ci95": [
+          0.8620460619216708,
+          1.0193389951147063
+        ],
+        "prompt_clusters": 3
+      },
+      "versus_dflash": {
+        "candidate": "adaptive_learned_depth_calibration",
+        "baseline": "dflash",
+        "speedup": 1.5949524391800778,
+        "ci95": [
+          1.319497732666387,
+          2.042878326305102
+        ],
+        "prompt_clusters": 3
+      }
+    }
+  },
+  "best_point_estimate": "adaptive_learned_depth_calibration",
+  "ddtree_vs_dflash": {
+    "candidate": "ddtree_b45",
+    "baseline": "dflash",
+    "speedup": 1.6587897859807705,
+    "ci95": [
+      1.4766359026627065,
+      2.019400492867384
+    ],
+    "prompt_clusters": 3
+  },
+  "decision": "reject_budget_only_architecture",
+  "source_sha256": {
+    "engine": "5267990995bd196499524551a784d4df9b14a6d2d98878b72e78f952540ce635",
+    "script": "49b7b5592a97aa85b4248cb3413ede301cd3f4b5fa6c810e1bef6792912eb0b4",
+    "config": "b8e0043d0866289aefd8155dc5e5e496689315db7add78ff4a34fa0c85616641"
+  },
+  "telemetry_end": {
+    "utc": "2026-09-10T11:37:19.317426+00:00",
+    "hostname": "autodl-container-26d148a435-8171fde0",
+    "pid": 48243,
+    "slurm_job_id": null,
+    "gpu_uuid": "b32e1465-06c0-9da4-928e-ca196f12f2cf",
+    "nvidia_smi": "GPU-b32e1465-06c0-9da4-928e-ca196f12f2cf, NVIDIA H20, P0, 39, 174.35 W, 1980 MHz, 2619 MHz, 9461 MiB, 50 %"
+  }
+}

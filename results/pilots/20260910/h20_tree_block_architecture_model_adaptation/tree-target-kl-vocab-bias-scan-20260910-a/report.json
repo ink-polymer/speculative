@@ -1,0 +1,93 @@
+{
+  "kind": "architecture_level_ddtree_tbv_budget_scan",
+  "formal_complete": false,
+  "created_at_utc": "2026-09-10T11:47:09.296343+00:00",
+  "uses_cuda_graph": false,
+  "official_precision": {
+    "dtype": "bfloat16",
+    "target_attention": "sdpa",
+    "draft_attention": "sdpa",
+    "allow_tf32": false
+  },
+  "temperature": 1.0,
+  "length": 15,
+  "baseline_budget": 45,
+  "candidate_budgets": [],
+  "candidate_tree_proposal_temperatures": [],
+  "candidate_sparse_exit_temperatures": [],
+  "temperature_budget_grid": false,
+  "candidate_tree_depth_rewards": [],
+  "candidate_tree_temperature_schedules": [],
+  "candidate_learned_temperature_schedule": [
+    1.2707122564315796,
+    1.2807033061981201,
+    1.380648136138916,
+    1.3407179117202759,
+    1.3699254989624023,
+    1.3338565826416016,
+    1.3366174697875977,
+    1.3967134952545166,
+    1.3305178880691528,
+    1.3728923797607422,
+    1.4405986070632935,
+    1.2658556699752808,
+    1.353587031364441,
+    1.3625577688217163,
+    1.3051115274429321
+  ],
+  "candidate_learned_bias_path": "/root/autodl-tmp/outputs/tree-target-kl-vocab-bias-20260910-a.json",
+  "target_sampling_temperature": 1.0,
+  "tokens": 64,
+  "repeats": 3,
+  "prompt_count": 3,
+  "prompt_policy": "synthetic development prompts only",
+  "comparisons": {
+    "adaptive_learned_depth_calibration": {
+      "versus_ddtree": {
+        "candidate": "adaptive_learned_depth_calibration",
+        "baseline": "ddtree_b45",
+        "speedup": 0.857531278319918,
+        "ci95": [
+          0.7711725771162147,
+          1.0372439882255762
+        ],
+        "prompt_clusters": 3
+      },
+      "versus_dflash": {
+        "candidate": "adaptive_learned_depth_calibration",
+        "baseline": "dflash",
+        "speedup": 1.412628601230772,
+        "ci95": [
+          1.1777289206932824,
+          1.5512404305611733
+        ],
+        "prompt_clusters": 3
+      }
+    }
+  },
+  "best_point_estimate": "adaptive_learned_depth_calibration",
+  "ddtree_vs_dflash": {
+    "candidate": "ddtree_b45",
+    "baseline": "dflash",
+    "speedup": 1.6473202050406894,
+    "ci95": [
+      1.49392203970186,
+      2.000819688654892
+    ],
+    "prompt_clusters": 3
+  },
+  "decision": "reject_budget_only_architecture",
+  "source_sha256": {
+    "engine": "c7e106ed39eace94b93e3bd3e2feae230c80a340b6499d12dd17575e5b3dfe3d",
+    "script": "87fa18d36ced556cca8a49b59dad5f073b3785c1f32741eb2d26e14b84a2f8bb",
+    "config": "b8e0043d0866289aefd8155dc5e5e496689315db7add78ff4a34fa0c85616641"
+  },
+  "telemetry_end": {
+    "utc": "2026-09-10T11:47:09.297900+00:00",
+    "hostname": "autodl-container-26d148a435-8171fde0",
+    "pid": 48697,
+    "slurm_job_id": null,
+    "gpu_uuid": "b32e1465-06c0-9da4-928e-ca196f12f2cf",
+    "nvidia_smi": "GPU-b32e1465-06c0-9da4-928e-ca196f12f2cf, NVIDIA H20, P0, 41, 177.53 W, 1980 MHz, 2619 MHz, 9463 MiB, 53 %"
+  }
+}

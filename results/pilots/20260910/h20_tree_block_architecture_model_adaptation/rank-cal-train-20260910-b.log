@@ -1,0 +1,44 @@
+`torch_dtype` is deprecated! Use `dtype` instead!
+Loading checkpoint shards:   0%|                         | 0/3 [00:00<?, ?it/s]Loading checkpoint shards: 100%|█████████████████| 3/3 [00:00<00:00, 77.45it/s]
+`torch_dtype` is deprecated! Use `dtype` instead!
+epoch=1/2 step=40/384 kl=2.167170 baseline=2.213071
+epoch=1/2 step=80/384 kl=2.186630 baseline=2.268493
+epoch=1/2 step=120/384 kl=2.174378 baseline=2.257835
+epoch=1/2 step=160/384 kl=2.178570 baseline=2.273453
+epoch=1/2 step=200/384 kl=2.138612 baseline=2.235481
+epoch=1/2 step=240/384 kl=2.145686 baseline=2.249452
+epoch=1/2 step=280/384 kl=2.156011 baseline=2.264873
+epoch=1/2 step=320/384 kl=2.151446 baseline=2.259138
+epoch=1/2 step=360/384 kl=2.160614 baseline=2.269459
+epoch=2/2 step=40/384 kl=2.165695 baseline=2.277880
+epoch=2/2 step=80/384 kl=2.174303 baseline=2.288719
+epoch=2/2 step=120/384 kl=2.155310 baseline=2.274404
+epoch=2/2 step=160/384 kl=2.161200 baseline=2.278454
+epoch=2/2 step=200/384 kl=2.170050 baseline=2.293797
+epoch=2/2 step=240/384 kl=2.165194 baseline=2.291660
+epoch=2/2 step=280/384 kl=2.163294 baseline=2.289804
+epoch=2/2 step=320/384 kl=2.166351 baseline=2.296015
+epoch=2/2 step=360/384 kl=2.159136 baseline=2.288982
+{
+  "saved": "/root/autodl-tmp/outputs/parallel-rank-calibrated-20260910-b.pt",
+  "architecture": "parallel_rank_calibrator_v1",
+  "hidden_size": 2560,
+  "rank": 64,
+  "support_size": 32,
+  "max_length": 15,
+  "updates": 768,
+  "epochs": 2,
+  "learning_rate": 0.001,
+  "seed": 20260910,
+  "training_examples": 384,
+  "holdout_examples": 64,
+  "training_sha256": "66a1a2cfdb5713744886256d9ba073f100be97f5e3c02b13d2ee1f1701b454f5",
+  "target": "Qwen/Qwen3-4B",
+  "draft": "z-lab/Qwen3-4B-DFlash-b16",
+  "train_kl": 2.1612084171315424,
+  "baseline_train_kl": 2.2911817739473954,
+  "holdout_kl": 1.9567469380126568,
+  "baseline_holdout_kl": 2.0606565877333196,
+  "holdout_improved": true,
+  "adds_target_or_draft_forward_at_runtime": false
+}

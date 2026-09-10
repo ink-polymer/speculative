@@ -12,6 +12,9 @@ from .config import Variant
 # frozen for an architecture-only comparison.
 ARCHITECTURE_FIELDS = frozenset({
     "name", "method", "paths", "tree_proposal_temperature",
+    "tree_proposal_temperature_end", "tree_proposal_temperature_schedule",
+    "tree_proposal_bias_path", "tree_depth_reward",
+    "tree_adaptive_confidence_threshold", "tree_adaptive_min_budget",
 })
 FROZEN_MODEL_SETTINGS = {
     "dtype": "bfloat16",

@@ -645,6 +645,24 @@ def test_probability_tree_has_top_prefix_masses():
     assert sorted(masses[1:], reverse=True) == pytest.approx(sorted(expected, reverse=True)[:8])
 
 
+def test_probability_tree_depth_reward_allocates_block_utility_to_depth():
+    q = torch.tensor([[.6, .4], [.6, .4], [.6, .4]])
+    baseline = probability_tree(q, 3)
+    rewarded = probability_tree(q, 3, depth_reward=1.0)
+    assert baseline.depths == [0, 1, 1, 2]
+    assert rewarded.depths == [0, 1, 2, 3]
+
+
+def test_probability_tree_adaptive_budget_prunes_confident_blocks():
+    q = torch.tensor([[0.9, 0.1], [0.8, 0.2], [0.9, 0.1]])
+    full = probability_tree(q, 5)
+    pruned = probability_tree(
+        q, 5, adaptive_min_budget=2, confidence_threshold=0.7,
+    )
+    assert len(full.tokens) == 5
+    assert len(pruned.tokens) == 2
+
+
 def test_adaptive_path_proposal_has_top_full_paths_and_consistent_conditionals():
     q = torch.tensor([[.63, .37], [.71, .29], [.57, .43]], dtype=torch.float64)
     proposal = adaptive_path_proposal(q, 5)

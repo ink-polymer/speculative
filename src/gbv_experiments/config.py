@@ -54,6 +54,24 @@ class Variant:
     # Architecture-only temperature used to score DDTree proposal prefixes.
     # It never changes the Target sampling temperature or verifier law.
     tree_proposal_temperature: float | None = None
+    # Optional final value of a linear depth-wise proposal temperature.  The
+    # first value is ``tree_proposal_temperature`` (or the Draft temperature).
+    tree_proposal_temperature_end: float | None = None
+    # Optional learned temperature at every future depth.  This changes only
+    # proposal-tree allocation and adds neither a model forward nor a Target
+    # distribution change at runtime.
+    tree_proposal_temperature_schedule: tuple[float, ...] | None = None
+    # Optional serialized proposal-only vocabulary bias learned on disjoint
+    # text.  Loading is setup work; applying it is one vector add before the
+    # already-required proposal softmax.
+    tree_proposal_bias_path: str | None = None
+    # Cost-aware tree: when the geometric mean of the first four greedy Draft
+    # probabilities reaches this threshold, verify only the smaller budget.
+    tree_adaptive_confidence_threshold: float | None = None
+    tree_adaptive_min_budget: int | None = None
+    # Per-edge utility reward used only when allocating proposal-tree nodes.
+    # Positive values favor deeper prefixes that can commit more tokens.
+    tree_depth_reward: float = 0.0
 
     def validate(self) -> None:
         if self.method not in {"target", "dflash", "token", "bv", "gbv", "tree_gbv",
@@ -83,7 +101,8 @@ class Variant:
                                "ddtree_lazy_target_prefetch2",
                                "ddtree_lazy_projection",
                                "ddtree_lazy_softmax_fused_scan",
-                               "ddtree_lazy_projection_fused_scan"} | SHARED_SUFFIX_METHODS | ATOM_TREE_METHODS | DIFFUSION_LAW_METHODS | PREFIX_TREE_METHODS:
+                               "ddtree_lazy_projection_fused_scan",
+                               "rank_calibrated_tree"} | SHARED_SUFFIX_METHODS | ATOM_TREE_METHODS | DIFFUSION_LAW_METHODS | PREFIX_TREE_METHODS:
             raise ValueError(f"Unknown method: {self.method}")
         if (self.paths < 1 or self.length < 1 or self.temperature < 0
                 or not 0 <= self.prefix_strength <= 2):
@@ -103,6 +122,33 @@ class Variant:
                 and (self.tree_proposal_temperature <= 0
                      or not math.isfinite(self.tree_proposal_temperature))):
             raise ValueError("Tree proposal temperature must be positive")
+        if (self.tree_proposal_temperature_end is not None
+                and (self.tree_proposal_temperature_end <= 0
+                     or not math.isfinite(self.tree_proposal_temperature_end))):
+            raise ValueError("Final tree proposal temperature must be positive")
+        if self.tree_proposal_temperature_schedule is not None:
+            if (len(self.tree_proposal_temperature_schedule) != self.length
+                    or any(value <= 0 or not math.isfinite(value)
+                           for value in self.tree_proposal_temperature_schedule)):
+                raise ValueError(
+                    "Tree proposal temperature schedule must contain one "
+                    "positive finite value per future depth"
+                )
+        if (self.tree_proposal_bias_path is not None
+                and not self.tree_proposal_bias_path.strip()):
+            raise ValueError("Tree proposal bias path must be nonempty")
+        if ((self.tree_adaptive_confidence_threshold is None)
+                != (self.tree_adaptive_min_budget is None)):
+            raise ValueError("Adaptive tree threshold and minimum budget must be paired")
+        if self.tree_adaptive_confidence_threshold is not None:
+            if not 0 < self.tree_adaptive_confidence_threshold <= 1:
+                raise ValueError("Adaptive tree confidence threshold must be in (0, 1]")
+            if (not isinstance(self.tree_adaptive_min_budget, int)
+                    or isinstance(self.tree_adaptive_min_budget, bool)
+                    or not 1 <= self.tree_adaptive_min_budget < self.tree_budget):
+                raise ValueError("Adaptive tree minimum budget must be below tree_budget")
+        if not math.isfinite(self.tree_depth_reward):
+            raise ValueError("Tree depth reward must be finite")
         if self.draft_attention not in {"bidirectional", "causal"}:
             raise ValueError("Invalid draft_attention")
         if self.condition_features not in {"target", "zero"}:
