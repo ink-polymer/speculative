@@ -679,21 +679,19 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
             reason = "contextual_periodic_refresh"
         else:
             history = self._safe_required_budgets[-self.contextual_history_window:]
+            # Admission compares raw prefix mass on one common scale.  Using
+            # separately learned per-budget calibration factors here can make
+            # a smaller prefix appear to retain more than 100% of B128 and is
+            # therefore reserved for post-selection diagnostics only.
             safe_expected = 1. + min(
-                float(self.block_size),
-                self._acceptance_scale_by_budget[safe_budget]
-                * mass_by_budget[safe_budget],
-            )
+                float(self.block_size), mass_by_budget[safe_budget])
             for budget in available[:-1]:
                 if (budget < self.contextual_floor_budget
                         or len(history) < self.contextual_minimum_history):
                     continue
                 support = sum(required <= budget for required in history) / len(history)
                 expected = 1. + min(
-                    float(self.block_size),
-                    self._acceptance_scale_by_budget[budget]
-                    * mass_by_budget[budget],
-                )
+                    float(self.block_size), mass_by_budget[budget])
                 retention = expected / max(safe_expected, 1e-9)
                 if (support >= self.contextual_minimum_support
                         and retention >= self.contextual_mass_retention_ratio):
