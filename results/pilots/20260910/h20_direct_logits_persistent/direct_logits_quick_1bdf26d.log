@@ -1,0 +1,68 @@
+[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m                                                               [100%][0m
+`torch_dtype` is deprecated! Use `dtype` instead!
+Loading checkpoint shards:   0%|                         | 0/3 [00:00<?, ?it/s]Loading checkpoint shards: 100%|█████████████████| 3/3 [00:00<00:00, 82.96it/s]
+`torch_dtype` is deprecated! Use `dtype` instead!
+W0910 10:51:13.552000 29057 site-packages/torch/utils/cpp_extension.py:2425] TORCH_CUDA_ARCH_LIST is not set, all archs for visible cards are included for compilation. 
+W0910 10:51:13.552000 29057 site-packages/torch/utils/cpp_extension.py:2425] If this is not desired, please set os.environ['TORCH_CUDA_ARCH_LIST'] to specific architectures.
+dev prompt=1/3 repeat=1/5 method=fused_scan tpot=10.998041
+dev prompt=1/3 repeat=1/5 method=direct_logits_fused_scan tpot=11.343572
+dev prompt=1/3 repeat=1/5 method=ddtree tpot=8.845223
+dev prompt=1/3 repeat=1/5 method=dflash tpot=13.140980
+dev prompt=1/3 repeat=2/5 method=direct_logits_fused_scan tpot=11.979846
+dev prompt=1/3 repeat=2/5 method=ddtree tpot=8.688026
+dev prompt=1/3 repeat=2/5 method=dflash tpot=13.811502
+dev prompt=1/3 repeat=2/5 method=fused_scan tpot=11.048400
+dev prompt=1/3 repeat=3/5 method=ddtree tpot=8.617750
+dev prompt=1/3 repeat=3/5 method=dflash tpot=13.070705
+dev prompt=1/3 repeat=3/5 method=fused_scan tpot=11.090386
+dev prompt=1/3 repeat=3/5 method=direct_logits_fused_scan tpot=11.300989
+dev prompt=1/3 repeat=4/5 method=dflash tpot=13.027425
+dev prompt=1/3 repeat=4/5 method=fused_scan tpot=11.049083
+dev prompt=1/3 repeat=4/5 method=direct_logits_fused_scan tpot=11.334137
+dev prompt=1/3 repeat=4/5 method=ddtree tpot=8.525506
+dev prompt=1/3 repeat=5/5 method=fused_scan tpot=11.095571
+dev prompt=1/3 repeat=5/5 method=direct_logits_fused_scan tpot=11.311328
+dev prompt=1/3 repeat=5/5 method=ddtree tpot=8.560142
+dev prompt=1/3 repeat=5/5 method=dflash tpot=13.082027
+dev prompt=2/3 repeat=1/5 method=direct_logits_fused_scan tpot=5.241910
+dev prompt=2/3 repeat=1/5 method=ddtree tpot=3.459561
+dev prompt=2/3 repeat=1/5 method=dflash tpot=6.778766
+dev prompt=2/3 repeat=1/5 method=fused_scan tpot=4.468199
+dev prompt=2/3 repeat=2/5 method=ddtree tpot=3.478141
+dev prompt=2/3 repeat=2/5 method=dflash tpot=6.792213
+dev prompt=2/3 repeat=2/5 method=fused_scan tpot=4.467374
+dev prompt=2/3 repeat=2/5 method=direct_logits_fused_scan tpot=5.038923
+dev prompt=2/3 repeat=3/5 method=dflash tpot=6.919291
+dev prompt=2/3 repeat=3/5 method=fused_scan tpot=4.529102
+dev prompt=2/3 repeat=3/5 method=direct_logits_fused_scan tpot=5.051853
+dev prompt=2/3 repeat=3/5 method=ddtree tpot=3.433209
+dev prompt=2/3 repeat=4/5 method=fused_scan tpot=4.467485
+dev prompt=2/3 repeat=4/5 method=direct_logits_fused_scan tpot=5.034282
+dev prompt=2/3 repeat=4/5 method=ddtree tpot=3.432770
+dev prompt=2/3 repeat=4/5 method=dflash tpot=6.824987
+dev prompt=2/3 repeat=5/5 method=direct_logits_fused_scan tpot=5.049268
+dev prompt=2/3 repeat=5/5 method=ddtree tpot=3.441225
+dev prompt=2/3 repeat=5/5 method=dflash tpot=6.799512
+dev prompt=2/3 repeat=5/5 method=fused_scan tpot=4.480263
+dev prompt=3/3 repeat=1/5 method=direct_logits_fused_scan tpot=7.662521
+dev prompt=3/3 repeat=1/5 method=ddtree tpot=5.693503
+dev prompt=3/3 repeat=1/5 method=fused_scan tpot=7.208983
+dev prompt=3/3 repeat=1/5 method=dflash tpot=8.344270
+dev prompt=3/3 repeat=2/5 method=ddtree tpot=5.730994
+dev prompt=3/3 repeat=2/5 method=fused_scan tpot=7.207762
+dev prompt=3/3 repeat=2/5 method=dflash tpot=8.416738
+dev prompt=3/3 repeat=2/5 method=direct_logits_fused_scan tpot=7.672031
+dev prompt=3/3 repeat=3/5 method=fused_scan tpot=7.136080
+dev prompt=3/3 repeat=3/5 method=dflash tpot=8.278541
+dev prompt=3/3 repeat=3/5 method=direct_logits_fused_scan tpot=7.588085
+dev prompt=3/3 repeat=3/5 method=ddtree tpot=5.674383
+dev prompt=3/3 repeat=4/5 method=dflash tpot=8.377292
+dev prompt=3/3 repeat=4/5 method=direct_logits_fused_scan tpot=7.665489
+dev prompt=3/3 repeat=4/5 method=ddtree tpot=5.714520
+dev prompt=3/3 repeat=4/5 method=fused_scan tpot=7.219519
+dev prompt=3/3 repeat=5/5 method=direct_logits_fused_scan tpot=7.694690
+dev prompt=3/3 repeat=5/5 method=ddtree tpot=5.757982
+dev prompt=3/3 repeat=5/5 method=fused_scan tpot=7.230046
+dev prompt=3/3 repeat=5/5 method=dflash tpot=8.390107
+{'gate_passed': False, 'formal_complete': False, 'within_method_repeat_equal': True, 'comparisons': {'candidate_vs_ddtree': {'candidate': 'direct_logits_fused_scan', 'baseline': 'ddtree', 'metric': 'equal-prompt geometric-mean decode speedup', 'speedup': 0.725773198690276, 'ci95': [0.6784995946862132, 0.7549632194434143], 'prompt_clusters': 3, 'bootstrap_samples': 20000}, 'candidate_vs_fused_scan': {'candidate': 'direct_logits_fused_scan', 'baseline': 'fused_scan', 'metric': 'equal-prompt geometric-mean decode speedup', 'speedup': 0.9285090918894959, 'ci95': [0.8818151863496521, 0.9652803166499965], 'prompt_clusters': 3, 'bootstrap_samples': 20000}, 'candidate_vs_dflash': {'candidate': 'direct_logits_fused_scan', 'baseline': 'dflash', 'metric': 'equal-prompt geometric-mean decode speedup', 'speedup': 1.1917591032591284, 'ci95': [1.0920552552866554, 1.3422431050567731], 'prompt_clusters': 3, 'bootstrap_samples': 20000}, 'ddtree_vs_dflash': {'candidate': 'ddtree', 'baseline': 'dflash', 'metric': 'equal-prompt geometric-mean decode speedup', 'speedup': 1.6420544398853065, 'ci95': [1.4632455771223396, 1.9782518892697682], 'prompt_clusters': 3, 'bootstrap_samples': 20000}}, 'candidate_gates': {'direct_logits_fused_scan': False}, 'selected_candidate_for_fresh_confirmation': None, 'quick_selection_metric': 'point estimate versus DDTree', 'quick_candidate_ranking': ['direct_logits_fused_scan'], 'quick_selected_candidate': 'direct_logits_fused_scan', 'quick_selection_is_formal_evidence': False, 'aggregate': {'dflash': {'records': 15, 'decode_tokens': 945, 'decode_ms': 8949.424535036087, 'tokens_per_second': 105.593381596819, 'mean_projected_rows_per_round': None, 'mean_full_rows_per_round': None}, 'ddtree': {'records': 15, 'decode_tokens': 945, 'decode_ms': 5610.335011035204, 'tokens_per_second': 168.4391392209627, 'mean_projected_rows_per_round': None, 'mean_full_rows_per_round': None}, 'fused_scan': {'records': 15, 'decode_tokens': 945, 'decode_ms': 7162.86651417613, 'tokens_per_second': 131.93042172847103, 'mean_projected_rows_per_round': None, 'mean_full_rows_per_round': None}, 'direct_logits_fused_scan': {'records': 15, 'decode_tokens': 945, 'decode_ms': 7621.042259037495, 'tokens_per_second': 123.99878755157953, 'mean_projected_rows_per_round': 5.458333333333333, 'mean_full_rows_per_round': 46.0}}, 'telemetry_end': {'utc': '2026-09-10T02:51:45.664046+00:00', 'hostname': 'autodl-container-26d148a435-8171fde0', 'pid': 29057, 'slurm_job_id': None, 'gpu_uuid': 'b32e1465-06c0-9da4-928e-ca196f12f2cf', 'nvidia_smi': 'GPU-b32e1465-06c0-9da4-928e-ca196f12f2cf, NVIDIA H20, P0, 43, 175.16 W, 1980 MHz, 2619 MHz, 9461 MiB, 47 %'}, 'next_step': 'fresh disjoint confirmation run only if this gate passes'}
+DIRECT_LOGITS_QUICK_SCREEN_COMPLETE

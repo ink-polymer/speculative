@@ -1,0 +1,397 @@
+[31mF[0m[31mF[0m[31mF[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[31m                                                               [100%][0m
+=================================== FAILURES ===================================
+[31m[1m________ test_direct_logits_fused_scan_matches_fp64_inverse_cdf[dtype0] ________[0m
+
+build_directory = '/root/.cache/torch_extensions/py311_cu128/gbv_fused_tree_sampler_v13'
+verbose = False
+error_prefix = "Error building extension 'gbv_fused_tree_sampler_v13'"
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92m_run_ninja_build[39;49;00m(build_directory: [96mstr[39;49;00m, verbose: [96mbool[39;49;00m, error_prefix: [96mstr[39;49;00m) -> [94mNone[39;49;00m:[90m[39;49;00m
+        command = [[33m'[39;49;00m[33mninja[39;49;00m[33m'[39;49;00m, [33m'[39;49;00m[33m-v[39;49;00m[33m'[39;49;00m][90m[39;49;00m
+        num_workers = _get_num_workers(verbose)[90m[39;49;00m
+        [94mif[39;49;00m num_workers [95mis[39;49;00m [95mnot[39;49;00m [94mNone[39;49;00m:[90m[39;49;00m
+            command.extend([[33m'[39;49;00m[33m-j[39;49;00m[33m'[39;49;00m, [96mstr[39;49;00m(num_workers)])[90m[39;49;00m
+        env = os.environ.copy()[90m[39;49;00m
+        [90m# Try to activate the vc env for the users[39;49;00m[90m[39;49;00m
+        [94mif[39;49;00m IS_WINDOWS [95mand[39;49;00m [33m'[39;49;00m[33mVSCMD_ARG_TGT_ARCH[39;49;00m[33m'[39;49;00m [95mnot[39;49;00m [95min[39;49;00m env:[90m[39;49;00m
+            [94mfrom[39;49;00m[90m [39;49;00m[04m[96msetuptools[39;49;00m[90m [39;49;00m[94mimport[39;49;00m distutils  [90m# type: ignore[attr-defined][39;49;00m[90m[39;49;00m
+    [90m[39;49;00m
+            plat_name = distutils.util.get_platform()[90m[39;49;00m
+            plat_spec = PLAT_TO_VCVARS[plat_name][90m[39;49;00m
+            vc_env = {k.upper(): v [94mfor[39;49;00m k, v [95min[39;49;00m _get_vc_env(plat_spec).items()}[90m[39;49;00m
+            [94mfor[39;49;00m k, v [95min[39;49;00m env.items():[90m[39;49;00m
+                uk = k.upper()[90m[39;49;00m
+                [94mif[39;49;00m uk [95mnot[39;49;00m [95min[39;49;00m vc_env:[90m[39;49;00m
+                    vc_env[uk] = v[90m[39;49;00m
+            env = vc_env[90m[39;49;00m
+        [94mtry[39;49;00m:[90m[39;49;00m
+            sys.stdout.flush()[90m[39;49;00m
+            sys.stderr.flush()[90m[39;49;00m
+            [90m# Warning: don't pass stdout=None to subprocess.run to get output.[39;49;00m[90m[39;49;00m
+            [90m# subprocess.run assumes that sys.__stdout__ has not been modified and[39;49;00m[90m[39;49;00m
+            [90m# attempts to write to it by default.  However, when we call _run_ninja_build[39;49;00m[90m[39;49;00m
+            [90m# from ahead-of-time cpp extensions, the following happens:[39;49;00m[90m[39;49;00m
+            [90m# 1) If the stdout encoding is not utf-8, setuptools detachs __stdout__.[39;49;00m[90m[39;49;00m
+            [90m#    https://github.com/pypa/setuptools/blob/7e97def47723303fafabe48b22168bbc11bb4821/setuptools/dist.py#L1110[39;49;00m[90m[39;49;00m
+            [90m#    (it probably shouldn't do this)[39;49;00m[90m[39;49;00m
+            [90m# 2) subprocess.run (on POSIX, with no stdout override) relies on[39;49;00m[90m[39;49;00m
+            [90m#    __stdout__ not being detached:[39;49;00m[90m[39;49;00m
+            [90m#    https://github.com/python/cpython/blob/c352e6c7446c894b13643f538db312092b351789/Lib/subprocess.py#L1214[39;49;00m[90m[39;49;00m
+            [90m# To work around this, we pass in the fileno directly and hope that[39;49;00m[90m[39;49;00m
+            [90m# it is valid.[39;49;00m[90m[39;49;00m
+            stdout_fileno = [94m1[39;49;00m[90m[39;49;00m
+>           subprocess.run([90m[39;49;00m
+                command,[90m[39;49;00m
+                shell=IS_WINDOWS [95mand[39;49;00m IS_HIP_EXTENSION,[90m[39;49;00m
+                stdout=stdout_fileno [94mif[39;49;00m verbose [94melse[39;49;00m subprocess.PIPE,[90m[39;49;00m
+                stderr=subprocess.STDOUT,[90m[39;49;00m
+                cwd=build_directory,[90m[39;49;00m
+                check=[94mTrue[39;49;00m,[90m[39;49;00m
+                env=env)[90m[39;49;00m
+
+[1m[31m../envs/speculative-py311/lib/python3.11/site-packages/torch/utils/cpp_extension.py[0m:2595: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+input = None, capture_output = False, timeout = None, check = True
+popenargs = (['ninja', '-v'],)
+kwargs = {'cwd': '/root/.cache/torch_extensions/py311_cu128/gbv_fused_tree_sampler_v13', 'env': {'AgentHost': '10.0.3.34', 'Aut...AutoDLContainerUUID': '26d148a435-8171fde0', 'AutoDLDataCenter': 'beijingDC1', ...}, 'shell': False, 'stderr': -2, ...}
+process = <Popen: returncode: 2 args: ['ninja', '-v']>
+stdout = b'[1/3] /usr/local/cuda/bin/nvcc --generate-dependencies-with-compile --dependency-output cuda.cuda.o.d -DTORCH_EXTENS...orch_extensions/py311_cu128/gbv_fused_tree_sampler_v13/main.cpp -o main.o \nninja: build stopped: subcommand failed.\n'
+stderr = None, retcode = 2
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mrun[39;49;00m(*popenargs,[90m[39;49;00m
+            [96minput[39;49;00m=[94mNone[39;49;00m, capture_output=[94mFalse[39;49;00m, timeout=[94mNone[39;49;00m, check=[94mFalse[39;49;00m, **kwargs):[90m[39;49;00m
+    [90m    [39;49;00m[33m"""Run command with arguments and return a CompletedProcess instance.[39;49;00m
+    [33m[39;49;00m
+    [33m    The returned instance will have attributes args, returncode, stdout and[39;49;00m
+    [33m    stderr. By default, stdout and stderr are not captured, and those attributes[39;49;00m
+    [33m    will be None. Pass stdout=PIPE and/or stderr=PIPE in order to capture them,[39;49;00m
+    [33m    or pass capture_output=True to capture both.[39;49;00m
+    [33m[39;49;00m
+    [33m    If check is True and the exit code was non-zero, it raises a[39;49;00m
+    [33m    CalledProcessError. The CalledProcessError object will have the return code[39;49;00m
+    [33m    in the returncode attribute, and output & stderr attributes if those streams[39;49;00m
+    [33m    were captured.[39;49;00m
+    [33m[39;49;00m
+    [33m    If timeout is given, and the process takes too long, a TimeoutExpired[39;49;00m
+    [33m    exception will be raised.[39;49;00m
+    [33m[39;49;00m
+    [33m    There is an optional argument "input", allowing you to[39;49;00m
+    [33m    pass bytes or a string to the subprocess's stdin.  If you use this argument[39;49;00m
+    [33m    you may not also use the Popen constructor's "stdin" argument, as[39;49;00m
+    [33m    it will be used internally.[39;49;00m
+    [33m[39;49;00m
+    [33m    By default, all communication is in bytes, and therefore any "input" should[39;49;00m
+    [33m    be bytes, and the stdout and stderr will be bytes. If in text mode, any[39;49;00m
+    [33m    "input" should be a string, and stdout and stderr will be strings decoded[39;49;00m
+    [33m    according to locale encoding, or by "encoding" if set. Text mode is[39;49;00m
+    [33m    triggered by setting any of text, encoding, errors or universal_newlines.[39;49;00m
+    [33m[39;49;00m
+    [33m    The other arguments are the same as for the Popen constructor.[39;49;00m
+    [33m    """[39;49;00m[90m[39;49;00m
+        [94mif[39;49;00m [96minput[39;49;00m [95mis[39;49;00m [95mnot[39;49;00m [94mNone[39;49;00m:[90m[39;49;00m
+            [94mif[39;49;00m kwargs.get([33m'[39;49;00m[33mstdin[39;49;00m[33m'[39;49;00m) [95mis[39;49;00m [95mnot[39;49;00m [94mNone[39;49;00m:[90m[39;49;00m
+                [94mraise[39;49;00m [96mValueError[39;49;00m([33m'[39;49;00m[33mstdin and input arguments may not both be used.[39;49;00m[33m'[39;49;00m)[90m[39;49;00m
+            kwargs[[33m'[39;49;00m[33mstdin[39;49;00m[33m'[39;49;00m] = PIPE[90m[39;49;00m
+    [90m[39;49;00m
+        [94mif[39;49;00m capture_output:[90m[39;49;00m
+            [94mif[39;49;00m kwargs.get([33m'[39;49;00m[33mstdout[39;49;00m[33m'[39;49;00m) [95mis[39;49;00m [95mnot[39;49;00m [94mNone[39;49;00m [95mor[39;49;00m kwargs.get([33m'[39;49;00m[33mstderr[39;49;00m[33m'[39;49;00m) [95mis[39;49;00m [95mnot[39;49;00m [94mNone[39;49;00m:[90m[39;49;00m
+                [94mraise[39;49;00m [96mValueError[39;49;00m([33m'[39;49;00m[33mstdout and stderr arguments may not be used [39;49;00m[33m'[39;49;00m[90m[39;49;00m
+                                 [33m'[39;49;00m[33mwith capture_output.[39;49;00m[33m'[39;49;00m)[90m[39;49;00m
+            kwargs[[33m'[39;49;00m[33mstdout[39;49;00m[33m'[39;49;00m] = PIPE[90m[39;49;00m
+            kwargs[[33m'[39;49;00m[33mstderr[39;49;00m[33m'[39;49;00m] = PIPE[90m[39;49;00m
+    [90m[39;49;00m
+        [94mwith[39;49;00m Popen(*popenargs, **kwargs) [94mas[39;49;00m process:[90m[39;49;00m
+            [94mtry[39;49;00m:[90m[39;49;00m
+                stdout, stderr = process.communicate([96minput[39;49;00m, timeout=timeout)[90m[39;49;00m
+            [94mexcept[39;49;00m TimeoutExpired [94mas[39;49;00m exc:[90m[39;49;00m
+                process.kill()[90m[39;49;00m
+                [94mif[39;49;00m _mswindows:[90m[39;49;00m
+                    [90m# Windows accumulates the output in a single blocking[39;49;00m[90m[39;49;00m
+                    [90m# read() call run on child threads, with the timeout[39;49;00m[90m[39;49;00m
+                    [90m# being done in a join() on those threads.  communicate()[39;49;00m[90m[39;49;00m
+                    [90m# _after_ kill() is required to collect that and add it[39;49;00m[90m[39;49;00m
+                    [90m# to the exception.[39;49;00m[90m[39;49;00m
+                    exc.stdout, exc.stderr = process.communicate()[90m[39;49;00m
+                [94melse[39;49;00m:[90m[39;49;00m
+                    [90m# POSIX _communicate already populated the output so[39;49;00m[90m[39;49;00m
+                    [90m# far into the TimeoutExpired exception.[39;49;00m[90m[39;49;00m
+                    process.wait()[90m[39;49;00m
+                [94mraise[39;49;00m[90m[39;49;00m
+            [94mexcept[39;49;00m:  [90m# Including KeyboardInterrupt, communicate handled that.[39;49;00m[90m[39;49;00m
+                process.kill()[90m[39;49;00m
+                [90m# We don't call process.wait() as .__exit__ does that for us.[39;49;00m[90m[39;49;00m
+                [94mraise[39;49;00m[90m[39;49;00m
+            retcode = process.poll()[90m[39;49;00m
+            [94mif[39;49;00m check [95mand[39;49;00m retcode:[90m[39;49;00m
+>               [94mraise[39;49;00m CalledProcessError(retcode, process.args,[90m[39;49;00m
+                                         output=stdout, stderr=stderr)[90m[39;49;00m
+[1m[31mE               subprocess.CalledProcessError: Command '['ninja', '-v']' returned non-zero exit status 2.[0m
+
+[1m[31m../envs/speculative-py311/lib/python3.11/subprocess.py[0m:571: CalledProcessError
+
+[33mThe above exception was the direct cause of the following exception:[0m
+
+dtype = torch.bfloat16
+
+    [0m[37m@pytest[39;49;00m.mark.skipif([95mnot[39;49;00m torch.cuda.is_available(), reason=[33m"[39;49;00m[33mCUDA extension test[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+    [37m@pytest[39;49;00m.mark.parametrize([33m"[39;49;00m[33mdtype[39;49;00m[33m"[39;49;00m, [torch.bfloat16, torch.float32, torch.float64])[90m[39;49;00m
+    [94mdef[39;49;00m[90m [39;49;00m[92mtest_direct_logits_fused_scan_matches_fp64_inverse_cdf[39;49;00m(dtype):[90m[39;49;00m
+        parents = [-[94m1[39;49;00m, [94m0[39;49;00m, [94m0[39;49;00m, [94m1[39;49;00m][90m[39;49;00m
+        tokens = [[94m0[39;49;00m, [94m1[39;49;00m, [94m2[39;49;00m][90m[39;49;00m
+        raw_logits = torch.tensor([90m[39;49;00m
+            [[[94m2.[39;49;00m, [94m3.[39;49;00m, [94m5.[39;49;00m], [[94m4.[39;49;00m, [94m1.[39;49;00m, [94m5.[39;49;00m], [[94m3.[39;49;00m, [94m6.[39;49;00m, [94m1.[39;49;00m], [[94m7.[39;49;00m, [94m2.[39;49;00m, [94m1.[39;49;00m]],[90m[39;49;00m
+            dtype=dtype, device=[33m"[39;49;00m[33mcuda[39;49;00m[33m"[39;49;00m,[90m[39;49;00m
+        ).log()[90m[39;49;00m
+        reference = torch.softmax(raw_logits.to(torch.float64), dim=-[94m1[39;49;00m)[90m[39;49;00m
+        children = {(parent, tokens[index - [94m1[39;49;00m]): index[90m[39;49;00m
+                    [94mfor[39;49;00m index, parent [95min[39;49;00m [96menumerate[39;49;00m(parents[[94m1[39;49;00m:], [94m1[39;49;00m)}[90m[39;49;00m
+        [94mfor[39;49;00m seed [95min[39;49;00m [96mrange[39;49;00m([94m64[39;49;00m):[90m[39;49;00m
+            expected_generator = torch.Generator(device=[33m"[39;49;00m[33mcuda[39;49;00m[33m"[39;49;00m).manual_seed(seed)[90m[39;49;00m
+            actual_generator = torch.Generator(device=[33m"[39;49;00m[33mcuda[39;49;00m[33m"[39;49;00m).manual_seed(seed)[90m[39;49;00m
+            uniforms = torch.rand([90m[39;49;00m
+                [94m4[39;49;00m, dtype=torch.float64, device=[33m"[39;49;00m[33mcuda[39;49;00m[33m"[39;49;00m,[90m[39;49;00m
+                generator=expected_generator,[90m[39;49;00m
+            ).cpu().tolist()[90m[39;49;00m
+            expected_nodes, node, bonus = [], [94m0[39;49;00m, [94mNone[39;49;00m[90m[39;49;00m
+            [94mfor[39;49;00m uniform [95min[39;49;00m uniforms:[90m[39;49;00m
+                bonus = [96mint[39;49;00m(torch.searchsorted([90m[39;49;00m
+                    reference[node].cpu().cumsum([94m0[39;49;00m),[90m[39;49;00m
+                    torch.tensor(uniform, dtype=torch.float64),[90m[39;49;00m
+                ))[90m[39;49;00m
+                child = children.get((node, bonus))[90m[39;49;00m
+                [94mif[39;49;00m child [95mis[39;49;00m [94mNone[39;49;00m:[90m[39;49;00m
+                    [94mbreak[39;49;00m[90m[39;49;00m
+                expected_nodes.append(child)[90m[39;49;00m
+                node = child[90m[39;49;00m
+>           actual = tree_verify_ancestral_logits_fused_scan([90m[39;49;00m
+                parents, tokens, raw_logits, [94m1.0[39;49;00m, torch.float64,[90m[39;49;00m
+                actual_generator, validate=[94mTrue[39;49;00m,[90m[39;49;00m
+            )[90m[39;49;00m
+
+[1m[31mtests/gbv_paper/test_terminal_mass.py[0m:99: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+[1m[31msrc/gbv_experiments/fused_tree_sampling.py[0m:1046: in tree_verify_ancestral_logits_fused_scan
+    [0mpacked = load_fused_tree_sampler().fused_tree_sample_logits_scan_cuda([90m[39;49;00m
+             ^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31msrc/gbv_experiments/fused_tree_sampling.py[0m:880: in load_fused_tree_sampler
+    [0m[94mreturn[39;49;00m load_inline([90m[39;49;00m
+[1m[31m../envs/speculative-py311/lib/python3.11/site-packages/torch/utils/cpp_extension.py[0m:2057: in load_inline
+    [0m[94mreturn[39;49;00m _jit_compile([90m[39;49;00m
+[1m[31m../envs/speculative-py311/lib/python3.11/site-packages/torch/utils/cpp_extension.py[0m:2138: in _jit_compile
+    [0m_write_ninja_file_and_build_library([90m[39;49;00m
+[1m[31m../envs/speculative-py311/lib/python3.11/site-packages/torch/utils/cpp_extension.py[0m:2290: in _write_ninja_file_and_build_library
+    [0m_run_ninja_build([90m[39;49;00m
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+build_directory = '/root/.cache/torch_extensions/py311_cu128/gbv_fused_tree_sampler_v13'
+verbose = False
+error_prefix = "Error building extension 'gbv_fused_tree_sampler_v13'"
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92m_run_ninja_build[39;49;00m(build_directory: [96mstr[39;49;00m, verbose: [96mbool[39;49;00m, error_prefix: [96mstr[39;49;00m) -> [94mNone[39;49;00m:[90m[39;49;00m
+        command = [[33m'[39;49;00m[33mninja[39;49;00m[33m'[39;49;00m, [33m'[39;49;00m[33m-v[39;49;00m[33m'[39;49;00m][90m[39;49;00m
+        num_workers = _get_num_workers(verbose)[90m[39;49;00m
+        [94mif[39;49;00m num_workers [95mis[39;49;00m [95mnot[39;49;00m [94mNone[39;49;00m:[90m[39;49;00m
+            command.extend([[33m'[39;49;00m[33m-j[39;49;00m[33m'[39;49;00m, [96mstr[39;49;00m(num_workers)])[90m[39;49;00m
+        env = os.environ.copy()[90m[39;49;00m
+        [90m# Try to activate the vc env for the users[39;49;00m[90m[39;49;00m
+        [94mif[39;49;00m IS_WINDOWS [95mand[39;49;00m [33m'[39;49;00m[33mVSCMD_ARG_TGT_ARCH[39;49;00m[33m'[39;49;00m [95mnot[39;49;00m [95min[39;49;00m env:[90m[39;49;00m
+            [94mfrom[39;49;00m[90m [39;49;00m[04m[96msetuptools[39;49;00m[90m [39;49;00m[94mimport[39;49;00m distutils  [90m# type: ignore[attr-defined][39;49;00m[90m[39;49;00m
+    [90m[39;49;00m
+            plat_name = distutils.util.get_platform()[90m[39;49;00m
+            plat_spec = PLAT_TO_VCVARS[plat_name][90m[39;49;00m
+            vc_env = {k.upper(): v [94mfor[39;49;00m k, v [95min[39;49;00m _get_vc_env(plat_spec).items()}[90m[39;49;00m
+            [94mfor[39;49;00m k, v [95min[39;49;00m env.items():[90m[39;49;00m
+                uk = k.upper()[90m[39;49;00m
+                [94mif[39;49;00m uk [95mnot[39;49;00m [95min[39;49;00m vc_env:[90m[39;49;00m
+                    vc_env[uk] = v[90m[39;49;00m
+            env = vc_env[90m[39;49;00m
+        [94mtry[39;49;00m:[90m[39;49;00m
+            sys.stdout.flush()[90m[39;49;00m
+            sys.stderr.flush()[90m[39;49;00m
+            [90m# Warning: don't pass stdout=None to subprocess.run to get output.[39;49;00m[90m[39;49;00m
+            [90m# subprocess.run assumes that sys.__stdout__ has not been modified and[39;49;00m[90m[39;49;00m
+            [90m# attempts to write to it by default.  However, when we call _run_ninja_build[39;49;00m[90m[39;49;00m
+            [90m# from ahead-of-time cpp extensions, the following happens:[39;49;00m[90m[39;49;00m
+            [90m# 1) If the stdout encoding is not utf-8, setuptools detachs __stdout__.[39;49;00m[90m[39;49;00m
+            [90m#    https://github.com/pypa/setuptools/blob/7e97def47723303fafabe48b22168bbc11bb4821/setuptools/dist.py#L1110[39;49;00m[90m[39;49;00m
+            [90m#    (it probably shouldn't do this)[39;49;00m[90m[39;49;00m
+            [90m# 2) subprocess.run (on POSIX, with no stdout override) relies on[39;49;00m[90m[39;49;00m
+            [90m#    __stdout__ not being detached:[39;49;00m[90m[39;49;00m
+            [90m#    https://github.com/python/cpython/blob/c352e6c7446c894b13643f538db312092b351789/Lib/subprocess.py#L1214[39;49;00m[90m[39;49;00m
+            [90m# To work around this, we pass in the fileno directly and hope that[39;49;00m[90m[39;49;00m
+            [90m# it is valid.[39;49;00m[90m[39;49;00m
+            stdout_fileno = [94m1[39;49;00m[90m[39;49;00m
+            subprocess.run([90m[39;49;00m
+                command,[90m[39;49;00m
+                shell=IS_WINDOWS [95mand[39;49;00m IS_HIP_EXTENSION,[90m[39;49;00m
+                stdout=stdout_fileno [94mif[39;49;00m verbose [94melse[39;49;00m subprocess.PIPE,[90m[39;49;00m
+                stderr=subprocess.STDOUT,[90m[39;49;00m
+                cwd=build_directory,[90m[39;49;00m
+                check=[94mTrue[39;49;00m,[90m[39;49;00m
+                env=env)[90m[39;49;00m
+        [94mexcept[39;49;00m subprocess.CalledProcessError [94mas[39;49;00m e:[90m[39;49;00m
+            [90m# Python 2 and 3 compatible way of getting the error object.[39;49;00m[90m[39;49;00m
+            _, error, _ = sys.exc_info()[90m[39;49;00m
+            [90m# error.output contains the stdout and stderr of the build attempt.[39;49;00m[90m[39;49;00m
+            message = error_prefix[90m[39;49;00m
+            [90m# `error` is a CalledProcessError (which has an `output`) attribute, but[39;49;00m[90m[39;49;00m
+            [90m# mypy thinks it's Optional[BaseException] and doesn't narrow[39;49;00m[90m[39;49;00m
+            [94mif[39;49;00m [96mhasattr[39;49;00m(error, [33m'[39;49;00m[33moutput[39;49;00m[33m'[39;49;00m) [95mand[39;49;00m error.output:  [90m# type: ignore[union-attr][39;49;00m[90m[39;49;00m
+                message += [33mf[39;49;00m[33m"[39;49;00m[33m: [39;49;00m[33m{[39;49;00merror.output.decode(*SUBPROCESS_DECODE_ARGS)[33m}[39;49;00m[33m"[39;49;00m  [90m# type: ignore[union-attr][39;49;00m[90m[39;49;00m
+>           [94mraise[39;49;00m [96mRuntimeError[39;49;00m(message) [94mfrom[39;49;00m[90m [39;49;00m[04m[96me[39;49;00m[90m[39;49;00m
+[1m[31mE           RuntimeError: Error building extension 'gbv_fused_tree_sampler_v13': [1/3] /usr/local/cuda/bin/nvcc --generate-dependencies-with-compile --dependency-output cuda.cuda.o.d -DTORCH_EXTENSION_NAME=gbv_fused_tree_sampler_v13 -DTORCH_API_INCLUDE_EXTENSION_H -DPYBIND11_COMPILER_TYPE=\"_gcc\" -DPYBIND11_STDLIB=\"_libstdcpp\" -DPYBIND11_BUILD_ABI=\"_cxxabi1018\" -isystem /root/autodl-tmp/envs/speculative-py311/lib/python3.11/site-packages/torch/include -isystem /root/autodl-tmp/envs/speculative-py311/lib/python3.11/site-packages/torch/include/torch/csrc/api/include -isystem /usr/local/cuda/include -isystem /root/autodl-tmp/envs/speculative-py311/include/python3.11 -D__CUDA_NO_HALF_OPERATORS__ -D__CUDA_NO_HALF_CONVERSIONS__ -D__CUDA_NO_BFLOAT16_CONVERSIONS__ -D__CUDA_NO_HALF2_OPERATORS__ --expt-relaxed-constexpr -gencode=arch=compute_90,code=compute_90 -gencode=arch=compute_90,code=sm_90 --compiler-options '-fPIC' -O3 -std=c++17 -c /root/.cache/torch_extensions/py311_cu128/gbv_fused_tree_sampler_v13/cuda.cu -o cuda.cuda.o [0m
+[1m[31mE           FAILED: [code=2] cuda.cuda.o [0m
+[1m[31mE           /usr/local/cuda/bin/nvcc --generate-dependencies-with-compile --dependency-output cuda.cuda.o.d -DTORCH_EXTENSION_NAME=gbv_fused_tree_sampler_v13 -DTORCH_API_INCLUDE_EXTENSION_H -DPYBIND11_COMPILER_TYPE=\"_gcc\" -DPYBIND11_STDLIB=\"_libstdcpp\" -DPYBIND11_BUILD_ABI=\"_cxxabi1018\" -isystem /root/autodl-tmp/envs/speculative-py311/lib/python3.11/site-packages/torch/include -isystem /root/autodl-tmp/envs/speculative-py311/lib/python3.11/site-packages/torch/include/torch/csrc/api/include -isystem /usr/local/cuda/include -isystem /root/autodl-tmp/envs/speculative-py311/include/python3.11 -D__CUDA_NO_HALF_OPERATORS__ -D__CUDA_NO_HALF_CONVERSIONS__ -D__CUDA_NO_BFLOAT16_CONVERSIONS__ -D__CUDA_NO_HALF2_OPERATORS__ --expt-relaxed-constexpr -gencode=arch=compute_90,code=compute_90 -gencode=arch=compute_90,code=sm_90 --compiler-options '-fPIC' -O3 -std=c++17 -c /root/.cache/torch_extensions/py311_cu128/gbv_fused_tree_sampler_v13/cuda.cu -o cuda.cuda.o [0m
+[1m[31mE           /root/.cache/torch_extensions/py311_cu128/gbv_fused_tree_sampler_v13/cuda.cu(338): error: identifier "CUDART_INF" is undefined[0m
+[1m[31mE                 double local_max = -CUDART_INF;[0m
+[1m[31mE                                     ^[0m
+[1m[31mE           [0m
+[1m[31mE           1 error detected in the compilation of "/root/.cache/torch_extensions/py311_cu128/gbv_fused_tree_sampler_v13/cuda.cu".[0m
+[1m[31mE           [2/3] c++ -MMD -MF main.o.d -DTORCH_EXTENSION_NAME=gbv_fused_tree_sampler_v13 -DTORCH_API_INCLUDE_EXTENSION_H -DPYBIND11_COMPILER_TYPE=\"_gcc\" -DPYBIND11_STDLIB=\"_libstdcpp\" -DPYBIND11_BUILD_ABI=\"_cxxabi1018\" -isystem /root/autodl-tmp/envs/speculative-py311/lib/python3.11/site-packages/torch/include -isystem /root/autodl-tmp/envs/speculative-py311/lib/python3.11/site-packages/torch/include/torch/csrc/api/include -isystem /usr/local/cuda/include -isystem /root/autodl-tmp/envs/speculative-py311/include/python3.11 -fPIC -std=c++17 -O3 -c /root/.cache/torch_extensions/py311_cu128/gbv_fused_tree_sampler_v13/main.cpp -o main.o [0m
+[1m[31mE           ninja: build stopped: subcommand failed.[0m
+
+[1m[31m../envs/speculative-py311/lib/python3.11/site-packages/torch/utils/cpp_extension.py[0m:2612: RuntimeError
+----------------------------- Captured stderr call -----------------------------
+W0910 10:47:30.518000 28844 site-packages/torch/utils/cpp_extension.py:2425] TORCH_CUDA_ARCH_LIST is not set, all archs for visible cards are included for compilation. 
+W0910 10:47:30.518000 28844 site-packages/torch/utils/cpp_extension.py:2425] If this is not desired, please set os.environ['TORCH_CUDA_ARCH_LIST'] to specific architectures.
+[31m[1m________ test_direct_logits_fused_scan_matches_fp64_inverse_cdf[dtype1] ________[0m
+
+dtype = torch.float32
+
+    [0m[37m@pytest[39;49;00m.mark.skipif([95mnot[39;49;00m torch.cuda.is_available(), reason=[33m"[39;49;00m[33mCUDA extension test[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+    [37m@pytest[39;49;00m.mark.parametrize([33m"[39;49;00m[33mdtype[39;49;00m[33m"[39;49;00m, [torch.bfloat16, torch.float32, torch.float64])[90m[39;49;00m
+    [94mdef[39;49;00m[90m [39;49;00m[92mtest_direct_logits_fused_scan_matches_fp64_inverse_cdf[39;49;00m(dtype):[90m[39;49;00m
+        parents = [-[94m1[39;49;00m, [94m0[39;49;00m, [94m0[39;49;00m, [94m1[39;49;00m][90m[39;49;00m
+        tokens = [[94m0[39;49;00m, [94m1[39;49;00m, [94m2[39;49;00m][90m[39;49;00m
+        raw_logits = torch.tensor([90m[39;49;00m
+            [[[94m2.[39;49;00m, [94m3.[39;49;00m, [94m5.[39;49;00m], [[94m4.[39;49;00m, [94m1.[39;49;00m, [94m5.[39;49;00m], [[94m3.[39;49;00m, [94m6.[39;49;00m, [94m1.[39;49;00m], [[94m7.[39;49;00m, [94m2.[39;49;00m, [94m1.[39;49;00m]],[90m[39;49;00m
+            dtype=dtype, device=[33m"[39;49;00m[33mcuda[39;49;00m[33m"[39;49;00m,[90m[39;49;00m
+        ).log()[90m[39;49;00m
+        reference = torch.softmax(raw_logits.to(torch.float64), dim=-[94m1[39;49;00m)[90m[39;49;00m
+        children = {(parent, tokens[index - [94m1[39;49;00m]): index[90m[39;49;00m
+                    [94mfor[39;49;00m index, parent [95min[39;49;00m [96menumerate[39;49;00m(parents[[94m1[39;49;00m:], [94m1[39;49;00m)}[90m[39;49;00m
+        [94mfor[39;49;00m seed [95min[39;49;00m [96mrange[39;49;00m([94m64[39;49;00m):[90m[39;49;00m
+            expected_generator = torch.Generator(device=[33m"[39;49;00m[33mcuda[39;49;00m[33m"[39;49;00m).manual_seed(seed)[90m[39;49;00m
+            actual_generator = torch.Generator(device=[33m"[39;49;00m[33mcuda[39;49;00m[33m"[39;49;00m).manual_seed(seed)[90m[39;49;00m
+            uniforms = torch.rand([90m[39;49;00m
+                [94m4[39;49;00m, dtype=torch.float64, device=[33m"[39;49;00m[33mcuda[39;49;00m[33m"[39;49;00m,[90m[39;49;00m
+                generator=expected_generator,[90m[39;49;00m
+            ).cpu().tolist()[90m[39;49;00m
+            expected_nodes, node, bonus = [], [94m0[39;49;00m, [94mNone[39;49;00m[90m[39;49;00m
+            [94mfor[39;49;00m uniform [95min[39;49;00m uniforms:[90m[39;49;00m
+                bonus = [96mint[39;49;00m(torch.searchsorted([90m[39;49;00m
+                    reference[node].cpu().cumsum([94m0[39;49;00m),[90m[39;49;00m
+                    torch.tensor(uniform, dtype=torch.float64),[90m[39;49;00m
+                ))[90m[39;49;00m
+                child = children.get((node, bonus))[90m[39;49;00m
+                [94mif[39;49;00m child [95mis[39;49;00m [94mNone[39;49;00m:[90m[39;49;00m
+                    [94mbreak[39;49;00m[90m[39;49;00m
+                expected_nodes.append(child)[90m[39;49;00m
+                node = child[90m[39;49;00m
+>           actual = tree_verify_ancestral_logits_fused_scan([90m[39;49;00m
+                parents, tokens, raw_logits, [94m1.0[39;49;00m, torch.float64,[90m[39;49;00m
+                actual_generator, validate=[94mTrue[39;49;00m,[90m[39;49;00m
+            )[90m[39;49;00m
+
+[1m[31mtests/gbv_paper/test_terminal_mass.py[0m:99: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+[1m[31msrc/gbv_experiments/fused_tree_sampling.py[0m:1046: in tree_verify_ancestral_logits_fused_scan
+    [0mpacked = load_fused_tree_sampler().fused_tree_sample_logits_scan_cuda([90m[39;49;00m
+             ^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31msrc/gbv_experiments/fused_tree_sampling.py[0m:880: in load_fused_tree_sampler
+    [0m[94mreturn[39;49;00m load_inline([90m[39;49;00m
+[1m[31m../envs/speculative-py311/lib/python3.11/site-packages/torch/utils/cpp_extension.py[0m:2057: in load_inline
+    [0m[94mreturn[39;49;00m _jit_compile([90m[39;49;00m
+[1m[31m../envs/speculative-py311/lib/python3.11/site-packages/torch/utils/cpp_extension.py[0m:2164: in _jit_compile
+    [0m[94mreturn[39;49;00m _import_module_from_library(name, build_directory, is_python_module)[90m[39;49;00m
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m../envs/speculative-py311/lib/python3.11/site-packages/torch/utils/cpp_extension.py[0m:2632: in _import_module_from_library
+    [0mmodule = importlib.util.module_from_spec(spec)[90m[39;49;00m
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m<frozen importlib._bootstrap>[0m:573: in module_from_spec
+    [0m[04m[91m?[39;49;00m[04m[91m?[39;49;00m[04m[91m?[39;49;00m[90m[39;49;00m
+[1m[31m<frozen importlib._bootstrap_external>[0m:1233: in create_module
+    [0m[04m[91m?[39;49;00m[04m[91m?[39;49;00m[04m[91m?[39;49;00m[90m[39;49;00m
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+f = <built-in function create_dynamic>
+args = (ModuleSpec(name='gbv_fused_tree_sampler_v13', loader=<_frozen_importlib_external.ExtensionFileLoader object at 0x7f7d87ec3190>, origin='/root/.cache/torch_extensions/py311_cu128/gbv_fused_tree_sampler_v13/gbv_fused_tree_sampler_v13.so'),)
+kwds = {}
+
+>   [0m[04m[91m?[39;49;00m[04m[91m?[39;49;00m[04m[91m?[39;49;00m[90m[39;49;00m
+[1m[31mE   ImportError: /root/.cache/torch_extensions/py311_cu128/gbv_fused_tree_sampler_v13/gbv_fused_tree_sampler_v13.so: cannot open shared object file: No such file or directory[0m
+
+[1m[31m<frozen importlib._bootstrap>[0m:241: ImportError
+[31m[1m________ test_direct_logits_fused_scan_matches_fp64_inverse_cdf[dtype2] ________[0m
+
+dtype = torch.float64
+
+    [0m[37m@pytest[39;49;00m.mark.skipif([95mnot[39;49;00m torch.cuda.is_available(), reason=[33m"[39;49;00m[33mCUDA extension test[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+    [37m@pytest[39;49;00m.mark.parametrize([33m"[39;49;00m[33mdtype[39;49;00m[33m"[39;49;00m, [torch.bfloat16, torch.float32, torch.float64])[90m[39;49;00m
+    [94mdef[39;49;00m[90m [39;49;00m[92mtest_direct_logits_fused_scan_matches_fp64_inverse_cdf[39;49;00m(dtype):[90m[39;49;00m
+        parents = [-[94m1[39;49;00m, [94m0[39;49;00m, [94m0[39;49;00m, [94m1[39;49;00m][90m[39;49;00m
+        tokens = [[94m0[39;49;00m, [94m1[39;49;00m, [94m2[39;49;00m][90m[39;49;00m
+        raw_logits = torch.tensor([90m[39;49;00m
+            [[[94m2.[39;49;00m, [94m3.[39;49;00m, [94m5.[39;49;00m], [[94m4.[39;49;00m, [94m1.[39;49;00m, [94m5.[39;49;00m], [[94m3.[39;49;00m, [94m6.[39;49;00m, [94m1.[39;49;00m], [[94m7.[39;49;00m, [94m2.[39;49;00m, [94m1.[39;49;00m]],[90m[39;49;00m
+            dtype=dtype, device=[33m"[39;49;00m[33mcuda[39;49;00m[33m"[39;49;00m,[90m[39;49;00m
+        ).log()[90m[39;49;00m
+        reference = torch.softmax(raw_logits.to(torch.float64), dim=-[94m1[39;49;00m)[90m[39;49;00m
+        children = {(parent, tokens[index - [94m1[39;49;00m]): index[90m[39;49;00m
+                    [94mfor[39;49;00m index, parent [95min[39;49;00m [96menumerate[39;49;00m(parents[[94m1[39;49;00m:], [94m1[39;49;00m)}[90m[39;49;00m
+        [94mfor[39;49;00m seed [95min[39;49;00m [96mrange[39;49;00m([94m64[39;49;00m):[90m[39;49;00m
+            expected_generator = torch.Generator(device=[33m"[39;49;00m[33mcuda[39;49;00m[33m"[39;49;00m).manual_seed(seed)[90m[39;49;00m
+            actual_generator = torch.Generator(device=[33m"[39;49;00m[33mcuda[39;49;00m[33m"[39;49;00m).manual_seed(seed)[90m[39;49;00m
+            uniforms = torch.rand([90m[39;49;00m
+                [94m4[39;49;00m, dtype=torch.float64, device=[33m"[39;49;00m[33mcuda[39;49;00m[33m"[39;49;00m,[90m[39;49;00m
+                generator=expected_generator,[90m[39;49;00m
+            ).cpu().tolist()[90m[39;49;00m
+            expected_nodes, node, bonus = [], [94m0[39;49;00m, [94mNone[39;49;00m[90m[39;49;00m
+            [94mfor[39;49;00m uniform [95min[39;49;00m uniforms:[90m[39;49;00m
+                bonus = [96mint[39;49;00m(torch.searchsorted([90m[39;49;00m
+                    reference[node].cpu().cumsum([94m0[39;49;00m),[90m[39;49;00m
+                    torch.tensor(uniform, dtype=torch.float64),[90m[39;49;00m
+                ))[90m[39;49;00m
+                child = children.get((node, bonus))[90m[39;49;00m
+                [94mif[39;49;00m child [95mis[39;49;00m [94mNone[39;49;00m:[90m[39;49;00m
+                    [94mbreak[39;49;00m[90m[39;49;00m
+                expected_nodes.append(child)[90m[39;49;00m
+                node = child[90m[39;49;00m
+>           actual = tree_verify_ancestral_logits_fused_scan([90m[39;49;00m
+                parents, tokens, raw_logits, [94m1.0[39;49;00m, torch.float64,[90m[39;49;00m
+                actual_generator, validate=[94mTrue[39;49;00m,[90m[39;49;00m
+            )[90m[39;49;00m
+
+[1m[31mtests/gbv_paper/test_terminal_mass.py[0m:99: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+[1m[31msrc/gbv_experiments/fused_tree_sampling.py[0m:1046: in tree_verify_ancestral_logits_fused_scan
+    [0mpacked = load_fused_tree_sampler().fused_tree_sample_logits_scan_cuda([90m[39;49;00m
+             ^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31msrc/gbv_experiments/fused_tree_sampling.py[0m:880: in load_fused_tree_sampler
+    [0m[94mreturn[39;49;00m load_inline([90m[39;49;00m
+[1m[31m../envs/speculative-py311/lib/python3.11/site-packages/torch/utils/cpp_extension.py[0m:2057: in load_inline
+    [0m[94mreturn[39;49;00m _jit_compile([90m[39;49;00m
+[1m[31m../envs/speculative-py311/lib/python3.11/site-packages/torch/utils/cpp_extension.py[0m:2164: in _jit_compile
+    [0m[94mreturn[39;49;00m _import_module_from_library(name, build_directory, is_python_module)[90m[39;49;00m
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m../envs/speculative-py311/lib/python3.11/site-packages/torch/utils/cpp_extension.py[0m:2632: in _import_module_from_library
+    [0mmodule = importlib.util.module_from_spec(spec)[90m[39;49;00m
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m<frozen importlib._bootstrap>[0m:573: in module_from_spec
+    [0m[04m[91m?[39;49;00m[04m[91m?[39;49;00m[04m[91m?[39;49;00m[90m[39;49;00m
+[1m[31m<frozen importlib._bootstrap_external>[0m:1233: in create_module
+    [0m[04m[91m?[39;49;00m[04m[91m?[39;49;00m[04m[91m?[39;49;00m[90m[39;49;00m
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+f = <built-in function create_dynamic>
+args = (ModuleSpec(name='gbv_fused_tree_sampler_v13', loader=<_frozen_importlib_external.ExtensionFileLoader object at 0x7f7d88133150>, origin='/root/.cache/torch_extensions/py311_cu128/gbv_fused_tree_sampler_v13/gbv_fused_tree_sampler_v13.so'),)
+kwds = {}
+
+>   [0m[04m[91m?[39;49;00m[04m[91m?[39;49;00m[04m[91m?[39;49;00m[90m[39;49;00m
+[1m[31mE   ImportError: /root/.cache/torch_extensions/py311_cu128/gbv_fused_tree_sampler_v13/gbv_fused_tree_sampler_v13.so: cannot open shared object file: No such file or directory[0m
+
+[1m[31m<frozen importlib._bootstrap>[0m:241: ImportError
+[36m[1m=========================== short test summary info ============================[0m
+[31mFAILED[0m tests/gbv_paper/test_terminal_mass.py::[1mtest_direct_logits_fused_scan_matches_fp64_inverse_cdf[dtype0][0m - RuntimeError: Error building extension 'gbv_fused_tree_sampler_v13': [1/3] ...
+[31mFAILED[0m tests/gbv_paper/test_terminal_mass.py::[1mtest_direct_logits_fused_scan_matches_fp64_inverse_cdf[dtype1][0m - ImportError: /root/.cache/torch_extensions/py311_cu128/gbv_fused_tree_sampl...
+[31mFAILED[0m tests/gbv_paper/test_terminal_mass.py::[1mtest_direct_logits_fused_scan_matches_fp64_inverse_cdf[dtype2][0m - ImportError: /root/.cache/torch_extensions/py311_cu128/gbv_fused_tree_sampl...
