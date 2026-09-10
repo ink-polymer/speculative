@@ -83,11 +83,11 @@ def _compact_dynamic_cache_with_tensor(
     raise RuntimeError("Unsupported DynamicCache layout for AdaptiveTree cache compaction.")
 
 
-def build_with_controller(logits, builder):
+def build_with_controller(logits, builder, draft_hidden=None):
     if getattr(builder, "variant", None) in {
             "guarded_raw_prefix", "contextual_prefix_v8",
             "prebuild_contextual_v11", "prebuild_contextual_v12"}:
-        return builder.build_official_tree_from_logits(logits)
+        return builder.build_official_tree_from_logits(logits, draft_hidden)
     tree = builder.build_from_logits(logits)
     nodes = tree.nodes
     token_ids = torch.tensor([n.token_id for n in nodes], dtype=torch.long)
@@ -234,14 +234,15 @@ def adaptive_generate(
 
         draft_stage_start = cuda_time()
         noise_embedding = target.model.embed_tokens(block_output_ids)
-        draft_logits = target.lm_head(model(
+        draft_hidden = model(
             target_hidden=target_hidden,
             noise_embedding=noise_embedding,
             position_ids=position_ids[:, past_key_values_draft.get_seq_length() : start + block_size],
             past_key_values=past_key_values_draft,
             use_cache=True,
             is_causal=False,
-        )[:, -draft_horizon:, :])
+        )[:, -draft_horizon:, :]
+        draft_logits = target.lm_head(draft_hidden)
         past_key_values_draft.crop(start)
         draft_stage_elapsed = cuda_time() - draft_stage_start
         if draft_prefill:
@@ -251,7 +252,8 @@ def adaptive_generate(
             stage_times["draft"] += draft_stage_elapsed
 
         tree_build_start = cuda_time()
-        node_token_ids, node_depths, parents, child_maps, visibility_cpu, tree_build_subtimes = build_with_controller(draft_logits[0], builder)
+        node_token_ids, node_depths, parents, child_maps, visibility_cpu, tree_build_subtimes = build_with_controller(
+            draft_logits[0], builder, draft_hidden[0])
         stage_times["tree_build"] += cuda_time() - tree_build_start
         for stage_name, stage_elapsed in tree_build_subtimes.items():
             stage_times[stage_name] += stage_elapsed

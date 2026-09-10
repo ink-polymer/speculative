@@ -9,6 +9,7 @@ unless all greedy outputs exactly match an equal-node-cap official DDTree.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import os
@@ -52,8 +53,12 @@ def parse_args():
     parser.add_argument("--reference-budget", type=int, choices=(128, 192),
                         default=128)
     parser.add_argument("--additional-ddtree-budget", type=int,
-                        choices=(128, 160), action="append", default=[])
+                        choices=(128, 160, 256, 512, 1024), action="append",
+                        default=[])
     parser.add_argument("--proposal-temperature", type=float)
+    parser.add_argument("--maximum-tree-depth", type=int)
+    parser.add_argument("--rank-head-checkpoint", type=Path)
+    parser.add_argument("--rank-calibration-strength", type=float, default=1.0)
     parser.add_argument("--contextual-mass-retention-ratio", type=float)
     parser.add_argument("--contextual-minimum-history", type=int)
     parser.add_argument("--contextual-minimum-support", type=float)
@@ -124,6 +129,15 @@ def main():
             and (not math.isfinite(args.prebuild_min_top1_mean)
                  or not 0. <= args.prebuild_min_top1_mean <= 1.)):
         raise ValueError("prebuild minimum top-1 mean must be in [0, 1]")
+    if (args.maximum_tree_depth is not None
+            and not 1 <= args.maximum_tree_depth <= 15):
+        raise ValueError("maximum tree depth must be in [1, 15]")
+    if (not math.isfinite(args.rank_calibration_strength)
+            or not 0. <= args.rank_calibration_strength <= 1.):
+        raise ValueError("rank calibration strength must be in [0, 1]")
+    if (args.rank_head_checkpoint is not None
+            and not args.rank_head_checkpoint.is_file()):
+        raise FileNotFoundError(args.rank_head_checkpoint)
     for value in (args.contextual_minimum_history,
                   args.contextual_refresh_interval,
                   args.contextual_floor_budget):
@@ -157,6 +171,19 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(
         target_name, revision=PINNED_MODEL_REVISIONS[target_name],
         local_files_only=True)
+    rank_head = None
+    if args.rank_head_checkpoint is not None:
+        from dflash_specblock.rank_head import load_rank_head
+        rank_head = load_rank_head(
+            args.rank_head_checkpoint, int(draft.config.hidden_size), device,
+            expected_metadata={
+                "block_size": 15,
+                "target_model_id": target_name,
+                "target_revision": PINNED_MODEL_REVISIONS[target_name],
+                "draft_model_id": draft_name,
+                "draft_revision": PINNED_MODEL_REVISIONS[draft_name],
+            },
+        )
     if draft.block_size != 16:
         raise ValueError("Architecture gate requires official K=15 draft horizon")
     u.ddtree.maybe_enable_cpp_compact(True)
@@ -214,6 +241,7 @@ def main():
                     candidate_method)
     candidate_overrides = {
         "proposal_temperature": args.proposal_temperature,
+        "maximum_tree_depth": args.maximum_tree_depth,
         "contextual_mass_retention_ratio": args.contextual_mass_retention_ratio,
         "contextual_minimum_history": args.contextual_minimum_history,
         "contextual_minimum_support": args.contextual_minimum_support,
@@ -237,6 +265,8 @@ def main():
             raise ValueError("Contextual overrides require a contextual candidate")
         for key, value in candidate_overrides.items():
             setattr(builder, key, value)
+        builder.rank_head = rank_head
+        builder.rank_calibration_strength = args.rank_calibration_strength
         if builder.tree_budget != args.reference_budget:
             raise ValueError("Candidate and DDTree must have the same maximum node cap")
         return builder
@@ -381,6 +411,13 @@ def main():
         "included_fixed_b192_control":args.include_fixed_b192_control,
         "candidate_overrides":candidate_overrides,
         "candidate_controller_config":controller_config(candidate_builder()),
+        "rank_calibration":({
+            "checkpoint":str(args.rank_head_checkpoint.resolve()),
+            "sha256":hashlib.sha256(
+                args.rank_head_checkpoint.read_bytes()).hexdigest(),
+            "strength":args.rank_calibration_strength,
+            "training_data_separation_requires_formal_audit":True,
+        } if args.rank_head_checkpoint is not None else None),
         "fixed_b192_control_config":(
             controller_config(fixed_b192_control_builder())
             if args.include_fixed_b192_control else None),

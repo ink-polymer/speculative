@@ -349,6 +349,39 @@ def test_dynamic_b192_v12_selects_before_enumeration_and_preserves_equal_cap():
     assert restored.state_dict() == builder.state_dict()
 
 
+def test_prebuild_b192_hard_depth_cap_reallocates_same_node_budget():
+    from dflash_specblock.paper.adaptive_official import build_with_controller
+
+    builder = make_paper_builder(cfg(), DYNAMIC_B192_V12_VARIANT)
+    builder.prebuild_min_top1_mean = 1.
+    builder.maximum_tree_depth = 6
+    logits = torch.randn(15, 256, generator=torch.Generator().manual_seed(915))
+    tree = build_with_controller(logits, builder)
+    assert tree[0].numel() == 192
+    assert int(tree[1].max()) <= 6
+
+
+def test_prebuild_b192_accepts_frozen_rank_calibration():
+    from dflash_specblock.paper.adaptive_official import build_with_controller
+
+    class FrozenRankHead(torch.nn.Module):
+        def forward(self, hidden, logits, top20_values=None):
+            assert hidden.shape[0] == logits.shape[0] == 15
+            assert top20_values.shape == (15, 20)
+            return logits.new_tensor([3., 1., 0., -1.]).expand(15, -1)
+
+    builder = make_paper_builder(cfg(), DYNAMIC_B192_V12_VARIANT)
+    builder.prebuild_min_top1_mean = 1.
+    builder.rank_head = FrozenRankHead().eval()
+    builder.rank_calibration_strength = .5
+    generator = torch.Generator().manual_seed(916)
+    logits = torch.randn(15, 256, generator=generator)
+    hidden = torch.randn(15, 32, generator=generator)
+    tree = build_with_controller(logits, builder, hidden)
+    assert tree[0].numel() == 192
+    assert builder._raw_topk_width == 192
+
+
 def test_guarded_raw_tree_matches_fixed_ddtree_at_b128():
     from dflash_specblock.paper.adaptive_official import build_with_controller
     builder = make_paper_builder(cfg(), B128_ABLATION_VARIANT)

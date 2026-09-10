@@ -212,6 +212,9 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
             self.minimum_utility_gain_ratio = .03
             self.reevaluation_interval = 32
             self.proposal_temperature = 1.
+            self.maximum_tree_depth = self.block_size
+            self.rank_head = None
+            self.rank_calibration_strength = 1.
             self._warmup_order = tuple(reversed(self.budget_candidates))
             self._latency_samples = {budget: [] for budget in self.budget_candidates}
             self._acceptance_scale_by_budget = {
@@ -329,7 +332,47 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
             return buffers
         return tuple(t.detach().cpu() for t in tensors)
 
-    def build_official_tree_from_logits(self, draft_logits):
+    def _rank_calibrated_log_probs(self, draft_logits, draft_hidden,
+                                   top_values, base_log_probs):
+        """Calibrate draft rank mass with a frozen target-rank predictor."""
+        if self.rank_head is None:
+            return base_log_probs
+        if draft_hidden is None or draft_hidden.shape[:1] != draft_logits.shape[:1]:
+            raise ValueError("rank calibration requires aligned draft hidden states")
+        if self.proposal_temperature != 1.:
+            raise ValueError("rank calibration requires proposal_temperature=1")
+        strength = float(self.rank_calibration_strength)
+        if not math.isfinite(strength) or not 0. <= strength <= 1.:
+            raise ValueError("rank_calibration_strength must be in [0, 1]")
+
+        bucket_probabilities = self.rank_head(
+            draft_hidden, draft_logits,
+            top20_values=top_values[:, :20],
+        ).float().softmax(dim=-1)
+        original = base_log_probs.exp()
+        calibrated = torch.zeros_like(original)
+        width = int(original.shape[-1])
+        groups = ((0, min(1, width)), (1, min(4, width)),
+                  (4, min(10, width)))
+        for bucket, (begin, end) in enumerate(groups):
+            if begin >= end:
+                continue
+            group = original[:, begin:end]
+            denominator = group.sum(dim=-1, keepdim=True).clamp_min(1e-30)
+            calibrated[:, begin:end] = (
+                bucket_probabilities[:, bucket:bucket + 1]
+                * group / denominator)
+        if width > 10:
+            represented = original[:, 10:]
+            full_tail = (1. - original[:, :10].sum(
+                dim=-1, keepdim=True)).clamp_min(1e-30)
+            calibrated[:, 10:] = (
+                bucket_probabilities[:, 3:4] * represented / full_tail)
+        calibrated_log = calibrated.clamp_min(1e-30).log()
+        return ((1. - strength) * base_log_probs
+                + strength * calibrated_log)
+
+    def build_official_tree_from_logits(self, draft_logits, draft_hidden=None):
         """Build one max-budget official tree and materialize only its prefix.
 
         The heap order is byte-for-byte the pinned DDTree rule.  Unlike the
@@ -343,15 +386,19 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
             raise ValueError("Raw official-tree path is reserved for guarded_raw_prefix")
         if draft_logits.ndim != 2:
             raise ValueError("draft_logits must be [K, V]")
+        if (type(self.maximum_tree_depth) is not int
+                or not 1 <= self.maximum_tree_depth <= self.block_size):
+            raise ValueError("maximum_tree_depth must be in [1, block_size]")
         if (not math.isfinite(self.proposal_temperature)
                 or self.proposal_temperature <= 0):
             raise ValueError("proposal_temperature must be finite and positive")
         prebuild = self.variant in {"prebuild_contextual_v11",
                                     "prebuild_contextual_v12"}
         budget = self.tree_budget
-        depth_limit = min(int(draft_logits.shape[0]), self.block_size)
+        depth_limit = min(int(draft_logits.shape[0]), self.block_size,
+                          self.maximum_tree_depth)
         maximum_topk = min(budget, int(draft_logits.shape[-1]))
-        logits = draft_logits.float() / self.proposal_temperature
+        logits = draft_logits[:depth_limit].float() / self.proposal_temperature
         log_z = torch.logsumexp(logits, dim=-1, keepdim=True)
 
         # CUDA experiments use a compiled CPU enumerator after the unavoidable
@@ -365,8 +412,13 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
             topk = min(self.tree_budget if prebuild else budget,
                        int(draft_logits.shape[-1]))
             top_values, top_token_ids = torch.topk(logits, k=topk, dim=-1)
+            calibrated_hidden = (None if draft_hidden is None
+                                 else draft_hidden[:depth_limit])
+            top_log_probs = self._rank_calibrated_log_probs(
+                draft_logits[:depth_limit], calibrated_hidden, top_values,
+                top_values - log_z)
             top_log_probs_host, top_token_ids_host = self._raw_topk_to_host(
-                top_values - log_z, top_token_ids.to(torch.int64))
+                top_log_probs, top_token_ids.to(torch.int64))
             if prebuild:
                 top1_mean = float(
                     np.exp(top_log_probs_host[:, 0].numpy()).mean())
@@ -397,8 +449,13 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
                    int(draft_logits.shape[-1]))
         self._raw_topk_width = topk
         top_values, top_token_ids = torch.topk(logits, k=topk, dim=-1)
+        calibrated_hidden = (None if draft_hidden is None
+                             else draft_hidden[:depth_limit])
+        top_log_probs_device = self._rank_calibrated_log_probs(
+            draft_logits[:depth_limit], calibrated_hidden, top_values,
+            top_values - log_z)
         top_log_probs_host, top_token_ids_host = self._raw_topk_to_host(
-            top_values - log_z, top_token_ids.to(torch.int64))
+            top_log_probs_device, top_token_ids.to(torch.int64))
         if prebuild:
             top1_mean = float(np.exp(top_log_probs_host[:, 0].numpy()).mean())
             budget = self._select_prebuild_node_count(top1_mean)
