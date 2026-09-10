@@ -147,7 +147,7 @@ def validate_pair(sdpa, flash, dataset, model_index, variants, expected_rows,
             rows[key] = response
         if set(rows) != expected_keys:
             raise ValueError("Incomplete official sampled dataset or missing MT-Bench turn")
-        history_method = "ddtree_tb1024" if backend == "sdpa" else "dflash"
+        history_method = f"ddtree_tb{BUDGETS[-1]}" if backend == "sdpa" else "dflash"
         for index, turn in expected_keys:
             expected_history = [
                 response_tokens(rows[(index, previous)][history_method])

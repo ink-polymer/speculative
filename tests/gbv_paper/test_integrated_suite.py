@@ -70,7 +70,7 @@ def test_process_scorer_identity_preserves_venv_invocation_symlink(tmp_path, mon
 def test_integrated_plan_keeps_protocol_families_separate_and_complete():
     plan = plan_integrated_suite(SUITE)
     assert plan["models"] == ["qwen3_4b", "qwen3_8b"]
-    assert plan["adaptive_t0"]["generation_calls"] == 43776
+    assert plan["adaptive_t0"]["generation_calls"] == 29952
     assert plan["adaptive_t0"]["primary_method"] == ADAPTIVE_PRIMARY_METHOD
     assert plan["adaptive_t0"]["method_schema_version"] == ADAPTIVE_METHOD_SCHEMA_VERSION
     assert plan["adaptive_t0"]["greedy_audit_policy"] == "record-bf16-mismatches"
@@ -80,7 +80,7 @@ def test_integrated_plan_keeps_protocol_families_separate_and_complete():
     assert plan["positive_temperature_t1"]["expected_records"] == 14688
     assert plan["positive_temperature_t1"]["expected_generations"] == 16128
     assert plan["tree_block_verification"] == "deferred_not_run"
-    assert plan["total_generation_calls"] == 59904
+    assert plan["total_generation_calls"] == 46080
     assert plan["cross_protocol_aggregate"] is None
     assert plan["fairness_audit"]["passed"]
     assert not plan["fairness_audit"]["claim_boundaries"][

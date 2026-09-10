@@ -16,7 +16,7 @@
 | 抽样 | 顺序种子打乱全量 | 超出上限时 dataset.shuffle(seed=0).select(range(max_samples)) |
 | 主加速比 | AR 总墙钟时间 / 方法总墙钟时间 | 各次回答 decode TPOT 的均值之比 |
 | 计时边界 | 含 prefill、首轮 draft | 去除 target prefill；推测方法首次 draft 后重置 decode_start |
-| 固定 DDTree 对照 | B=60 及邻近预算 | 默认扫描 16/32/64/128/256/512/1024，表格选最佳预算 |
+| 固定 DDTree 对照 | B=60 及邻近预算 | 上游默认扫描 16/32/64/128/256/512/1024；本正式矩阵固定 B128 |
 | Attention | Target/Draft 均 SDPA | draft 固定 FA2；target 分 SDPA 与 FA2 两批，树只在 SDPA 批运行 |
 | 表格 baseline | 同批 AR | AR/DFlash 各自在 SDPA/FA2 两批中按均值 TPOT 取较优结果 |
 | MT-Bench 后续上下文 | 各方法自己的前一轮回答 | 所有方法共享当前输入；下一轮采用最后一个推测方法的回答 |

@@ -37,7 +37,7 @@
 
 数据准备时固定各源的不可变 revision、源索引与处理后 turns hash，之后所有模型、方法和后端使用同一份选中样本。官方脚本未记录历史 HF revisions，因此能够保证本次比较中数据相同、处理和抽样规则相同，不能无依据声称与作者当年未公开的具体快照逐字相同。
 
-MT-Bench 按官方方式共享当前轮输入；SDPA 组的下一轮对话使用最后一个原始 DDTree 方法（预算 1024）的回答，FA2 组用 DFlash 回答。新加 Adaptive/消融不能改变这个上下文来源。跨后端汇总时再次检查输入与 token 一致性。
+MT-Bench 共享当前轮输入；SDPA 组的下一轮对话使用注册的固定 DDTree B128 回答，FA2 组用 DFlash 回答。新加 Adaptive/消融不能改变这个上下文来源。跨后端汇总时再次检查输入与 token 一致性。
 
 上游叫 train 的 AIME、MT-Bench、Alpaca 划分在这里仅作评测；此方法没有离线训练环节。这里对应官方速度/接受长度 benchmark，不包含代码测试执行、SWE 修复率或 MT-Bench judge 分数，不能把速度表当成任务质量评分。
 
@@ -68,7 +68,7 @@ formal 新服务器重跑只选择 4B/8B，并把 30B 与树状块验证明确�
 | 组 | 方法 |
 |---|---|
 | 两个 Target 后端 | 官方 Target-only、官方 DFlash |
-| SDPA 固定预算 | 官方 DDTree：16/32/64/128/256/512/1024 |
+| SDPA 固定预算 | DDTree B128：复用官方实现，与 Adaptive B128 等最大节点预算 |
 | SDPA 主方法 | `adaptive_b128`：正确成本归因、六候选预算（B≤128）、关闭周期探索并持续更新 |
 | 历史控制 | `adaptive_legacy`：旧 B≤128、旧成本归因、带周期探索方法 |
 | 预算消融 | `adaptive_b256`：只把候选上限扩展到 B≤256 |
@@ -80,7 +80,7 @@ formal 新服务器重跑只选择 4B/8B，并把 30B 与树状块验证明确�
 
 消融均不重训模型。Adaptive 的构树转换与控制器开销计入官方 decode timer。各方法使用同一组实测阶段时间，但按 registry 中冻结的分区更新：canonical 以“草稿”为共享固定成本，将“构树＋树编译＋验证＋KV/提交”归入所选预算；`adaptive_legacy` 与成本归因消融才恢复旧分区。换用官方执行器后，这些观测来自它的阶段计时，而不是伪称仍为旧 engine 的 CUDA-event 数字。
 
-默认 10 数据集 × 3 模型 × 2 后端，60 个进程组；包括 Adaptive、历史控制和消融共 **65,664 次正式生成调用**，另加预热。没有 36 个 RL checkpoint、反事实数据引擎或训练 epochs。
+默认 10 数据集 × 3 模型 × 2 后端，60 个进程组；包括 Adaptive、历史控制和消融共 **44,928 次正式生成调用**，另加预热。没有 36 个 RL checkpoint、反事实数据引擎或训练 epochs。
 
 ## 5. 计时、汇总与审计
 
@@ -89,8 +89,8 @@ formal 新服务器重跑只选择 4B/8B，并把 30B 与树状块验证明确�
 直接复用官方 make_latex_table.py 中的均值、接受长度均值和后端择优函数：
 
 - Target-only 与 DFlash 各自在 SDPA/FA2 中选 TPOT 均值较小者。
-- DDTree 主表在七个固定预算中选最优；同时保留每预算明细。
-- Adaptive/各消融与同一个官方 Target baseline 和最佳 DDTree 对比。
+- DDTree 主表只使用预先注册的固定 B128，不做按数据集事后选预算。
+- Adaptive/各消融与同一个官方 Target baseline 和固定 DDTree B128 对比。
 - 不再把三个顺序种子、重复测量或 bootstrap 当作官方原协议。
 
 额外审计在生成计时之外：保存数据/代码/权重来源、每轮输入 hash 与原始输出。默认 `strict` 模式发现任一方法与官方 Target-only 输出不一致即保存诊断并停止；公平整合矩阵的 `record-bf16-mismatches` 模式则保留所有样本、逐方法统计差异，并明确禁止无损声明。跨后端输入或输出不一致也不能形成无损比较表。此检查针对官方 Target-only 实现；BF16 实数等价、特殊 mask 清理和任务准确率仍不是由此自动证明的。

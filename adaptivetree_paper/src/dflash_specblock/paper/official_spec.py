@@ -12,7 +12,7 @@ from .controller import LEGACY_BUDGETS
 
 COMMIT = "c96427a185677bf4133ed865dd1626a5041aef9b"
 UPSTREAM = ROOT / "third_party/ddtree_pinned"
-# Order and counts are copied from the pinned run_benchmark.sh.
+# Dataset order and counts are copied from the pinned run_benchmark.sh.
 LIMITS = {"gsm8k":128, "math500":128, "aime24":30, "aime25":30,
           "humaneval":164, "mbpp":128, "livecodebench":128, "swe-bench":128,
           "mt-bench":80, "alpaca":128}
@@ -26,7 +26,9 @@ SOURCES = {"gsm8k": ("openai/gsm8k", "main", "test"),
            "swe-bench": ("princeton-nlp/SWE-bench_Lite", None, "test"),
            "mt-bench": ("HuggingFaceH4/mt_bench_prompts", None, "train"),
            "alpaca": ("tatsu-lab/alpaca", None, "train")}
-BUDGETS = [16,32,64,128,256,512,1024]
+# The upstream CLI defaults to a seven-budget sweep. The registered formal
+# comparison deliberately uses one equal-cap reference: official DDTree at B128.
+BUDGETS = [128]
 MODELS = [
     ("Qwen/Qwen3-4B", "z-lab/Qwen3-4B-DFlash-b16"),
     ("Qwen/Qwen3-8B", "z-lab/Qwen3-8B-DFlash-b16"),
@@ -49,7 +51,7 @@ def load_config(path):
                       "seed","datasets","sample_limits","tree_budgets","models","variants",
                       "primary_adaptive_method","method_schema_version","adaptive"}:
         raise ValueError("Unexpected official protocol configuration fields")
-    if (config.get("version") != 6 or config.get("protocol") != "ddtree_official_t0"
+    if (config.get("version") != 7 or config.get("protocol") != "ddtree_official_t0"
             or config["official_commit"] != COMMIT or config["temperature"] != 0
             or config["max_new_tokens"] != 2048 or config["seed"] != 0
             or config["datasets"] != list(LIMITS) or config["sample_limits"] != LIMITS

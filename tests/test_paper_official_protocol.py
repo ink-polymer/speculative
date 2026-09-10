@@ -39,7 +39,7 @@ def test_official_matrix_is_extracted_from_pinned_script_and_cli(capsys):
     main(["plan"])
     result = json.loads(capsys.readouterr().out)
     assert result["cases"] == 1072 and result["turns_per_method"] == 1152
-    assert result["generation_calls"] == 55296 and result["nproc_per_node"] == 8
+    assert result["generation_calls"] == 34560 and result["nproc_per_node"] == 8
     assert result["official_samples"] and not result["full_split"] and not result["training"]
     assert len(result["models"]) == 3
 
@@ -162,7 +162,7 @@ def test_mismatch_audit_is_fail_closed(tmp_path):
 
 
 def test_official_method_order_and_no_t1_support():
-    assert method_names("sdpa",VARIANTS)[:9] == ["baseline","dflash"]+[f"ddtree_tb{b}" for b in BUDGETS]
+    assert method_names("sdpa",VARIANTS)[:2 + len(BUDGETS)] == ["baseline","dflash"]+[f"ddtree_tb{b}" for b in BUDGETS]
     assert method_names("flash_attention_2",VARIANTS) == ["baseline","dflash"]
 
 
@@ -304,7 +304,7 @@ def test_worker_multiturn_keeps_official_history_method_and_run_completion(tmp_p
     worker_module.worker(args,cfg())
     assert loaded == [(name,"a"*40) for name in MODELS[model_index]]
     assert seen[0] == [{"role":"user","content":"Warmup"}]
-    assert seen[-1][1] == {"role":"assistant","content":"token-1024"}
+    assert seen[-1][1] == {"role":"assistant","content":"token-128"}
     assert all("token-999" not in str(m) for m in seen)
     saved = torch.load(args.output,weights_only=False)
     assert len(saved["responses"]) == 2 and saved["smoke"]

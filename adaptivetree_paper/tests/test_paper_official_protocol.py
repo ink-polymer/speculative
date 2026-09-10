@@ -47,7 +47,7 @@ def test_official_matrix_is_extracted_from_pinned_script_and_cli(capsys):
     main(["plan"])
     result = json.loads(capsys.readouterr().out)
     assert result["cases"] == 1072 and result["turns_per_method"] == 1152
-    assert result["generation_calls"] == 65664 and result["nproc_per_node"] == 8
+    assert result["generation_calls"] == 44928 and result["nproc_per_node"] == 8
     assert result["method_schema_version"] == METHOD_SCHEMA_VERSION
     assert result["primary_adaptive_method"] == PRIMARY_ADAPTIVE_METHOD
     assert result["official_samples"] and not result["full_split"] and not result["training"]
@@ -55,13 +55,13 @@ def test_official_matrix_is_extracted_from_pinned_script_and_cli(capsys):
     main(["plan", "--experimental-cost-attribution", "--run-dir",
           "outputs/cost-diagnostic"])
     diagnostic = json.loads(capsys.readouterr().out)
-    assert diagnostic["generation_calls"] == 65664
+    assert diagnostic["generation_calls"] == 44928
     assert diagnostic["deprecated_cli_aliases"] == [
         "experimental_cost_attribution_is_adaptive_b128"]
     main(["plan", "--experimental-extended-budgets", "--run-dir",
           "outputs/extended-budget-diagnostic"])
     extended = json.loads(capsys.readouterr().out)
-    assert extended["generation_calls"] == 65664
+    assert extended["generation_calls"] == 44928
     assert extended["deprecated_cli_aliases"] == [
         "experimental_extended_budgets_is_adaptive_b256"]
     main(["plan", "--wandb-project", "adaptive-test", "--wandb-group", "test-group"])
@@ -206,7 +206,7 @@ def test_mismatch_record_policy_is_explicit_and_non_lossless(tmp_path):
 
 
 def test_official_method_order_and_no_t1_support():
-    assert method_names("sdpa",VARIANTS)[:9] == ["baseline","dflash"]+[f"ddtree_tb{b}" for b in BUDGETS]
+    assert method_names("sdpa",VARIANTS)[:2 + len(BUDGETS)] == ["baseline","dflash"]+[f"ddtree_tb{b}" for b in BUDGETS]
     assert method_names("flash_attention_2",VARIANTS) == ["baseline","dflash"]
     primary = make_paper_builder(cfg()["adaptive"], PRIMARY_ADAPTIVE_METHOD)
     assert primary.variant == "no_exploration"
@@ -635,7 +635,7 @@ def test_worker_multiturn_keeps_official_history_method_and_run_completion(
     worker_module.worker(args,cfg())
     assert loaded == [(name,"a"*40) for name in MODELS[model_index]]
     assert seen[0] == [{"role":"user","content":"Warmup"}]
-    assert seen[-1][1] == {"role":"assistant","content":"token-1024"}
+    assert seen[-1][1] == {"role":"assistant","content":"token-128"}
     assert all("token-999" not in str(m) for m in seen)
     saved = torch.load(args.output,weights_only=False)
     assert len(saved["responses"]) == 2 and saved["smoke"]
@@ -646,7 +646,7 @@ def test_worker_multiturn_keeps_official_history_method_and_run_completion(
         digest("first"), digest("second")
     ]
     assert saved["responses"][0]["_audit"]["conditioning_history_sha256"] == digest([])
-    assert saved["responses"][1]["_audit"]["conditioning_history_sha256"] == digest([[1024]])
+    assert saved["responses"][1]["_audit"]["conditioning_history_sha256"] == digest([[128]])
     assert "diagnostic_variants" not in saved
     assert "diagnostic_controllers" not in saved
     assert saved["method_schema_version"] == METHOD_SCHEMA_VERSION

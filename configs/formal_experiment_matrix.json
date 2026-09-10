@@ -40,7 +40,7 @@
     "primary_comparison_backend": "sdpa",
     "draft_backend": "flash_attention_2",
     "baselines": ["baseline", "dflash"],
-    "ddtree_budgets": [16, 32, 64, 128, 256, 512, 1024],
+    "ddtree_budgets": [128],
     "adaptive_primary": "adaptive_b128",
     "adaptive_controls": [
       "adaptive_b256",

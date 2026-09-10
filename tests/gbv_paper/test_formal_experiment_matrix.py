@@ -25,11 +25,11 @@ def test_registered_formal_matrix_is_complete_and_fail_closed():
         "models": ["qwen3_4b", "qwen3_8b"],
         "adaptive_t0_datasets": 10,
         "adaptive_t0_turns_per_method_model": 1152,
-        "adaptive_t0_generation_calls": 43776,
+        "adaptive_t0_generation_calls": 29952,
         "stochastic_t1_datasets": 8,
         "stochastic_t1_seeds": 3,
         "stochastic_t1_generation_calls": 16128,
-        "total_generation_calls": 59904,
+        "total_generation_calls": 46080,
     }
     assert all(value is False for value in report["claim_boundaries"].values())
     assert report["deferred"]["tree_block_verification"]["run_in_this_matrix"] is False

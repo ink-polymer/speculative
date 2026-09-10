@@ -124,8 +124,8 @@ def worker(args, config):
             audit = audit_response(response, index=idx, turn=turn, input_ids=ids,
                 diagnostic_path=args.output.with_name(args.output.stem + f".rank{rank}.mismatch.json"))
             # Adding ablations must NOT change the official multi-turn conditioning:
-            # SDPA uses the last original DDTree budget (1024); FA2 uses DFlash.
-            history_method = "ddtree_tb1024" if args.backend == "sdpa" else "dflash"
+            # SDPA uses the registered fixed DDTree reference; FA2 uses DFlash.
+            history_method = f"ddtree_tb{BUDGETS[-1]}" if args.backend == "sdpa" else "dflash"
             text = tokenizer.decode(response_tokens(response[history_method]), skip_special_tokens=True)
             messages.append({"role":"assistant", "content":text})
             response["_audit"] = audit

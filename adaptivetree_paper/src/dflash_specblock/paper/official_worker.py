@@ -204,8 +204,8 @@ def worker(args, config):
             audit["method_order"] = execution_order
             log_response(wandb_run, response, step=len(responses), index=idx, turn=turn)
             # Adding ablations must NOT change the official multi-turn conditioning:
-            # SDPA uses the last original DDTree budget (1024); FA2 uses DFlash.
-            history_method = "ddtree_tb1024" if args.backend == "sdpa" else "dflash"
+            # SDPA uses the registered fixed DDTree reference; FA2 uses DFlash.
+            history_method = f"ddtree_tb{BUDGETS[-1]}" if args.backend == "sdpa" else "dflash"
             history_tokens = response_tokens(response[history_method])
             text = tokenizer.decode(history_tokens, skip_special_tokens=True)
             messages.append({"role":"assistant", "content":text})

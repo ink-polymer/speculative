@@ -123,8 +123,8 @@ def audit(matrix_path: Path) -> dict:
     require(t0.get("primary_comparison_backend") == "sdpa", "T=0 architecture table must be same-backend SDPA")
     require(t0.get("draft_backend") == "flash_attention_2", "T=0 draft backend must remain official FA2")
     require(t0.get("baselines") == ["baseline", "dflash"], "T=0 Target/DFlash baselines changed")
-    require(t0.get("ddtree_budgets") == [16, 32, 64, 128, 256, 512, 1024],
-            "T=0 fixed DDTree budget scan is incomplete")
+    require(t0.get("ddtree_budgets") == [128],
+            "T=0 must use only the registered fixed DDTree B128 reference")
     registered_variants = {
         t0.get("adaptive_primary"),
         *t0.get("adaptive_controls", []),
@@ -154,7 +154,7 @@ def audit(matrix_path: Path) -> dict:
         require(cfg.get("tree_budgets") == t0.get("ddtree_budgets"), "underlying DDTree budgets drifted")
         require(set(cfg.get("variants", [])) == EXPECTED_T0_VARIANTS,
                 "underlying T=0 config does not use all canonical AdaptiveTree keys")
-        require(cfg.get("version") == 6
+        require(cfg.get("version") == 7
                 and cfg.get("primary_adaptive_method") == "adaptive_b128"
                 and cfg.get("method_schema_version") == 3,
                 "underlying T=0 config must register dynamic B128 schema v3")

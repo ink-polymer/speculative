@@ -12,8 +12,8 @@
 - 官方十数据集：GSM8K 128、MATH-500 128、AIME24 30、AIME25 30、HumanEval 164、MBPP-sanitized 128、LiveCodeBench 128、SWE-bench 128、MT-Bench 80、Alpaca 128。
 - 共 1,072 题/对话，含 MT-Bench 双轮后每方法 1,152 次回答。直接执行固定版官方数据处理和 seed=0 抽样，不是全量测试集。
 - 三组原始 Target/DFlash 模型：Qwen3-4B、Qwen3-8B、Qwen3-Coder-30B-A3B-Instruct。T=0、BF16、每回答最多 2,048 新 token。
-- Draft 使用 FA2；Target 分 SDPA/FA2 两组；树方法仅 SDPA。固定 DDTree 对照预算 16/32/64/128/256/512/1024，采用官方回答级 decode TPOT 均值之比。
-- 正式主方法、历史控制与六项消融：B=128、恢复旧成本归因、恢复周期探索、去接受校准、去延迟项、预热后冻结校准。默认完整矩阵 60 个进程组、65,664 次生成调用，另加预热。
+- Draft 使用 FA2；Target 分 SDPA/FA2 两组；树方法仅 SDPA。固定 DDTree 对照只运行 B128，复用官方实现并与主方法保持相同最大节点预算。
+- 正式主方法、历史控制与六项消融：B=128、恢复旧成本归因、恢复周期探索、去接受校准、去延迟项、预热后冻结校准。默认完整矩阵 60 个进程组、44,928 次生成调用，另加预热。
 - 逐题 token 对照官方 Target-only。默认严格复现模式会在不一致时保存诊断并停止；公平整合矩阵使用 `record-bf16-mismatches` 保留并统计全部差异，不删除或筛掉样本。两种口径都不是任务准确率评分或 BF16 无条件等价保证。
 - 公平整合实验可显式启用 `--method-order-policy balanced-rotation`，让所有方法在每个计时位置均衡轮换；默认仍为 `official-fixed` 以保留上游复现口径。同后端架构主表写入 `tables_controlled_sdpa.csv`，最佳后端表只作辅助对照。
 

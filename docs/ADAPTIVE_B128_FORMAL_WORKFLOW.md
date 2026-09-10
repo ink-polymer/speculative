@@ -18,7 +18,7 @@
 - 模型：固定 revision 的 Qwen3-4B 与 Qwen3-8B Target/DFlash Draft 对。
 - 数据：GSM8K 128、MATH-500 128、AIME24 30、AIME25 30、HumanEval 164、MBPP 128、LiveCodeBench 128、SWE-bench 128、MT-Bench 80×2 轮、Alpaca 128。
 - 每模型每方法 1,152 个回答；最大新 token 2,048；T=0；BF16；seed=0。
-- 同后端主表：Target、DFlash、固定 DDTree B16/32/64/128/256/512/1024、`adaptive_b128` 和全部消融均以 Target=SDPA 比较；Draft 固定 FA2。
+- 同后端主表：Target、DFlash、固定 DDTree B128（官方实现）、`adaptive_b128` 和全部消融均以 Target=SDPA 比较；Draft 固定 FA2。
 - FA2 Target 的 Target/DFlash 结果仅供上游“最佳后端”辅助表，不能进入架构主结论。
 - 方法按数据集做 balanced rotation，避免固定执行位置偏差。
 
@@ -55,7 +55,7 @@ export GBV_PROCESS_PYTHON=/opt/gbv-code-eval/bin/python
 
 按以下顺序执行：
 
-1. `bash scripts/run_integrated_fresh_server.sh plan`：确认 2 个模型、T=0/T=1 范围、59,904 次 generation call 及 B128 primary。
+1. `bash scripts/run_integrated_fresh_server.sh plan`：确认 2 个模型、T=0/T=1 范围、46,080 次 generation call 及 B128 primary。
 2. `bash scripts/run_integrated_fresh_server.sh audit`：静态核对方法角色、revision、数据量、后端、随机律和禁止声明。
 3. `bash scripts/run_integrated_fresh_server.sh doctor`：核对 GPU UUID、CUDA/FA2/C++、模型兼容性、评分沙箱和分布律测试；GPU 有外来计算进程时失败。
 4. `bash scripts/run_integrated_fresh_server.sh start`：再次执行 matrix audit、fairness audit 和 doctor 后才后台启动。它先准备/锁定数据，再完成 T=1 数据与答案审计、4B/8B 真实模型预检、T=0 双后端全方法 smoke，全部通过后才进入正式计时。

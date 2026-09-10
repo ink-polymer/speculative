@@ -10,13 +10,13 @@ import sys
 
 from .common import ROOT, atomic_json, code_identity, contract, digest, file_hash, load_json, run_lock
 from .official_data import check_manifest, prepare
-from .official_spec import LIMITS, MODELS, PINNED_MODEL_REVISIONS, load_config, verify_sources
+from .official_spec import BUDGETS, LIMITS, MODELS, PINNED_MODEL_REVISIONS, load_config, verify_sources
 
 
 def plan(config, model_indices, datasets, smoke_count, nproc):
     counts = {name:min(LIMITS[name], smoke_count) if smoke_count else LIMITS[name] for name in datasets}
     turns = sum(n * (2 if name=="mt-bench" else 1) for name,n in counts.items())
-    # SDPA: baseline, DFlash, seven DDTree budgets, five Adaptive variants.
+    # SDPA: baseline, DFlash, one fixed DDTree B128, and five Adaptive variants.
     # FA2: baseline and DFlash only.
     return {"protocol":config["protocol"], "temperature":0, "training":False,
             "data_sampling":"Dataset.shuffle(seed=0).select(range(limit)) only when full size > limit",
@@ -27,7 +27,7 @@ def plan(config, model_indices, datasets, smoke_count, nproc):
                 "draft_revision":PINNED_MODEL_REVISIONS.get(MODELS[i][1], "locked during prepare")}
                 for i in model_indices],
             "benchmark_process_groups":len(datasets)*len(model_indices)*2,
-            "generation_calls":turns*len(model_indices)*(11+len(config["variants"])),
+            "generation_calls":turns*len(model_indices)*(4+len(BUDGETS)+len(config["variants"])),
             "full_split":False, "official_samples":not bool(smoke_count),
             "launches_models":False}
 

@@ -12,7 +12,7 @@ import sys
 from .common import (METHOD_SCHEMA_VERSION, PRIMARY_ADAPTIVE_METHOD, ROOT,
                      atomic_json, code_identity, contract, load_json, run_lock)
 from .official_data import check_manifest, prepare
-from .official_spec import LIMITS, MODELS, PINNED_MODEL_REVISIONS, load_config, verify_sources
+from .official_spec import BUDGETS, LIMITS, MODELS, PINNED_MODEL_REVISIONS, load_config, verify_sources
 from .controller import deprecated_experiment_flags
 from .wandb_monitor import wandb_contract
 
@@ -21,7 +21,7 @@ def plan(config, model_indices, datasets, smoke_count, nproc,
          experimental_cost_attribution=False, experimental_extended_budgets=False):
     counts = {name:min(LIMITS[name], smoke_count) if smoke_count else LIMITS[name] for name in datasets}
     turns = sum(n * (2 if name=="mt-bench" else 1) for name,n in counts.items())
-    # SDPA: baseline, DFlash, seven DDTree budgets, and the registered
+    # SDPA: baseline, DFlash, one registered fixed DDTree B128, and the registered
     # AdaptiveTree method/ablation matrix.
     # FA2: baseline and DFlash only.
     legacy_cli_aliases = deprecated_experiment_flags(
@@ -37,7 +37,7 @@ def plan(config, model_indices, datasets, smoke_count, nproc,
                 "draft_revision":PINNED_MODEL_REVISIONS.get(MODELS[i][1], "locked during prepare")}
                 for i in model_indices],
             "benchmark_process_groups":len(datasets)*len(model_indices)*2,
-            "generation_calls":turns*len(model_indices)*(11+len(config["variants"])),
+            "generation_calls":turns*len(model_indices)*(4+len(BUDGETS)+len(config["variants"])),
             "method_schema_version":METHOD_SCHEMA_VERSION,
             "primary_adaptive_method":PRIMARY_ADAPTIVE_METHOD,
             "full_split":False, "official_samples":not bool(smoke_count),

@@ -36,7 +36,7 @@ MoE 路径也未完成相同实现审计。正式结论只能覆盖 4B 与 8B；
 |---|---|---|
 | Target | `baseline` | Target-only |
 | DFlash | `dflash` | 官方 DFlash |
-| DDTree | `ddtree_tb16` … `ddtree_tb1024` | B=16/32/64/128/256/512/1024 |
+| DDTree | `ddtree_tb128` | B=128（官方实现，固定预算） |
 | 正式主方法 | `adaptive_b128` | 修正成本归因、原始六候选预算 B≤128、关闭周期探索；预热后持续动态选择并更新 |
 | 预算上限消融 | `adaptive_b256` | 只把候选集扩至 B=256，其余与主方法相同 |
 | 历史对照 | `adaptive_legacy` | 修改前的旧 AdaptiveTree |
@@ -70,8 +70,8 @@ MoE 路径也未完成相同实现审计。正式结论只能覆盖 4B 与 8B；
 - 因此本轮 T=0 只报告描述性点估计，不计算置信区间；T=1 的配对聚簇 bootstrap
   不能移用于 T=0，也不能用来包装确定性重复。
 
-T=0 两模型合计生成调用数为 43,776：每轮 SDPA 有 2 个基础方法、7 个固定
-DDTree 和 8 个 AdaptiveTree/消融方法；FA2 只运行 Target 与 DFlash。
+T=0 两模型合计生成调用数为 29,952：每轮 SDPA 有 2 个基础方法、1 个固定
+DDTree B128 和 8 个 AdaptiveTree/消融方法；FA2 只运行 Target 与 DFlash。
 
 ## 3. T=1 随机采样基线
 
@@ -142,5 +142,5 @@ T=1 的两份冻结配置为：
 - `configs/adaptive_block_qwen3_4b.json`
 - `configs/adaptive_block_qwen3_8b.json`
 
-完整注册范围共 59,904 次生成调用。这个数字不包括 warmup、失败后从组头重跑，
+完整注册范围共 46,080 次生成调用。这个数字不包括 warmup、失败后从组头重跑，
 也不包括明确延期的树状块验证或 30B。

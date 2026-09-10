@@ -1,5 +1,5 @@
 {
-  "version": 6,
+  "version": 7,
   "protocol": "ddtree_official_t0",
   "official_commit": "c96427a185677bf4133ed865dd1626a5041aef9b",
   "temperature": 0,
@@ -30,13 +30,7 @@
     "alpaca": 128
   },
   "tree_budgets": [
-    16,
-    32,
-    64,
-    128,
-    256,
-    512,
-    1024
+    128
   ],
   "models": [
     [
