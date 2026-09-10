@@ -26,6 +26,7 @@ from gbv_experiments.config import Variant, load_config
 from gbv_experiments.conversation import encode_messages
 from gbv_experiments.engine import load_models
 from gbv_experiments.prefix_conditional import load_rank_calibrated_head
+from gbv_experiments.slot_mixer import load_markov_branch_head, load_slot_mixer
 from gbv_experiments.runner import output_lock, stop_token_ids
 from gbv_experiments.terminal_formal import allocation_gate, model_gate, telemetry
 
@@ -84,10 +85,16 @@ def variants(budgets: list[int], tree_temperatures: list[float],
              learned_bias_path: str | None = None,
              adaptive_budgets: list[tuple[int, float]] | None = None,
              rank_calibrated: bool = False,
+             block_spines: list[int] | None = None,
+             slot_mixer: bool = False,
+             markov_branch: bool = False,
+             markov_budgets: list[int] | None = None,
              ) -> list[Variant]:
     depth_rewards = depth_rewards or []
     temperature_schedules = temperature_schedules or []
     adaptive_budgets = adaptive_budgets or []
+    block_spines = block_spines or []
+    markov_budgets = markov_budgets or [45]
     base = Variant(
         name="base", method="ddtree", paths=1, length=15,
         temperature=1.0, draft_temperature=1.0, tree_budget=45,
@@ -161,6 +168,26 @@ def variants(budgets: list[int], tree_temperatures: list[float],
         ]),
         *[
             replace(
+                base, name=f"adaptive_block_spines_k{count}",
+                method="block_aligned_tree", paths=count,
+            )
+            for count in block_spines
+        ],
+        *([] if not slot_mixer else [
+            replace(
+                base, name="adaptive_branch_slot_mixer",
+                method="ddtree_slot_mixer",
+            )
+        ]),
+        *([] if not markov_branch else [
+            replace(
+                base, name=f"adaptive_markov_branch_b{budget}",
+                method="ddtree_markov_branch", tree_budget=budget,
+            )
+            for budget in markov_budgets
+        ]),
+        *[
+            replace(
                 base,
                 name=temperature_name(value).replace(
                     "adaptive_tbv_", "adaptive_sparse_"
@@ -217,12 +244,18 @@ def run(config: Path, output: Path, budgets: list[int], tokens: int,
         learned_bias_path: str | None = None,
         adaptive_budgets: list[tuple[int, float]] | None = None,
         rank_checkpoint: Path | None = None,
+        block_spines: list[int] | None = None,
+        slot_mixer_checkpoint: Path | None = None,
+        markov_branch_checkpoint: Path | None = None,
+        markov_budgets: list[int] | None = None,
         ) -> dict:
     tree_temperatures = tree_temperatures or []
     sparse_temperatures = sparse_temperatures or []
     depth_rewards = depth_rewards or []
     temperature_schedules = temperature_schedules or []
     adaptive_budgets = adaptive_budgets or []
+    block_spines = block_spines or []
+    markov_budgets = markov_budgets or [45]
     if (len(set(budgets)) != len(budgets)
             or any(not 1 <= budget <= 45 for budget in budgets)):
         raise ValueError("Budgets must be unique integers in 1..45")
@@ -237,11 +270,17 @@ def run(config: Path, output: Path, budgets: list[int], tokens: int,
             or len(set(temperature_schedules)) != len(temperature_schedules)
             or any(not 0.1 <= value <= 4.0
                    for pair in temperature_schedules for value in pair)
+            or len(set(block_spines)) != len(block_spines)
+            or any(not 1 <= value <= 16 for value in block_spines)
+            or len(set(markov_budgets)) != len(markov_budgets)
+            or any(not 1 <= value <= 45 for value in markov_budgets)
             or (not budgets and not tree_temperatures
                 and not sparse_temperatures and not depth_rewards
                 and not temperature_schedules
                 and learned_temperature_schedule is None
-                and not adaptive_budgets and rank_checkpoint is None)):
+                and not adaptive_budgets and rank_checkpoint is None
+                and not block_spines and slot_mixer_checkpoint is None
+                and markov_branch_checkpoint is None)):
         raise ValueError(
             "Tree temperatures must be unique values in 0.1..4.0, and at "
             "least one scan value is required"
@@ -265,6 +304,10 @@ def run(config: Path, output: Path, budgets: list[int], tokens: int,
         temperature_budget_grid, depth_rewards, temperature_schedules,
         learned_temperature_schedule, learned_bias_path, adaptive_budgets,
         rank_checkpoint is not None,
+        block_spines,
+        slot_mixer_checkpoint is not None,
+        markov_branch_checkpoint is not None,
+        markov_budgets,
     )
     by_name = {value.name: value for value in declared}
     with output_lock(output):
@@ -273,10 +316,33 @@ def run(config: Path, output: Path, budgets: list[int], tokens: int,
         allocation_gate(device)
         engine, tokenizer = load_models(cfg["model"], device)
         model_gate(engine)
+        learned_adapters = sum(value is not None for value in (
+            rank_checkpoint, slot_mixer_checkpoint, markov_branch_checkpoint,
+        ))
+        if learned_adapters > 1:
+            raise ValueError("Use one learned proposal adapter per scan")
         if rank_checkpoint is not None:
             engine.proposal_adapter = load_rank_calibrated_head(
                 rank_checkpoint, int(engine.draft.config.hidden_size),
                 engine.device,
+            )
+        if slot_mixer_checkpoint is not None:
+            engine.proposal_adapter = load_slot_mixer(
+                slot_mixer_checkpoint,
+                int(engine.draft.config.hidden_size), engine.device,
+                {
+                    "target_revision": cfg["model"]["target_revision"],
+                    "draft_revision": cfg["model"]["draft_revision"],
+                }, dtype=next(engine.draft.parameters()).dtype,
+            )
+        if markov_branch_checkpoint is not None:
+            engine.proposal_adapter = load_markov_branch_head(
+                markov_branch_checkpoint,
+                int(engine.draft.config.hidden_size), engine.device,
+                {
+                    "target_revision": cfg["model"]["target_revision"],
+                    "draft_revision": cfg["model"]["draft_revision"],
+                }, dtype=next(engine.draft.parameters()).dtype,
             )
         stops = stop_token_ids(engine, tokenizer)
         encoded = [
@@ -330,6 +396,31 @@ def run(config: Path, output: Path, budgets: list[int], tokens: int,
                         f"official_tpot={row['official_tpot_ms']:.6f}",
                         flush=True,
                     )
+        profile_names = ["ddtree_b45"] + [
+            name for name in names if name.startswith("adaptive_")
+        ]
+        stage_profiles = {}
+        for name in profile_names:
+            result = engine.generate(
+                encoded[0], by_name[name], tokens, stops,
+                seed=20260910, profile=True,
+            )
+            stage_profiles[name] = {
+                "diagnostic_only": True,
+                "official_tpot_ms": result[
+                    "official_scope_time_per_output_token_ms"
+                ],
+                "round_count": len(result["rounds"]),
+                "mean_committed_tokens": sum(
+                    row["committed_tokens"] for row in result["rounds"]
+                ) / len(result["rounds"]),
+                "stages": result["stages"],
+                "stage_profile": result["stage_profile"],
+            }
+        write_json(output / "stage_profiles.json", {
+            "primary_timing": False,
+            "profiles": stage_profiles,
+        })
         comparisons = {
             name: {
                 "versus_ddtree": compare(rows, name, "ddtree_b45"),
@@ -364,11 +455,22 @@ def run(config: Path, output: Path, budgets: list[int], tokens: int,
             "rank_checkpoint": (
                 str(rank_checkpoint) if rank_checkpoint is not None else None
             ),
+            "candidate_block_spines": block_spines,
+            "slot_mixer_checkpoint": (
+                str(slot_mixer_checkpoint)
+                if slot_mixer_checkpoint is not None else None
+            ),
+            "markov_branch_checkpoint": (
+                str(markov_branch_checkpoint)
+                if markov_branch_checkpoint is not None else None
+            ),
+            "candidate_markov_budgets": markov_budgets,
             "target_sampling_temperature": 1.0,
             "tokens": tokens,
             "repeats": repeats,
             "prompt_count": prompt_count,
             "prompt_policy": "synthetic development prompts only",
+            "stage_profiles_file": "stage_profiles.json",
             "comparisons": comparisons,
             "best_point_estimate": best,
             "ddtree_vs_dflash": compare(rows, "ddtree_b45", "dflash"),
@@ -389,6 +491,14 @@ def run(config: Path, output: Path, budgets: list[int], tokens: int,
                 "rank_checkpoint": (
                     file_hash(rank_checkpoint)
                     if rank_checkpoint is not None else None
+                ),
+                "slot_mixer_checkpoint": (
+                    file_hash(slot_mixer_checkpoint)
+                    if slot_mixer_checkpoint is not None else None
+                ),
+                "markov_branch_checkpoint": (
+                    file_hash(markov_branch_checkpoint)
+                    if markov_branch_checkpoint is not None else None
                 ),
             },
             "telemetry_end": telemetry(device),
@@ -422,6 +532,12 @@ def main() -> None:
         "--adaptive-budgets", nargs="*", default=[], metavar="MIN:THRESHOLD",
     )
     parser.add_argument("--rank-checkpoint", type=Path)
+    parser.add_argument("--block-spines", type=int, nargs="*", default=[])
+    parser.add_argument("--slot-mixer-checkpoint", type=Path)
+    parser.add_argument("--markov-branch-checkpoint", type=Path)
+    parser.add_argument(
+        "--markov-budgets", type=int, nargs="*", default=[45],
+    )
     parser.add_argument("--device", default="cuda:0")
     args = parser.parse_args()
     schedules = []
@@ -463,6 +579,16 @@ def main() -> None:
             args.rank_checkpoint.resolve()
             if args.rank_checkpoint is not None else None
         ),
+        block_spines=args.block_spines,
+        slot_mixer_checkpoint=(
+            args.slot_mixer_checkpoint.resolve()
+            if args.slot_mixer_checkpoint is not None else None
+        ),
+        markov_branch_checkpoint=(
+            args.markov_branch_checkpoint.resolve()
+            if args.markov_branch_checkpoint is not None else None
+        ),
+        markov_budgets=args.markov_budgets,
     )
 
 

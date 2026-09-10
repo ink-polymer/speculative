@@ -1,0 +1,181 @@
+{
+  "kind": "architecture_level_ddtree_tbv_budget_scan",
+  "formal_complete": false,
+  "created_at_utc": "2026-09-10T13:28:40.707826+00:00",
+  "uses_cuda_graph": false,
+  "official_precision": {
+    "dtype": "bfloat16",
+    "target_attention": "sdpa",
+    "draft_attention": "sdpa",
+    "allow_tf32": false
+  },
+  "temperature": 1.0,
+  "length": 15,
+  "baseline_budget": 45,
+  "candidate_budgets": [],
+  "candidate_tree_proposal_temperatures": [],
+  "candidate_sparse_exit_temperatures": [],
+  "temperature_budget_grid": false,
+  "candidate_tree_depth_rewards": [],
+  "candidate_tree_temperature_schedules": [],
+  "candidate_learned_temperature_schedule": null,
+  "candidate_learned_bias_path": null,
+  "candidate_adaptive_budgets": [],
+  "rank_checkpoint": null,
+  "candidate_block_spines": [],
+  "slot_mixer_checkpoint": null,
+  "markov_branch_checkpoint": "/root/autodl-tmp/outputs/markov-start2-20260910-a.pt",
+  "candidate_markov_budgets": [
+    28,
+    32,
+    36,
+    40,
+    45
+  ],
+  "target_sampling_temperature": 1.0,
+  "tokens": 64,
+  "repeats": 1,
+  "prompt_count": 3,
+  "prompt_policy": "synthetic development prompts only",
+  "stage_profiles_file": "stage_profiles.json",
+  "comparisons": {
+    "adaptive_markov_branch_b28": {
+      "versus_ddtree": {
+        "candidate": "adaptive_markov_branch_b28",
+        "baseline": "ddtree_b45",
+        "speedup": 0.8907873931759661,
+        "ci95": [
+          0.8684651607265423,
+          0.9090436113334585
+        ],
+        "prompt_clusters": 3
+      },
+      "versus_dflash": {
+        "candidate": "adaptive_markov_branch_b28",
+        "baseline": "dflash",
+        "speedup": 1.4612425379893033,
+        "ci95": [
+          1.3448413904293366,
+          1.7250017320740885
+        ],
+        "prompt_clusters": 3
+      }
+    },
+    "adaptive_markov_branch_b32": {
+      "versus_ddtree": {
+        "candidate": "adaptive_markov_branch_b32",
+        "baseline": "ddtree_b45",
+        "speedup": 0.963341517309053,
+        "ci95": [
+          0.8898740314627297,
+          1.0026027778372155
+        ],
+        "prompt_clusters": 3
+      },
+      "versus_dflash": {
+        "candidate": "adaptive_markov_branch_b32",
+        "baseline": "dflash",
+        "speedup": 1.5802599076804345,
+        "ci95": [
+          1.3367487410243928,
+          1.990309107672399
+        ],
+        "prompt_clusters": 3
+      }
+    },
+    "adaptive_markov_branch_b36": {
+      "versus_ddtree": {
+        "candidate": "adaptive_markov_branch_b36",
+        "baseline": "ddtree_b45",
+        "speedup": 0.8753640730444725,
+        "ci95": [
+          0.7908269665599488,
+          0.9981990866853939
+        ],
+        "prompt_clusters": 3
+      },
+      "versus_dflash": {
+        "candidate": "adaptive_markov_branch_b36",
+        "baseline": "dflash",
+        "speedup": 1.4359422119790617,
+        "ci95": [
+          1.1879624694514155,
+          1.687736531511819
+        ],
+        "prompt_clusters": 3
+      }
+    },
+    "adaptive_markov_branch_b40": {
+      "versus_ddtree": {
+        "candidate": "adaptive_markov_branch_b40",
+        "baseline": "ddtree_b45",
+        "speedup": 0.917571024422319,
+        "ci95": [
+          0.8215445623505232,
+          1.0018325066735485
+        ],
+        "prompt_clusters": 3
+      },
+      "versus_dflash": {
+        "candidate": "adaptive_markov_branch_b40",
+        "baseline": "dflash",
+        "speedup": 1.5051782532888338,
+        "ci95": [
+          1.2153950786920549,
+          1.9899045896259637
+        ],
+        "prompt_clusters": 3
+      }
+    },
+    "adaptive_markov_branch_b45": {
+      "versus_ddtree": {
+        "candidate": "adaptive_markov_branch_b45",
+        "baseline": "ddtree_b45",
+        "speedup": 0.9937909712710377,
+        "ci95": [
+          0.9852844933994914,
+          0.9986766693924394
+        ],
+        "prompt_clusters": 3
+      },
+      "versus_dflash": {
+        "candidate": "adaptive_markov_branch_b45",
+        "baseline": "dflash",
+        "speedup": 1.6302090175675448,
+        "ci95": [
+          1.4576323418940753,
+          1.9836362612896805
+        ],
+        "prompt_clusters": 3
+      }
+    }
+  },
+  "best_point_estimate": "adaptive_markov_branch_b45",
+  "ddtree_vs_dflash": {
+    "candidate": "ddtree_b45",
+    "baseline": "dflash",
+    "speedup": 1.6403942727337741,
+    "ci95": [
+      1.4794024991349037,
+      1.986264746223076
+    ],
+    "prompt_clusters": 3
+  },
+  "decision": "reject_architecture_candidate",
+  "source_sha256": {
+    "engine": "779ca6a66b5fe35446c836653f5115b61b198f4acea3a5cc757f29bd62062eb0",
+    "script": "44d794768b36165f08b0725aee85d77b8c54dd9fb99ad11cd6bf8798851ecb65",
+    "config": "b8e0043d0866289aefd8155dc5e5e496689315db7add78ff4a34fa0c85616641",
+    "rank_checkpoint": null,
+    "slot_mixer_checkpoint": null,
+    "markov_branch_checkpoint": "d1c1431ccd054f1716f64b4489d3c70f769128ed09d4155593f34945c75d1dda"
+  },
+  "telemetry_end": {
+    "utc": "2026-09-10T13:28:40.710126+00:00",
+    "hostname": "autodl-container-26d148a435-8171fde0",
+    "pid": 52810,
+    "slurm_job_id": null,
+    "gpu_uuid": "b32e1465-06c0-9da4-928e-ca196f12f2cf",
+    "nvidia_smi": "GPU-b32e1465-06c0-9da4-928e-ca196f12f2cf, NVIDIA H20, P0, 37, 178.06 W, 1980 MHz, 2619 MHz, 9463 MiB, 42 %"
+  }
+}

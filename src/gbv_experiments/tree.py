@@ -286,6 +286,35 @@ def adaptive_path_proposal(q: torch.Tensor, leaves: int):
     return _finite_path_proposal(q, weighted_paths)
 
 
+def block_aligned_spine_tree(q: torch.Tensor, budget: int,
+                             max_spines: int) -> Tree:
+    """Pack highest-mass complete Draft paths into one ancestral tree.
+
+    Unlike DDTree's prefix-mass allocation, every admitted branch is a full
+    contiguous block.  Shared prefixes are represented once and candidates
+    are admitted only while their union trie fits the Target-row budget.
+    Standard ancestral Target verification remains exact for this deterministic
+    scaffold; no proposal correction law or additional model call is needed.
+    """
+    if budget < q.shape[0] or max_spines < 1:
+        raise ValueError("Block-aligned trees require one full spine")
+    candidates = adaptive_path_proposal(q, max_spines).paths.tolist()
+    admitted: list[list[int]] = []
+    tree = sampled_tree(torch.tensor(
+        [candidates[0]], dtype=torch.long, device=q.device,
+    ))
+    for path in candidates:
+        trial = sampled_tree(torch.tensor(
+            admitted + [path], dtype=torch.long, device=q.device,
+        ))
+        if len(trial.tokens) <= budget:
+            admitted.append(path)
+            tree = trial
+    if not admitted or max(tree.depths) != q.shape[0]:
+        raise RuntimeError("Block-aligned tree lost its full-depth spine")
+    return tree
+
+
 def adaptive_prefix_proposal(q: torch.Tensor, budget: int):
     """Complete DDTree-style high-mass prefixes into a finite path proposal.
 

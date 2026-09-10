@@ -4,7 +4,9 @@ import pytest
 import torch
 
 from gbv_experiments.slot_mixer import (CandidateRatioTransportHead,
-                                        CausalSlotMixer, load_slot_mixer)
+                                        CausalSlotMixer, MarkovBranchHead,
+                                        load_slot_mixer)
+from gbv_experiments.tree import probability_tree
 
 
 def test_slot_mixer_is_identity_at_initialization():
@@ -92,3 +94,56 @@ def test_ratio_head_trains_against_copied_frozen_teacher_values():
     predicted = head.candidate_corrections(hidden, embeddings, ids)
     torch.nn.functional.smooth_l1_loss(predicted, desired).backward()
     assert all(parameter.grad is not None for parameter in head.parameters())
+
+
+def test_markov_branch_head_builds_a_bounded_ancestor_closed_tree():
+    torch.manual_seed(6)
+    head = MarkovBranchHead(8, rank=4, support_size=3, max_length=5)
+    hidden = torch.randn(1, 5, 8)
+    logits = torch.randn(5, 17)
+    embeddings = torch.randn(17, 8)
+    tree = head.build_tree(
+        hidden, torch.softmax(logits.double(), -1), embeddings,
+        budget=11, temperature=1.,
+    )
+    assert len(tree.tokens) == 11
+    assert len(tree.parents) == len(tree.depths) == 12
+    assert tree.parents[0] == -1
+    assert all(parent < node for node, parent in enumerate(tree.parents[1:], 1))
+    assert max(tree.depths) <= 5
+    assert len(set(zip(tree.parents[1:], tree.tokens))) == 11
+
+
+def test_markov_teacher_forcing_uses_only_the_previous_label():
+    torch.manual_seed(7)
+    head = MarkovBranchHead(8, rank=4, support_size=3, max_length=4)
+    hidden = torch.randn(1, 4, 8)
+    logits = torch.randn(1, 4, 19)
+    embeddings = torch.randn(19, 8)
+    labels = torch.tensor([[1, 2, 3, 4]])
+    before, ids = head.teacher_forced_scores(hidden, logits, embeddings, labels)
+    changed = labels.clone()
+    changed[:, 2] = 9
+    after, changed_ids = head.teacher_forced_scores(
+        hidden, logits, embeddings, changed,
+    )
+    assert torch.equal(ids, changed_ids)
+    torch.testing.assert_close(before[:, :3], after[:, :3])
+
+
+def test_markov_zero_correction_recovers_probability_tree():
+    torch.manual_seed(8)
+    vocab = 13
+    head = MarkovBranchHead(8, rank=4, support_size=vocab, max_length=4)
+    torch.nn.init.zeros_(head.child_down.weight)
+    hidden = torch.randn(1, 4, 8)
+    logits = torch.randn(4, vocab)
+    embeddings = torch.randn(vocab, 8)
+    actual = head.build_tree(
+        hidden, torch.softmax(logits.double(), -1), embeddings,
+        budget=17, temperature=1.,
+    )
+    expected = probability_tree(torch.softmax(logits.double(), -1), 17)
+    assert actual.tokens == expected.tokens
+    assert actual.parents == expected.parents
+    assert actual.depths == expected.depths

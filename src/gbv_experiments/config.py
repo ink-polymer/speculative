@@ -102,7 +102,10 @@ class Variant:
                                "ddtree_lazy_projection",
                                "ddtree_lazy_softmax_fused_scan",
                                "ddtree_lazy_projection_fused_scan",
-                               "rank_calibrated_tree"} | SHARED_SUFFIX_METHODS | ATOM_TREE_METHODS | DIFFUSION_LAW_METHODS | PREFIX_TREE_METHODS:
+                               "rank_calibrated_tree",
+                               "block_aligned_tree",
+                               "ddtree_slot_mixer",
+                               "ddtree_markov_branch"} | SHARED_SUFFIX_METHODS | ATOM_TREE_METHODS | DIFFUSION_LAW_METHODS | PREFIX_TREE_METHODS:
             raise ValueError(f"Unknown method: {self.method}")
         if (self.paths < 1 or self.length < 1 or self.temperature < 0
                 or not 0 <= self.prefix_strength <= 2):

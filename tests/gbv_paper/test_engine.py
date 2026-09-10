@@ -18,6 +18,7 @@ from gbv_experiments.preflight import (
     classify_greedy_mismatch,
 )
 from gbv_experiments.tree import (adaptive_path_proposal, adaptive_prefix_proposal,
+                                  block_aligned_spine_tree,
                                   budgeted_prefix_proposal, compact_cache,
                                   probability_tree, sampled_tree)
 
@@ -661,6 +662,16 @@ def test_probability_tree_adaptive_budget_prunes_confident_blocks():
     )
     assert len(full.tokens) == 5
     assert len(pruned.tokens) == 2
+
+
+def test_block_aligned_spine_tree_keeps_full_paths_within_budget():
+    q = torch.tensor([
+        [.6, .4], [.7, .3], [.55, .45], [.8, .2],
+    ], dtype=torch.float64)
+    tree = block_aligned_spine_tree(q, budget=10, max_spines=4)
+    assert len(tree.tokens) <= 10
+    assert max(tree.depths) == 4
+    assert all(len(nodes) == 4 for nodes in tree.path_nodes)
 
 
 def test_adaptive_path_proposal_has_top_full_paths_and_consistent_conditionals():

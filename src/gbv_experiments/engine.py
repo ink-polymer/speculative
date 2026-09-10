@@ -40,7 +40,7 @@ from .fused_tree_sampling import (tree_verify_ancestral_fused,
                                   tree_verify_ancestral_lazy_softmax_fused_scan)
 from .tree import (adaptive_path_proposal, adaptive_prefix_proposal,
                    budgeted_prefix_proposal, compact_cache, probability_tree,
-                   sampled_tree, Tree)
+                   sampled_tree, block_aligned_spine_tree, Tree)
 
 
 SPARSE_FULL_TREE_METHODS = {
@@ -497,10 +497,11 @@ class Engine:
                 if not isinstance(hidden, torch.Tensor):
                     hidden = hidden.last_hidden_state
                 proposal_hidden = hidden[:, 1:variant.length + 1]
-                if variant.method == "tree_gbv_slot_mixer_recycle":
+                if variant.method in {
+                        "tree_gbv_slot_mixer_recycle", "ddtree_slot_mixer"}:
                     if self.proposal_adapter is None:
                         raise RuntimeError(
-                            "tree_gbv_slot_mixer_recycle requires a loaded proposal adapter"
+                            f"{variant.method} requires a loaded proposal adapter"
                         )
                     proposal_hidden = self.proposal_adapter(proposal_hidden)
                 logits = self.target.get_output_embeddings()(proposal_hidden)[0]
@@ -563,7 +564,8 @@ class Engine:
                     self.sync()
                 official_scope_decode_start = time.perf_counter()
             with meter.measure("tree_build"):
-                if (variant.method == "ddtree" or variant.method in
+                if (variant.method in {"ddtree", "ddtree_slot_mixer"}
+                        or variant.method in
                         TERMINAL_TREE_METHODS | FUSED_TREE_METHODS
                         | LAZY_HEAD_TREE_METHODS | LAZY_SOFTMAX_TREE_METHODS
                         | DIRECT_LOGITS_TREE_METHODS | LAZY_TARGET_TREE_METHODS):
@@ -589,6 +591,24 @@ class Engine:
                     tree = self.proposal_adapter.build_tree(
                         proposal_hidden, logits, variant.tree_budget,
                         draft_temp,
+                    )
+                    paths = None
+                    tree_proposal = None
+                elif variant.method == "ddtree_markov_branch":
+                    if self.proposal_adapter is None:
+                        raise RuntimeError(
+                            "ddtree_markov_branch requires a trained branch head"
+                        )
+                    tree = self.proposal_adapter.build_tree(
+                        proposal_hidden, q,
+                        self.target.get_output_embeddings().weight,
+                        variant.tree_budget, tree_proposal_temp,
+                    )
+                    paths = None
+                    tree_proposal = None
+                elif variant.method == "block_aligned_tree":
+                    tree = block_aligned_spine_tree(
+                        q, variant.tree_budget, variant.paths,
                     )
                     paths = None
                     tree_proposal = None
@@ -985,6 +1005,9 @@ class Engine:
                         "ddtree", "root_shared_ddtree", "atom_tree_ancestral",
                         "diffusion_tree_ancestral", "prefix_core_spur_tree",
                         "rank_calibrated_tree",
+                        "block_aligned_tree",
+                        "ddtree_slot_mixer",
+                        "ddtree_markov_branch",
                         "prefix_sampled_spur_tree"} | PREFIX_RESCORED_TREE_METHODS:
                     verifier = tree_verify_ancestral_batched
                     generator_before = (
