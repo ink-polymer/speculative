@@ -10,6 +10,7 @@ from gbv_experiments import sampling
 from gbv_experiments.fused_tree_sampling import (tree_verify_ancestral_fused,
                                                  tree_verify_ancestral_fused_parallel,
                                                  tree_verify_ancestral_fused_scan,
+                                                 tree_verify_ancestral_logits_fused_scan,
                                                  tree_verify_ancestral_lazy_projection_fused_scan,
                                                  tree_verify_ancestral_lazy_softmax_fused_scan)
 
@@ -63,6 +64,49 @@ def test_fused_scan_sampler_matches_inverse_cdf_paths():
     _assert_fused_tree_sampler_matches_inverse_cdf_paths(
         tree_verify_ancestral_fused_scan
     )
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA extension test")
+@pytest.mark.parametrize("dtype", [torch.bfloat16, torch.float32, torch.float64])
+def test_direct_logits_fused_scan_matches_fp64_inverse_cdf(dtype):
+    parents = [-1, 0, 0, 1]
+    tokens = [0, 1, 2]
+    raw_logits = torch.tensor(
+        [[2., 3., 5.], [4., 1., 5.], [3., 6., 1.], [7., 2., 1.]],
+        dtype=dtype, device="cuda",
+    ).log()
+    reference = torch.softmax(raw_logits.to(torch.float64), dim=-1)
+    children = {(parent, tokens[index - 1]): index
+                for index, parent in enumerate(parents[1:], 1)}
+    for seed in range(64):
+        expected_generator = torch.Generator(device="cuda").manual_seed(seed)
+        actual_generator = torch.Generator(device="cuda").manual_seed(seed)
+        uniforms = torch.rand(
+            4, dtype=torch.float64, device="cuda",
+            generator=expected_generator,
+        ).cpu().tolist()
+        expected_nodes, node, bonus = [], 0, None
+        for uniform in uniforms:
+            bonus = int(torch.searchsorted(
+                reference[node].cpu().cumsum(0),
+                torch.tensor(uniform, dtype=torch.float64),
+            ))
+            child = children.get((node, bonus))
+            if child is None:
+                break
+            expected_nodes.append(child)
+            node = child
+        actual = tree_verify_ancestral_logits_fused_scan(
+            parents, tokens, raw_logits, 1.0, torch.float64,
+            actual_generator, validate=True,
+        )
+        assert actual[:3] == (
+            expected_nodes,
+            [tokens[index - 1] for index in expected_nodes],
+            bonus,
+        )
+        assert actual[3]["visited_probability_rows"] == len(expected_nodes) + 1
+        assert actual[3]["total_tree_rows"] == len(parents)
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA extension test")

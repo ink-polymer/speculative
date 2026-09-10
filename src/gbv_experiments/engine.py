@@ -28,6 +28,7 @@ from .sampling import (block_verify_batched, block_verify_sparse,
 from .fused_tree_sampling import (tree_verify_ancestral_fused,
                                   tree_verify_ancestral_fused_parallel,
                                   tree_verify_ancestral_fused_scan,
+                                  tree_verify_ancestral_logits_fused_scan,
                                   tree_verify_ancestral_lazy_projection_fused_scan,
                                   tree_verify_ancestral_lazy_softmax_fused_scan)
 from .tree import (adaptive_path_proposal, adaptive_prefix_proposal,
@@ -63,6 +64,7 @@ LAZY_HEAD_TREE_METHODS = {
     "ddtree_lazy_projection", "ddtree_lazy_projection_fused_scan",
 }
 LAZY_SOFTMAX_TREE_METHODS = {"ddtree_lazy_softmax_fused_scan"}
+DIRECT_LOGITS_TREE_METHODS = {"ddtree_direct_logits_fused_scan"}
 
 
 class StageMeter:
@@ -396,7 +398,8 @@ class Engine:
             with meter.measure("tree_build"):
                 if (variant.method == "ddtree" or variant.method in
                         TERMINAL_TREE_METHODS | FUSED_TREE_METHODS
-                        | LAZY_HEAD_TREE_METHODS | LAZY_SOFTMAX_TREE_METHODS):
+                        | LAZY_HEAD_TREE_METHODS | LAZY_SOFTMAX_TREE_METHODS
+                        | DIRECT_LOGITS_TREE_METHODS):
                     tree = probability_tree(q, variant.tree_budget)
                     paths = None
                     tree_proposal = None
@@ -521,7 +524,7 @@ class Engine:
                         # wastes bandwidth without changing the sampling law.
                         all_p = (None if variant.method in (ATOM_TREE_METHODS - {"atom_tree_ancestral"})
                                  | (DIFFUSION_TREE_METHODS - {"diffusion_tree_ancestral"})
-                                 | LAZY_SOFTMAX_TREE_METHODS
+                                 | LAZY_SOFTMAX_TREE_METHODS | DIRECT_LOGITS_TREE_METHODS
                                  else probabilities(output.logits[0], variant.temperature, dtype))
                     target_tokens += ids.shape[1]
                 target_calls += 1
@@ -640,6 +643,15 @@ class Engine:
                     nodes, tokens, bonus, lazy_projection_stats = (
                         tree_verify_ancestral_lazy_softmax_fused_scan(
                             tree.parents, tree.tokens, output.logits[0],
+                            variant.temperature, dtype, generator,
+                            validate=False,
+                        )
+                    )
+                    accepted = len(nodes)
+                elif variant.method in DIRECT_LOGITS_TREE_METHODS:
+                    nodes, tokens, bonus, direct_logits_stats = (
+                        tree_verify_ancestral_logits_fused_scan(
+                            tree.parents, tree.tokens, output.logits[0].contiguous(),
                             variant.temperature, dtype, generator,
                             validate=False,
                         )
@@ -911,6 +923,17 @@ class Engine:
                         "full_vocabulary_projection_rows": lazy_projection_stats["total_tree_rows"],
                         "internal_projection_rows": lazy_projection_stats["internal_projected_rows"],
                         "leaf_projection_rows": lazy_projection_stats["leaf_projected_rows"],
+                    })
+                if variant.method in DIRECT_LOGITS_TREE_METHODS:
+                    round_stats.update({
+                        "posterior_probability_rows": direct_logits_stats[
+                            "visited_probability_rows"
+                        ],
+                        "lm_head_projection_rows": direct_logits_stats["lm_head_rows"],
+                        "full_vocabulary_projection_rows": direct_logits_stats[
+                            "total_tree_rows"
+                        ],
+                        "direct_logits_persistent_kernel": True,
                     })
                 rounds.append(round_stats)
                 del output, all_p, hidden, logits

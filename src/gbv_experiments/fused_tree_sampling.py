@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+import math
 
 import torch
 
@@ -28,6 +29,14 @@ torch::Tensor fused_tree_sample_scan_cuda(
     torch::Tensor uniforms,
     int64_t max_depth);
 
+torch::Tensor fused_tree_sample_logits_scan_cuda(
+    torch::Tensor logits,
+    torch::Tensor edge_parents,
+    torch::Tensor edge_tokens,
+    torch::Tensor uniforms,
+    double temperature,
+    int64_t max_depth);
+
 torch::Tensor fused_internal_tree_sample_scan_cuda(
     torch::Tensor internal_probabilities,
     torch::Tensor internal_rows,
@@ -46,9 +55,11 @@ CUDA_SOURCE = r"""
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <cooperative_groups.h>
+#include <cub/block/block_reduce.cuh>
 #include <cub/block/block_scan.cuh>
 #include <algorithm>
 #include <climits>
+#include <cmath>
 
 namespace cg = cooperative_groups;
 
@@ -321,6 +332,181 @@ torch::Tensor fused_tree_sample_scan_cuda(
                 edge_tokens.data_ptr<int64_t>(),
                 uniforms.data_ptr<double>(),
                 output.data_ptr<int64_t>(),
+                static_cast<int>(node_count),
+                static_cast<int>(vocabulary),
+                static_cast<int>(max_depth));
+      });
+  C10_CUDA_KERNEL_LAUNCH_CHECK();
+  return output;
+}
+
+template <typename scalar_t, int BLOCK_THREADS>
+__global__ void fused_tree_sample_logits_scan_kernel(
+    const scalar_t* __restrict__ logits,
+    const int64_t* __restrict__ edge_parents,
+    const int64_t* __restrict__ edge_tokens,
+    const double* __restrict__ uniforms,
+    int64_t* __restrict__ output,
+    double inverse_temperature,
+    int node_count,
+    int vocabulary,
+    int max_depth) {
+  using BlockReduce = cub::BlockReduce<double, BLOCK_THREADS>;
+  using BlockScan = cub::BlockScan<double, BLOCK_THREADS>;
+  union Scratch {
+    typename BlockReduce::TempStorage reduce;
+    typename BlockScan::TempStorage scan;
+  };
+  __shared__ Scratch scratch;
+  __shared__ double row_max_shared;
+  __shared__ double row_total_shared;
+  __shared__ int current_node;
+  __shared__ int finished;
+  __shared__ int accepted_count;
+  __shared__ int selected_token;
+
+  const int thread = threadIdx.x;
+  const int chunk = (vocabulary + BLOCK_THREADS - 1) / BLOCK_THREADS;
+  if (thread == 0) {
+    current_node = 0;
+    finished = 0;
+    accepted_count = 0;
+  }
+  __syncthreads();
+
+  for (int depth = 0; depth <= max_depth; ++depth) {
+    if (finished) {
+      break;
+    }
+    const int row = current_node;
+    const int begin = thread * chunk;
+    const int end = min(begin + chunk, vocabulary);
+    double local_max = -CUDART_INF;
+    for (int token = begin; token < end; ++token) {
+      local_max = max(
+          local_max,
+          static_cast<double>(logits[row * vocabulary + token])
+              * inverse_temperature);
+    }
+    const double reduced_max = BlockReduce(scratch.reduce).Reduce(
+        local_max, cub::Max());
+    if (thread == 0) {
+      row_max_shared = reduced_max;
+    }
+    __syncthreads();
+
+    double local_sum = 0.0;
+    for (int token = begin; token < end; ++token) {
+      const double scaled =
+          static_cast<double>(logits[row * vocabulary + token])
+              * inverse_temperature;
+      local_sum += exp(scaled - row_max_shared);
+    }
+    double exclusive_prefix = 0.0;
+    double reduced_total = 0.0;
+    BlockScan(scratch.scan).ExclusiveSum(
+        local_sum, exclusive_prefix, reduced_total);
+    if (thread == 0) {
+      row_total_shared = reduced_total;
+      selected_token = -1;
+    }
+    __syncthreads();
+
+    const double threshold = uniforms[depth] * row_total_shared;
+    if (begin < end && threshold >= exclusive_prefix
+        && threshold < exclusive_prefix + local_sum) {
+      double prefix = exclusive_prefix;
+      for (int token = begin; token < end; ++token) {
+        const double scaled =
+            static_cast<double>(logits[row * vocabulary + token])
+                * inverse_temperature;
+        prefix += exp(scaled - row_max_shared);
+        if (threshold < prefix) {
+          atomicCAS(&selected_token, -1, token);
+          break;
+        }
+      }
+    }
+    __syncthreads();
+
+    if (thread == 0) {
+      if (selected_token < 0) {
+        selected_token = vocabulary - 1;
+      }
+      int child = -1;
+      for (int edge = 0; edge < node_count - 1; ++edge) {
+        if (edge_parents[edge] == row
+            && edge_tokens[edge] == selected_token) {
+          child = edge + 1;
+          break;
+        }
+      }
+      if (child >= 0 && depth < max_depth) {
+        output[accepted_count] = child;
+        ++accepted_count;
+        current_node = child;
+      } else {
+        output[max_depth] = accepted_count;
+        output[max_depth + 1] = selected_token;
+        finished = 1;
+      }
+    }
+    __syncthreads();
+  }
+}
+
+torch::Tensor fused_tree_sample_logits_scan_cuda(
+    torch::Tensor logits,
+    torch::Tensor edge_parents,
+    torch::Tensor edge_tokens,
+    torch::Tensor uniforms,
+    double temperature,
+    int64_t max_depth) {
+  TORCH_CHECK(logits.is_cuda() && logits.is_contiguous(),
+              "logits must be contiguous CUDA");
+  TORCH_CHECK(logits.dim() == 2, "logits must have rank two");
+  TORCH_CHECK(edge_parents.is_cuda() && edge_tokens.is_cuda(),
+              "tree edges must be CUDA");
+  TORCH_CHECK(edge_parents.scalar_type() == torch::kLong
+              && edge_tokens.scalar_type() == torch::kLong,
+              "tree edges must use torch.long");
+  TORCH_CHECK(edge_parents.is_contiguous() && edge_tokens.is_contiguous(),
+              "tree edges must be contiguous");
+  TORCH_CHECK(uniforms.is_cuda()
+              && uniforms.scalar_type() == torch::kFloat64,
+              "uniforms must be CUDA float64");
+  TORCH_CHECK(std::isfinite(temperature) && temperature > 0.0,
+              "temperature must be finite and positive");
+  const int64_t node_count = logits.size(0);
+  const int64_t vocabulary = logits.size(1);
+  TORCH_CHECK(node_count > 0 && vocabulary > 0,
+              "empty logit tree");
+  TORCH_CHECK(edge_parents.numel() == node_count - 1
+              && edge_tokens.numel() == node_count - 1,
+              "tree edge count mismatch");
+  TORCH_CHECK(max_depth >= 0 && uniforms.numel() >= max_depth + 1,
+              "not enough uniforms for the tree depth");
+  TORCH_CHECK(node_count <= INT_MAX && vocabulary <= INT_MAX
+              && max_depth <= INT_MAX, "tree dimensions exceed CUDA limits");
+
+  c10::cuda::CUDAGuard device_guard(logits.device());
+  auto output = torch::full(
+      {max_depth + 2}, -1,
+      torch::TensorOptions().dtype(torch::kLong).device(logits.device()));
+  constexpr int threads = 640;
+  const double inverse_temperature = 1.0 / temperature;
+  auto stream = at::cuda::getCurrentCUDAStream();
+  AT_DISPATCH_FLOATING_TYPES_AND2(
+      torch::kHalf, torch::kBFloat16, logits.scalar_type(),
+      "fused_tree_sample_logits_scan_cuda", [&] {
+        fused_tree_sample_logits_scan_kernel<scalar_t, threads>
+            <<<1, threads, 0, stream>>>(
+                logits.data_ptr<scalar_t>(),
+                edge_parents.data_ptr<int64_t>(),
+                edge_tokens.data_ptr<int64_t>(),
+                uniforms.data_ptr<double>(),
+                output.data_ptr<int64_t>(),
+                inverse_temperature,
                 static_cast<int>(node_count),
                 static_cast<int>(vocabulary),
                 static_cast<int>(max_depth));
@@ -692,11 +878,12 @@ def load_fused_tree_sampler():
     from torch.utils.cpp_extension import load_inline
 
     return load_inline(
-        name="gbv_fused_tree_sampler_v12",
+        name="gbv_fused_tree_sampler_v13",
         cpp_sources=[CPP_SOURCE],
         cuda_sources=[CUDA_SOURCE],
         functions=["fused_tree_sample_cuda", "fused_tree_sample_parallel_cuda",
                    "fused_tree_sample_scan_cuda",
+                   "fused_tree_sample_logits_scan_cuda",
                    "fused_internal_tree_sample_scan_cuda"],
         extra_cflags=["-O3"],
         extra_cuda_cflags=["-O3"],
@@ -819,6 +1006,57 @@ def tree_verify_ancestral_fused_scan(parents, tokens, all_p, generator=None,
         raise RuntimeError("Scan-fused tree sampler returned invalid control values")
     nodes = [int(node) for node in packed[:accepted_count]]
     return nodes, [tokens[node - 1] for node in nodes], bonus
+
+
+def tree_verify_ancestral_logits_fused_scan(
+        parents, tokens, all_logits, temperature: float,
+        probability_dtype=torch.float64, generator=None,
+        validate: bool = True):
+    """Normalize and traverse only visited logit rows in one CUDA launch.
+
+    The Target vocabulary head remains unchanged and produces the same BF16
+    logits as official DDTree.  The persistent kernel performs stable FP64
+    softmax weights, inverse-CDF sampling, and tree traversal without
+    materializing a node-by-vocabulary FP64 probability matrix.
+    """
+    parents, tokens, max_depth = _topology(parents, tokens)
+    node_count = len(parents)
+    if (not all_logits.is_cuda or all_logits.ndim != 2
+            or all_logits.shape[0] != node_count
+            or all_logits.shape[1] < 1
+            or not all_logits.is_floating_point()
+            or not all_logits.is_contiguous()):
+        raise ValueError("Direct-logits Target tensor mismatch")
+    if (not isinstance(temperature, (float, int)) or temperature <= 0
+            or not math.isfinite(float(temperature))):
+        raise ValueError("Direct-logits temperature must be finite and positive")
+    if probability_dtype != torch.float64:
+        raise ValueError("Direct-logits verifier requires FP64 probability arithmetic")
+    if any(token < 0 or token >= all_logits.shape[1] for token in tokens):
+        raise ValueError("Tree token is outside the Target vocabulary")
+    if validate and not bool(torch.isfinite(all_logits).all()):
+        raise FloatingPointError("Invalid Target logits for direct-logits DDTree")
+
+    device = all_logits.device
+    edge_parents = torch.tensor(parents[1:], dtype=torch.long, device=device)
+    edge_tokens = torch.tensor(tokens, dtype=torch.long, device=device)
+    uniforms = torch.rand(
+        max_depth + 1, dtype=torch.float64, device=device, generator=generator,
+    )
+    packed = load_fused_tree_sampler().fused_tree_sample_logits_scan_cuda(
+        all_logits, edge_parents, edge_tokens, uniforms,
+        float(temperature), max_depth,
+    ).tolist()
+    accepted_count = int(packed[max_depth])
+    bonus = int(packed[max_depth + 1])
+    if not 0 <= accepted_count <= max_depth or not 0 <= bonus < all_logits.shape[1]:
+        raise RuntimeError("Direct-logits sampler returned invalid control values")
+    nodes = [int(node) for node in packed[:accepted_count]]
+    return nodes, [tokens[node - 1] for node in nodes], bonus, {
+        "visited_probability_rows": accepted_count + 1,
+        "total_tree_rows": node_count,
+        "lm_head_rows": node_count,
+    }
 
 
 def _sample_row_inverse_cdf(probability_row, uniform):

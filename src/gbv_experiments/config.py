@@ -61,6 +61,7 @@ class Variant:
                                "ddtree_terminal_serial", "ddtree_terminal_dense",
                                "ddtree_fused", "ddtree_fused_parallel",
                                "ddtree_fused_scan",
+                               "ddtree_direct_logits_fused_scan",
                                "ddtree_lazy_projection",
                                "ddtree_lazy_softmax_fused_scan",
                                "ddtree_lazy_projection_fused_scan"} | SHARED_SUFFIX_METHODS | ATOM_TREE_METHODS | DIFFUSION_LAW_METHODS:
@@ -83,6 +84,7 @@ class Variant:
         if self.probability_dtype not in {"float32", "float64"} or self.tree_budget < 1:
             raise ValueError("Invalid numerical precision/tree budget")
         if (self.method in {"ddtree_lazy_softmax_fused_scan",
+                            "ddtree_direct_logits_fused_scan",
                             "ddtree_lazy_projection_fused_scan"}
                 and (self.temperature <= 0 or self.probability_dtype != "float64")):
             raise ValueError(

@@ -32,6 +32,7 @@ def test_tree_merge_keeps_candidate_multiplicity():
 @pytest.mark.parametrize(
     "method",
     ["ddtree_fused", "ddtree_fused_parallel", "ddtree_fused_scan",
+     "ddtree_direct_logits_fused_scan",
      "ddtree_lazy_projection", "ddtree_lazy_softmax_fused_scan",
      "ddtree_lazy_projection_fused_scan"],
 )
