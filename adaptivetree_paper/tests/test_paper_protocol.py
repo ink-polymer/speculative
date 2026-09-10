@@ -14,7 +14,7 @@ from dflash_specblock.ddtree_builder import DDTreeBuilder, LatencyAwareDDTreeBui
 from dflash_specblock.paper.common import BASELINES, ROOT, VARIANTS, atomic_json, contract, load_config, load_json
 from dflash_specblock.paper.controller import (B128_ABLATION_VARIANT,
     B256_ABLATION_VARIANT,
-    EXTENDED_BUDGETS, FixedBudgetBuilder,
+    CONTEXTUAL_V8_VARIANT, EXTENDED_BUDGETS, FixedBudgetBuilder,
     PaperAdaptiveBuilder, make_builder, make_paper_builder)
 from dflash_specblock.paper.data import make_row
 from dflash_specblock.paper.evaluation import evaluate, paired_bootstrap, summarize, validate_states
@@ -177,6 +177,40 @@ def test_guarded_raw_prefix_calibrates_robustly_and_resumes():
     restored = make_paper_builder(cfg(), B128_ABLATION_VARIANT)
     restored.load_state_dict(json.loads(json.dumps(builder.state_dict())))
     assert restored.state_dict() == builder.state_dict()
+
+
+def test_contextual_v8_uses_free_safe_labels_refreshes_and_falls_back():
+    builder = make_paper_builder(cfg(), CONTEXTUAL_V8_VARIANT)
+    scores = np.concatenate((np.full(80, -2.), np.full(48, -20.)))
+    safe_path = [0, 1, 2, 3, 4, 5, 6]
+
+    # Three B128 rounds warm the safe arm and label every nested prefix without
+    # spending an additional target verification.
+    for _ in range(builder.contextual_warmup_rounds):
+        budget = builder._select_node_count(scores)
+        assert budget == 128
+        builder.observe(tree_nodes=budget, draft_ms=2., verify_ms=10.,
+                        accepted_draft_tokens=6,
+                        accepted_node_indices=safe_path)
+    assert builder._safe_required_budgets == [6, 6, 6]
+    assert all(builder._acceptance_observations[value] == 3
+               for value in builder.budget_candidates)
+
+    # The tail carries negligible mass and every safe label fits, so B80 is
+    # admitted.  Low realized acceptance immediately forces a B128 fallback.
+    assert builder._select_node_count(scores) == 80
+    assert builder._guard_diagnostics["reason"] == "contextual_high_retention_prefix"
+    builder.observe(tree_nodes=80, draft_ms=2., verify_ms=7.,
+                    accepted_draft_tokens=1,
+                    accepted_node_indices=[0, 1])
+    assert builder._select_node_count(scores) == 128
+    assert builder._guard_diagnostics["reason"] == "contextual_acceptance_fallback"
+
+    restored = make_paper_builder(cfg(), CONTEXTUAL_V8_VARIANT)
+    restored.load_state_dict(json.loads(json.dumps(builder.state_dict())))
+    assert restored.state_dict() == builder.state_dict()
+    assert restored.identity != make_paper_builder(
+        cfg(), B128_ABLATION_VARIANT).identity
 
 
 def test_guarded_raw_tree_matches_fixed_ddtree_at_b128():

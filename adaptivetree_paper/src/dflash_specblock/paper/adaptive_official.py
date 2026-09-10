@@ -15,7 +15,8 @@ from .official_spec import upstream
 
 
 def build_with_controller(logits, builder):
-    if getattr(builder, "variant", None) == "guarded_raw_prefix":
+    if getattr(builder, "variant", None) in {
+            "guarded_raw_prefix", "contextual_prefix_v8"}:
         return builder.build_official_tree_from_logits(logits)
     tree = builder.build_from_logits(logits)
     nodes = tree.nodes

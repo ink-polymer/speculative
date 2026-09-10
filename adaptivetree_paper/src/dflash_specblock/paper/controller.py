@@ -28,6 +28,7 @@ EXPLORATION_ABLATION_VARIANT = "adaptive_with_exploration"
 NO_ACCEPTANCE_ABLATION_VARIANT = "adaptive_no_acceptance_calibration"
 NO_LATENCY_ABLATION_VARIANT = "adaptive_no_latency"
 FROZEN_ABLATION_VARIANT = "adaptive_frozen_after_warmup"
+CONTEXTUAL_V8_VARIANT = "adaptive_contextual_v8"
 
 # Read-only/reproduction aliases emitted by the pre-migration diagnostic
 # runner.  They remain constructible so old artifacts are intelligible, but
@@ -36,7 +37,11 @@ COST_ATTRIBUTED_VARIANT = "cost_attributed_no_exploration"
 EXTENDED_BUDGET_VARIANT = "cost_attributed_no_exploration_b256"
 LEGACY_BUDGETS = (30, 45, 60, 80, 100, 128)
 EXTENDED_BUDGETS = (30, 45, 60, 80, 100, 128, 160, 192, 256)
-DIAGNOSTIC_VARIANTS = (COST_ATTRIBUTED_VARIANT, EXTENDED_BUDGET_VARIANT)
+DIAGNOSTIC_VARIANTS = (
+    COST_ATTRIBUTED_VARIANT,
+    EXTENDED_BUDGET_VARIANT,
+    CONTEXTUAL_V8_VARIANT,
+)
 
 # This registry is deliberately independent of the factory below.  It is the
 # immutable, auditable contract for every controller allowed in a new formal
@@ -132,6 +137,20 @@ def controller_config(builder):
             "reevaluation_interval": builder.reevaluation_interval,
             "proposal_temperature": builder.proposal_temperature,
         })
+    elif builder.variant == "contextual_prefix_v8":
+        result.update({
+            "architecture": "contextual_prefix_guard_v8",
+            "contextual_warmup_rounds": builder.contextual_warmup_rounds,
+            "contextual_refresh_interval": builder.contextual_refresh_interval,
+            "contextual_history_window": builder.contextual_history_window,
+            "contextual_minimum_support": builder.contextual_minimum_support,
+            "contextual_mass_retention_ratio": (
+                builder.contextual_mass_retention_ratio
+            ),
+            "contextual_floor_budget": builder.contextual_floor_budget,
+            "contextual_fallback_rounds": builder.contextual_fallback_rounds,
+            "proposal_temperature": builder.proposal_temperature,
+        })
     return result
 
 
@@ -158,7 +177,7 @@ class FixedBudgetBuilder(DDTreeBuilder):
 
 class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
     def __init__(self, cfg, variant="adaptive", timing_partition="legacy"):
-        if variant not in (*VARIANTS, "guarded_raw_prefix"):
+        if variant not in (*VARIANTS, "guarded_raw_prefix", "contextual_prefix_v8"):
             raise ValueError(f"Unknown controller variant: {variant}")
         if timing_partition not in TIMING_PARTITIONS:
             raise ValueError(f"Unknown timing partition: {timing_partition}")
@@ -167,7 +186,7 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
                          cfg["ewma_alpha"], 0 if variant == "no_exploration" else cfg["exploration_interval"])
         self.variant = variant
         self.timing_partition = timing_partition
-        if variant == "guarded_raw_prefix":
+        if variant in {"guarded_raw_prefix", "contextual_prefix_v8"}:
             # The production path materializes the official verifier tensors
             # directly.  Avoiding DraftTree construction followed by an
             # immediate conversion removes work that fixed DDTree never pays.
@@ -207,6 +226,23 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
             self._cpp_parents = torch.empty(self.tree_budget + 1, dtype=torch.long)
             self._cpp_visibility = torch.empty(
                 (self.tree_budget + 1, self.tree_budget + 1), dtype=torch.bool)
+        if variant == "contextual_prefix_v8":
+            # The current proposal mass is an exact expectation under the
+            # factorized draft distribution.  B128 verification additionally
+            # reveals, for free, the smallest nested prefix that would have
+            # retained the realized accepted path.  Combine both signals so a
+            # smaller verifier batch is used only in high-retention contexts.
+            self.contextual_warmup_rounds = 3
+            self.contextual_refresh_interval = 4
+            self.contextual_history_window = 12
+            self.contextual_minimum_support = .90
+            self.contextual_mass_retention_ratio = .995
+            self.contextual_floor_budget = 80
+            self.contextual_fallback_rounds = 2
+            self._safe_required_budgets = []
+            self._rounds_since_safe = 0
+            self._force_safe_rounds = 0
+            self._safe_acceptance_ewma = None
         identity = {"variant": variant, "budgets": self.budget_candidates,
             "initial": self.initial_budget, "warmup": self.warmup_rounds_per_budget,
             "alpha": self.ewma_alpha, "explore": self.exploration_interval}
@@ -224,6 +260,20 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
                 "minimum_latency_saving_ratio": self.minimum_latency_saving_ratio,
                 "minimum_utility_gain_ratio": self.minimum_utility_gain_ratio,
                 "reevaluation_interval": self.reevaluation_interval,
+                "proposal_temperature": self.proposal_temperature,
+            })
+        elif variant == "contextual_prefix_v8":
+            identity.update({
+                "architecture": "contextual_prefix_guard_v8",
+                "contextual_warmup_rounds": self.contextual_warmup_rounds,
+                "contextual_refresh_interval": self.contextual_refresh_interval,
+                "contextual_history_window": self.contextual_history_window,
+                "contextual_minimum_support": self.contextual_minimum_support,
+                "contextual_mass_retention_ratio": (
+                    self.contextual_mass_retention_ratio
+                ),
+                "contextual_floor_budget": self.contextual_floor_budget,
+                "contextual_fallback_rounds": self.contextual_fallback_rounds,
                 "proposal_temperature": self.proposal_temperature,
             })
         self.identity = digest(identity)
@@ -257,7 +307,7 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
         reconstruct verifier tensors from them.  All candidate budgets remain
         nested prefixes of the one max-budget heap enumeration.
         """
-        if self.variant != "guarded_raw_prefix":
+        if self.variant not in {"guarded_raw_prefix", "contextual_prefix_v8"}:
             raise ValueError("Raw official-tree path is reserved for guarded_raw_prefix")
         if draft_logits.ndim != 2:
             raise ValueError("draft_logits must be [K, V]")
@@ -382,6 +432,8 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
     def _select_node_count(self, scores):
         if self.variant == "guarded_raw_prefix":
             return self._select_guarded_node_count(scores)
+        if self.variant == "contextual_prefix_v8":
+            return self._select_contextual_node_count(scores)
         if self.variant != "no_latency":
             return super()._select_node_count(scores)
         # Remove cost discrimination, but preserve warmup/exploration and observations.
@@ -588,12 +640,107 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
         self._evaluated_last_decision = True
         return selected
 
+    def _select_contextual_node_count(self, node_scores):
+        """Select B80/B100 only when present and historical evidence agree.
+
+        The budgets are nested prefixes of the exact official B128 heap.  A
+        safe B128 round therefore labels all smaller arms without executing
+        them: the maximum accepted node index is the minimum prefix required
+        to preserve that realized path.  Periodic B128 refreshes prevent a
+        stale context from keeping the controller on a small arm indefinitely.
+        """
+        node_count = int(node_scores.shape[0])
+        available = tuple(value for value in self.budget_candidates
+                          if value <= node_count)
+        if not available:
+            return node_count
+        safe_budget = available[-1]
+        probability_mass = np.exp(np.clip(
+            node_scores.astype(np.float64), -745., 0.))
+        cumulative_mass = np.cumsum(probability_mass)
+        mass_by_budget = {
+            budget: float(cumulative_mass[budget - 1]) for budget in available
+        }
+        self._last_mass_by_budget = mass_by_budget
+        safe_observations = self._observations[safe_budget]
+        reason = "contextual_safe_fallback"
+        selected = safe_budget
+        candidates = []
+
+        if safe_observations < self.contextual_warmup_rounds:
+            reason = "contextual_safe_warmup"
+        elif self._force_safe_rounds > 0:
+            reason = "contextual_acceptance_fallback"
+            self._force_safe_rounds -= 1
+        elif self._rounds_since_safe >= self.contextual_refresh_interval - 1:
+            reason = "contextual_periodic_refresh"
+        else:
+            history = self._safe_required_budgets[-self.contextual_history_window:]
+            safe_expected = 1. + min(
+                float(self.block_size),
+                self._acceptance_scale_by_budget[safe_budget]
+                * mass_by_budget[safe_budget],
+            )
+            for budget in available[:-1]:
+                if budget < self.contextual_floor_budget or not history:
+                    continue
+                support = sum(required <= budget for required in history) / len(history)
+                expected = 1. + min(
+                    float(self.block_size),
+                    self._acceptance_scale_by_budget[budget]
+                    * mass_by_budget[budget],
+                )
+                retention = expected / max(safe_expected, 1e-9)
+                if (support >= self.contextual_minimum_support
+                        and retention >= self.contextual_mass_retention_ratio):
+                    candidates.append((budget, support, retention))
+            if candidates:
+                selected, _, _ = min(candidates)
+                reason = "contextual_high_retention_prefix"
+
+        expected = min(
+            float(self.block_size),
+            self._acceptance_scale_by_budget[selected] * mass_by_budget[selected],
+        )
+        robust_latency = self._robust_latency_by_budget(available)
+        predicted_ms = None
+        utility = None
+        if self._fixed_ms is not None and selected in robust_latency:
+            predicted_ms = self._fixed_ms + robust_latency[selected]
+            utility = (1. + expected) / max(predicted_ms, 1e-6)
+        support = None
+        retention = None
+        for budget, candidate_support, candidate_retention in candidates:
+            if budget == selected:
+                support = candidate_support
+                retention = candidate_retention
+                break
+        self._last_selected_budget = selected
+        self._last_expected_draft_tokens = mass_by_budget[selected]
+        self._decision_count += 1
+        self.last_decision = BudgetDecision(
+            budget=selected,
+            expected_draft_tokens=expected,
+            predicted_round_ms=predicted_ms,
+            predicted_tokens_per_ms=utility,
+        )
+        self._guard_diagnostics = {
+            "safe_budget": safe_budget,
+            "reason": reason,
+            "mass_retention_ratio": retention,
+            "historical_support": support,
+            "safe_history_size": len(self._safe_required_budgets),
+            "rounds_since_safe": self._rounds_since_safe,
+        }
+        self._evaluated_last_decision = True
+        return selected
+
     def observe(self, **kwargs):
         accepted_node_indices = kwargs.pop("accepted_node_indices", None)
         frozen = self.variant == "frozen_after_warmup" and all(
             n >= self.warmup_rounds_per_budget for n in self._observations.values())
         previous = self._fixed_ms, self._verify_ms.copy(), self._acceptance_scale
-        if self.variant == "guarded_raw_prefix":
+        if self.variant in {"guarded_raw_prefix", "contextual_prefix_v8"}:
             selected = self._last_selected_budget
             if selected is not None:
                 self._observations[selected] += 1
@@ -609,7 +756,7 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
             self._fixed_ms, self._verify_ms, self._acceptance_scale = previous
         if self.variant == "no_acceptance_calibration":
             self._acceptance_scale = 1.
-        if self.variant == "guarded_raw_prefix":
+        if self.variant in {"guarded_raw_prefix", "contextual_prefix_v8"}:
             selected = self._last_selected_budget
             if selected is not None:
                 samples = self._latency_samples[selected]
@@ -643,9 +790,27 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
                         self.ewma_alpha)
                     self._acceptance_observations[selected] += 1
                     observed_budgets = (selected,)
+            if self.variant == "contextual_prefix_v8" and selected is not None:
+                safe_budget = self.budget_candidates[-1]
+                accepted = max(float(kwargs["accepted_draft_tokens"]), 0.)
+                if selected == safe_budget:
+                    indices = tuple(int(index) for index in
+                                    (accepted_node_indices or ())
+                                    if int(index) > 0)
+                    required = max(indices, default=0)
+                    self._safe_required_budgets.append(required)
+                    del self._safe_required_budgets[:-self.contextual_history_window]
+                    self._rounds_since_safe = 0
+                    self._safe_acceptance_ewma = self._ewma(
+                        self._safe_acceptance_ewma, accepted, self.ewma_alpha)
+                else:
+                    self._rounds_since_safe += 1
+                    if (self._safe_acceptance_ewma is not None
+                            and accepted + 1. < self._safe_acceptance_ewma):
+                        self._force_safe_rounds = self.contextual_fallback_rounds
         trace = {"decision": asdict(self.last_decision) if self.last_decision else None,
                  **kwargs}
-        if self.variant == "guarded_raw_prefix":
+        if self.variant in {"guarded_raw_prefix", "contextual_prefix_v8"}:
             trace["guard"] = self._guard_diagnostics
             trace["tree_backend"] = self._raw_tree_backend
             trace["topk_width"] = self._raw_topk_width
@@ -697,7 +862,7 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
                 "last_selected_budget": self._last_selected_budget,
                 "last_expected_draft_tokens": self._last_expected_draft_tokens,
                 "last_decision": asdict(self.last_decision) if self.last_decision else None}
-        if self.variant == "guarded_raw_prefix":
+        if self.variant in {"guarded_raw_prefix", "contextual_prefix_v8"}:
             state.update({
                 "version": 2,
                 "latency_samples": {str(k): list(v)
@@ -710,10 +875,19 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
                 },
                 "evaluated_last_decision": self._evaluated_last_decision,
             })
+        if self.variant == "contextual_prefix_v8":
+            state.update({
+                "version": 3,
+                "safe_required_budgets": list(self._safe_required_budgets),
+                "rounds_since_safe": self._rounds_since_safe,
+                "force_safe_rounds": self._force_safe_rounds,
+                "safe_acceptance_ewma": self._safe_acceptance_ewma,
+            })
         return state
 
     def load_state_dict(self, state):
-        expected_version = 2 if self.variant == "guarded_raw_prefix" else 1
+        expected_version = (3 if self.variant == "contextual_prefix_v8" else
+                            2 if self.variant == "guarded_raw_prefix" else 1)
         if (set(state) != set(self.state_dict())
                 or state["version"] != expected_version
                 or state["identity"] != self.identity):
@@ -739,7 +913,7 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
         self._last_selected_budget = state["last_selected_budget"]
         self._last_expected_draft_tokens = state["last_expected_draft_tokens"]
         self.last_decision = BudgetDecision(**state["last_decision"]) if state["last_decision"] else None
-        if self.variant == "guarded_raw_prefix":
+        if self.variant in {"guarded_raw_prefix", "contextual_prefix_v8"}:
             latency_samples = {int(k): list(v)
                                for k, v in state["latency_samples"].items()}
             scales = {int(k): v for k, v in
@@ -767,6 +941,22 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
             if type(state["evaluated_last_decision"]) is not bool:
                 raise ValueError("Invalid guarded controller state")
             self._evaluated_last_decision = state["evaluated_last_decision"]
+        if self.variant == "contextual_prefix_v8":
+            required = list(state["safe_required_budgets"])
+            counters = (state["rounds_since_safe"], state["force_safe_rounds"])
+            safe_acceptance = state["safe_acceptance_ewma"]
+            if (len(required) > self.contextual_history_window
+                    or any(type(value) is not int or value < 0
+                           or value > self.tree_budget for value in required)
+                    or any(type(value) is not int or value < 0 for value in counters)
+                    or (safe_acceptance is not None
+                        and (not isinstance(safe_acceptance, (int, float))
+                             or not math.isfinite(safe_acceptance)
+                             or safe_acceptance < 0))):
+                raise ValueError("Invalid contextual controller state")
+            self._safe_required_budgets = required
+            self._rounds_since_safe, self._force_safe_rounds = counters
+            self._safe_acceptance_ewma = safe_acceptance
         self.trace = []
 
 
@@ -825,6 +1015,11 @@ def make_paper_builder(cfg, method):
         return PaperAdaptiveBuilder(
             with_budgets(EXTENDED_BUDGETS, exploration=False),
             "no_exploration", timing_partition="budget_aware",
+        )
+    if method == CONTEXTUAL_V8_VARIANT:
+        return PaperAdaptiveBuilder(
+            with_budgets(LEGACY_BUDGETS, exploration=False),
+            "contextual_prefix_v8", timing_partition="budget_aware",
         )
     raise ValueError(f"Unknown paper controller: {method}")
 

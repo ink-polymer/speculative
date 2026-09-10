@@ -22,7 +22,8 @@ import torch
 from dflash_specblock.paper.adaptive_official import adaptive_generate
 from dflash_specblock.paper.common import (PRIMARY_ADAPTIVE_METHOD, atomic_json,
                                            code_identity, load_json)
-from dflash_specblock.paper.controller import make_paper_builder
+from dflash_specblock.paper.controller import (CONTEXTUAL_V8_VARIANT,
+                                                make_paper_builder)
 from dflash_specblock.paper.official_spec import (MODELS, PINNED_MODEL_REVISIONS,
                                                   upstream)
 
@@ -38,6 +39,8 @@ def parse_args():
     parser.add_argument("--repeats", type=int, default=2)
     parser.add_argument("--max-new-tokens", type=int, default=256)
     parser.add_argument("--seed", type=int, default=20260910)
+    parser.add_argument("--candidate", choices=("primary", "contextual-v8"),
+                        default="primary")
     return parser.parse_args()
 
 
@@ -128,10 +131,15 @@ def main():
                   stop_token_ids=[tokenizer.eos_token_id], temperature=0.)
     records = []
     exact = True
-    method_names = ("ddtree_b128", "adaptive_guarded_raw")
+    candidate_method = ("adaptive_guarded_raw" if args.candidate == "primary"
+                        else CONTEXTUAL_V8_VARIANT)
+    candidate_builder_method = (PRIMARY_ADAPTIVE_METHOD
+                                if args.candidate == "primary"
+                                else CONTEXTUAL_V8_VARIANT)
+    method_names = ("ddtree_b128", candidate_method)
     started = time.time()
     for repeat in range(args.repeats):
-        guarded = make_paper_builder(adaptive_cfg, PRIMARY_ADAPTIVE_METHOD)
+        guarded = make_paper_builder(adaptive_cfg, candidate_builder_method)
         def generate(method, ids, maximum):
             kwargs = {**common, "input_ids":ids, "max_new_tokens":maximum}
             if method.startswith("ddtree_b"):
@@ -143,7 +151,7 @@ def main():
         for method in method_names:
             generate(method, warmup, min(args.max_new_tokens, 32))
         # Hardware warmup must not pretrain either online controller.
-        guarded = make_paper_builder(adaptive_cfg, PRIMARY_ADAPTIVE_METHOD)
+        guarded = make_paper_builder(adaptive_cfg, candidate_builder_method)
         for ordinal, index in enumerate(indices):
             prompt = (questions[index]
                       + "\nPlease reason step by step, and put your final answer within \\boxed{}.")
@@ -198,7 +206,7 @@ def main():
         if method != "ddtree_b128":
             summary[method]["speedup_vs_ddtree"] = (
                 reference_tpot / summary[method]["mean_tpot_ms"])
-    speedup = summary["adaptive_guarded_raw"]["speedup_vs_ddtree"]
+    speedup = summary[candidate_method]["speedup_vs_ddtree"]
     artifact = {
         "kind":"adaptive_architecture_development_gate_v1",
         "formal_result":False,
@@ -212,10 +220,14 @@ def main():
         "model":target_name,
         "draft_model":draft_name,
         "node_cap":128,
+        "candidate":candidate_method,
         "method_order":"balanced cyclic rotation",
         "includes_tree_build_and_controller_in_tpot":True,
         "exact_output_match":exact,
-        "pass_rule":"exact outputs and guarded raw-prefix mean TPOT at least 1% below DDTree B128",
+        "pass_rule":(
+            "exact outputs and the selected candidate mean TPOT at least 1% "
+            "below DDTree B128"
+        ),
         "performance_passed":bool(speedup >= 1.01),
         "strict_output_passed":exact,
         "passed":bool(exact and speedup >= 1.01),
