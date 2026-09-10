@@ -41,6 +41,10 @@ def parse_args():
     parser.add_argument("--seed", type=int, default=20260910)
     parser.add_argument("--candidate", choices=("primary", "contextual-v8"),
                         default="primary")
+    parser.add_argument("--contextual-mass-retention-ratio", type=float)
+    parser.add_argument("--contextual-minimum-history", type=int)
+    parser.add_argument("--contextual-refresh-interval", type=int)
+    parser.add_argument("--contextual-floor-budget", type=int)
     return parser.parse_args()
 
 
@@ -84,6 +88,14 @@ def main():
     args = parse_args()
     if min(args.samples, args.repeats, args.max_new_tokens) < 1:
         raise ValueError("samples, repeats, and max-new-tokens must be positive")
+    if (args.contextual_mass_retention_ratio is not None
+            and not 0. < args.contextual_mass_retention_ratio <= 1.):
+        raise ValueError("contextual mass retention must be in (0, 1]")
+    for value in (args.contextual_minimum_history,
+                  args.contextual_refresh_interval,
+                  args.contextual_floor_budget):
+        if value is not None and value < 1:
+            raise ValueError("contextual integer overrides must be positive")
     if args.output.exists():
         raise FileExistsError(f"Refusing to overwrite {args.output}")
 
@@ -137,9 +149,28 @@ def main():
                                 if args.candidate == "primary"
                                 else CONTEXTUAL_V8_VARIANT)
     method_names = ("ddtree_b128", candidate_method)
+    contextual_overrides = {
+        "contextual_mass_retention_ratio": args.contextual_mass_retention_ratio,
+        "contextual_minimum_history": args.contextual_minimum_history,
+        "contextual_refresh_interval": args.contextual_refresh_interval,
+        "contextual_floor_budget": args.contextual_floor_budget,
+    }
+    contextual_overrides = {
+        key:value for key,value in contextual_overrides.items()
+        if value is not None
+    }
+
+    def candidate_builder():
+        builder = make_paper_builder(adaptive_cfg, candidate_builder_method)
+        if contextual_overrides:
+            if args.candidate != "contextual-v8":
+                raise ValueError("Contextual overrides require --candidate contextual-v8")
+            for key, value in contextual_overrides.items():
+                setattr(builder, key, value)
+        return builder
     started = time.time()
     for repeat in range(args.repeats):
-        guarded = make_paper_builder(adaptive_cfg, candidate_builder_method)
+        guarded = candidate_builder()
         def generate(method, ids, maximum):
             kwargs = {**common, "input_ids":ids, "max_new_tokens":maximum}
             if method.startswith("ddtree_b"):
@@ -151,7 +182,7 @@ def main():
         for method in method_names:
             generate(method, warmup, min(args.max_new_tokens, 32))
         # Hardware warmup must not pretrain either online controller.
-        guarded = make_paper_builder(adaptive_cfg, candidate_builder_method)
+        guarded = candidate_builder()
         for ordinal, index in enumerate(indices):
             prompt = (questions[index]
                       + "\nPlease reason step by step, and put your final answer within \\boxed{}.")
@@ -235,6 +266,7 @@ def main():
         "draft_model":draft_name,
         "node_cap":128,
         "candidate":candidate_method,
+        "candidate_overrides":contextual_overrides,
         "method_order":"balanced cyclic rotation",
         "includes_tree_build_and_controller_in_tpot":True,
         "exact_output_match":exact,
