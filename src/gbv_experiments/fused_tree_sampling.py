@@ -58,6 +58,7 @@ CUDA_SOURCE = r"""
 #include <cub/block/block_reduce.cuh>
 #include <cub/block/block_scan.cuh>
 #include <algorithm>
+#include <cfloat>
 #include <climits>
 #include <cmath>
 
@@ -381,7 +382,7 @@ __global__ void fused_tree_sample_logits_scan_kernel(
     const int row = current_node;
     const int begin = thread * chunk;
     const int end = min(begin + chunk, vocabulary);
-    double local_max = -CUDART_INF;
+    double local_max = -DBL_MAX;
     for (int token = begin; token < end; ++token) {
       local_max = max(
           local_max,
