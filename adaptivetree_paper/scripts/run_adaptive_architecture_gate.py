@@ -59,6 +59,8 @@ def parse_args():
     parser.add_argument("--maximum-tree-depth", type=int)
     parser.add_argument("--rank-head-checkpoint", type=Path)
     parser.add_argument("--rank-calibration-strength", type=float, default=1.0)
+    parser.add_argument("--ratio-transport-checkpoint", type=Path)
+    parser.add_argument("--ratio-transport-strength", type=float, default=1.0)
     parser.add_argument("--contextual-mass-retention-ratio", type=float)
     parser.add_argument("--contextual-minimum-history", type=int)
     parser.add_argument("--contextual-minimum-support", type=float)
@@ -138,6 +140,15 @@ def main():
     if (args.rank_head_checkpoint is not None
             and not args.rank_head_checkpoint.is_file()):
         raise FileNotFoundError(args.rank_head_checkpoint)
+    if (args.ratio_transport_checkpoint is not None
+            and not args.ratio_transport_checkpoint.is_file()):
+        raise FileNotFoundError(args.ratio_transport_checkpoint)
+    if (args.rank_head_checkpoint is not None
+            and args.ratio_transport_checkpoint is not None):
+        raise ValueError("rank and ratio checkpoints are mutually exclusive")
+    if (not math.isfinite(args.ratio_transport_strength)
+            or not 0. <= args.ratio_transport_strength <= 2.):
+        raise ValueError("ratio transport strength must be in [0, 2]")
     for value in (args.contextual_minimum_history,
                   args.contextual_refresh_interval,
                   args.contextual_floor_budget):
@@ -183,6 +194,18 @@ def main():
                 "draft_model_id": draft_name,
                 "draft_revision": PINNED_MODEL_REVISIONS[draft_name],
             },
+        )
+    ratio_transport_head = None
+    if args.ratio_transport_checkpoint is not None:
+        from dflash_specblock.rank_head import load_ratio_transport_head
+        ratio_transport_head = load_ratio_transport_head(
+            args.ratio_transport_checkpoint, int(draft.config.hidden_size),
+            device,
+            expected_metadata={
+                "target_revision": PINNED_MODEL_REVISIONS[target_name],
+                "draft_revision": PINNED_MODEL_REVISIONS[draft_name],
+            },
+            dtype=draft.dtype,
         )
     if draft.block_size != 16:
         raise ValueError("Architecture gate requires official K=15 draft horizon")
@@ -267,6 +290,11 @@ def main():
             setattr(builder, key, value)
         builder.rank_head = rank_head
         builder.rank_calibration_strength = args.rank_calibration_strength
+        builder.ratio_transport_head = ratio_transport_head
+        builder.ratio_transport_token_embeddings = (
+            target.get_output_embeddings().weight
+            if ratio_transport_head is not None else None)
+        builder.ratio_transport_strength = args.ratio_transport_strength
         if builder.tree_budget != args.reference_budget:
             raise ValueError("Candidate and DDTree must have the same maximum node cap")
         return builder
@@ -418,6 +446,13 @@ def main():
             "strength":args.rank_calibration_strength,
             "training_data_separation_requires_formal_audit":True,
         } if args.rank_head_checkpoint is not None else None),
+        "ratio_transport":({
+            "checkpoint":str(args.ratio_transport_checkpoint.resolve()),
+            "sha256":hashlib.sha256(
+                args.ratio_transport_checkpoint.read_bytes()).hexdigest(),
+            "strength":args.ratio_transport_strength,
+            "training_data_separation_requires_formal_audit":True,
+        } if args.ratio_transport_checkpoint is not None else None),
         "fixed_b192_control_config":(
             controller_config(fixed_b192_control_builder())
             if args.include_fixed_b192_control else None),

@@ -48,6 +48,13 @@ speed threshold is considered.  They are retained as diagnostic results.
 
 ## Frozen rank-head calibration
 
+**Superseded implementation note (v14):** v13 changed calibrated scores but did
+not re-sort token IDs before passing them to the official best-first enumerator.
+That enumerator requires descending score order.  The v13 rank-head rows below
+therefore remain useful negative diagnostics, but they are not a valid test of
+a fully functioning learned reranker.  v14 fixes the ordering contract and tests
+a more direct target/draft ratio head; it still fails the performance gate.
+
 The existing rank head predicts four target-token rank buckets.  v13 redistributes
 the draft model's rank mass using this prediction and geometrically blends it with
 the original DDTree log-probability score.  The checkpoint is frozen during

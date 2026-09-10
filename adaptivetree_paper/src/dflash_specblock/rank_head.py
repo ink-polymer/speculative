@@ -135,6 +135,88 @@ class HeuristicRanker(nn.Module):
         return torch.nn.functional.one_hot(buckets, num_classes=4).float() * 20.0
 
 
+class CandidateRatioTransportHead(nn.Module):
+    """Predict target-minus-draft corrections for tree-eligible tokens."""
+
+    def __init__(self, hidden_size: int, rank: int = 32,
+                 candidates: int = 45) -> None:
+        super().__init__()
+        if hidden_size < 1 or rank < 1 or candidates < 1:
+            raise ValueError("Invalid candidate-ratio head dimensions")
+        self.hidden_size = int(hidden_size)
+        self.rank = int(rank)
+        self.candidates = int(candidates)
+        self.hidden_norm = nn.RMSNorm(hidden_size)
+        self.token_norm = nn.RMSNorm(hidden_size)
+        self.hidden_down = nn.Linear(hidden_size, rank, bias=False)
+        self.token_down = nn.Linear(hidden_size, rank, bias=False)
+        self.depth_bias = nn.Parameter(torch.zeros(15))
+        self.rank_bias = nn.Parameter(torch.zeros(candidates))
+        self.log_scale = nn.Parameter(torch.zeros(()))
+
+    def candidate_corrections(
+        self,
+        hidden: torch.Tensor,
+        token_embeddings: torch.Tensor,
+        candidate_ids: torch.Tensor,
+    ) -> torch.Tensor:
+        if hidden.ndim != 3 or hidden.shape[-1] != self.hidden_size:
+            raise ValueError("Ratio head expects [batch, slots, hidden_size]")
+        if candidate_ids.shape[:2] != hidden.shape[:2]:
+            raise ValueError("Candidate ids disagree with hidden slots")
+        width = int(candidate_ids.shape[-1])
+        if width > self.candidates or hidden.shape[1] > self.depth_bias.numel():
+            raise ValueError("Candidate-ratio architectural cap exceeded")
+        dtype = self.hidden_down.weight.dtype
+        projected_hidden = self.hidden_down(self.hidden_norm(hidden.to(dtype)))
+        selected = torch.nn.functional.embedding(
+            candidate_ids, token_embeddings.to(dtype))
+        projected_tokens = self.token_down(self.token_norm(selected))
+        score = (projected_hidden[:, :, None, :] * projected_tokens).sum(-1)
+        score = score / self.rank ** .5
+        score = score + self.depth_bias[:hidden.shape[1]][None, :, None]
+        score = score + self.rank_bias[:width][None, None, :]
+        return score * self.log_scale.exp()
+
+
+def load_ratio_transport_head(
+    checkpoint: str | Path,
+    hidden_size: int,
+    device: torch.device,
+    expected_metadata: Mapping[str, Any] | None = None,
+    dtype: torch.dtype | None = None,
+) -> CandidateRatioTransportHead:
+    """Strictly load a frozen candidate-ratio checkpoint."""
+    payload = torch.load(Path(checkpoint), map_location="cpu", weights_only=True)
+    if not isinstance(payload, dict) or set(payload) < {"state_dict", "metadata"}:
+        raise ValueError("ratio checkpoint requires state_dict and metadata")
+    metadata = payload["metadata"]
+    if not isinstance(metadata, dict):
+        raise ValueError("ratio checkpoint metadata must be a dictionary")
+    required = {
+        "architecture": "candidate_ratio_transport_v1",
+        "hidden_size": int(hidden_size),
+        **dict(expected_metadata or {}),
+    }
+    missing = sorted(set(required) - set(metadata))
+    mismatched = {
+        key: (metadata.get(key), value)
+        for key, value in required.items() if metadata.get(key) != value
+    }
+    if missing or mismatched or int(metadata.get("updates", 0)) < 1:
+        raise ValueError(
+            f"ratio checkpoint contract failed: missing={missing}, "
+            f"mismatched={mismatched}, updates={metadata.get('updates')}"
+        )
+    model = CandidateRatioTransportHead(
+        hidden_size=hidden_size,
+        rank=int(metadata["rank"]),
+        candidates=int(metadata["candidates"]),
+    )
+    model.load_state_dict(payload["state_dict"], strict=True)
+    return model.to(device=device, dtype=dtype).eval().requires_grad_(False)
+
+
 def load_rank_head(
     checkpoint: str | Path,
     hidden_size: int,

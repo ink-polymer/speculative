@@ -215,6 +215,9 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
             self.maximum_tree_depth = self.block_size
             self.rank_head = None
             self.rank_calibration_strength = 1.
+            self.ratio_transport_head = None
+            self.ratio_transport_token_embeddings = None
+            self.ratio_transport_strength = 1.
             self._warmup_order = tuple(reversed(self.budget_candidates))
             self._latency_samples = {budget: [] for budget in self.budget_candidates}
             self._acceptance_scale_by_budget = {
@@ -372,6 +375,41 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
         return ((1. - strength) * base_log_probs
                 + strength * calibrated_log)
 
+    def _ratio_transport_log_probs(self, draft_hidden, top_values,
+                                   top_token_ids, log_z):
+        """Correct eligible logits and exactly renormalize changed mass."""
+        if self.ratio_transport_head is None:
+            return top_values - log_z
+        if self.rank_head is not None:
+            raise ValueError("rank and ratio calibration are mutually exclusive")
+        if draft_hidden is None or draft_hidden.shape[0] != top_values.shape[0]:
+            raise ValueError("ratio transport requires aligned draft hidden states")
+        if self.ratio_transport_token_embeddings is None:
+            raise ValueError("ratio transport requires frozen target embeddings")
+        if self.proposal_temperature != 1.:
+            raise ValueError("ratio transport requires proposal_temperature=1")
+        strength = float(self.ratio_transport_strength)
+        if not math.isfinite(strength) or not 0. <= strength <= 2.:
+            raise ValueError("ratio_transport_strength must be in [0, 2]")
+
+        width = min(int(self.ratio_transport_head.candidates),
+                    int(top_values.shape[-1]))
+        corrections = self.ratio_transport_head.candidate_corrections(
+            draft_hidden.unsqueeze(0), self.ratio_transport_token_embeddings,
+            top_token_ids[:, :width].unsqueeze(0),
+        )[0].float()
+        corrected = top_values.clone()
+        corrected[:, :width] += strength * corrections
+
+        # Only selected logits changed. Recover the new full-vocabulary
+        # normalizer without a second vocabulary projection.
+        old_mass = torch.exp(torch.logsumexp(
+            top_values[:, :width], dim=-1, keepdim=True) - log_z)
+        new_mass = torch.exp(torch.logsumexp(
+            corrected[:, :width], dim=-1, keepdim=True) - log_z)
+        total_mass_ratio = (1. - old_mass + new_mass).clamp_min(1e-30)
+        return corrected - (log_z + total_mass_ratio.log())
+
     def build_official_tree_from_logits(self, draft_logits, draft_hidden=None):
         """Build one max-budget official tree and materialize only its prefix.
 
@@ -414,9 +452,15 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
             top_values, top_token_ids = torch.topk(logits, k=topk, dim=-1)
             calibrated_hidden = (None if draft_hidden is None
                                  else draft_hidden[:depth_limit])
+            top_log_probs = self._ratio_transport_log_probs(
+                calibrated_hidden, top_values, top_token_ids, log_z)
             top_log_probs = self._rank_calibrated_log_probs(
                 draft_logits[:depth_limit], calibrated_hidden, top_values,
-                top_values - log_z)
+                top_log_probs)
+            if self.rank_head is not None or self.ratio_transport_head is not None:
+                top_log_probs, calibrated_order = torch.sort(
+                    top_log_probs, dim=-1, descending=True, stable=True)
+                top_token_ids = top_token_ids.gather(-1, calibrated_order)
             top_log_probs_host, top_token_ids_host = self._raw_topk_to_host(
                 top_log_probs, top_token_ids.to(torch.int64))
             if prebuild:
@@ -451,9 +495,15 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
         top_values, top_token_ids = torch.topk(logits, k=topk, dim=-1)
         calibrated_hidden = (None if draft_hidden is None
                              else draft_hidden[:depth_limit])
+        top_log_probs_device = self._ratio_transport_log_probs(
+            calibrated_hidden, top_values, top_token_ids, log_z)
         top_log_probs_device = self._rank_calibrated_log_probs(
             draft_logits[:depth_limit], calibrated_hidden, top_values,
-            top_values - log_z)
+            top_log_probs_device)
+        if self.rank_head is not None or self.ratio_transport_head is not None:
+            top_log_probs_device, calibrated_order = torch.sort(
+                top_log_probs_device, dim=-1, descending=True, stable=True)
+            top_token_ids = top_token_ids.gather(-1, calibrated_order)
         top_log_probs_host, top_token_ids_host = self._raw_topk_to_host(
             top_log_probs_device, top_token_ids.to(torch.int64))
         if prebuild:

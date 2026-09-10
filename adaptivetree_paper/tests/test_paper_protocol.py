@@ -382,6 +382,32 @@ def test_prebuild_b192_accepts_frozen_rank_calibration():
     assert builder._raw_topk_width == 192
 
 
+def test_prebuild_b192_accepts_frozen_ratio_transport():
+    from dflash_specblock.paper.adaptive_official import build_with_controller
+
+    class FrozenRatioHead(torch.nn.Module):
+        candidates = 2
+
+        def candidate_corrections(self, hidden, embeddings, candidate_ids):
+            del hidden, embeddings
+            correction = torch.zeros_like(candidate_ids, dtype=torch.float32)
+            correction[..., 1] = 8.
+            return correction
+
+    logits = torch.full((15, 256), -8.)
+    logits[:, 3] = 4.
+    logits[:, 7] = 3.
+    hidden = torch.zeros((15, 4))
+    builder = make_paper_builder(cfg(), DYNAMIC_B192_V12_VARIANT)
+    builder.prebuild_min_top1_mean = 2.
+    baseline_first = build_with_controller(logits, builder, hidden)[0][0].item()
+    builder.ratio_transport_head = FrozenRatioHead().eval()
+    builder.ratio_transport_token_embeddings = torch.zeros((256, 4))
+    calibrated = build_with_controller(logits, builder, hidden)[0]
+    assert baseline_first == 3
+    assert calibrated[0].item() == 7
+
+
 def test_guarded_raw_tree_matches_fixed_ddtree_at_b128():
     from dflash_specblock.paper.adaptive_official import build_with_controller
     builder = make_paper_builder(cfg(), B128_ABLATION_VARIANT)
