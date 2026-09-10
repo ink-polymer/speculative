@@ -1,0 +1,53 @@
+\section{Results}
+\label{sec:results}
+
+\begin{table}[t]
+\centering
+\caption{$T=0$ primary architecture comparison.  Speedup is relative to the paired Target-only baseline.  Every result cell is intentionally blank.}
+\label{tab:t0main}
+\small
+\setlength{\tabcolsep}{4.0pt}
+\begin{tabular}{llcccc}
+\toprule
+Model & Method & Speedup & TPOT (ms) & Accept/round & Exact output (\%) \\
+\midrule
+\multirow{4}{*}{Qwen3-4B}
+ & Target & \PendingResult & \PendingResult & \PendingResult & \PendingResult \\
+ & \DFlash & \PendingResult & \PendingResult & \PendingResult & \PendingResult \\
+ & best fixed \DDTree & \PendingResult & \PendingResult & \PendingResult & \PendingResult \\
+ & \AdaptiveTree & \PendingResult & \PendingResult & \PendingResult & \PendingResult \\
+\addlinespace
+\multirow{4}{*}{Qwen3-8B}
+ & Target & \PendingResult & \PendingResult & \PendingResult & \PendingResult \\
+ & \DFlash & \PendingResult & \PendingResult & \PendingResult & \PendingResult \\
+ & best fixed \DDTree & \PendingResult & \PendingResult & \PendingResult & \PendingResult \\
+ & \AdaptiveTree & \PendingResult & \PendingResult & \PendingResult & \PendingResult \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{$T=1$ same-tree comparison.  Parent arrays, edge tokens, and FP64 target probability rows are required to match before these fields can be filled.  CI denotes the paired source-clustered 95\% interval.}
+\label{tab:t1main}
+\small
+\setlength{\tabcolsep}{3.7pt}
+\begin{tabular}{llcccc}
+\toprule
+Model & Method & Speedup vs Target & Speedup vs \DDTree & 95\% CI & Accept/round \\
+\midrule
+\multirow{3}{*}{Qwen3-4B}
+ & \DFlash & \PendingResult & \PendingResult & \PendingWide & \PendingResult \\
+ & \DDTree & \PendingResult & \PendingResult & \PendingWide & \PendingResult \\
+ & \TBV & \PendingResult & \PendingResult & \PendingWide & \PendingResult \\
+\addlinespace
+\multirow{3}{*}{Qwen3-8B}
+ & \DFlash & \PendingResult & \PendingResult & \PendingWide & \PendingResult \\
+ & \DDTree & \PendingResult & \PendingResult & \PendingWide & \PendingResult \\
+ & \TBV & \PendingResult & \PendingResult & \PendingWide & \PendingResult \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Current status.}
+No numerical conclusion is made in this draft.  In particular, the blank cells must not be filled from pilot runs, incomplete submatrices, microbenchmarks, or runs that fail the output-quality, same-tree, environment, order-balance, coverage, or report-reconstruction gates.

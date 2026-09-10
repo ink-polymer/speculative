@@ -1,0 +1,105 @@
+\begin{thebibliography}{14}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Cai et~al.(2024)Cai, Li, Geng, Peng, Lee, Chen, and
+  Dao]{cai2024medusa}
+Tianle Cai, Yuhong Li, Zhengyang Geng, Hongwu Peng, Jason~D. Lee, Deming Chen,
+  and Tri Dao.
+\newblock Medusa: Simple {LLM} inference acceleration framework with multiple
+  decoding heads.
+\newblock In \emph{Proceedings of the 41st International Conference on Machine
+  Learning}, 2024.
+
+\bibitem[Chen et~al.(2023)Chen, Borgeaud, Irving, Lespiau, Sifre, and
+  Jumper]{chen2023accelerating}
+Charlie Chen, Sebastian Borgeaud, Geoffrey Irving, Jean-Baptiste Lespiau,
+  Laurent Sifre, and John Jumper.
+\newblock Accelerating large language model decoding with speculative sampling.
+\newblock \emph{arXiv preprint arXiv:2302.01318}, 2023.
+
+\bibitem[Chen et~al.(2026)Chen, Liang, and Liu]{chen2026dflash}
+Jian Chen, Yesheng Liang, and Zhijian Liu.
+\newblock {DFlash}: Block diffusion for flash speculative decoding.
+\newblock \emph{arXiv preprint arXiv:2602.06036}, 2026.
+
+\bibitem[Chen et~al.(2021)Chen, Tworek, Jun, Yuan, Pinto, Kaplan, Edwards,
+  Burda, Joseph, Brockman, et~al.]{chen2021humaneval}
+Mark Chen, Jerry Tworek, Heewoo Jun, Qiming Yuan, Henrique Ponde de~Oliveira
+  Pinto, Jared Kaplan, Harri Edwards, Yuri Burda, Nicholas Joseph, Greg
+  Brockman, et~al.
+\newblock Evaluating large language models trained on code.
+\newblock \emph{arXiv preprint arXiv:2107.03374}, 2021.
+
+\bibitem[Cobbe et~al.(2021)Cobbe, Kosaraju, Bavarian, Chen, Jun, Kaiser,
+  Plappert, Tworek, Hilton, Nakano, et~al.]{cobbe2021gsm8k}
+Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, Mark Chen, Heewoo Jun, Lukasz
+  Kaiser, Matthias Plappert, Jerry Tworek, Jacob Hilton, Rei Nakano, et~al.
+\newblock Training verifiers to solve math word problems.
+\newblock \emph{arXiv preprint arXiv:2110.14168}, 2021.
+
+\bibitem[Jain et~al.(2024)Jain, Han, Gu, Li, Yan, Zhang, Wang, Solar-Lezama,
+  Sen, and Stoica]{jain2024livecodebench}
+Naman Jain, King Han, Alex Gu, Wen-Ding Li, Fanjia Yan, Tianjun Zhang, Sida
+  Wang, Armando Solar-Lezama, Koushik Sen, and Ion Stoica.
+\newblock {LiveCodeBench}: Holistic and contamination free evaluation of large
+  language models for code.
+\newblock \emph{arXiv preprint arXiv:2403.07974}, 2024.
+
+\bibitem[Jimenez et~al.(2024)Jimenez, Yang, Wettig, Yao, Pei, Press, and
+  Narasimhan]{jimenez2024swebench}
+Carlos~E. Jimenez, John Yang, Alexander Wettig, Shunyu Yao, Kexin Pei, Ofir
+  Press, and Karthik Narasimhan.
+\newblock {SWE}-bench: Can language models resolve real-world {GitHub} issues?
+\newblock In \emph{International Conference on Learning Representations}, 2024.
+
+\bibitem[Leviathan et~al.(2023)Leviathan, Kalman, and
+  Matias]{leviathan2023fast}
+Yaniv Leviathan, Matan Kalman, and Yossi Matias.
+\newblock Fast inference from transformers via speculative decoding.
+\newblock In \emph{Proceedings of the 40th International Conference on Machine
+  Learning}, pp.\  19274--19286, 2023.
+
+\bibitem[Li et~al.(2024)Li, Wei, Zhang, and Zhang]{li2024eagle2}
+Yuhui Li, Fangyun Wei, Chao Zhang, and Hongyang Zhang.
+\newblock {EAGLE}-2: Faster inference of language models with dynamic draft
+  trees.
+\newblock \emph{arXiv preprint arXiv:2406.16858}, 2024.
+
+\bibitem[{Qwen Team}(2025)]{qwen2025qwen3}
+{Qwen Team}.
+\newblock {Qwen3} technical report.
+\newblock \emph{arXiv preprint arXiv:2505.09388}, 2025.
+
+\bibitem[Ringel \& Romano(2026)Ringel and Romano]{ringel2026ddtree}
+Liran Ringel and Yaniv Romano.
+\newblock Accelerating speculative decoding with block diffusion draft trees.
+\newblock \emph{arXiv preprint arXiv:2604.12989}, 2026.
+
+\bibitem[Sun et~al.(2024)Sun, Mendlovic, Leviathan, Aharoni, Beirami, Ro, and
+  Suresh]{sun2024block}
+Ziteng Sun, Uri Mendlovic, Yaniv Leviathan, Asaf Aharoni, Ahmad Beirami,
+  Jae~Hun Ro, and Ananda~Theertha Suresh.
+\newblock Block verification accelerates speculative decoding.
+\newblock \emph{arXiv preprint arXiv:2403.10444}, 2024.
+
+\bibitem[Wang et~al.(2025)Wang, Su, Li, Xia, Ye, Duan, Wang, and
+  Zhang]{wang2025opttree}
+Jikai Wang, Yi~Su, Juntao Li, Qingrong Xia, Zi~Ye, Xinyu Duan, Zhefeng Wang,
+  and Min Zhang.
+\newblock {OPT}-tree: Speculative decoding with adaptive draft tree structure.
+\newblock \emph{Transactions of the Association for Computational Linguistics},
+  13:\penalty0 188--199, 2025.
+\newblock \doi{10.1162/tacl_a_00735}.
+
+\bibitem[Zheng et~al.(2023)Zheng, Chiang, Sheng, Zhuang, Wu, Zhuang, Lin, Li,
+  Li, Xing, et~al.]{zheng2023mtbench}
+Lianmin Zheng, Wei-Lin Chiang, Ying Sheng, Siyuan Zhuang, Zhanghao Wu, Yonghao
+  Zhuang, Zi~Lin, Zhuohan Li, Dacheng Li, Eric~P. Xing, et~al.
+\newblock Judging {LLM}-as-a-judge with {MT}-bench and chatbot arena.
+\newblock \emph{Advances in Neural Information Processing Systems}, 36, 2023.
+
+\end{thebibliography}

@@ -1,0 +1,97 @@
+\begin{table}[h]
+\centering
+\caption{Per-dataset $T=0$ speedup relative to Target.}
+\small
+\setlength{\tabcolsep}{3.0pt}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llrrrrrrrrrr}
+\toprule
+Model & Method & GSM8K & MATH & A24 & A25 & HE & MBPP & LCB & SWE & MT & Alpaca \\
+\midrule
+Qwen3-4B & \DFlash & \PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult\\
+ & best \DDTree & \PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult\\
+ & \AdaptiveTree & \PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult\\
+\addlinespace
+Qwen3-8B & \DFlash & \PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult\\
+ & best \DDTree & \PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult\\
+ & \AdaptiveTree & \PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult&\PendingResult\\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Per-dataset $T=1$ throughput speedup.  The first value is versus Target; the parenthesized value is versus \DDTree.}
+\small
+\setlength{\tabcolsep}{3.2pt}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llrrrrrrrr}
+\toprule
+Model & Method & GSM8K & MATH & A24 & A25 & HE & MBPP & LCB & MT \\
+\midrule
+Qwen3-4B & \DFlash & \PendingWide&\PendingWide&\PendingWide&\PendingWide&\PendingWide&\PendingWide&\PendingWide&\PendingWide\\
+ & \DDTree & \PendingWide&\PendingWide&\PendingWide&\PendingWide&\PendingWide&\PendingWide&\PendingWide&\PendingWide\\
+ & \TBV & \PendingWide&\PendingWide&\PendingWide&\PendingWide&\PendingWide&\PendingWide&\PendingWide&\PendingWide\\
+\addlinespace
+Qwen3-8B & \DFlash & \PendingWide&\PendingWide&\PendingWide&\PendingWide&\PendingWide&\PendingWide&\PendingWide&\PendingWide\\
+ & \DDTree & \PendingWide&\PendingWide&\PendingWide&\PendingWide&\PendingWide&\PendingWide&\PendingWide&\PendingWide\\
+ & \TBV & \PendingWide&\PendingWide&\PendingWide&\PendingWide&\PendingWide&\PendingWide&\PendingWide&\PendingWide\\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{AdaptiveTree ablations at $T=0$.  Values are geometric-mean speedups relative to the paired Target baseline.}
+\small
+\setlength{\tabcolsep}{4.0pt}
+\begin{tabular}{lccp{.46\linewidth}}
+\toprule
+Variant & Qwen3-4B & Qwen3-8B & Single changed factor \\
+\midrule
+\AdaptiveTree & \PendingResult & \PendingResult & canonical controller \\
+$B\le128$ & \PendingResult & \PendingResult & remove 160/192/256 candidates \\
+legacy cost attribution & \PendingResult & \PendingResult & treat tree build as fixed proposal cost \\
+with periodic exploration & \PendingResult & \PendingResult & restore one forced probe every 64 decisions \\
+no acceptance calibration & \PendingResult & \PendingResult & fix $\widehat s_t=1$ \\
+no measured latency & \PendingResult & \PendingResult & rank budgets by calibrated proposal mass only \\
+frozen after warm-up & \PendingResult & \PendingResult & disable subsequent EWMA updates \\
+historical controller & \PendingResult & \PendingResult & old budget, attribution, and exploration package \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Verifier-only same-state replay.  Latency ratios are \DDTree{} verifier time divided by candidate verifier time.}
+\small
+\begin{tabular}{lcccc}
+\toprule
+Model & $T=1$ ratio & Kernel time ($\mu$s) & Peak memory (MiB) & Law test \\
+\midrule
+Qwen3-4B & \PendingResult & \PendingResult & \PendingResult & \PendingResult \\
+Qwen3-8B & \PendingResult & \PendingResult & \PendingResult & \PendingResult \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Task-quality audit at $T=1$.  MT-Bench requires a separately registered external judge and is shown as not scored here.}
+\small
+\begin{tabular}{llcccc}
+\toprule
+Model & Method & Math accuracy & Code pass rate & Mean gen. length & MT-Bench \\
+\midrule
+Qwen3-4B & Target & \PendingResult & \PendingResult & \PendingResult & -- \\
+ & \DFlash & \PendingResult & \PendingResult & \PendingResult & -- \\
+ & \DDTree & \PendingResult & \PendingResult & \PendingResult & -- \\
+ & \TBV & \PendingResult & \PendingResult & \PendingResult & -- \\
+\addlinespace
+Qwen3-8B & Target & \PendingResult & \PendingResult & \PendingResult & -- \\
+ & \DFlash & \PendingResult & \PendingResult & \PendingResult & -- \\
+ & \DDTree & \PendingResult & \PendingResult & \PendingResult & -- \\
+ & \TBV & \PendingResult & \PendingResult & \PendingResult & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
