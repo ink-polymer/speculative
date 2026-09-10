@@ -4,7 +4,9 @@ The candidate keeps the positive-temperature probability tree, Target/Draft
 models, BF16 SDPA execution, and FP64 sampling law.  Unlike a verifier-only
 gate, it varies the number of Target-verified tree nodes, so any improvement
 comes from the decoding architecture rather than CUDA Graphs or a backend swap.
-Synthetic prompts are selection data and can never become formal results.
+It can also scan a proposal-only scoring temperature at fixed B=45.  This
+changes the tree shape but not Target T=1 sampling.  Synthetic prompts are
+selection data and can never become formal results.
 """
 from __future__ import annotations
 
@@ -30,10 +32,25 @@ PROMPTS = (
     "Explain why binary search needs a monotone predicate and give a short example.",
     "A tank is three fifths full. After adding 48 liters it is nine tenths full. Find its capacity.",
     "Write Python code for stable deduplication of a list while preserving order.",
+    "Prove that the product of three consecutive integers is divisible by six.",
+    "Compare optimistic and pessimistic concurrency control in one paragraph.",
+    "Solve x squared minus 11x plus 24 equals zero and verify both roots.",
+    "Give pseudocode for topological sorting and state how a cycle is detected.",
+    "Rewrite this sentence concisely: Due to the fact that the cache was empty, recomputation was required.",
+    "Design three edge cases for a function that parses signed decimal integers.",
+    "A train covers 210 km at one speed and 180 km at a speed 15 km/h slower in equal times. Find both speeds.",
+    "Explain the loop invariant of insertion sort without using more than five sentences.",
+    "Write SQL to return customers who placed orders in every month of 2025.",
 )
 
 
-def variants(budgets: list[int]) -> list[Variant]:
+def temperature_name(value: float) -> str:
+    return f"adaptive_tbv_pt{value:.3f}".replace(".", "p")
+
+
+def variants(budgets: list[int], tree_temperatures: list[float],
+             sparse_temperatures: list[float],
+             temperature_budget_grid: bool = False) -> list[Variant]:
     base = Variant(
         name="base", method="ddtree", paths=1, length=15,
         temperature=1.0, draft_temperature=1.0, tree_budget=45,
@@ -42,12 +59,40 @@ def variants(budgets: list[int]) -> list[Variant]:
     values = [
         replace(base, name="dflash", method="dflash", draft_temperature=None),
         replace(base, name="ddtree_b45", method="ddtree"),
-        *[
+        *([] if temperature_budget_grid else [
             replace(
                 base, name=f"adaptive_tbv_b{budget}",
                 method="ddtree_fused_scan", tree_budget=budget,
             )
             for budget in budgets
+        ]),
+        *([] if temperature_budget_grid else [
+            replace(
+                base, name=temperature_name(value),
+                method="ddtree_fused_scan",
+                tree_proposal_temperature=value,
+            )
+            for value in tree_temperatures
+        ]),
+        *([
+            replace(
+                base,
+                name=f"{temperature_name(value)}_b{budget}",
+                method="ddtree_fused_scan", tree_budget=budget,
+                tree_proposal_temperature=value,
+            )
+            for value in tree_temperatures for budget in budgets
+        ] if temperature_budget_grid else []),
+        *[
+            replace(
+                base,
+                name=temperature_name(value).replace(
+                    "adaptive_tbv_", "adaptive_sparse_"
+                ),
+                method="ddtree_sparse_exit_fused_scan",
+                tree_proposal_temperature=value,
+            )
+            for value in sparse_temperatures
         ],
     ]
     for value in values:
@@ -58,7 +103,7 @@ def variants(budgets: list[int]) -> list[Variant]:
 def compare(rows: list[dict], candidate: str, baseline: str,
             bootstrap: int = 20_000) -> dict:
     logs = []
-    for prompt in range(len(PROMPTS)):
+    for prompt in sorted({row["prompt"] for row in rows}):
         selected = [row for row in rows if row["prompt"] == prompt]
         means = {
             name: sum(
@@ -85,12 +130,32 @@ def compare(rows: list[dict], candidate: str, baseline: str,
 
 @torch.inference_mode()
 def run(config: Path, output: Path, budgets: list[int], tokens: int,
-        repeats: int, device: str) -> dict:
-    if (not budgets or len(set(budgets)) != len(budgets)
+        repeats: int, device: str,
+        tree_temperatures: list[float] | None = None,
+        sparse_temperatures: list[float] | None = None,
+        prompt_count: int = 3,
+        temperature_budget_grid: bool = False) -> dict:
+    tree_temperatures = tree_temperatures or []
+    sparse_temperatures = sparse_temperatures or []
+    if (len(set(budgets)) != len(budgets)
             or any(not 1 <= budget <= 45 for budget in budgets)):
         raise ValueError("Budgets must be unique integers in 1..45")
+    if (len(set(tree_temperatures)) != len(tree_temperatures)
+            or any(not 0.1 <= value <= 4.0
+                   for value in tree_temperatures)
+            or len(set(sparse_temperatures)) != len(sparse_temperatures)
+            or any(not 0.1 <= value <= 4.0
+                   for value in sparse_temperatures)
+            or (not budgets and not tree_temperatures
+                and not sparse_temperatures)):
+        raise ValueError(
+            "Tree temperatures must be unique values in 0.1..4.0, and at "
+            "least one scan value is required"
+        )
     if not 32 <= tokens <= 128 or repeats not in (1, 2, 3, 4, 5):
         raise ValueError("Use 32..128 tokens and 1..5 repeats")
+    if not 1 <= prompt_count <= len(PROMPTS):
+        raise ValueError(f"prompt-count must be in 1..{len(PROMPTS)}")
     cfg = load_config(config)
     precision = {
         key: cfg["model"].get(key) for key in (
@@ -101,7 +166,10 @@ def run(config: Path, output: Path, budgets: list[int], tokens: int,
             "dtype": "bfloat16", "target_attention": "sdpa",
             "draft_attention": "sdpa", "allow_tf32": False}:
         raise ValueError(f"Official precision controls changed: {precision}")
-    declared = variants(budgets)
+    declared = variants(
+        budgets, tree_temperatures, sparse_temperatures,
+        temperature_budget_grid,
+    )
     by_name = {value.name: value for value in declared}
     with output_lock(output):
         if (output / "report.json").exists():
@@ -115,7 +183,7 @@ def run(config: Path, output: Path, budgets: list[int], tokens: int,
                 tokenizer, [{"role": "user", "content": prompt}],
                 cfg["model"], device,
             )
-            for prompt in PROMPTS
+            for prompt in PROMPTS[:prompt_count]
         ]
         for value in declared:
             engine.generate(encoded[0], value, 24, stops, seed=20260910)
@@ -166,7 +234,7 @@ def run(config: Path, output: Path, budgets: list[int], tokens: int,
                 "versus_ddtree": compare(rows, name, "ddtree_b45"),
                 "versus_dflash": compare(rows, name, "dflash"),
             }
-            for name in names if name.startswith("adaptive_tbv_")
+            for name in names if name.startswith("adaptive_")
         }
         best = max(
             comparisons,
@@ -182,8 +250,13 @@ def run(config: Path, output: Path, budgets: list[int], tokens: int,
             "length": 15,
             "baseline_budget": 45,
             "candidate_budgets": budgets,
+            "candidate_tree_proposal_temperatures": tree_temperatures,
+            "candidate_sparse_exit_temperatures": sparse_temperatures,
+            "temperature_budget_grid": temperature_budget_grid,
+            "target_sampling_temperature": 1.0,
             "tokens": tokens,
             "repeats": repeats,
+            "prompt_count": prompt_count,
             "prompt_policy": "synthetic development prompts only",
             "comparisons": comparisons,
             "best_point_estimate": best,
@@ -212,15 +285,25 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--budgets", type=int, nargs="+",
+    parser.add_argument("--budgets", type=int, nargs="*",
                         default=[16, 24, 32, 45])
+    parser.add_argument("--tree-temperatures", type=float, nargs="*",
+                        default=[])
+    parser.add_argument("--sparse-temperatures", type=float, nargs="*",
+                        default=[])
     parser.add_argument("--tokens", type=int, default=64)
     parser.add_argument("--repeats", type=int, default=3)
+    parser.add_argument("--prompt-count", type=int, default=3)
+    parser.add_argument("--temperature-budget-grid", action="store_true")
     parser.add_argument("--device", default="cuda:0")
     args = parser.parse_args()
     run(
         args.config.resolve(), args.output.resolve(), args.budgets,
         args.tokens, args.repeats, args.device,
+        tree_temperatures=args.tree_temperatures,
+        sparse_temperatures=args.sparse_temperatures,
+        prompt_count=args.prompt_count,
+        temperature_budget_grid=args.temperature_budget_grid,
     )
 
 

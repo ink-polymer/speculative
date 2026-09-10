@@ -10,6 +10,7 @@ from gbv_experiments import sampling
 from gbv_experiments.fused_tree_sampling import (tree_verify_ancestral_fused,
                                                  tree_verify_ancestral_fused_parallel,
                                                  tree_verify_ancestral_fused_scan,
+                                                 tree_verify_ancestral_sparse_exit_fused_scan,
                                                  tree_verify_ancestral_logits_fused_scan,
                                                  tree_verify_ancestral_lazy_projection_fused_scan,
                                                  tree_verify_ancestral_lazy_softmax_fused_scan)
@@ -64,6 +65,55 @@ def test_fused_scan_sampler_matches_inverse_cdf_paths():
     _assert_fused_tree_sampler_matches_inverse_cdf_paths(
         tree_verify_ancestral_fused_scan
     )
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA extension test")
+def test_sparse_exit_fused_scan_matches_exact_conditional_construction():
+    parents = [-1, 0, 0, 1]
+    tokens = [0, 1, 2]
+    p = torch.tensor(
+        [[0.2, 0.3, 0.5], [0.4, 0.1, 0.5],
+         [0.3, 0.6, 0.1], [0.7, 0.2, 0.1]],
+        dtype=torch.float64, device="cuda",
+    )
+    children = {
+        0: [(0, 1), (1, 2)],
+        1: [(2, 3)],
+    }
+    for seed in range(64):
+        expected_generator = torch.Generator(device="cuda").manual_seed(seed)
+        actual_generator = torch.Generator(device="cuda").manual_seed(seed)
+        uniforms = torch.rand(
+            8, dtype=torch.float64, device="cuda",
+            generator=expected_generator,
+        ).cpu().tolist()
+        expected_nodes, node, bonus = [], 0, None
+        for depth in range(4):
+            outgoing = children.get(node, [])
+            cumulative = 0.0
+            child = None
+            for token, candidate in outgoing:
+                cumulative += float(p[node, token])
+                if child is None and uniforms[2 * depth] < cumulative:
+                    child = candidate
+            if child is not None:
+                expected_nodes.append(child)
+                node = child
+                continue
+            weights = p[node].cpu().clone()
+            for token, _ in outgoing:
+                weights[token] = 0
+            threshold = uniforms[2 * depth + 1] * float(weights.sum())
+            bonus = int(torch.searchsorted(weights.cumsum(0), threshold))
+            break
+        actual = tree_verify_ancestral_sparse_exit_fused_scan(
+            parents, tokens, p, actual_generator, validate=True,
+        )
+        assert actual == (
+            expected_nodes,
+            [tokens[index - 1] for index in expected_nodes],
+            bonus,
+        )
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA extension test")

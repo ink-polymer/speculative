@@ -10,7 +10,9 @@ from .config import Variant
 # ``method`` and ``paths`` describe the candidate architecture.  Every other
 # Variant field affects the experimental workload or numerical protocol and is
 # frozen for an architecture-only comparison.
-ARCHITECTURE_FIELDS = frozenset({"name", "method", "paths"})
+ARCHITECTURE_FIELDS = frozenset({
+    "name", "method", "paths", "tree_proposal_temperature",
+})
 FROZEN_MODEL_SETTINGS = {
     "dtype": "bfloat16",
     "target_attention": "sdpa",

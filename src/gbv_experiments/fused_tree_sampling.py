@@ -29,6 +29,13 @@ torch::Tensor fused_tree_sample_scan_cuda(
     torch::Tensor uniforms,
     int64_t max_depth);
 
+torch::Tensor fused_tree_sample_sparse_exit_cuda(
+    torch::Tensor probabilities,
+    torch::Tensor edge_parents,
+    torch::Tensor edge_tokens,
+    torch::Tensor uniforms,
+    int64_t max_depth);
+
 torch::Tensor fused_tree_follow_cuda(
     torch::Tensor posterior_tokens,
     torch::Tensor edge_parents,
@@ -406,6 +413,196 @@ torch::Tensor fused_tree_sample_scan_cuda(
   AT_DISPATCH_FLOATING_TYPES(
       probabilities.scalar_type(), "fused_tree_sample_scan_cuda", [&] {
         fused_tree_sample_scan_kernel<scalar_t, threads>
+            <<<1, threads, 0, stream>>>(
+                probabilities.data_ptr<scalar_t>(),
+                edge_parents.data_ptr<int64_t>(),
+                edge_tokens.data_ptr<int64_t>(),
+                uniforms.data_ptr<double>(),
+                output.data_ptr<int64_t>(),
+                static_cast<int>(node_count),
+                static_cast<int>(vocabulary),
+                static_cast<int>(max_depth));
+      });
+  C10_CUDA_KERNEL_LAUNCH_CHECK();
+  return output;
+}
+
+// Exact ancestral traversal with a sparse routing phase.  At an internal
+// node, only probabilities carried by outgoing tree edges are needed to decide
+// whether the Target draw remains in the tree.  A full-vocabulary scan is
+// performed exactly once, at the first exit row, to draw the correction token
+// from the complement of that row's children.
+template <typename scalar_t, int BLOCK_THREADS>
+__global__ void fused_tree_sample_sparse_exit_kernel(
+    const scalar_t* __restrict__ probabilities,
+    const int64_t* __restrict__ edge_parents,
+    const int64_t* __restrict__ edge_tokens,
+    const double* __restrict__ uniforms,
+    int64_t* __restrict__ output,
+    int node_count,
+    int vocabulary,
+    int max_depth) {
+  using BlockScan = cub::BlockScan<double, BLOCK_THREADS>;
+  __shared__ typename BlockScan::TempStorage scan_storage;
+  __shared__ int current_node;
+  __shared__ int accepted_count;
+  __shared__ int child_count;
+  __shared__ int route_child;
+  __shared__ int selected_token;
+  // Formal DDTree uses B=45.  The generic guard below permits up to 64 edges
+  // while keeping the routing table resident in shared memory.
+  __shared__ int child_tokens[64];
+  __shared__ int child_nodes[64];
+
+  const int thread = threadIdx.x;
+  const int chunk = (vocabulary + BLOCK_THREADS - 1) / BLOCK_THREADS;
+  if (thread == 0) {
+    current_node = 0;
+    accepted_count = 0;
+  }
+  __syncthreads();
+
+  for (int depth = 0; depth <= max_depth; ++depth) {
+    const int row = current_node;
+    if (thread == 0) {
+      child_count = 0;
+      route_child = -1;
+      double cumulative = 0.0;
+      const double route_uniform = uniforms[2 * depth];
+      for (int edge = 0; edge < node_count - 1; ++edge) {
+        if (edge_parents[edge] != row) {
+          continue;
+        }
+        const int slot = child_count++;
+        const int token = static_cast<int>(edge_tokens[edge]);
+        child_tokens[slot] = token;
+        child_nodes[slot] = edge + 1;
+        cumulative += static_cast<double>(
+            probabilities[row * vocabulary + token]);
+        if (route_child < 0 && route_uniform < cumulative) {
+          route_child = edge + 1;
+        }
+      }
+      if (route_child >= 0) {
+        output[accepted_count++] = route_child;
+        current_node = route_child;
+      }
+    }
+    __syncthreads();
+
+    if (route_child >= 0) {
+      continue;
+    }
+
+    // The route left the finite tree.  Sample the correction token from the
+    // exact Target row with the current node's child tokens removed.
+    const int begin = thread * chunk;
+    const int end = min(begin + chunk, vocabulary);
+    double local_sum = 0.0;
+    for (int token = begin; token < end; ++token) {
+      bool is_child = false;
+      for (int slot = 0; slot < child_count; ++slot) {
+        is_child = is_child || child_tokens[slot] == token;
+      }
+      if (!is_child) {
+        local_sum += static_cast<double>(
+            probabilities[row * vocabulary + token]);
+      }
+    }
+
+    double exclusive_prefix = 0.0;
+    double complement_total = 0.0;
+    BlockScan(scan_storage).ExclusiveSum(
+        local_sum, exclusive_prefix, complement_total);
+    if (thread == 0) {
+      selected_token = -1;
+    }
+    __syncthreads();
+
+    const double threshold = uniforms[2 * depth + 1] * complement_total;
+    if (begin < end && threshold >= exclusive_prefix
+        && threshold < exclusive_prefix + local_sum) {
+      double prefix = exclusive_prefix;
+      for (int token = begin; token < end; ++token) {
+        bool is_child = false;
+        for (int slot = 0; slot < child_count; ++slot) {
+          is_child = is_child || child_tokens[slot] == token;
+        }
+        if (is_child) {
+          continue;
+        }
+        prefix += static_cast<double>(
+            probabilities[row * vocabulary + token]);
+        if (threshold < prefix) {
+          atomicCAS(&selected_token, -1, token);
+          break;
+        }
+      }
+    }
+    __syncthreads();
+
+    if (thread == 0) {
+      // A softmax row has positive complement mass.  The fallback only covers
+      // a final floating-point boundary and deliberately avoids child tokens.
+      if (selected_token < 0) {
+        for (int token = vocabulary - 1; token >= 0; --token) {
+          bool is_child = false;
+          for (int slot = 0; slot < child_count; ++slot) {
+            is_child = is_child || child_tokens[slot] == token;
+          }
+          if (!is_child) {
+            selected_token = token;
+            break;
+          }
+        }
+      }
+      output[max_depth] = accepted_count;
+      output[max_depth + 1] = selected_token;
+    }
+    return;
+  }
+}
+
+torch::Tensor fused_tree_sample_sparse_exit_cuda(
+    torch::Tensor probabilities,
+    torch::Tensor edge_parents,
+    torch::Tensor edge_tokens,
+    torch::Tensor uniforms,
+    int64_t max_depth) {
+  TORCH_CHECK(probabilities.is_cuda() && probabilities.is_contiguous()
+              && probabilities.dim() == 2,
+              "probabilities must be a contiguous CUDA matrix");
+  TORCH_CHECK(edge_parents.is_cuda() && edge_tokens.is_cuda()
+              && edge_parents.scalar_type() == torch::kLong
+              && edge_tokens.scalar_type() == torch::kLong
+              && edge_parents.is_contiguous() && edge_tokens.is_contiguous(),
+              "tree edges must be contiguous CUDA long");
+  TORCH_CHECK(uniforms.is_cuda()
+              && uniforms.scalar_type() == torch::kFloat64,
+              "uniforms must be CUDA float64");
+  const int64_t node_count = probabilities.size(0);
+  const int64_t vocabulary = probabilities.size(1);
+  TORCH_CHECK(node_count > 0 && node_count <= 65 && vocabulary > 0,
+              "sparse-exit sampler supports one root plus at most 64 edges");
+  TORCH_CHECK(edge_parents.numel() == node_count - 1
+              && edge_tokens.numel() == node_count - 1,
+              "tree edge count mismatch");
+  TORCH_CHECK(max_depth >= 0
+              && uniforms.numel() >= 2 * (max_depth + 1),
+              "not enough uniforms for sparse-exit traversal");
+  TORCH_CHECK(vocabulary <= INT_MAX && max_depth <= INT_MAX,
+              "tree dimensions exceed CUDA kernel limits");
+
+  c10::cuda::CUDAGuard device_guard(probabilities.device());
+  auto output = torch::full(
+      {max_depth + 2}, -1,
+      torch::TensorOptions().dtype(torch::kLong)
+          .device(probabilities.device()));
+  constexpr int threads = 640;
+  auto stream = at::cuda::getCurrentCUDAStream();
+  AT_DISPATCH_FLOATING_TYPES(
+      probabilities.scalar_type(), "fused_tree_sample_sparse_exit_cuda", [&] {
+        fused_tree_sample_sparse_exit_kernel<scalar_t, threads>
             <<<1, threads, 0, stream>>>(
                 probabilities.data_ptr<scalar_t>(),
                 edge_parents.data_ptr<int64_t>(),
@@ -958,11 +1155,12 @@ def load_fused_tree_sampler():
     from torch.utils.cpp_extension import load_inline
 
     return load_inline(
-        name="gbv_fused_tree_sampler_v14",
+        name="gbv_fused_tree_sampler_v15",
         cpp_sources=[CPP_SOURCE],
         cuda_sources=[CUDA_SOURCE],
         functions=["fused_tree_sample_cuda", "fused_tree_sample_parallel_cuda",
                    "fused_tree_sample_scan_cuda",
+                   "fused_tree_sample_sparse_exit_cuda",
                    "fused_tree_follow_cuda",
                    "fused_tree_sample_logits_scan_cuda",
                    "fused_internal_tree_sample_scan_cuda"],
@@ -1085,6 +1283,56 @@ def tree_verify_ancestral_fused_scan(parents, tokens, all_p, generator=None,
     bonus = int(packed[max_depth + 1])
     if not 0 <= accepted_count <= max_depth or not 0 <= bonus < all_p.shape[1]:
         raise RuntimeError("Scan-fused tree sampler returned invalid control values")
+    nodes = [int(node) for node in packed[:accepted_count]]
+    return nodes, [tokens[node - 1] for node in nodes], bonus
+
+
+def tree_verify_ancestral_sparse_exit_fused_scan(
+        parents, tokens, all_p, generator=None, validate: bool = True):
+    """Traverse sparse child events and scan the vocabulary only at exit.
+
+    For every internal row this first draws from ``children U {exit}``.  On an
+    exit it draws once more from the Target distribution conditioned on not
+    selecting a child.  Hence each child edge and each correction token has
+    exactly its Target probability, while accepted internal rows avoid a full
+    vocabulary scan.
+    """
+    parents, tokens, max_depth = _topology(parents, tokens)
+    node_count = len(parents)
+    if (not all_p.is_cuda or all_p.ndim != 2
+            or all_p.shape[0] != node_count or all_p.shape[1] < 1
+            or not all_p.is_floating_point() or not all_p.is_contiguous()):
+        raise ValueError("Sparse-exit Target probability tensor mismatch")
+    if node_count > 65:
+        raise ValueError("Sparse-exit verifier supports at most 64 tree edges")
+    if any(token < 0 or token >= all_p.shape[1] for token in tokens):
+        raise ValueError("Tree token is outside the Target vocabulary")
+    if validate:
+        valid = (torch.isfinite(all_p).all() & (all_p >= 0).all()
+                 & torch.isclose(
+                     all_p.sum(-1), all_p.new_ones(node_count),
+                     rtol=1e-10, atol=1e-12,
+                 ).all())
+        if not bool(valid):
+            raise FloatingPointError(
+                "Sparse-exit verifier requires normalized Target probabilities"
+            )
+
+    device = all_p.device
+    metadata = torch.tensor(
+        [parents[1:], tokens], dtype=torch.long, device=device,
+    )
+    uniforms = torch.rand(
+        2 * (max_depth + 1), dtype=torch.float64,
+        device=device, generator=generator,
+    )
+    packed = load_fused_tree_sampler().fused_tree_sample_sparse_exit_cuda(
+        all_p, metadata[0], metadata[1], uniforms, max_depth,
+    ).tolist()
+    accepted_count = int(packed[max_depth])
+    bonus = int(packed[max_depth + 1])
+    if not 0 <= accepted_count <= max_depth or not 0 <= bonus < all_p.shape[1]:
+        raise RuntimeError("Sparse-exit sampler returned invalid control values")
     nodes = [int(node) for node in packed[:accepted_count]]
     return nodes, [tokens[node - 1] for node in nodes], bonus
 

@@ -32,6 +32,7 @@ from .sampling import (block_verify_batched, block_verify_sparse,
 from .fused_tree_sampling import (tree_verify_ancestral_fused,
                                   tree_verify_ancestral_fused_parallel,
                                   tree_verify_ancestral_fused_scan,
+                                  tree_verify_ancestral_sparse_exit_fused_scan,
                                   tree_verify_ancestral_same_draw_fused,
                                   tree_verify_ancestral_logits_fused_scan,
                                   tree_verify_ancestral_lazy_projection_fused_scan,
@@ -64,7 +65,7 @@ TERMINAL_TREE_METHODS = {
 }
 FUSED_TREE_METHODS = {
     "ddtree_fused", "ddtree_fused_parallel", "ddtree_fused_scan",
-    "ddtree_same_draw_fused",
+    "ddtree_sparse_exit_fused_scan", "ddtree_same_draw_fused",
 }
 LAZY_HEAD_TREE_METHODS = {
     "ddtree_lazy_projection", "ddtree_lazy_projection_fused_scan",
@@ -492,8 +493,11 @@ class Engine:
                     )[0]
                 draft_cache.crop(prefix_len)
                 draft_temp = variant.draft_temperature or variant.temperature or 1.0
+                tree_proposal_temp = (
+                    variant.tree_proposal_temperature or draft_temp
+                )
                 q = (None if variant.method == "dflash" or variant.method in DIFFUSION_TREE_METHODS
-                     else probabilities(logits, draft_temp, dtype))
+                     else probabilities(logits, tree_proposal_temp, dtype))
                 if variant.method in DIFFUSION_TREE_METHODS:
                     law_length = (
                         variant.diffusion_spur_length
@@ -859,6 +863,9 @@ class Engine:
                         "ddtree_fused": tree_verify_ancestral_fused,
                         "ddtree_fused_parallel": tree_verify_ancestral_fused_parallel,
                         "ddtree_fused_scan": tree_verify_ancestral_fused_scan,
+                        "ddtree_sparse_exit_fused_scan": (
+                            tree_verify_ancestral_sparse_exit_fused_scan
+                        ),
                         "ddtree_same_draw_fused": tree_verify_ancestral_same_draw_fused,
                     }[variant.method]
                     generator_before = (

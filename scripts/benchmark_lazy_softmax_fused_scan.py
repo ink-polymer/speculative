@@ -54,6 +54,8 @@ def variants() -> list[Variant]:
         replace(base, name="dflash", method="dflash", draft_temperature=None),
         replace(base, name="ddtree", method="ddtree"),
         replace(base, name="fused_scan", method="ddtree_fused_scan"),
+        replace(base, name="sparse_exit_fused_scan",
+                method="ddtree_sparse_exit_fused_scan"),
         replace(base, name="lazy_softmax_fused_scan",
                 method="ddtree_lazy_softmax_fused_scan"),
         replace(base, name="lazy_projection_fused_scan",
@@ -210,7 +212,8 @@ def run(config: Path, output: Path, device: str, tokens: int,
         name: assert_architecture_only_pair(
             by_name["ddtree"], by_name[name], cfg["model"],
         )
-        for name in ("fused_scan", "lazy_softmax_fused_scan",
+        for name in ("fused_scan", "sparse_exit_fused_scan",
+                     "lazy_softmax_fused_scan",
                      "lazy_projection_fused_scan")
     }
     dflash_fairness = assert_official_dflash_control(
@@ -295,6 +298,15 @@ def run(config: Path, output: Path, device: str, tokens: int,
                     )
 
         comparisons = {
+            "sparse_exit_vs_ddtree": compare(
+                rows, "sparse_exit_fused_scan", "ddtree",
+            ),
+            "sparse_exit_vs_fused_scan": compare(
+                rows, "sparse_exit_fused_scan", "fused_scan",
+            ),
+            "sparse_exit_vs_dflash": compare(
+                rows, "sparse_exit_fused_scan", "dflash",
+            ),
             "candidate_vs_ddtree": compare(
                 rows, "lazy_softmax_fused_scan", "ddtree",
             ),
@@ -320,6 +332,9 @@ def run(config: Path, output: Path, device: str, tokens: int,
                 rows, value[0], value[1],
             )
             for key, value in {
+                "sparse_exit_vs_ddtree": ("sparse_exit_fused_scan", "ddtree"),
+                "sparse_exit_vs_fused_scan": ("sparse_exit_fused_scan", "fused_scan"),
+                "sparse_exit_vs_dflash": ("sparse_exit_fused_scan", "dflash"),
                 "candidate_vs_ddtree": ("lazy_softmax_fused_scan", "ddtree"),
                 "candidate_vs_fused_scan": ("lazy_softmax_fused_scan", "fused_scan"),
                 "candidate_vs_dflash": ("lazy_softmax_fused_scan", "dflash"),
@@ -339,6 +354,10 @@ def run(config: Path, output: Path, device: str, tokens: int,
         )
         aggregates = {name: aggregate(rows, name) for name in names}
         candidate_specs = {
+            "sparse_exit_fused_scan": (
+                "sparse_exit_vs_ddtree", "sparse_exit_vs_fused_scan",
+                "sparse_exit_vs_dflash",
+            ),
             "lazy_softmax_fused_scan": (
                 "candidate_vs_ddtree", "candidate_vs_fused_scan",
                 "candidate_vs_dflash",
@@ -351,12 +370,16 @@ def run(config: Path, output: Path, device: str, tokens: int,
         }
         candidate_gates = {}
         for name, comparison_names in candidate_specs.items():
+            row_reduction_ok = (
+                True if name == "sparse_exit_fused_scan" else
+                aggregates[name]["mean_projected_rows_per_round"]
+                < aggregates[name]["mean_full_rows_per_round"]
+            )
             candidate_gates[name] = bool(
                 comparisons[comparison_names[0]]["ci95"][0] > 1.03
                 and comparisons[comparison_names[1]]["ci95"][0] > 1.01
                 and comparisons[comparison_names[2]]["ci95"][0] > 1
-                and aggregates[name]["mean_projected_rows_per_round"]
-                < aggregates[name]["mean_full_rows_per_round"]
+                and row_reduction_ok
             )
         eligible = [name for name, passed in candidate_gates.items() if passed]
         selected_candidate = max(

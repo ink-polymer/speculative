@@ -1,0 +1,839 @@
+{
+  "kind": "same_multinomial_fused_tree_walk_gate",
+  "formal_complete": false,
+  "created_at_utc": "2026-09-10T10:39:47.230525+00:00",
+  "official_precision": {
+    "dtype": "bfloat16",
+    "target_attention": "sdpa",
+    "draft_attention": "sdpa",
+    "allow_tf32": false
+  },
+  "same_tree": true,
+  "same_target_probabilities": true,
+  "same_multinomial_shape_and_rng_state": true,
+  "correctness": [
+    {
+      "state": 0,
+      "prompt": 0,
+      "tree_sha256": "9198ad07e90a8d96fe322f4b8752ec88c7a3abb479d7fb7cb708a3481cbafb17",
+      "seeds_passed": 16
+    },
+    {
+      "state": 1,
+      "prompt": 0,
+      "tree_sha256": "cdd903c0ab85f9311bba9161d3824ea4008ca93fe943643d9da671c97eeef604",
+      "seeds_passed": 16
+    },
+    {
+      "state": 2,
+      "prompt": 1,
+      "tree_sha256": "ff5ac7bdba933f7d8ccf1210ea161e72c098edeef7aad5bb97fe17b43bda176a",
+      "seeds_passed": 16
+    },
+    {
+      "state": 3,
+      "prompt": 1,
+      "tree_sha256": "84df11b6796e5cb231a2c6f6c9c1f525cf01dda11ef0f86e45830dbd5d949f42",
+      "seeds_passed": 16
+    },
+    {
+      "state": 4,
+      "prompt": 2,
+      "tree_sha256": "1e42218aa7d393944d6d165cafcbb8f4a2d1aacffe8a329659421c29f9ab61ce",
+      "seeds_passed": 16
+    },
+    {
+      "state": 5,
+      "prompt": 2,
+      "tree_sha256": "96cb209bf548c8c4840e7cd572d814c7310a8ebf75e8d91578eeac84937232d0",
+      "seeds_passed": 16
+    }
+  ],
+  "settings": {
+    "states_per_prompt": 2,
+    "warmup": 10,
+    "iterations": 100,
+    "repeats": 7
+  },
+  "summary": {
+    "metric": "same_multinomial_real_tree_verifier_speedup",
+    "speedup": 0.977596172071691,
+    "ci95": [
+      0.9759447746862651,
+      0.9791971670965722
+    ],
+    "state_clusters": 6,
+    "gate_passed": false
+  },
+  "rows": [
+    {
+      "state": 0,
+      "prompt": 0,
+      "method": "same_draw_fused",
+      "repeat": 0,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3528531044721603
+    },
+    {
+      "state": 0,
+      "prompt": 0,
+      "method": "ddtree",
+      "repeat": 0,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.323815956711769
+    },
+    {
+      "state": 0,
+      "prompt": 0,
+      "method": "ddtree",
+      "repeat": 1,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.323072873055935
+    },
+    {
+      "state": 0,
+      "prompt": 0,
+      "method": "same_draw_fused",
+      "repeat": 1,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3547556474804878
+    },
+    {
+      "state": 0,
+      "prompt": 0,
+      "method": "same_draw_fused",
+      "repeat": 2,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3550307229161263
+    },
+    {
+      "state": 0,
+      "prompt": 0,
+      "method": "ddtree",
+      "repeat": 2,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.324348971247673
+    },
+    {
+      "state": 0,
+      "prompt": 0,
+      "method": "same_draw_fused",
+      "repeat": 3,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3525409623980522
+    },
+    {
+      "state": 0,
+      "prompt": 0,
+      "method": "ddtree",
+      "repeat": 3,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3228658586740494
+    },
+    {
+      "state": 0,
+      "prompt": 0,
+      "method": "ddtree",
+      "repeat": 4,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3419006019830704
+    },
+    {
+      "state": 0,
+      "prompt": 0,
+      "method": "same_draw_fused",
+      "repeat": 4,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3544735312461853
+    },
+    {
+      "state": 0,
+      "prompt": 0,
+      "method": "same_draw_fused",
+      "repeat": 5,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.356898620724678
+    },
+    {
+      "state": 0,
+      "prompt": 0,
+      "method": "ddtree",
+      "repeat": 5,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3262955099344254
+    },
+    {
+      "state": 0,
+      "prompt": 0,
+      "method": "same_draw_fused",
+      "repeat": 6,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3530562818050385
+    },
+    {
+      "state": 0,
+      "prompt": 0,
+      "method": "ddtree",
+      "repeat": 6,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3228904828429222
+    },
+    {
+      "state": 1,
+      "prompt": 0,
+      "method": "ddtree",
+      "repeat": 0,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3243578374385834
+    },
+    {
+      "state": 1,
+      "prompt": 0,
+      "method": "same_draw_fused",
+      "repeat": 0,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3519836589694023
+    },
+    {
+      "state": 1,
+      "prompt": 0,
+      "method": "ddtree",
+      "repeat": 1,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3196292519569397
+    },
+    {
+      "state": 1,
+      "prompt": 0,
+      "method": "same_draw_fused",
+      "repeat": 1,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.349494643509388
+    },
+    {
+      "state": 1,
+      "prompt": 0,
+      "method": "ddtree",
+      "repeat": 2,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3187900558114052
+    },
+    {
+      "state": 1,
+      "prompt": 0,
+      "method": "same_draw_fused",
+      "repeat": 2,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3508130609989166
+    },
+    {
+      "state": 1,
+      "prompt": 0,
+      "method": "ddtree",
+      "repeat": 3,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.322508379817009
+    },
+    {
+      "state": 1,
+      "prompt": 0,
+      "method": "same_draw_fused",
+      "repeat": 3,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3558613881468773
+    },
+    {
+      "state": 1,
+      "prompt": 0,
+      "method": "same_draw_fused",
+      "repeat": 4,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3529769331216812
+    },
+    {
+      "state": 1,
+      "prompt": 0,
+      "method": "ddtree",
+      "repeat": 4,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.320977509021759
+    },
+    {
+      "state": 1,
+      "prompt": 0,
+      "method": "same_draw_fused",
+      "repeat": 5,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3545851409435272
+    },
+    {
+      "state": 1,
+      "prompt": 0,
+      "method": "ddtree",
+      "repeat": 5,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3279730826616287
+    },
+    {
+      "state": 1,
+      "prompt": 0,
+      "method": "same_draw_fused",
+      "repeat": 6,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3519946485757828
+    },
+    {
+      "state": 1,
+      "prompt": 0,
+      "method": "ddtree",
+      "repeat": 6,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3243328779935837
+    },
+    {
+      "state": 2,
+      "prompt": 1,
+      "method": "ddtree",
+      "repeat": 0,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3242995738983154
+    },
+    {
+      "state": 2,
+      "prompt": 1,
+      "method": "same_draw_fused",
+      "repeat": 0,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3583990558981895
+    },
+    {
+      "state": 2,
+      "prompt": 1,
+      "method": "ddtree",
+      "repeat": 1,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3416128233075142
+    },
+    {
+      "state": 2,
+      "prompt": 1,
+      "method": "same_draw_fused",
+      "repeat": 1,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3566108793020248
+    },
+    {
+      "state": 2,
+      "prompt": 1,
+      "method": "same_draw_fused",
+      "repeat": 2,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.356874667108059
+    },
+    {
+      "state": 2,
+      "prompt": 1,
+      "method": "ddtree",
+      "repeat": 2,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3246673345565796
+    },
+    {
+      "state": 2,
+      "prompt": 1,
+      "method": "same_draw_fused",
+      "repeat": 3,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3562201336026192
+    },
+    {
+      "state": 2,
+      "prompt": 1,
+      "method": "ddtree",
+      "repeat": 3,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3266395032405853
+    },
+    {
+      "state": 2,
+      "prompt": 1,
+      "method": "same_draw_fused",
+      "repeat": 4,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.357102170586586
+    },
+    {
+      "state": 2,
+      "prompt": 1,
+      "method": "ddtree",
+      "repeat": 4,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3244656473398209
+    },
+    {
+      "state": 2,
+      "prompt": 1,
+      "method": "ddtree",
+      "repeat": 5,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3278114050626755
+    },
+    {
+      "state": 2,
+      "prompt": 1,
+      "method": "same_draw_fused",
+      "repeat": 5,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3564440608024597
+    },
+    {
+      "state": 2,
+      "prompt": 1,
+      "method": "same_draw_fused",
+      "repeat": 6,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3555778190493584
+    },
+    {
+      "state": 2,
+      "prompt": 1,
+      "method": "ddtree",
+      "repeat": 6,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3384894281625748
+    },
+    {
+      "state": 3,
+      "prompt": 1,
+      "method": "ddtree",
+      "repeat": 0,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3226737827062607
+    },
+    {
+      "state": 3,
+      "prompt": 1,
+      "method": "same_draw_fused",
+      "repeat": 0,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3549970462918282
+    },
+    {
+      "state": 3,
+      "prompt": 1,
+      "method": "ddtree",
+      "repeat": 1,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3223959133028984
+    },
+    {
+      "state": 3,
+      "prompt": 1,
+      "method": "same_draw_fused",
+      "repeat": 1,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3521978631615639
+    },
+    {
+      "state": 3,
+      "prompt": 1,
+      "method": "ddtree",
+      "repeat": 2,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3239340856671333
+    },
+    {
+      "state": 3,
+      "prompt": 1,
+      "method": "same_draw_fused",
+      "repeat": 2,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3675728812813759
+    },
+    {
+      "state": 3,
+      "prompt": 1,
+      "method": "ddtree",
+      "repeat": 3,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.323629692196846
+    },
+    {
+      "state": 3,
+      "prompt": 1,
+      "method": "same_draw_fused",
+      "repeat": 3,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.358141228556633
+    },
+    {
+      "state": 3,
+      "prompt": 1,
+      "method": "same_draw_fused",
+      "repeat": 4,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3537721708416939
+    },
+    {
+      "state": 3,
+      "prompt": 1,
+      "method": "ddtree",
+      "repeat": 4,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3250254467129707
+    },
+    {
+      "state": 3,
+      "prompt": 1,
+      "method": "ddtree",
+      "repeat": 5,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3420281559228897
+    },
+    {
+      "state": 3,
+      "prompt": 1,
+      "method": "same_draw_fused",
+      "repeat": 5,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3739460334181786
+    },
+    {
+      "state": 3,
+      "prompt": 1,
+      "method": "same_draw_fused",
+      "repeat": 6,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3844214752316475
+    },
+    {
+      "state": 3,
+      "prompt": 1,
+      "method": "ddtree",
+      "repeat": 6,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3463538885116577
+    },
+    {
+      "state": 4,
+      "prompt": 2,
+      "method": "same_draw_fused",
+      "repeat": 0,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3858288899064064
+    },
+    {
+      "state": 4,
+      "prompt": 2,
+      "method": "ddtree",
+      "repeat": 0,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3465967029333115
+    },
+    {
+      "state": 4,
+      "prompt": 2,
+      "method": "ddtree",
+      "repeat": 1,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3391312956809998
+    },
+    {
+      "state": 4,
+      "prompt": 2,
+      "method": "same_draw_fused",
+      "repeat": 1,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3962560892105103
+    },
+    {
+      "state": 4,
+      "prompt": 2,
+      "method": "ddtree",
+      "repeat": 2,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3391321524977684
+    },
+    {
+      "state": 4,
+      "prompt": 2,
+      "method": "same_draw_fused",
+      "repeat": 2,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3591263070702553
+    },
+    {
+      "state": 4,
+      "prompt": 2,
+      "method": "ddtree",
+      "repeat": 3,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3228996843099594
+    },
+    {
+      "state": 4,
+      "prompt": 2,
+      "method": "same_draw_fused",
+      "repeat": 3,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3550779223442078
+    },
+    {
+      "state": 4,
+      "prompt": 2,
+      "method": "ddtree",
+      "repeat": 4,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3225657865405083
+    },
+    {
+      "state": 4,
+      "prompt": 2,
+      "method": "same_draw_fused",
+      "repeat": 4,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3567295670509338
+    },
+    {
+      "state": 4,
+      "prompt": 2,
+      "method": "same_draw_fused",
+      "repeat": 5,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3569575920701027
+    },
+    {
+      "state": 4,
+      "prompt": 2,
+      "method": "ddtree",
+      "repeat": 5,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3293953239917755
+    },
+    {
+      "state": 4,
+      "prompt": 2,
+      "method": "ddtree",
+      "repeat": 6,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3258029147982597
+    },
+    {
+      "state": 4,
+      "prompt": 2,
+      "method": "same_draw_fused",
+      "repeat": 6,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3563762977719307
+    },
+    {
+      "state": 5,
+      "prompt": 2,
+      "method": "same_draw_fused",
+      "repeat": 0,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3550737872719765
+    },
+    {
+      "state": 5,
+      "prompt": 2,
+      "method": "ddtree",
+      "repeat": 0,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.325148530304432
+    },
+    {
+      "state": 5,
+      "prompt": 2,
+      "method": "same_draw_fused",
+      "repeat": 1,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.353478617966175
+    },
+    {
+      "state": 5,
+      "prompt": 2,
+      "method": "ddtree",
+      "repeat": 1,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3243015855550766
+    },
+    {
+      "state": 5,
+      "prompt": 2,
+      "method": "ddtree",
+      "repeat": 2,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.322529949247837
+    },
+    {
+      "state": 5,
+      "prompt": 2,
+      "method": "same_draw_fused",
+      "repeat": 2,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3536084443330765
+    },
+    {
+      "state": 5,
+      "prompt": 2,
+      "method": "ddtree",
+      "repeat": 3,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3254237174987793
+    },
+    {
+      "state": 5,
+      "prompt": 2,
+      "method": "same_draw_fused",
+      "repeat": 3,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.352710835635662
+    },
+    {
+      "state": 5,
+      "prompt": 2,
+      "method": "same_draw_fused",
+      "repeat": 4,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3523924723267555
+    },
+    {
+      "state": 5,
+      "prompt": 2,
+      "method": "ddtree",
+      "repeat": 4,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.324293538928032
+    },
+    {
+      "state": 5,
+      "prompt": 2,
+      "method": "same_draw_fused",
+      "repeat": 5,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3520090281963348
+    },
+    {
+      "state": 5,
+      "prompt": 2,
+      "method": "ddtree",
+      "repeat": 5,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3243958353996277
+    },
+    {
+      "state": 5,
+      "prompt": 2,
+      "method": "ddtree",
+      "repeat": 6,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3240483775734901
+    },
+    {
+      "state": 5,
+      "prompt": 2,
+      "method": "same_draw_fused",
+      "repeat": 6,
+      "nodes": 46,
+      "iterations": 100,
+      "ms_per_call": 1.3562066853046417
+    }
+  ],
+  "telemetry_end": {
+    "utc": "2026-09-10T10:39:47.230624+00:00",
+    "hostname": "autodl-container-26d148a435-8171fde0",
+    "pid": 45839,
+    "slurm_job_id": null,
+    "gpu_uuid": "b32e1465-06c0-9da4-928e-ca196f12f2cf",
+    "nvidia_smi": "GPU-b32e1465-06c0-9da4-928e-ca196f12f2cf, NVIDIA H20, P0, 38, 181.88 W, 1980 MHz, 2619 MHz, 9765 MiB, 95 %"
+  },
+  "source_sha256": {
+    "candidate": "0e7225c540a213cd4321b953d2d2379fafde9a37341f612721488e8ee5ecb5d4",
+    "script": "bf1da42f824a41400dc88c7ea89d272f4e8e770dde447fd34d22e409b86e76f5",
+    "config": "b8e0043d0866289aefd8155dc5e5e496689315db7add78ff4a34fa0c85616641"
+  }
+}

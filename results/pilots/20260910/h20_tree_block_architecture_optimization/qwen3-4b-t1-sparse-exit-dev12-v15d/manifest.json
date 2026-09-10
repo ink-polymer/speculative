@@ -1,0 +1,330 @@
+{
+  "kind": "development_lazy_softmax_fused_scan_gate",
+  "formal_complete": false,
+  "created_at_utc": "2026-09-10T10:32:04.057471+00:00",
+  "temperature": 1.0,
+  "tokens": 64,
+  "repeats": 5,
+  "prompt_count": 12,
+  "variants": [
+    {
+      "name": "dflash",
+      "method": "dflash",
+      "paths": 1,
+      "length": 15,
+      "temperature": 1.0,
+      "draft_temperature": null,
+      "share_prefixes": true,
+      "reuse_draft_cache": true,
+      "draft_attention": "bidirectional",
+      "condition_features": "target",
+      "probability_dtype": "float64",
+      "tree_budget": 45,
+      "diffusion_support_size": 8,
+      "diffusion_spur_length": 4,
+      "prefix_strength": 1.0
+    },
+    {
+      "name": "ddtree",
+      "method": "ddtree",
+      "paths": 1,
+      "length": 15,
+      "temperature": 1.0,
+      "draft_temperature": 1.0,
+      "share_prefixes": true,
+      "reuse_draft_cache": true,
+      "draft_attention": "bidirectional",
+      "condition_features": "target",
+      "probability_dtype": "float64",
+      "tree_budget": 45,
+      "diffusion_support_size": 8,
+      "diffusion_spur_length": 4,
+      "prefix_strength": 1.0
+    },
+    {
+      "name": "fused_scan",
+      "method": "ddtree_fused_scan",
+      "paths": 1,
+      "length": 15,
+      "temperature": 1.0,
+      "draft_temperature": 1.0,
+      "share_prefixes": true,
+      "reuse_draft_cache": true,
+      "draft_attention": "bidirectional",
+      "condition_features": "target",
+      "probability_dtype": "float64",
+      "tree_budget": 45,
+      "diffusion_support_size": 8,
+      "diffusion_spur_length": 4,
+      "prefix_strength": 1.0
+    },
+    {
+      "name": "sparse_exit_fused_scan",
+      "method": "ddtree_sparse_exit_fused_scan",
+      "paths": 1,
+      "length": 15,
+      "temperature": 1.0,
+      "draft_temperature": 1.0,
+      "share_prefixes": true,
+      "reuse_draft_cache": true,
+      "draft_attention": "bidirectional",
+      "condition_features": "target",
+      "probability_dtype": "float64",
+      "tree_budget": 45,
+      "diffusion_support_size": 8,
+      "diffusion_spur_length": 4,
+      "prefix_strength": 1.0
+    },
+    {
+      "name": "lazy_softmax_fused_scan",
+      "method": "ddtree_lazy_softmax_fused_scan",
+      "paths": 1,
+      "length": 15,
+      "temperature": 1.0,
+      "draft_temperature": 1.0,
+      "share_prefixes": true,
+      "reuse_draft_cache": true,
+      "draft_attention": "bidirectional",
+      "condition_features": "target",
+      "probability_dtype": "float64",
+      "tree_budget": 45,
+      "diffusion_support_size": 8,
+      "diffusion_spur_length": 4,
+      "prefix_strength": 1.0
+    },
+    {
+      "name": "lazy_projection_fused_scan",
+      "method": "ddtree_lazy_projection_fused_scan",
+      "paths": 1,
+      "length": 15,
+      "temperature": 1.0,
+      "draft_temperature": 1.0,
+      "share_prefixes": true,
+      "reuse_draft_cache": true,
+      "draft_attention": "bidirectional",
+      "condition_features": "target",
+      "probability_dtype": "float64",
+      "tree_budget": 45,
+      "diffusion_support_size": 8,
+      "diffusion_spur_length": 4,
+      "prefix_strength": 1.0
+    }
+  ],
+  "official_precision": {
+    "dtype": "bfloat16",
+    "target_attention": "sdpa",
+    "draft_attention": "sdpa",
+    "allow_tf32": false
+  },
+  "fairness": {
+    "fused_scan": {
+      "comparison": "architecture_only",
+      "architecture_delta": {
+        "baseline": {
+          "method": "ddtree",
+          "name": "ddtree",
+          "paths": 1
+        },
+        "candidate": {
+          "method": "ddtree_fused_scan",
+          "name": "fused_scan",
+          "paths": 1
+        }
+      },
+      "frozen_variant_controls": {
+        "length": 15,
+        "temperature": 1.0,
+        "draft_temperature": 1.0,
+        "share_prefixes": true,
+        "reuse_draft_cache": true,
+        "draft_attention": "bidirectional",
+        "condition_features": "target",
+        "probability_dtype": "float64",
+        "tree_budget": 45,
+        "diffusion_support_size": 8,
+        "diffusion_spur_length": 4,
+        "prefix_strength": 1.0
+      },
+      "frozen_model_controls": {
+        "dtype": "bfloat16",
+        "target_attention": "sdpa",
+        "draft_attention": "sdpa",
+        "enable_thinking": false,
+        "allow_tf32": false
+      }
+    },
+    "sparse_exit_fused_scan": {
+      "comparison": "architecture_only",
+      "architecture_delta": {
+        "baseline": {
+          "method": "ddtree",
+          "name": "ddtree",
+          "paths": 1
+        },
+        "candidate": {
+          "method": "ddtree_sparse_exit_fused_scan",
+          "name": "sparse_exit_fused_scan",
+          "paths": 1
+        }
+      },
+      "frozen_variant_controls": {
+        "length": 15,
+        "temperature": 1.0,
+        "draft_temperature": 1.0,
+        "share_prefixes": true,
+        "reuse_draft_cache": true,
+        "draft_attention": "bidirectional",
+        "condition_features": "target",
+        "probability_dtype": "float64",
+        "tree_budget": 45,
+        "diffusion_support_size": 8,
+        "diffusion_spur_length": 4,
+        "prefix_strength": 1.0
+      },
+      "frozen_model_controls": {
+        "dtype": "bfloat16",
+        "target_attention": "sdpa",
+        "draft_attention": "sdpa",
+        "enable_thinking": false,
+        "allow_tf32": false
+      }
+    },
+    "lazy_softmax_fused_scan": {
+      "comparison": "architecture_only",
+      "architecture_delta": {
+        "baseline": {
+          "method": "ddtree",
+          "name": "ddtree",
+          "paths": 1
+        },
+        "candidate": {
+          "method": "ddtree_lazy_softmax_fused_scan",
+          "name": "lazy_softmax_fused_scan",
+          "paths": 1
+        }
+      },
+      "frozen_variant_controls": {
+        "length": 15,
+        "temperature": 1.0,
+        "draft_temperature": 1.0,
+        "share_prefixes": true,
+        "reuse_draft_cache": true,
+        "draft_attention": "bidirectional",
+        "condition_features": "target",
+        "probability_dtype": "float64",
+        "tree_budget": 45,
+        "diffusion_support_size": 8,
+        "diffusion_spur_length": 4,
+        "prefix_strength": 1.0
+      },
+      "frozen_model_controls": {
+        "dtype": "bfloat16",
+        "target_attention": "sdpa",
+        "draft_attention": "sdpa",
+        "enable_thinking": false,
+        "allow_tf32": false
+      }
+    },
+    "lazy_projection_fused_scan": {
+      "comparison": "architecture_only",
+      "architecture_delta": {
+        "baseline": {
+          "method": "ddtree",
+          "name": "ddtree",
+          "paths": 1
+        },
+        "candidate": {
+          "method": "ddtree_lazy_projection_fused_scan",
+          "name": "lazy_projection_fused_scan",
+          "paths": 1
+        }
+      },
+      "frozen_variant_controls": {
+        "length": 15,
+        "temperature": 1.0,
+        "draft_temperature": 1.0,
+        "share_prefixes": true,
+        "reuse_draft_cache": true,
+        "draft_attention": "bidirectional",
+        "condition_features": "target",
+        "probability_dtype": "float64",
+        "tree_budget": 45,
+        "diffusion_support_size": 8,
+        "diffusion_spur_length": 4,
+        "prefix_strength": 1.0
+      },
+      "frozen_model_controls": {
+        "dtype": "bfloat16",
+        "target_attention": "sdpa",
+        "draft_attention": "sdpa",
+        "enable_thinking": false,
+        "allow_tf32": false
+      }
+    }
+  },
+  "dflash_fairness": {
+    "comparison": "official_dflash_control",
+    "method_specific_proposals": {
+      "ddtree": "T=1 probability_tree",
+      "dflash": "greedy_argmax masked block"
+    },
+    "frozen_shared_variant_controls": {
+      "paths": 1,
+      "length": 15,
+      "temperature": 1.0,
+      "share_prefixes": true,
+      "reuse_draft_cache": true,
+      "draft_attention": "bidirectional",
+      "condition_features": "target",
+      "probability_dtype": "float64",
+      "tree_budget": 45,
+      "diffusion_support_size": 8,
+      "diffusion_spur_length": 4,
+      "prefix_strength": 1.0
+    },
+    "recorded_draft_temperatures": {
+      "ddtree": 1.0,
+      "dflash": null
+    },
+    "frozen_model_controls": {
+      "dtype": "bfloat16",
+      "target_attention": "sdpa",
+      "draft_attention": "sdpa",
+      "enable_thinking": false,
+      "allow_tf32": false
+    }
+  },
+  "prompt_policy": "synthetic development prompts; never formal or held out",
+  "prompt_sha256": [
+    "a4bb6e0223f986883290a4c5212fda779ee64e300cb7017418289332d6c6e51d",
+    "a80f05ae4a3e3c0d69d048f78133fc2a48d6e9650904ccc6cfd46daa750a10e5",
+    "7c002afff4461c1e8b0cb9e8efbed1bd06a9fe4c967e2d5fbdfd02acf889eae9",
+    "1d184cb7a2e307ec8b49a472e760afd10b0b55af3b58d66caa13f0f385445274",
+    "638e3dec57ba4041c8748a708f21b7776406fa2549a2b8b6925226a926973636",
+    "984e910b872de28d0aa1c8fde40ceea637c82ac912c3682c799496876f927579",
+    "ff4aa6bf1711e9e1c30c1a83b654ca13e4a53d0ad02ee5a8f57357752619ab2d",
+    "d34b31351cc18f9090994b9ecf7979ba5273fd3e8f2142f8bfaab9887b1f2d37",
+    "37cd6eeb1ba91775b1315e7adb0a23929f396c4d0db6e84fa8951275d682a134",
+    "c605a28fdde725c5159135c469aa67b46c9f5f30e799ea87b01bc460c8b6d0f4",
+    "9d1560658d06cf841d47bd9c28e32876fb17f25ee7a9e05b3e54b14abadf187b",
+    "ab39781e8780345c8343ba9a1be8d733c6fe8eb761e0a1a70d20e09982103a6e"
+  ],
+  "success_rule": "an eligible candidate must have DDTree CI low > 1.03, fused-scan CI low > 1.01, DFlash CI low > 1, and fewer probability rows; DDTree/DFlash CI low must exceed 1. Freeze the eligible candidate with the larger DDTree CI lower bound for fresh confirmation",
+  "source_sha256": {
+    "engine": "0c0494baa9f03b2fe4a09a92a363e2e99b69b96f627efd83c979ce46d55c1297",
+    "candidate": "0e7225c540a213cd4321b953d2d2379fafde9a37341f612721488e8ee5ecb5d4",
+    "script": "0fc80b1182e7f237cdc06d3da9b0fe4233b8fb904244bda6561c6d57505dec18",
+    "config": "b8e0043d0866289aefd8155dc5e5e496689315db7add78ff4a34fa0c85616641"
+  },
+  "runtime": {
+    "gpu": "NVIDIA H20",
+    "telemetry_start": {
+      "utc": "2026-09-10T10:32:08.615040+00:00",
+      "hostname": "autodl-container-26d148a435-8171fde0",
+      "pid": 45478,
+      "slurm_job_id": null,
+      "gpu_uuid": "b32e1465-06c0-9da4-928e-ca196f12f2cf",
+      "nvidia_smi": "GPU-b32e1465-06c0-9da4-928e-ca196f12f2cf, NVIDIA H20, P0, 37, 120.73 W, 1980 MHz, 2619 MHz, 9099 MiB, 0 %"
+    }
+  }
+}

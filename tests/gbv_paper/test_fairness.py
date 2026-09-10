@@ -38,6 +38,24 @@ def test_architecture_only_pair_emits_frozen_manifest():
     assert manifest["frozen_model_controls"]["target_attention"] == "sdpa"
 
 
+def test_tree_proposal_temperature_is_an_audited_architecture_delta():
+    baseline, _ = pair()
+    candidate = replace(
+        baseline, name="tree_block", method="ddtree_fused_scan",
+        tree_proposal_temperature=0.8,
+    )
+    manifest = assert_architecture_only_pair(baseline, candidate, MODEL)
+    assert manifest["architecture_delta"]["baseline"][
+        "tree_proposal_temperature"
+    ] is None
+    assert manifest["architecture_delta"]["candidate"][
+        "tree_proposal_temperature"
+    ] == 0.8
+    assert "tree_proposal_temperature" not in manifest[
+        "frozen_variant_controls"
+    ]
+
+
 @pytest.mark.parametrize(
     "field,value",
     [

@@ -51,6 +51,9 @@ class Variant:
     diffusion_support_size: int = 8
     diffusion_spur_length: int = 4
     prefix_strength: float = 1.0
+    # Architecture-only temperature used to score DDTree proposal prefixes.
+    # It never changes the Target sampling temperature or verifier law.
+    tree_proposal_temperature: float | None = None
 
     def validate(self) -> None:
         if self.method not in {"target", "dflash", "token", "bv", "gbv", "tree_gbv",
@@ -71,6 +74,7 @@ class Variant:
                                "ddtree_terminal_serial", "ddtree_terminal_dense",
                                "ddtree_fused", "ddtree_fused_parallel",
                                "ddtree_fused_scan",
+                               "ddtree_sparse_exit_fused_scan",
                                "ddtree_same_draw_fused",
                                "ddtree_direct_logits_fused_scan",
                                "ddtree_lazy_target",
@@ -95,6 +99,10 @@ class Variant:
             raise ValueError("Single-path token/BV baselines require paths=1")
         if self.draft_temperature is not None and (self.draft_temperature <= 0 or not math.isfinite(self.draft_temperature)):
             raise ValueError("Draft temperature must be positive")
+        if (self.tree_proposal_temperature is not None
+                and (self.tree_proposal_temperature <= 0
+                     or not math.isfinite(self.tree_proposal_temperature))):
+            raise ValueError("Tree proposal temperature must be positive")
         if self.draft_attention not in {"bidirectional", "causal"}:
             raise ValueError("Invalid draft_attention")
         if self.condition_features not in {"target", "zero"}:

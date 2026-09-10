@@ -1,0 +1,192 @@
+{
+  "kind": "architecture_level_ddtree_tbv_budget_scan",
+  "formal_complete": false,
+  "created_at_utc": "2026-09-10T11:00:38.435423+00:00",
+  "uses_cuda_graph": false,
+  "official_precision": {
+    "dtype": "bfloat16",
+    "target_attention": "sdpa",
+    "draft_attention": "sdpa",
+    "allow_tf32": false
+  },
+  "temperature": 1.0,
+  "length": 15,
+  "baseline_budget": 45,
+  "candidate_budgets": [
+    24,
+    28,
+    32,
+    36,
+    40,
+    45
+  ],
+  "candidate_tree_proposal_temperatures": [
+    0.5
+  ],
+  "candidate_sparse_exit_temperatures": [],
+  "temperature_budget_grid": true,
+  "target_sampling_temperature": 1.0,
+  "tokens": 64,
+  "repeats": 3,
+  "prompt_count": 3,
+  "prompt_policy": "synthetic development prompts only",
+  "comparisons": {
+    "adaptive_tbv_pt0p500_b24": {
+      "versus_ddtree": {
+        "candidate": "adaptive_tbv_pt0p500_b24",
+        "baseline": "ddtree_b45",
+        "speedup": 0.9039421532779265,
+        "ci95": [
+          0.7430032116989214,
+          1.1343705543847846
+        ],
+        "prompt_clusters": 3
+      },
+      "versus_dflash": {
+        "candidate": "adaptive_tbv_pt0p500_b24",
+        "baseline": "dflash",
+        "speedup": 1.4721959624139074,
+        "ci95": [
+          1.079760584378598,
+          1.756873555629136
+        ],
+        "prompt_clusters": 3
+      }
+    },
+    "adaptive_tbv_pt0p500_b28": {
+      "versus_ddtree": {
+        "candidate": "adaptive_tbv_pt0p500_b28",
+        "baseline": "ddtree_b45",
+        "speedup": 0.9549214202766722,
+        "ci95": [
+          0.8649806643934356,
+          1.1470949006248718
+        ],
+        "prompt_clusters": 3
+      },
+      "versus_dflash": {
+        "candidate": "adaptive_tbv_pt0p500_b28",
+        "baseline": "dflash",
+        "speedup": 1.5552228140439792,
+        "ci95": [
+          1.2570228674059982,
+          1.7593870111667753
+        ],
+        "prompt_clusters": 3
+      }
+    },
+    "adaptive_tbv_pt0p500_b32": {
+      "versus_ddtree": {
+        "candidate": "adaptive_tbv_pt0p500_b32",
+        "baseline": "ddtree_b45",
+        "speedup": 0.9494722488329447,
+        "ci95": [
+          0.8602720477675819,
+          1.1467675529985064
+        ],
+        "prompt_clusters": 3
+      },
+      "versus_dflash": {
+        "candidate": "adaptive_tbv_pt0p500_b32",
+        "baseline": "dflash",
+        "speedup": 1.5463480777913705,
+        "ci95": [
+          1.2501801262717827,
+          1.7394015105825804
+        ],
+        "prompt_clusters": 3
+      }
+    },
+    "adaptive_tbv_pt0p500_b36": {
+      "versus_ddtree": {
+        "candidate": "adaptive_tbv_pt0p500_b36",
+        "baseline": "ddtree_b45",
+        "speedup": 0.9565050812181414,
+        "ci95": [
+          0.8584410927846435,
+          1.1482224493901791
+        ],
+        "prompt_clusters": 3
+      },
+      "versus_dflash": {
+        "candidate": "adaptive_tbv_pt0p500_b36",
+        "baseline": "dflash",
+        "speedup": 1.5578020269232646,
+        "ci95": [
+          1.2475193127097148,
+          1.7798751352481845
+        ],
+        "prompt_clusters": 3
+      }
+    },
+    "adaptive_tbv_pt0p500_b40": {
+      "versus_ddtree": {
+        "candidate": "adaptive_tbv_pt0p500_b40",
+        "baseline": "ddtree_b45",
+        "speedup": 0.9660699586204606,
+        "ci95": [
+          0.8689246116610455,
+          1.1117040537296357
+        ],
+        "prompt_clusters": 3
+      },
+      "versus_dflash": {
+        "candidate": "adaptive_tbv_pt0p500_b40",
+        "baseline": "dflash",
+        "speedup": 1.5733797647703338,
+        "ci95": [
+          1.3564107498249467,
+          1.741992667216228
+        ],
+        "prompt_clusters": 3
+      }
+    },
+    "adaptive_tbv_pt0p500_b45": {
+      "versus_ddtree": {
+        "candidate": "adaptive_tbv_pt0p500_b45",
+        "baseline": "ddtree_b45",
+        "speedup": 0.9711822873641938,
+        "ci95": [
+          0.8646915525244551,
+          1.1376363507556753
+        ],
+        "prompt_clusters": 3
+      },
+      "versus_dflash": {
+        "candidate": "adaptive_tbv_pt0p500_b45",
+        "baseline": "dflash",
+        "speedup": 1.5817059056718992,
+        "ci95": [
+          1.3532385502987767,
+          1.733506363713169
+        ],
+        "prompt_clusters": 3
+      }
+    }
+  },
+  "best_point_estimate": "adaptive_tbv_pt0p500_b45",
+  "ddtree_vs_dflash": {
+    "candidate": "ddtree_b45",
+    "baseline": "dflash",
+    "speedup": 1.628639572870174,
+    "ci95": [
+      1.4532381117299087,
+      2.004768473396347
+    ],
+    "prompt_clusters": 3
+  },
+  "decision": "reject_budget_only_architecture",
+  "source_sha256": {
+    "engine": "3b02e856fcf609ca2bd1f4aae4fd0b3c0ab26e987e9daa2e12d61518b775c576",
+    "script": "5211e501f5f6b346eb4c82b8ed93588779e32e7f0bf21d5a78519d5e0d3cb4d0",
+    "config": "b8e0043d0866289aefd8155dc5e5e496689315db7add78ff4a34fa0c85616641"
+  },
+  "telemetry_end": {
+    "utc": "2026-09-10T11:00:38.436926+00:00",
+    "hostname": "autodl-container-26d148a435-8171fde0",
+    "pid": 46655,
+    "slurm_job_id": null,
+    "gpu_uuid": "b32e1465-06c0-9da4-928e-ca196f12f2cf",
+    "nvidia_smi": "GPU-b32e1465-06c0-9da4-928e-ca196f12f2cf, NVIDIA H20, P0, 41, 169.93 W, 1980 MHz, 2619 MHz, 9461 MiB, 45 %"
+  }
+}

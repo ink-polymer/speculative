@@ -1,0 +1,74 @@
+{
+  "kind": "architecture_level_ddtree_tbv_budget_scan",
+  "formal_complete": false,
+  "created_at_utc": "2026-09-10T10:56:44.052705+00:00",
+  "uses_cuda_graph": false,
+  "official_precision": {
+    "dtype": "bfloat16",
+    "target_attention": "sdpa",
+    "draft_attention": "sdpa",
+    "allow_tf32": false
+  },
+  "temperature": 1.0,
+  "length": 15,
+  "baseline_budget": 45,
+  "candidate_budgets": [],
+  "candidate_tree_proposal_temperatures": [
+    0.5
+  ],
+  "candidate_sparse_exit_temperatures": [],
+  "target_sampling_temperature": 1.0,
+  "tokens": 64,
+  "repeats": 5,
+  "prompt_count": 12,
+  "prompt_policy": "synthetic development prompts only",
+  "comparisons": {
+    "adaptive_tbv_pt0p500": {
+      "versus_ddtree": {
+        "candidate": "adaptive_tbv_pt0p500",
+        "baseline": "ddtree_b45",
+        "speedup": 0.9569426094667195,
+        "ci95": [
+          0.8668948689445525,
+          1.0738532871025313
+        ],
+        "prompt_clusters": 12
+      },
+      "versus_dflash": {
+        "candidate": "adaptive_tbv_pt0p500",
+        "baseline": "dflash",
+        "speedup": 1.2914115872822038,
+        "ci95": [
+          1.1568638311560755,
+          1.4464639311095753
+        ],
+        "prompt_clusters": 12
+      }
+    }
+  },
+  "best_point_estimate": "adaptive_tbv_pt0p500",
+  "ddtree_vs_dflash": {
+    "candidate": "ddtree_b45",
+    "baseline": "dflash",
+    "speedup": 1.3495183248260578,
+    "ci95": [
+      1.1667830985136307,
+      1.5417163528770403
+    ],
+    "prompt_clusters": 12
+  },
+  "decision": "reject_budget_only_architecture",
+  "source_sha256": {
+    "engine": "3b02e856fcf609ca2bd1f4aae4fd0b3c0ab26e987e9daa2e12d61518b775c576",
+    "script": "f592e51cdaef5d4594ae17e03c0edb0b3d342b0bb429c01b1e59fc05a294b5c5",
+    "config": "b8e0043d0866289aefd8155dc5e5e496689315db7add78ff4a34fa0c85616641"
+  },
+  "telemetry_end": {
+    "utc": "2026-09-10T10:56:44.055452+00:00",
+    "hostname": "autodl-container-26d148a435-8171fde0",
+    "pid": 46479,
+    "slurm_job_id": null,
+    "gpu_uuid": "b32e1465-06c0-9da4-928e-ca196f12f2cf",
+    "nvidia_smi": "GPU-b32e1465-06c0-9da4-928e-ca196f12f2cf, NVIDIA H20, P0, 41, 176.03 W, 1980 MHz, 2619 MHz, 9463 MiB, 38 %"
+  }
+}

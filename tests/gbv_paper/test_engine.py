@@ -35,6 +35,7 @@ def test_tree_merge_keeps_candidate_multiplicity():
 @pytest.mark.parametrize(
     "method",
     ["ddtree_fused", "ddtree_fused_parallel", "ddtree_fused_scan",
+     "ddtree_sparse_exit_fused_scan",
      "ddtree_same_draw_fused",
      "ddtree_direct_logits_fused_scan",
      "ddtree_lazy_target", "ddtree_lazy_target_deferred_leaf",
@@ -56,6 +57,8 @@ def test_fused_tree_methods_are_valid_probability_tree_variants(method):
     ("ddtree_fused", "tree_verify_ancestral_fused"),
     ("ddtree_fused_parallel", "tree_verify_ancestral_fused_parallel"),
     ("ddtree_fused_scan", "tree_verify_ancestral_fused_scan"),
+    ("ddtree_sparse_exit_fused_scan",
+     "tree_verify_ancestral_sparse_exit_fused_scan"),
     ("ddtree_same_draw_fused", "tree_verify_ancestral_same_draw_fused"),
 ])
 def test_fused_tree_methods_dispatch_in_generation(
