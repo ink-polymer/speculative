@@ -237,7 +237,7 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
             self.contextual_history_window = 12
             self.contextual_minimum_support = .90
             self.contextual_mass_retention_ratio = .995
-            self.contextual_floor_budget = 80
+            self.contextual_floor_budget = 100
             self.contextual_fallback_rounds = 2
             self._safe_required_budgets = []
             self._rounds_since_safe = 0

@@ -196,11 +196,11 @@ def test_contextual_v8_uses_free_safe_labels_refreshes_and_falls_back():
     assert all(builder._acceptance_observations[value] == 3
                for value in builder.budget_candidates)
 
-    # The tail carries negligible mass and every safe label fits, so B80 is
+    # The tail carries negligible mass and every safe label fits, so B100 is
     # admitted.  Low realized acceptance immediately forces a B128 fallback.
-    assert builder._select_node_count(scores) == 80
+    assert builder._select_node_count(scores) == 100
     assert builder._guard_diagnostics["reason"] == "contextual_high_retention_prefix"
-    builder.observe(tree_nodes=80, draft_ms=2., verify_ms=7.,
+    builder.observe(tree_nodes=100, draft_ms=2., verify_ms=7.,
                     accepted_draft_tokens=1,
                     accepted_node_indices=[0, 1])
     assert builder._select_node_count(scores) == 128

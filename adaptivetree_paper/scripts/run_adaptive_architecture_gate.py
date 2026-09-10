@@ -181,6 +181,19 @@ def main():
                             for row in decisions)
                         for budget in adaptive_cfg["budget_candidates"]
                     } if decisions else {},
+                    "selected_budget_sequence": [
+                        (row.get("decision") or {}).get("budget")
+                        for row in decisions
+                    ] if decisions else [],
+                    "guard_reason_counts": {
+                        reason: sum((row.get("guard") or {}).get("reason") == reason
+                                    for row in decisions)
+                        for reason in sorted({
+                            (row.get("guard") or {}).get("reason")
+                            for row in decisions
+                            if (row.get("guard") or {}).get("reason") is not None
+                        })
+                    } if decisions else {},
                     "topk_width_counts": {
                         str(width): sum(row.get("topk_width") == width
                                         for row in decisions)
