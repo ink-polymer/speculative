@@ -15,7 +15,7 @@ from dflash_specblock.rank_head import HeuristicRanker
 
 from .config import load_config
 from .engine import load_models
-from .slot_mixer import CausalSlotMixer
+from .slot_mixer import CausalSlotMixer, ResidualSlotMLP
 
 
 def parser():
@@ -30,6 +30,9 @@ def parser():
     result.add_argument("--seed", type=int, default=2026)
     result.add_argument("--validation-fraction", type=float, default=.1)
     result.add_argument("--patience", type=int, default=2)
+    result.add_argument("--adapter-kind", choices=("causal-mixer", "slot-mlp"),
+                        default="causal-mixer")
+    result.add_argument("--bottleneck", type=int, default=512)
     return result
 
 
@@ -75,11 +78,15 @@ def main():
         ranker=HeuristicRanker(),
         block_size=15,
     )
-    mixer = CausalSlotMixer(
-        hidden_size=int(engine.draft.config.hidden_size),
-        rank=64,
-        kernel_size=3,
-    ).to(device).train()
+    hidden_size = int(engine.draft.config.hidden_size)
+    if args.adapter_kind == "slot-mlp":
+        mixer = ResidualSlotMLP(
+            hidden_size=hidden_size, bottleneck=args.bottleneck,
+        ).to(device).train()
+    else:
+        mixer = CausalSlotMixer(
+            hidden_size=hidden_size, rank=64, kernel_size=3,
+        ).to(device).train()
     optimizer = torch.optim.AdamW(mixer.parameters(), lr=args.learning_rate)
     train_path = Path(args.train_data)
     texts = load_texts(train_path)
@@ -140,6 +147,8 @@ def main():
         return total / len(validation_anchors)
 
     updates = 0
+    initial_validation_loss = measure_validation_loss()
+    print(f"initial_validation={initial_validation_loss:.6f}", flush=True)
     best_validation_loss = float("inf")
     best_epoch = 0
     best_state = None
@@ -205,10 +214,15 @@ def main():
     torch.save({
         "state_dict": best_state,
         "metadata": {
-            "architecture": "parallel_causal_slot_mixer_v1",
+            "architecture": (
+                "residual_slot_mlp_v1" if args.adapter_kind == "slot-mlp"
+                else "parallel_causal_slot_mixer_v1"),
             "hidden_size": mixer.hidden_size,
-            "rank": mixer.rank,
-            "kernel_size": mixer.kernel_size,
+            **({"bottleneck": mixer.bottleneck}
+               if args.adapter_kind == "slot-mlp" else {
+                   "rank": mixer.rank,
+                   "kernel_size": mixer.kernel_size,
+               }),
             "updates": updates,
             "epochs_requested": args.epochs,
             "epochs_completed": len(epoch_records),
@@ -221,6 +235,7 @@ def main():
             "validation_examples": len(validation_anchors),
             "validation_fraction": args.validation_fraction,
             "patience": args.patience,
+            "initial_validation_loss": initial_validation_loss,
             "training_sha256": file_sha256(train_path),
             "target": model_cfg["target"],
             "target_revision": model_cfg["target_revision"],

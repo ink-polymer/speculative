@@ -424,6 +424,14 @@ def test_prebuild_b192_slot_mixer_is_strength_bounded():
         builder.adapt_draft_hidden(hidden)
 
 
+def test_residual_slot_mlp_initializes_as_exact_identity():
+    from dflash_specblock.rank_head import ResidualSlotMLP
+
+    hidden = torch.randn(2, 15, 32)
+    adapter = ResidualSlotMLP(32, bottleneck=8)
+    assert torch.equal(adapter(hidden), hidden)
+
+
 def test_guarded_raw_tree_matches_fixed_ddtree_at_b128():
     from dflash_specblock.paper.adaptive_official import build_with_controller
     builder = make_paper_builder(cfg(), B128_ABLATION_VARIANT)

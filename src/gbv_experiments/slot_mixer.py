@@ -48,6 +48,29 @@ class CausalSlotMixer(nn.Module):
         return hidden + self.up(F.silu(mixed)).to(hidden.dtype)
 
 
+class ResidualSlotMLP(nn.Module):
+    """Position-wise SwiGLU residual adapter for DFlash slot states."""
+
+    def __init__(self, hidden_size: int, bottleneck: int = 512):
+        super().__init__()
+        if hidden_size < 1 or bottleneck < 1:
+            raise ValueError("Invalid residual slot MLP dimensions")
+        self.hidden_size = int(hidden_size)
+        self.bottleneck = int(bottleneck)
+        self.norm = nn.RMSNorm(hidden_size)
+        self.in_proj = nn.Linear(hidden_size, 2 * bottleneck, bias=False)
+        self.out_proj = nn.Linear(bottleneck, hidden_size, bias=False)
+        nn.init.zeros_(self.out_proj.weight)
+
+    def forward(self, hidden: torch.Tensor) -> torch.Tensor:
+        if hidden.ndim != 3 or hidden.shape[-1] != self.hidden_size:
+            raise ValueError("Slot MLP expects [batch, slots, hidden_size]")
+        dtype = self.in_proj.weight.dtype
+        gate, value = self.in_proj(self.norm(hidden.to(dtype))).chunk(2, dim=-1)
+        residual = self.out_proj(F.silu(gate) * value)
+        return hidden + residual.to(hidden.dtype)
+
+
 class CandidateRatioTransportHead(nn.Module):
     """Correct only tree-eligible logits with a hidden/token ratio score.
 

@@ -63,6 +63,7 @@ def parse_args():
     parser.add_argument("--ratio-transport-strength", type=float, default=1.0)
     parser.add_argument("--slot-mixer-checkpoint", type=Path)
     parser.add_argument("--slot-mixer-strength", type=float, default=1.0)
+    parser.add_argument("--slot-mlp-checkpoint", type=Path)
     parser.add_argument("--contextual-mass-retention-ratio", type=float)
     parser.add_argument("--contextual-minimum-history", type=int)
     parser.add_argument("--contextual-minimum-support", type=float)
@@ -148,9 +149,12 @@ def main():
     if (args.slot_mixer_checkpoint is not None
             and not args.slot_mixer_checkpoint.is_file()):
         raise FileNotFoundError(args.slot_mixer_checkpoint)
+    if (args.slot_mlp_checkpoint is not None
+            and not args.slot_mlp_checkpoint.is_file()):
+        raise FileNotFoundError(args.slot_mlp_checkpoint)
     if sum(value is not None for value in (
             args.rank_head_checkpoint, args.ratio_transport_checkpoint,
-            args.slot_mixer_checkpoint)) > 1:
+            args.slot_mixer_checkpoint, args.slot_mlp_checkpoint)) > 1:
         raise ValueError("learned proposal adapters are mutually exclusive")
     if (not math.isfinite(args.ratio_transport_strength)
             or not 0. <= args.ratio_transport_strength <= 2.):
@@ -221,6 +225,18 @@ def main():
         from dflash_specblock.rank_head import load_slot_mixer
         slot_mixer = load_slot_mixer(
             args.slot_mixer_checkpoint, int(draft.config.hidden_size), device,
+            expected_metadata={
+                "target": target_name,
+                "target_revision": PINNED_MODEL_REVISIONS[target_name],
+                "draft": draft_name,
+                "draft_revision": PINNED_MODEL_REVISIONS[draft_name],
+            },
+            dtype=draft.dtype,
+        )
+    if args.slot_mlp_checkpoint is not None:
+        from dflash_specblock.rank_head import load_slot_mlp
+        slot_mixer = load_slot_mlp(
+            args.slot_mlp_checkpoint, int(draft.config.hidden_size), device,
             expected_metadata={
                 "target": target_name,
                 "target_revision": PINNED_MODEL_REVISIONS[target_name],
@@ -478,12 +494,17 @@ def main():
             "training_data_separation_requires_formal_audit":True,
         } if args.ratio_transport_checkpoint is not None else None),
         "slot_mixer":({
-            "checkpoint":str(args.slot_mixer_checkpoint.resolve()),
+            "kind":("residual_slot_mlp_v1" if args.slot_mlp_checkpoint
+                    else "parallel_causal_slot_mixer_v1"),
+            "checkpoint":str((args.slot_mixer_checkpoint
+                              or args.slot_mlp_checkpoint).resolve()),
             "sha256":hashlib.sha256(
-                args.slot_mixer_checkpoint.read_bytes()).hexdigest(),
+                (args.slot_mixer_checkpoint
+                 or args.slot_mlp_checkpoint).read_bytes()).hexdigest(),
             "strength":args.slot_mixer_strength,
             "training_data_separation_requires_formal_audit":True,
-        } if args.slot_mixer_checkpoint is not None else None),
+        } if (args.slot_mixer_checkpoint is not None
+              or args.slot_mlp_checkpoint is not None) else None),
         "fixed_b192_control_config":(
             controller_config(fixed_b192_control_builder())
             if args.include_fixed_b192_control else None),

@@ -247,6 +247,62 @@ class CausalSlotMixer(nn.Module):
         return hidden + self.up(F.silu(mixed)).to(hidden.dtype)
 
 
+class ResidualSlotMLP(nn.Module):
+    """Position-wise SwiGLU residual adapter for DFlash slot states."""
+
+    def __init__(self, hidden_size: int, bottleneck: int = 512) -> None:
+        super().__init__()
+        if hidden_size < 1 or bottleneck < 1:
+            raise ValueError("Invalid residual slot MLP dimensions")
+        self.hidden_size = int(hidden_size)
+        self.bottleneck = int(bottleneck)
+        self.norm = nn.RMSNorm(hidden_size)
+        self.in_proj = nn.Linear(hidden_size, 2 * bottleneck, bias=False)
+        self.out_proj = nn.Linear(bottleneck, hidden_size, bias=False)
+        nn.init.zeros_(self.out_proj.weight)
+
+    def forward(self, hidden: torch.Tensor) -> torch.Tensor:
+        if hidden.ndim != 3 or hidden.shape[-1] != self.hidden_size:
+            raise ValueError("Slot MLP expects [batch, slots, hidden_size]")
+        dtype = self.in_proj.weight.dtype
+        gate, value = self.in_proj(self.norm(hidden.to(dtype))).chunk(2, dim=-1)
+        residual = self.out_proj(F.silu(gate) * value)
+        return hidden + residual.to(hidden.dtype)
+
+
+def load_slot_mlp(
+    checkpoint: str | Path,
+    hidden_size: int,
+    device: torch.device,
+    expected_metadata: Mapping[str, Any] | None = None,
+    dtype: torch.dtype | None = None,
+) -> ResidualSlotMLP:
+    """Strictly load and freeze a residual slot-MLP checkpoint."""
+    payload = torch.load(Path(checkpoint), map_location="cpu", weights_only=True)
+    if not isinstance(payload, dict) or set(payload) < {"state_dict", "metadata"}:
+        raise ValueError("slot-MLP checkpoint requires state_dict and metadata")
+    metadata = payload["metadata"]
+    required = {
+        "architecture": "residual_slot_mlp_v1",
+        "hidden_size": int(hidden_size),
+        **dict(expected_metadata or {}),
+    }
+    missing = sorted(set(required) - set(metadata))
+    mismatched = {
+        key: (metadata.get(key), value)
+        for key, value in required.items() if metadata.get(key) != value
+    }
+    if missing or mismatched or int(metadata.get("updates", 0)) < 1:
+        raise ValueError(
+            f"slot-MLP checkpoint contract failed: missing={missing}, "
+            f"mismatched={mismatched}, updates={metadata.get('updates')}"
+        )
+    model = ResidualSlotMLP(
+        hidden_size=hidden_size, bottleneck=int(metadata["bottleneck"]))
+    model.load_state_dict(payload["state_dict"], strict=True)
+    return model.to(device=device, dtype=dtype).eval().requires_grad_(False)
+
+
 def load_slot_mixer(
     checkpoint: str | Path,
     hidden_size: int,
