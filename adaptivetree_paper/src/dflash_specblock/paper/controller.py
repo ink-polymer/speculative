@@ -384,8 +384,8 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
         if self.rank_head is not None or self.ratio_transport_head is not None:
             raise ValueError("slot mixer cannot be combined with score calibration")
         strength = float(self.slot_mixer_strength)
-        if not math.isfinite(strength) or not 0. <= strength <= 2.:
-            raise ValueError("slot_mixer_strength must be in [0, 2]")
+        if not math.isfinite(strength) or not -2. <= strength <= 2.:
+            raise ValueError("slot_mixer_strength must be in [-2, 2]")
         mixed = self.slot_mixer(draft_hidden)
         return draft_hidden + strength * (mixed - draft_hidden)
 

@@ -156,8 +156,8 @@ def main():
             or not 0. <= args.ratio_transport_strength <= 2.):
         raise ValueError("ratio transport strength must be in [0, 2]")
     if (not math.isfinite(args.slot_mixer_strength)
-            or not 0. <= args.slot_mixer_strength <= 2.):
-        raise ValueError("slot mixer strength must be in [0, 2]")
+            or not -2. <= args.slot_mixer_strength <= 2.):
+        raise ValueError("slot mixer strength must be in [-2, 2]")
     for value in (args.contextual_minimum_history,
                   args.contextual_refresh_interval,
                   args.contextual_floor_budget):
