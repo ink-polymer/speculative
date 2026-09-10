@@ -1,0 +1,1212 @@
+{
+  "kind": "prefix_conditional_core_spur_development_gate",
+  "formal_complete": false,
+  "created_at_utc": "2026-09-10T08:36:46.055512+00:00",
+  "uses_cuda_graph": false,
+  "official_precision": {
+    "dtype": "bfloat16",
+    "target_attention": "sdpa",
+    "draft_attention": "sdpa",
+    "allow_tf32": false
+  },
+  "frozen_common_controls": {
+    "temperature": 1.0,
+    "length": 15,
+    "tree_budget": 45,
+    "maximum_draft_forwards_per_round": 1,
+    "maximum_target_forwards_per_round": 1
+  },
+  "tokens": 48,
+  "repeats": 1,
+  "prompt_policy": "synthetic development prompts only",
+  "aggregate": {
+    "dflash": {
+      "records": 3,
+      "mean_official_tpot_ms": 10.239310045209196,
+      "mean_committed_tokens_per_round": 3.3810541310541313,
+      "mean_round_count": 14.333333333333334,
+      "mean_tree_nodes": 15.0
+    },
+    "ddtree": {
+      "records": 3,
+      "mean_official_tpot_ms": 6.582712625256843,
+      "mean_committed_tokens_per_round": 6.17962962962963,
+      "mean_round_count": 8.666666666666666,
+      "mean_tree_nodes": 45.0
+    },
+    "unconditioned_spur_6": {
+      "records": 3,
+      "mean_official_tpot_ms": 6.902656802493666,
+      "mean_committed_tokens_per_round": 6.124242424242425,
+      "mean_round_count": 8.666666666666666,
+      "mean_tree_nodes": 45.0
+    },
+    "prefix_spur_4": {
+      "records": 3,
+      "mean_official_tpot_ms": 7.330483343038295,
+      "mean_committed_tokens_per_round": 5.77457264957265,
+      "mean_round_count": 9.0,
+      "mean_tree_nodes": 45.0
+    },
+    "prefix_spur_6": {
+      "records": 3,
+      "mean_official_tpot_ms": 7.254269077546066,
+      "mean_committed_tokens_per_round": 5.620670995670996,
+      "mean_round_count": 8.666666666666666,
+      "mean_tree_nodes": 45.0
+    },
+    "prefix_tree_spur_4": {
+      "records": 3,
+      "mean_official_tpot_ms": 7.053174776956439,
+      "mean_committed_tokens_per_round": 5.657407407407407,
+      "mean_round_count": 9.0,
+      "mean_tree_nodes": 45.0
+    },
+    "prefix_tree_spur_6": {
+      "records": 3,
+      "mean_official_tpot_ms": 7.571042360117038,
+      "mean_committed_tokens_per_round": 5.11031746031746,
+      "mean_round_count": 9.666666666666666,
+      "mean_tree_nodes": 45.0
+    }
+  },
+  "comparisons": {
+    "prefix_spur_4": {
+      "versus_ddtree": {
+        "candidate": "prefix_spur_4",
+        "baseline": "ddtree",
+        "speedup": 0.8869758616092877,
+        "ci95": [
+          0.771258894044975,
+          1.0425065068793935
+        ],
+        "prompt_clusters": 3
+      },
+      "versus_dflash": {
+        "candidate": "prefix_spur_4",
+        "baseline": "dflash",
+        "speedup": 1.4455890284892265,
+        "ci95": [
+          1.214572543400003,
+          1.733425560703804
+        ],
+        "prompt_clusters": 3
+      },
+      "versus_unconditioned": {
+        "candidate": "prefix_spur_4",
+        "baseline": "unconditioned_spur_6",
+        "speedup": 0.9408052551072069,
+        "ci95": [
+          0.8156538378789302,
+          1.227788281704771
+        ],
+        "prompt_clusters": 3
+      }
+    },
+    "prefix_spur_6": {
+      "versus_ddtree": {
+        "candidate": "prefix_spur_6",
+        "baseline": "ddtree",
+        "speedup": 0.8694507536380094,
+        "ci95": [
+          0.6567159549377395,
+          1.0109764482436139
+        ],
+        "prompt_clusters": 3
+      },
+      "versus_dflash": {
+        "candidate": "prefix_spur_6",
+        "baseline": "dflash",
+        "speedup": 1.4170266911101643,
+        "ci95": [
+          1.3854261308322204,
+          1.4759871571020127
+        ],
+        "prompt_clusters": 3
+      },
+      "versus_unconditioned": {
+        "candidate": "prefix_spur_6",
+        "baseline": "unconditioned_spur_6",
+        "speedup": 0.9222165714808168,
+        "ci95": [
+          0.7080227589956665,
+          1.190654473657515
+        ],
+        "prompt_clusters": 3
+      }
+    },
+    "prefix_tree_spur_4": {
+      "versus_ddtree": {
+        "candidate": "prefix_tree_spur_4",
+        "baseline": "ddtree",
+        "speedup": 0.9124851489163582,
+        "ci95": [
+          0.8162008610454828,
+          0.9773620494142066
+        ],
+        "prompt_clusters": 3
+      },
+      "versus_dflash": {
+        "candidate": "prefix_tree_spur_4",
+        "baseline": "dflash",
+        "speedup": 1.4871639432662473,
+        "ci95": [
+          1.3108469709472836,
+          1.8344338666675912
+        ],
+        "prompt_clusters": 3
+      },
+      "versus_unconditioned": {
+        "candidate": "prefix_tree_spur_4",
+        "baseline": "unconditioned_spur_6",
+        "speedup": 0.9678626673675456,
+        "ci95": [
+          0.8799676346935238,
+          1.1216816216429675
+        ],
+        "prompt_clusters": 3
+      }
+    },
+    "prefix_tree_spur_6": {
+      "versus_ddtree": {
+        "candidate": "prefix_tree_spur_6",
+        "baseline": "ddtree",
+        "speedup": 0.8361982998557637,
+        "ci95": [
+          0.6939342895756528,
+          0.9923330775640468
+        ],
+        "prompt_clusters": 3
+      },
+      "versus_dflash": {
+        "candidate": "prefix_tree_spur_6",
+        "baseline": "dflash",
+        "speedup": 1.362832000545818,
+        "ci95": [
+          1.1686356352184302,
+          1.5596363870639878
+        ],
+        "prompt_clusters": 3
+      },
+      "versus_unconditioned": {
+        "candidate": "prefix_tree_spur_6",
+        "baseline": "unconditioned_spur_6",
+        "speedup": 0.8869460701993209,
+        "ci95": [
+          0.7481488253374804,
+          0.9999924807960547
+        ],
+        "prompt_clusters": 3
+      }
+    }
+  },
+  "ddtree_vs_dflash": {
+    "candidate": "ddtree",
+    "baseline": "dflash",
+    "speedup": 1.6297952301277028,
+    "ci95": [
+      1.376344337373035,
+      2.2475274827789815
+    ],
+    "prompt_clusters": 3
+  },
+  "best_point_estimate": "prefix_tree_spur_4",
+  "decision": "optimize_or_reject_prefix_head",
+  "diagnostic_profiles": {
+    "dflash": {
+      "official_tpot_ms": 12.653670040890574,
+      "mean_committed_tokens": 2.611111111111111,
+      "stage_profile": {
+        "diagnostic_only": true,
+        "eligible_for_primary_timing": false,
+        "profile_instrumentation_enabled": true,
+        "interpretation": {
+          "host_ms": "Python/CPU interval; on CUDA this is mainly launch and orchestration time",
+          "cuda_event_ms": "GPU stream interval; use this ranking for GPU-kernel hotspots",
+          "unattributed_ms": "synchronized wall time not enclosed by a named stage"
+        },
+        "synchronized_wall_ms": {
+          "e2e": 638.1049007177353,
+          "decode_including_first_draft": 611.6378270089626,
+          "official_scope_decode": 607.3761619627476
+        },
+        "host_decode_scope": {
+          "measured_stage_ms": {
+            "draft_prefill": 4.067946225404739,
+            "first_draft_boundary_sync": 0.17824769020080566,
+            "tree_build": 3.8297735154628754,
+            "tree_compile": 4.781730473041534,
+            "verify": 460.995327681303,
+            "select_and_correct": 44.69722881913185,
+            "stop_check": 0.4987381398677826,
+            "commit": 22.300276905298233,
+            "draft": 69.63924691081047
+          },
+          "measured_stage_total_ms": 610.9885163605213,
+          "ranked_stages": [
+            {
+              "stage": "verify",
+              "milliseconds": 460.995327681303,
+              "percent_of_measured_stages": 75.45073521632067
+            },
+            {
+              "stage": "draft",
+              "milliseconds": 69.63924691081047,
+              "percent_of_measured_stages": 11.397799638793698
+            },
+            {
+              "stage": "select_and_correct",
+              "milliseconds": 44.69722881913185,
+              "percent_of_measured_stages": 7.3155595600028755
+            },
+            {
+              "stage": "commit",
+              "milliseconds": 22.300276905298233,
+              "percent_of_measured_stages": 3.64986841948101
+            },
+            {
+              "stage": "tree_compile",
+              "milliseconds": 4.781730473041534,
+              "percent_of_measured_stages": 0.7826219879753051
+            },
+            {
+              "stage": "draft_prefill",
+              "milliseconds": 4.067946225404739,
+              "percent_of_measured_stages": 0.6657974931568759
+            },
+            {
+              "stage": "tree_build",
+              "milliseconds": 3.8297735154628754,
+              "percent_of_measured_stages": 0.6268159569144947
+            },
+            {
+              "stage": "stop_check",
+              "milliseconds": 0.4987381398677826,
+              "percent_of_measured_stages": 0.08162807098873459
+            },
+            {
+              "stage": "first_draft_boundary_sync",
+              "milliseconds": 0.17824769020080566,
+              "percent_of_measured_stages": 0.029173656366338056
+            }
+          ],
+          "longest_stage": "verify",
+          "unattributed_ms": 0.6493106484413147
+        },
+        "host_official_scope": {
+          "measured_stage_ms": {
+            "tree_build": 3.8297735154628754,
+            "tree_compile": 4.781730473041534,
+            "verify": 460.995327681303,
+            "select_and_correct": 44.69722881913185,
+            "stop_check": 0.4987381398677826,
+            "commit": 22.300276905298233,
+            "draft": 69.63924691081047
+          },
+          "measured_stage_total_ms": 606.7423224449158,
+          "ranked_stages": [
+            {
+              "stage": "verify",
+              "milliseconds": 460.995327681303,
+              "percent_of_measured_stages": 75.97876571782338
+            },
+            {
+              "stage": "draft",
+              "milliseconds": 69.63924691081047,
+              "percent_of_measured_stages": 11.477565407040284
+            },
+            {
+              "stage": "select_and_correct",
+              "milliseconds": 44.69722881913185,
+              "percent_of_measured_stages": 7.366756391580014
+            },
+            {
+              "stage": "commit",
+              "milliseconds": 22.300276905298233,
+              "percent_of_measured_stages": 3.6754114688155455
+            },
+            {
+              "stage": "tree_compile",
+              "milliseconds": 4.781730473041534,
+              "percent_of_measured_stages": 0.7880990489954907
+            },
+            {
+              "stage": "tree_build",
+              "milliseconds": 3.8297735154628754,
+              "percent_of_measured_stages": 0.6312026331096375
+            },
+            {
+              "stage": "stop_check",
+              "milliseconds": 0.4987381398677826,
+              "percent_of_measured_stages": 0.082199332635653
+            }
+          ],
+          "longest_stage": "verify",
+          "unattributed_ms": 0.6338395178318024
+        },
+        "cuda_decode_scope": {
+          "measured_stage_ms": {
+            "draft_prefill": 4.215775966644287,
+            "first_draft_boundary_sync": 0.015168000012636185,
+            "tree_build": 1.0808640010654926,
+            "tree_compile": 4.5460799634456635,
+            "verify": 492.4043502807617,
+            "select_and_correct": 13.07043194770813,
+            "stop_check": 0.19324800092726946,
+            "commit": 22.102367997169495,
+            "draft": 72.15775990486145
+          },
+          "measured_stage_total_ms": 609.7860460625961,
+          "ranked_stages": [
+            {
+              "stage": "verify",
+              "milliseconds": 492.4043502807617,
+              "percent_of_measured_stages": 80.75034734891508
+            },
+            {
+              "stage": "draft",
+              "milliseconds": 72.15775990486145,
+              "percent_of_measured_stages": 11.83329142586747
+            },
+            {
+              "stage": "commit",
+              "milliseconds": 22.102367997169495,
+              "percent_of_measured_stages": 3.624610326832672
+            },
+            {
+              "stage": "select_and_correct",
+              "milliseconds": 13.07043194770813,
+              "percent_of_measured_stages": 2.1434455629321527
+            },
+            {
+              "stage": "tree_compile",
+              "milliseconds": 4.5460799634456635,
+              "percent_of_measured_stages": 0.7455204973612984
+            },
+            {
+              "stage": "draft_prefill",
+              "milliseconds": 4.215775966644287,
+              "percent_of_measured_stages": 0.6913533023370506
+            },
+            {
+              "stage": "tree_build",
+              "milliseconds": 1.0808640010654926,
+              "percent_of_measured_stages": 0.17725299029793462
+            },
+            {
+              "stage": "stop_check",
+              "milliseconds": 0.19324800092726946,
+              "percent_of_measured_stages": 0.031691115625730806
+            },
+            {
+              "stage": "first_draft_boundary_sync",
+              "milliseconds": 0.015168000012636185,
+              "percent_of_measured_stages": 0.002487429830606381
+            }
+          ],
+          "longest_stage": "verify"
+        },
+        "cuda_official_scope": {
+          "measured_stage_ms": {
+            "tree_build": 1.0808640010654926,
+            "tree_compile": 4.5460799634456635,
+            "verify": 492.4043502807617,
+            "select_and_correct": 13.07043194770813,
+            "stop_check": 0.19324800092726946,
+            "commit": 22.102367997169495,
+            "draft": 72.15775990486145
+          },
+          "measured_stage_total_ms": 605.5551020959392,
+          "ranked_stages": [
+            {
+              "stage": "verify",
+              "milliseconds": 492.4043502807617,
+              "percent_of_measured_stages": 81.31454075384029
+            },
+            {
+              "stage": "draft",
+              "milliseconds": 72.15775990486145,
+              "percent_of_measured_stages": 11.915969274325322
+            },
+            {
+              "stage": "commit",
+              "milliseconds": 22.102367997169495,
+              "percent_of_measured_stages": 3.6499350629974177
+            },
+            {
+              "stage": "select_and_correct",
+              "milliseconds": 13.07043194770813,
+              "percent_of_measured_stages": 2.1584215709633896
+            },
+            {
+              "stage": "tree_compile",
+              "milliseconds": 4.5460799634456635,
+              "percent_of_measured_stages": 0.75072936347342
+            },
+            {
+              "stage": "tree_build",
+              "milliseconds": 1.0808640010654926,
+              "percent_of_measured_stages": 0.17849143658841624
+            },
+            {
+              "stage": "stop_check",
+              "milliseconds": 0.19324800092726946,
+              "percent_of_measured_stages": 0.03191253781173704
+            }
+          ],
+          "longest_stage": "verify"
+        }
+      }
+    },
+    "ddtree": {
+      "official_tpot_ms": 8.789838679755727,
+      "mean_committed_tokens": 3.9166666666666665,
+      "stage_profile": {
+        "diagnostic_only": true,
+        "eligible_for_primary_timing": false,
+        "profile_instrumentation_enabled": true,
+        "interpretation": {
+          "host_ms": "Python/CPU interval; on CUDA this is mainly launch and orchestration time",
+          "cuda_event_ms": "GPU stream interval; use this ranking for GPU-kernel hotspots",
+          "unattributed_ms": "synchronized wall time not enclosed by a named stage"
+        },
+        "synchronized_wall_ms": {
+          "e2e": 453.6629021167755,
+          "decode_including_first_draft": 427.77101695537567,
+          "official_scope_decode": 421.9122566282749
+        },
+        "host_decode_scope": {
+          "measured_stage_ms": {
+            "draft_prefill": 4.038318991661072,
+            "first_draft_boundary_sync": 1.804310828447342,
+            "tree_build": 23.69455248117447,
+            "tree_compile": 4.704080522060394,
+            "verify": 294.9669063091278,
+            "select_and_correct": 38.764577358961105,
+            "stop_check": 0.31419098377227783,
+            "commit": 15.003088861703873,
+            "draft": 44.036805629730225
+          },
+          "measured_stage_total_ms": 427.32683196663857,
+          "ranked_stages": [
+            {
+              "stage": "verify",
+              "milliseconds": 294.9669063091278,
+              "percent_of_measured_stages": 69.02606722625737
+            },
+            {
+              "stage": "draft",
+              "milliseconds": 44.036805629730225,
+              "percent_of_measured_stages": 10.305181499384101
+            },
+            {
+              "stage": "select_and_correct",
+              "milliseconds": 38.764577358961105,
+              "percent_of_measured_stages": 9.071411963662385
+            },
+            {
+              "stage": "tree_build",
+              "milliseconds": 23.69455248117447,
+              "percent_of_measured_stages": 5.544831428470727
+            },
+            {
+              "stage": "commit",
+              "milliseconds": 15.003088861703873,
+              "percent_of_measured_stages": 3.510916642574685
+            },
+            {
+              "stage": "tree_compile",
+              "milliseconds": 4.704080522060394,
+              "percent_of_measured_stages": 1.1008156217130878
+            },
+            {
+              "stage": "draft_prefill",
+              "milliseconds": 4.038318991661072,
+              "percent_of_measured_stages": 0.9450188215600615
+            },
+            {
+              "stage": "first_draft_boundary_sync",
+              "milliseconds": 1.804310828447342,
+              "percent_of_measured_stages": 0.4222320466382988
+            },
+            {
+              "stage": "stop_check",
+              "milliseconds": 0.31419098377227783,
+              "percent_of_measured_stages": 0.07352474973928311
+            }
+          ],
+          "longest_stage": "verify",
+          "unattributed_ms": 0.4441849887371063
+        },
+        "host_official_scope": {
+          "measured_stage_ms": {
+            "tree_build": 23.69455248117447,
+            "tree_compile": 4.704080522060394,
+            "verify": 294.9669063091278,
+            "select_and_correct": 38.764577358961105,
+            "stop_check": 0.31419098377227783,
+            "commit": 15.003088861703873,
+            "draft": 44.036805629730225
+          },
+          "measured_stage_total_ms": 421.48420214653015,
+          "ranked_stages": [
+            {
+              "stage": "verify",
+              "milliseconds": 294.9669063091278,
+              "percent_of_measured_stages": 69.98290915932877
+            },
+            {
+              "stage": "draft",
+              "milliseconds": 44.036805629730225,
+              "percent_of_measured_stages": 10.448032311877897
+            },
+            {
+              "stage": "select_and_correct",
+              "milliseconds": 38.764577358961105,
+              "percent_of_measured_stages": 9.197160216573074
+            },
+            {
+              "stage": "tree_build",
+              "milliseconds": 23.69455248117447,
+              "percent_of_measured_stages": 5.621694089719878
+            },
+            {
+              "stage": "commit",
+              "milliseconds": 15.003088861703873,
+              "percent_of_measured_stages": 3.5595851007692114
+            },
+            {
+              "stage": "tree_compile",
+              "milliseconds": 4.704080522060394,
+              "percent_of_measured_stages": 1.1160751691530797
+            },
+            {
+              "stage": "stop_check",
+              "milliseconds": 0.31419098377227783,
+              "percent_of_measured_stages": 0.0745439525780965
+            }
+          ],
+          "longest_stage": "verify",
+          "unattributed_ms": 0.42805448174476624
+        },
+        "cuda_decode_scope": {
+          "measured_stage_ms": {
+            "draft_prefill": 5.81001615524292,
+            "first_draft_boundary_sync": 0.018751999363303185,
+            "tree_build": 4.147168010473251,
+            "tree_compile": 4.528512001037598,
+            "verify": 317.5421447753906,
+            "select_and_correct": 16.066431879997253,
+            "stop_check": 0.12431999947875738,
+            "commit": 14.878144264221191,
+            "draft": 63.43132781982422
+          },
+          "measured_stage_total_ms": 426.5468169050291,
+          "ranked_stages": [
+            {
+              "stage": "verify",
+              "milliseconds": 317.5421447753906,
+              "percent_of_measured_stages": 74.44485158263215
+            },
+            {
+              "stage": "draft",
+              "milliseconds": 63.43132781982422,
+              "percent_of_measured_stages": 14.87089466053787
+            },
+            {
+              "stage": "select_and_correct",
+              "milliseconds": 16.066431879997253,
+              "percent_of_measured_stages": 3.7666280096926505
+            },
+            {
+              "stage": "commit",
+              "milliseconds": 14.878144264221191,
+              "percent_of_measured_stages": 3.4880448463254665
+            },
+            {
+              "stage": "draft_prefill",
+              "milliseconds": 5.81001615524292,
+              "percent_of_measured_stages": 1.3621051488321205
+            },
+            {
+              "stage": "tree_compile",
+              "milliseconds": 4.528512001037598,
+              "percent_of_measured_stages": 1.0616682205943817
+            },
+            {
+              "stage": "tree_build",
+              "milliseconds": 4.147168010473251,
+              "percent_of_measured_stages": 0.9722656098021288
+            },
+            {
+              "stage": "stop_check",
+              "milliseconds": 0.12431999947875738,
+              "percent_of_measured_stages": 0.029145686839444237
+            },
+            {
+              "stage": "first_draft_boundary_sync",
+              "milliseconds": 0.018751999363303185,
+              "percent_of_measured_stages": 0.004396234743788588
+            }
+          ],
+          "longest_stage": "verify"
+        },
+        "cuda_official_scope": {
+          "measured_stage_ms": {
+            "tree_build": 4.147168010473251,
+            "tree_compile": 4.528512001037598,
+            "verify": 317.5421447753906,
+            "select_and_correct": 16.066431879997253,
+            "stop_check": 0.12431999947875738,
+            "commit": 14.878144264221191,
+            "draft": 63.43132781982422
+          },
+          "measured_stage_total_ms": 420.7180487504229,
+          "ranked_stages": [
+            {
+              "stage": "verify",
+              "milliseconds": 317.5421447753906,
+              "percent_of_measured_stages": 75.47623538341756
+            },
+            {
+              "stage": "draft",
+              "milliseconds": 63.43132781982422,
+              "percent_of_measured_stages": 15.076920994528752
+            },
+            {
+              "stage": "select_and_correct",
+              "milliseconds": 16.066431879997253,
+              "percent_of_measured_stages": 3.8188121302892175
+            },
+            {
+              "stage": "commit",
+              "milliseconds": 14.878144264221191,
+              "percent_of_measured_stages": 3.53636938287075
+            },
+            {
+              "stage": "tree_compile",
+              "milliseconds": 4.528512001037598,
+              "percent_of_measured_stages": 1.0763769261831664
+            },
+            {
+              "stage": "tree_build",
+              "milliseconds": 4.147168010473251,
+              "percent_of_measured_stages": 0.9857357018057055
+            },
+            {
+              "stage": "stop_check",
+              "milliseconds": 0.12431999947875738,
+              "percent_of_measured_stages": 0.02954948090484849
+            }
+          ],
+          "longest_stage": "verify"
+        }
+      }
+    },
+    "unconditioned_spur_6": {
+      "official_tpot_ms": 8.583399700000882,
+      "mean_committed_tokens": 4.2727272727272725,
+      "stage_profile": {
+        "diagnostic_only": true,
+        "eligible_for_primary_timing": false,
+        "profile_instrumentation_enabled": true,
+        "interpretation": {
+          "host_ms": "Python/CPU interval; on CUDA this is mainly launch and orchestration time",
+          "cuda_event_ms": "GPU stream interval; use this ranking for GPU-kernel hotspots",
+          "unattributed_ms": "synchronized wall time not enclosed by a named stage"
+        },
+        "synchronized_wall_ms": {
+          "e2e": 443.70897486805916,
+          "decode_including_first_draft": 418.5878224670887,
+          "official_scope_decode": 412.00318560004234
+        },
+        "host_decode_scope": {
+          "measured_stage_ms": {
+            "draft_prefill": 4.946362227201462,
+            "first_draft_boundary_sync": 1.623157411813736,
+            "tree_build": 29.14675697684288,
+            "tree_compile": 4.200592637062073,
+            "verify": 269.670519977808,
+            "select_and_correct": 48.1867752969265,
+            "stop_check": 0.29258430004119873,
+            "commit": 13.206847012043,
+            "draft": 46.88512533903122
+          },
+          "measured_stage_total_ms": 418.15872117877007,
+          "ranked_stages": [
+            {
+              "stage": "verify",
+              "milliseconds": 269.670519977808,
+              "percent_of_measured_stages": 64.48999059917232
+            },
+            {
+              "stage": "select_and_correct",
+              "milliseconds": 48.1867752969265,
+              "percent_of_measured_stages": 11.523560996429827
+            },
+            {
+              "stage": "draft",
+              "milliseconds": 46.88512533903122,
+              "percent_of_measured_stages": 11.212279683385347
+            },
+            {
+              "stage": "tree_build",
+              "milliseconds": 29.14675697684288,
+              "percent_of_measured_stages": 6.970261649614654
+            },
+            {
+              "stage": "commit",
+              "milliseconds": 13.206847012043,
+              "percent_of_measured_stages": 3.1583335090593136
+            },
+            {
+              "stage": "draft_prefill",
+              "milliseconds": 4.946362227201462,
+              "percent_of_measured_stages": 1.1828910833804676
+            },
+            {
+              "stage": "tree_compile",
+              "milliseconds": 4.200592637062073,
+              "percent_of_measured_stages": 1.004545026639836
+            },
+            {
+              "stage": "first_draft_boundary_sync",
+              "milliseconds": 1.623157411813736,
+              "percent_of_measured_stages": 0.38816777687623744
+            },
+            {
+              "stage": "stop_check",
+              "milliseconds": 0.29258430004119873,
+              "percent_of_measured_stages": 0.06996967544199895
+            }
+          ],
+          "longest_stage": "verify",
+          "unattributed_ms": 0.42910128831863403
+        },
+        "host_official_scope": {
+          "measured_stage_ms": {
+            "tree_build": 29.14675697684288,
+            "tree_compile": 4.200592637062073,
+            "verify": 269.670519977808,
+            "select_and_correct": 48.1867752969265,
+            "stop_check": 0.29258430004119873,
+            "commit": 13.206847012043,
+            "draft": 46.88512533903122
+          },
+          "measured_stage_total_ms": 411.58920153975487,
+          "ranked_stages": [
+            {
+              "stage": "verify",
+              "milliseconds": 269.670519977808,
+              "percent_of_measured_stages": 65.5193379634283
+            },
+            {
+              "stage": "select_and_correct",
+              "milliseconds": 48.1867752969265,
+              "percent_of_measured_stages": 11.707492596175948
+            },
+            {
+              "stage": "draft",
+              "milliseconds": 46.88512533903122,
+              "percent_of_measured_stages": 11.39124281289062
+            },
+            {
+              "stage": "tree_build",
+              "milliseconds": 29.14675697684288,
+              "percent_of_measured_stages": 7.08151644110314
+            },
+            {
+              "stage": "commit",
+              "milliseconds": 13.206847012043,
+              "percent_of_measured_stages": 3.208744778200253
+            },
+            {
+              "stage": "tree_compile",
+              "milliseconds": 4.200592637062073,
+              "percent_of_measured_stages": 1.020578922223338
+            },
+            {
+              "stage": "stop_check",
+              "milliseconds": 0.29258430004119873,
+              "percent_of_measured_stages": 0.07108648597840786
+            }
+          ],
+          "longest_stage": "verify",
+          "unattributed_ms": 0.4139840602874756
+        },
+        "cuda_decode_scope": {
+          "measured_stage_ms": {
+            "draft_prefill": 6.53436803817749,
+            "first_draft_boundary_sync": 0.02070399932563305,
+            "tree_build": 12.900768160820007,
+            "tree_compile": 4.015743970870972,
+            "verify": 272.0282554626465,
+            "select_and_correct": 45.707103967666626,
+            "stop_check": 0.10640000086277723,
+            "commit": 13.093279957771301,
+            "draft": 62.98793601989746
+          },
+          "measured_stage_total_ms": 417.39455957803875,
+          "ranked_stages": [
+            {
+              "stage": "verify",
+              "milliseconds": 272.0282554626465,
+              "percent_of_measured_stages": 65.17292792164109
+            },
+            {
+              "stage": "draft",
+              "milliseconds": 62.98793601989746,
+              "percent_of_measured_stages": 15.0907419789023
+            },
+            {
+              "stage": "select_and_correct",
+              "milliseconds": 45.707103967666626,
+              "percent_of_measured_stages": 10.950574922172875
+            },
+            {
+              "stage": "commit",
+              "milliseconds": 13.093279957771301,
+              "percent_of_measured_stages": 3.1369071918445304
+            },
+            {
+              "stage": "tree_build",
+              "milliseconds": 12.900768160820007,
+              "percent_of_measured_stages": 3.0907849335319373
+            },
+            {
+              "stage": "draft_prefill",
+              "milliseconds": 6.53436803817749,
+              "percent_of_measured_stages": 1.565513466390973
+            },
+            {
+              "stage": "tree_compile",
+              "milliseconds": 4.015743970870972,
+              "percent_of_measured_stages": 0.9620978229641162
+            },
+            {
+              "stage": "stop_check",
+              "milliseconds": 0.10640000086277723,
+              "percent_of_measured_stages": 0.02549146806569337
+            },
+            {
+              "stage": "first_draft_boundary_sync",
+              "milliseconds": 0.02070399932563305,
+              "percent_of_measured_stages": 0.004960294486483861
+            }
+          ],
+          "longest_stage": "verify"
+        },
+        "cuda_official_scope": {
+          "measured_stage_ms": {
+            "tree_build": 12.900768160820007,
+            "tree_compile": 4.015743970870972,
+            "verify": 272.0282554626465,
+            "select_and_correct": 45.707103967666626,
+            "stop_check": 0.10640000086277723,
+            "commit": 13.093279957771301,
+            "draft": 62.98793601989746
+          },
+          "measured_stage_total_ms": 410.83948754053563,
+          "ranked_stages": [
+            {
+              "stage": "verify",
+              "milliseconds": 272.0282554626465,
+              "percent_of_measured_stages": 66.21278229391393
+            },
+            {
+              "stage": "draft",
+              "milliseconds": 62.98793601989746,
+              "percent_of_measured_stages": 15.331519469311658
+            },
+            {
+              "stage": "select_and_correct",
+              "milliseconds": 45.707103967666626,
+              "percent_of_measured_stages": 11.125294757154256
+            },
+            {
+              "stage": "commit",
+              "milliseconds": 13.093279957771301,
+              "percent_of_measured_stages": 3.1869575235217495
+            },
+            {
+              "stage": "tree_build",
+              "milliseconds": 12.900768160820007,
+              "percent_of_measured_stages": 3.1400993702065088
+            },
+            {
+              "stage": "tree_compile",
+              "milliseconds": 4.015743970870972,
+              "percent_of_measured_stages": 0.9774483935103139
+            },
+            {
+              "stage": "stop_check",
+              "milliseconds": 0.10640000086277723,
+              "percent_of_measured_stages": 0.02589819238158777
+            }
+          ],
+          "longest_stage": "verify"
+        }
+      }
+    },
+    "prefix_tree_spur_4": {
+      "official_tpot_ms": 8.952252877255281,
+      "mean_committed_tokens": 3.9166666666666665,
+      "stage_profile": {
+        "diagnostic_only": true,
+        "eligible_for_primary_timing": false,
+        "profile_instrumentation_enabled": true,
+        "interpretation": {
+          "host_ms": "Python/CPU interval; on CUDA this is mainly launch and orchestration time",
+          "cuda_event_ms": "GPU stream interval; use this ranking for GPU-kernel hotspots",
+          "unattributed_ms": "synchronized wall time not enclosed by a named stage"
+        },
+        "synchronized_wall_ms": {
+          "e2e": 461.59644797444344,
+          "decode_including_first_draft": 435.81872805953026,
+          "official_scope_decode": 429.7081381082535
+        },
+        "host_decode_scope": {
+          "measured_stage_ms": {
+            "draft_prefill": 4.295360296964645,
+            "first_draft_boundary_sync": 1.7794296145439148,
+            "tree_build": 33.145252615213394,
+            "tree_compile": 4.604212939739227,
+            "verify": 294.33033615350723,
+            "select_and_correct": 38.69376331567764,
+            "stop_check": 0.3178045153617859,
+            "commit": 14.483071863651276,
+            "draft": 43.70349645614624
+          },
+          "measured_stage_total_ms": 435.35272777080536,
+          "ranked_stages": [
+            {
+              "stage": "verify",
+              "milliseconds": 294.33033615350723,
+              "percent_of_measured_stages": 67.60732559563968
+            },
+            {
+              "stage": "draft",
+              "milliseconds": 43.70349645614624,
+              "percent_of_measured_stages": 10.038640777543094
+            },
+            {
+              "stage": "select_and_correct",
+              "milliseconds": 38.69376331567764,
+              "percent_of_measured_stages": 8.887911077026319
+            },
+            {
+              "stage": "tree_build",
+              "milliseconds": 33.145252615213394,
+              "percent_of_measured_stages": 7.613424816454339
+            },
+            {
+              "stage": "commit",
+              "milliseconds": 14.483071863651276,
+              "percent_of_measured_stages": 3.326744255815481
+            },
+            {
+              "stage": "tree_compile",
+              "milliseconds": 4.604212939739227,
+              "percent_of_measured_stages": 1.0575821962377019
+            },
+            {
+              "stage": "draft_prefill",
+              "milliseconds": 4.295360296964645,
+              "percent_of_measured_stages": 0.9866391142094714
+            },
+            {
+              "stage": "first_draft_boundary_sync",
+              "milliseconds": 1.7794296145439148,
+              "percent_of_measured_stages": 0.40873285063708353
+            },
+            {
+              "stage": "stop_check",
+              "milliseconds": 0.3178045153617859,
+              "percent_of_measured_stages": 0.07299931643683105
+            }
+          ],
+          "longest_stage": "verify",
+          "unattributed_ms": 0.4660002887248993
+        },
+        "host_official_scope": {
+          "measured_stage_ms": {
+            "tree_build": 33.145252615213394,
+            "tree_compile": 4.604212939739227,
+            "verify": 294.33033615350723,
+            "select_and_correct": 38.69376331567764,
+            "stop_check": 0.3178045153617859,
+            "commit": 14.483071863651276,
+            "draft": 43.70349645614624
+          },
+          "measured_stage_total_ms": 429.2779378592968,
+          "ranked_stages": [
+            {
+              "stage": "verify",
+              "milliseconds": 294.33033615350723,
+              "percent_of_measured_stages": 68.56404911495336
+            },
+            {
+              "stage": "draft",
+              "milliseconds": 43.70349645614624,
+              "percent_of_measured_stages": 10.180699402835561
+            },
+            {
+              "stage": "select_and_correct",
+              "milliseconds": 38.69376331567764,
+              "percent_of_measured_stages": 9.013685517740301
+            },
+            {
+              "stage": "tree_build",
+              "milliseconds": 33.145252615213394,
+              "percent_of_measured_stages": 7.72116377107582
+            },
+            {
+              "stage": "commit",
+              "milliseconds": 14.483071863651276,
+              "percent_of_measured_stages": 3.373821616800244
+            },
+            {
+              "stage": "tree_compile",
+              "milliseconds": 4.604212939739227,
+              "percent_of_measured_stages": 1.0725482335987966
+            },
+            {
+              "stage": "stop_check",
+              "milliseconds": 0.3178045153617859,
+              "percent_of_measured_stages": 0.0740323429959151
+            }
+          ],
+          "longest_stage": "verify",
+          "unattributed_ms": 0.4302002489566803
+        },
+        "cuda_decode_scope": {
+          "measured_stage_ms": {
+            "draft_prefill": 6.060351848602295,
+            "first_draft_boundary_sync": 0.018079999834299088,
+            "tree_build": 13.548160016536713,
+            "tree_compile": 4.398272007703781,
+            "verify": 316.8950386047363,
+            "select_and_correct": 15.99948787689209,
+            "stop_check": 0.12284799944609404,
+            "commit": 14.360927820205688,
+            "draft": 63.1430082321167
+          },
+          "measured_stage_total_ms": 434.546174406074,
+          "ranked_stages": [
+            {
+              "stage": "verify",
+              "milliseconds": 316.8950386047363,
+              "percent_of_measured_stages": 72.92551569182721
+            },
+            {
+              "stage": "draft",
+              "milliseconds": 63.1430082321167,
+              "percent_of_measured_stages": 14.53079372253567
+            },
+            {
+              "stage": "select_and_correct",
+              "milliseconds": 15.99948787689209,
+              "percent_of_measured_stages": 3.6818844162555933
+            },
+            {
+              "stage": "commit",
+              "milliseconds": 14.360927820205688,
+              "percent_of_measured_stages": 3.3048105508773187
+            },
+            {
+              "stage": "tree_build",
+              "milliseconds": 13.548160016536713,
+              "percent_of_measured_stages": 3.1177722448147134
+            },
+            {
+              "stage": "draft_prefill",
+              "milliseconds": 6.060351848602295,
+              "percent_of_measured_stages": 1.3946393284638672
+            },
+            {
+              "stage": "tree_compile",
+              "milliseconds": 4.398272007703781,
+              "percent_of_measured_stages": 1.0121529694088829
+            },
+            {
+              "stage": "stop_check",
+              "milliseconds": 0.12284799944609404,
+              "percent_of_measured_stages": 0.028270413291291627
+            },
+            {
+              "stage": "first_draft_boundary_sync",
+              "milliseconds": 0.018079999834299088,
+              "percent_of_measured_stages": 0.004160662525452064
+            }
+          ],
+          "longest_stage": "verify"
+        },
+        "cuda_official_scope": {
+          "measured_stage_ms": {
+            "tree_build": 13.548160016536713,
+            "tree_compile": 4.398272007703781,
+            "verify": 316.8950386047363,
+            "select_and_correct": 15.99948787689209,
+            "stop_check": 0.12284799944609404,
+            "commit": 14.360927820205688,
+            "draft": 63.1430082321167
+          },
+          "measured_stage_total_ms": 428.4677425576374,
+          "ranked_stages": [
+            {
+              "stage": "verify",
+              "milliseconds": 316.8950386047363,
+              "percent_of_measured_stages": 73.96006913218389
+            },
+            {
+              "stage": "draft",
+              "milliseconds": 63.1430082321167,
+              "percent_of_measured_stages": 14.736933953347192
+            },
+            {
+              "stage": "select_and_correct",
+              "milliseconds": 15.99948787689209,
+              "percent_of_measured_stages": 3.734117247983923
+            },
+            {
+              "stage": "commit",
+              "milliseconds": 14.360927820205688,
+              "percent_of_measured_stages": 3.351694046903393
+            },
+            {
+              "stage": "tree_build",
+              "milliseconds": 13.548160016536713,
+              "percent_of_measured_stages": 3.1620023331661233
+            },
+            {
+              "stage": "tree_compile",
+              "milliseconds": 4.398272007703781,
+              "percent_of_measured_stages": 1.0265118166070872
+            },
+            {
+              "stage": "stop_check",
+              "milliseconds": 0.12284799944609404,
+              "percent_of_measured_stages": 0.02867146980838786
+            }
+          ],
+          "longest_stage": "verify"
+        }
+      }
+    }
+  },
+  "source_sha256": {
+    "checkpoint": "1303c5ddf1c8e415ac6b44127ff469a6aac4f2755b25a42393904a068c8a7953",
+    "engine": "b39aa2cd158410b2a49f5eff177c16ec5fbbd87f13e8a1356ddaa312dc70c326",
+    "head": "60ec2b0dda41b6c972b7f4b945f12b8c60ec73cfe544d2c13b9feb545e101d07",
+    "script": "c7e540f5f5e905cb8ed23717f939e8ffe798ce945b747326379e09e6c0addd7e",
+    "config": "ffb45dc9393d92f9eaf2fb02ee868eb819b5fd730b75c8ae9791c0c5153a84d4"
+  },
+  "telemetry_end": {
+    "utc": "2026-09-10T08:36:46.060339+00:00",
+    "hostname": "autodl-container-26d148a435-8171fde0",
+    "pid": 41004,
+    "slurm_job_id": null,
+    "gpu_uuid": "b32e1465-06c0-9da4-928e-ca196f12f2cf",
+    "nvidia_smi": "GPU-b32e1465-06c0-9da4-928e-ca196f12f2cf, NVIDIA H20, P0, 39, 176.39 W, 1980 MHz, 2619 MHz, 9603 MiB, 55 %"
+  }
+}

@@ -261,6 +261,78 @@ def test_core_spur_complete_output_law_is_exact(monkeypatch, case):
     } == pytest.approx(expected, abs=1e-10, rel=0)
 
 
+def test_prefix_conditional_spur_complete_output_law_is_exact(monkeypatch):
+    """Average exact BV over an explicitly prefix-dependent proposal law."""
+    vocab, length = 2, 3
+    rows = fraction_rows(Random(314159), vocab, length)
+    q0 = tensor([.6, .4])
+    q1 = tensor([[.8, .2], [.3, .7]])
+    core_q = tensor([[.6, .4], [.55, .45], [.7, .3]])
+    result = defaultdict(float)
+
+    class DrawNeeded(Exception):
+        def __init__(self, probabilities):
+            self.probabilities = probabilities
+
+    for path in product(range(vocab), repeat=2):
+        conditional = torch.stack((q0, q1[path[0]]))
+        law = diffusion.DiffusionBlockLaw(
+            tokens=torch.arange(vocab)[None].expand(2, -1),
+            weights=conditional,
+            retained_mass=torch.ones(2, dtype=torch.float64),
+            noise_ids=torch.tensor([0, 1, 1]),
+            draft_temperature=1., mask_token_id=1,
+        )
+        proposal = diffusion.DiffusionProposal(
+            law=law,
+            slots=torch.arange(vocab)[None, None].expand(1, 2, -1),
+            source=conditional,
+            draws=torch.tensor(path),
+        )
+        proposal_mass = float(q0[path[0]] * q1[path[0], path[1]])
+        tree = diffusion.core_spur_tree(proposal, core_q, 6)
+        logits = tensor([rows[prefix] for prefix in prefixes(tree)]).log()
+        queue = [((), 1.)]
+        while queue:
+            choices, mass = queue.pop()
+            used = []
+
+            def draw(probabilities, generator=None):
+                if probabilities.ndim == 2:
+                    return torch.stack([draw(row) for row in probabilities])
+                if len(used) == len(choices):
+                    raise DrawNeeded(probabilities.tolist())
+                choice = choices[len(used)]
+                used.append(choice)
+                return torch.tensor(choice)
+
+            with monkeypatch.context() as patch:
+                patch.setattr(diffusion.sampling, "sample", draw)
+                try:
+                    _, tokens, bonus = diffusion.verify_scaffold_logits(
+                        logits, tree, proposal, 1.,
+                        continuation="ancestral",
+                    )
+                except DrawNeeded as needed:
+                    for index, probability_ in enumerate(needed.probabilities):
+                        if probability_ > 1e-15:
+                            queue.append((
+                                choices + (index,), mass * probability_,
+                            ))
+                    continue
+            result[tuple(tokens) + (bonus,)] += proposal_mass * mass
+
+    expected = {
+        sequence: float(probability(rows, sequence))
+        for sequence in product(range(vocab), repeat=length + 1)
+    }
+    completed = complete(result, rows, length + 1)
+    assert sum(result.values()) == pytest.approx(1., abs=1e-10)
+    assert {
+        sequence: completed.get(sequence, 0.) for sequence in expected
+    } == pytest.approx(expected, abs=1e-10, rel=0)
+
+
 @pytest.mark.parametrize("temperature", [.3, .6, 1.])
 def test_core_spur_tiny_qwen_caches_eos_caps_and_checkpoint(
         tiny_engine, temperature):

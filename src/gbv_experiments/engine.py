@@ -14,8 +14,11 @@ from . import root_marginalized_bv as root_marginal
 from . import protected_tree_bv
 from . import atom_tree_bv
 from . import diffusion_tree_bv
-from .config import (SHARED_SUFFIX_METHODS, ATOM_TREE_METHODS, DIFFUSION_SCAFFOLD_METHODS,
-                     DIFFUSION_LAW_METHODS as DIFFUSION_TREE_METHODS)
+from .config import (SHARED_SUFFIX_METHODS, ATOM_TREE_METHODS,
+                     DIFFUSION_SCAFFOLD_METHODS,
+                     DIFFUSION_LAW_METHODS as DIFFUSION_TREE_METHODS,
+                     PREFIX_CORE_SPUR_METHODS,
+                     PREFIX_RESCORED_TREE_METHODS, PREFIX_TREE_METHODS)
 from .sampling import (block_verify_batched, block_verify_sparse,
                        block_verify_sparse_lazy, greedy_max_distribution,
                        matching_verify, probabilities, reweight_selected_path,
@@ -527,6 +530,52 @@ class Engine:
                     paths = root_marginal.propose(q, variant.paths, generator)
                     tree = sampled_tree(paths, variant.share_prefixes)
                     tree_proposal = None
+                elif variant.method in PREFIX_RESCORED_TREE_METHODS:
+                    if self.proposal_adapter is None:
+                        raise RuntimeError(
+                            "prefix_rescored_tree requires a trained prefix head"
+                        )
+                    tree_builder = (
+                        self.proposal_adapter.build_beam_tree
+                        if variant.method == "prefix_beam_tree"
+                        else self.proposal_adapter.build_tree
+                    )
+                    tree = tree_builder(
+                        proposal_hidden, logits,
+                        self.target.get_output_embeddings().weight,
+                        **({"position_probabilities": q}
+                           if variant.method == "prefix_rescored_tree" else {}),
+                        budget=variant.tree_budget,
+                        temperature=draft_temp,
+                        prefix_embeddings=(
+                            self.target.get_input_embeddings().weight
+                        ),
+                        support_size=variant.diffusion_support_size,
+                        strength=variant.prefix_strength,
+                    )
+                    paths = None
+                    tree_proposal = None
+                elif variant.method in PREFIX_CORE_SPUR_METHODS:
+                    if self.proposal_adapter is None:
+                        raise RuntimeError(
+                            "prefix_core_spur_bv requires a trained prefix head"
+                        )
+                    tree_proposal = self.proposal_adapter.propose(
+                        proposal_hidden, logits,
+                        self.target.get_output_embeddings().weight,
+                        noise_ids[0], variant.diffusion_spur_length,
+                        draft_temp, generator,
+                        greedy=variant.method == "prefix_core_spur_tree",
+                        prefix_embeddings=(
+                            self.target.get_input_embeddings().weight
+                        ),
+                        support_size=variant.diffusion_support_size,
+                        strength=variant.prefix_strength,
+                    )
+                    paths = tree_proposal.paths()
+                    tree = diffusion_tree_bv.core_spur_tree(
+                        tree_proposal, q, variant.tree_budget,
+                    )
                 elif variant.method in DIFFUSION_TREE_METHODS:
                     coupling = "aligned" if variant.method == "diffusion_tree_bv_aligned" else "depth_permuted"
                     tree_proposal = diffusion_tree_bv.propose(diffusion_law, variant.paths, generator,
@@ -711,6 +760,7 @@ class Engine:
                         # wastes bandwidth without changing the sampling law.
                         all_p = (None if variant.method in (ATOM_TREE_METHODS - {"atom_tree_ancestral"})
                                  | (DIFFUSION_TREE_METHODS - {"diffusion_tree_ancestral"})
+                                 | {"prefix_core_spur_bv"}
                                  | LAZY_SOFTMAX_TREE_METHODS | DIRECT_LOGITS_TREE_METHODS
                                  else probabilities(output.logits[0], variant.temperature, dtype))
                     target_tokens += ids.shape[1]
@@ -862,7 +912,10 @@ class Engine:
                         validate=False,
                     )
                     accepted = len(nodes)
-                elif variant.method in {"ddtree", "root_shared_ddtree", "atom_tree_ancestral", "diffusion_tree_ancestral"}:
+                elif variant.method in {
+                        "ddtree", "root_shared_ddtree", "atom_tree_ancestral",
+                        "diffusion_tree_ancestral", "prefix_core_spur_tree",
+                        "prefix_sampled_spur_tree"} | PREFIX_RESCORED_TREE_METHODS:
                     verifier = tree_verify_ancestral_batched
                     generator_before = (
                         self._runtime_generator_identity(generator)
@@ -876,7 +929,8 @@ class Engine:
                     accepted = len(nodes)
                     if generator_before is not None:
                         executed_verifier = (verifier, generator_before)
-                elif variant.method == "diffusion_core_spur_bv":
+                elif variant.method in (
+                        {"diffusion_core_spur_bv"} | PREFIX_CORE_SPUR_METHODS):
                     nodes, tokens, bonus = diffusion_tree_bv.verify_scaffold_logits(
                         output.logits[0], tree, tree_proposal,
                         variant.temperature, generator,
@@ -1245,6 +1299,24 @@ class Engine:
                                             "correction_recycling": variant.method != "diffusion_scaffold_no_recycle",
                                             "continuation_backend": "ancestral" if variant.method == "diffusion_scaffold_ancestral" else "terminal",
                                             "core_spur_length": variant.diffusion_spur_length if variant.method == "diffusion_core_spur_bv" else None})
+                if variant.method in PREFIX_TREE_METHODS:
+                    round_stats.update({
+                        "prefix_conditioned_proposal": True,
+                        "proposal_support_size": variant.diffusion_support_size,
+                        "prefix_strength": variant.prefix_strength,
+                        "core_spur_length": (
+                            variant.diffusion_spur_length
+                            if variant.method in PREFIX_CORE_SPUR_METHODS
+                            else None
+                        ),
+                        "joint_block_verification": (
+                            variant.method == "prefix_core_spur_bv"
+                        ),
+                        "correction_recycling": (
+                            variant.method == "prefix_core_spur_bv"
+                        ),
+                        "continuation_backend": "ancestral",
+                    })
                 if variant.method in LAZY_HEAD_TREE_METHODS | LAZY_SOFTMAX_TREE_METHODS:
                     round_stats.update({
                         "posterior_probability_rows": lazy_projection_stats.get(
@@ -1289,7 +1361,9 @@ class Engine:
                 elif variant.method in SPARSE_FULL_TREE_METHODS:
                     del (chosen_p, proposal_tokens, proposal_probabilities,
                          selected_leaf_probabilities, target_token_probabilities)
-                elif paths is not None and variant.method not in SHARED_SUFFIX_METHODS | ATOM_TREE_METHODS | DIFFUSION_TREE_METHODS:
+                elif (paths is not None and variant.method not in
+                      SHARED_SUFFIX_METHODS | ATOM_TREE_METHODS
+                      | DIFFUSION_TREE_METHODS | PREFIX_TREE_METHODS):
                     del p_by_path, r
                 if variant.method in DIFFUSION_TREE_METHODS:
                     del diffusion_law

@@ -24,6 +24,14 @@ DIFFUSION_SCAFFOLD_METHODS = frozenset({
     "diffusion_scaffold_ancestral", "diffusion_core_spur_bv",
 })
 DIFFUSION_LAW_METHODS = DIFFUSION_TREE_METHODS | DIFFUSION_SCAFFOLD_METHODS
+PREFIX_CORE_SPUR_METHODS = frozenset({
+    "prefix_core_spur_bv", "prefix_core_spur_tree",
+    "prefix_sampled_spur_tree",
+})
+PREFIX_RESCORED_TREE_METHODS = frozenset({
+    "prefix_rescored_tree", "prefix_beam_tree",
+})
+PREFIX_TREE_METHODS = PREFIX_CORE_SPUR_METHODS | PREFIX_RESCORED_TREE_METHODS
 
 
 @dataclass(frozen=True)
@@ -42,6 +50,7 @@ class Variant:
     tree_budget: int = 60
     diffusion_support_size: int = 8
     diffusion_spur_length: int = 4
+    prefix_strength: float = 1.0
 
     def validate(self) -> None:
         if self.method not in {"target", "dflash", "token", "bv", "gbv", "tree_gbv",
@@ -70,15 +79,17 @@ class Variant:
                                "ddtree_lazy_target_prefetch2",
                                "ddtree_lazy_projection",
                                "ddtree_lazy_softmax_fused_scan",
-                               "ddtree_lazy_projection_fused_scan"} | SHARED_SUFFIX_METHODS | ATOM_TREE_METHODS | DIFFUSION_LAW_METHODS:
+                               "ddtree_lazy_projection_fused_scan"} | SHARED_SUFFIX_METHODS | ATOM_TREE_METHODS | DIFFUSION_LAW_METHODS | PREFIX_TREE_METHODS:
             raise ValueError(f"Unknown method: {self.method}")
-        if self.paths < 1 or self.length < 1 or self.temperature < 0:
+        if (self.paths < 1 or self.length < 1 or self.temperature < 0
+                or not 0 <= self.prefix_strength <= 2):
             raise ValueError("paths/length must be positive and temperature nonnegative")
-        if not math.isfinite(self.temperature) or any(
+        if (not math.isfinite(self.temperature)
+                or not math.isfinite(self.prefix_strength) or any(
                 not isinstance(v, int) or isinstance(v, bool)
                 for v in (self.paths, self.length, self.tree_budget,
                           self.diffusion_support_size,
-                          self.diffusion_spur_length)):
+                          self.diffusion_spur_length))):
             raise ValueError("Counts must be integers and temperature must be finite")
         if self.method in {"dflash", "token", "bv"} and self.paths != 1:
             raise ValueError("Single-path token/BV baselines require paths=1")
@@ -119,6 +130,19 @@ class Variant:
             elif self.method in DIFFUSION_SCAFFOLD_METHODS:
                 if not self.share_prefixes or (self.paths + 1) * self.length > self.tree_budget:
                     raise ValueError("Scaffold needs prefix sharing and (paths+1)*length <= tree_budget")
+        if self.method in PREFIX_TREE_METHODS:
+            if (self.temperature <= 0 or self.probability_dtype != "float64"
+                    or self.paths != 1
+                    or not 1 <= self.diffusion_support_size <= 256
+                    or (self.method in PREFIX_CORE_SPUR_METHODS
+                        and not 1 <= self.diffusion_spur_length < self.length)
+                    or self.tree_budget < self.length
+                    or self.draft_attention != "bidirectional"
+                    or self.condition_features != "target"):
+                raise ValueError(
+                    "Prefix core-spur requires T>0, FP64, K=1, "
+                    "1 <= spur < L <= B, and the official masked Draft"
+                )
         if self.method in SHARED_SUFFIX_METHODS | ATOM_TREE_METHODS:
             if self.probability_dtype != "float64":
                 raise ValueError("Root-marginal methods require FP64 probabilities")
