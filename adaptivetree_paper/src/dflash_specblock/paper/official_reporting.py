@@ -6,7 +6,8 @@ import math
 
 import torch
 
-from .common import atomic_json, code_identity, digest, file_hash, load_json
+from .common import (METHOD_SCHEMA_VERSION, PRIMARY_ADAPTIVE_METHOD, atomic_json,
+                     code_identity, digest, file_hash, load_json)
 from .official_data import check_manifest
 from .official_spec import BUDGETS, LIMITS, MODELS, UPSTREAM, load_source, verify_sources
 from .official_worker import method_names, response_tokens
@@ -15,7 +16,7 @@ from .controller import expected_official_controller_configs
 
 
 def method_role(key):
-    if key == "adaptive":
+    if key == PRIMARY_ADAPTIVE_METHOD:
         return "primary"
     if key == "adaptive_legacy":
         return "historical_control"
@@ -61,7 +62,8 @@ def validate_run_contract(run, source_lock, nproc, smoke_count, environment,
             or diagnostic_variants
             or "diagnostic_variants" in run
             or "diagnostic_controllers" in run
-            or run.get("method_schema_version") != 2
+            or run.get("method_schema_version") != METHOD_SCHEMA_VERSION
+            or run.get("primary_adaptive_method") != PRIMARY_ADAPTIVE_METHOD
             or run.get("deprecated_cli_aliases", []) != list(deprecated_cli_aliases)
             or run.get("wandb") != wandb_settings
             or len(run["hardware"]) != nproc
@@ -329,8 +331,8 @@ def summarize(directory, data_dir, config, identity, model_indices, datasets, sm
     rows = []
     audit_policy = metadata.get("greedy_audit_policy", "strict")
     method_order_policy = metadata.get("method_order_policy", "official-fixed")
-    if (metadata.get("method_schema_version") != 2
-            or metadata.get("primary_adaptive_method") != "adaptive"
+    if (metadata.get("method_schema_version") != METHOD_SCHEMA_VERSION
+            or metadata.get("primary_adaptive_method") != PRIMARY_ADAPTIVE_METHOD
             or "diagnostic_variants" in metadata):
         raise ValueError("Summary requires the canonical AdaptiveTree method schema")
     deprecated_cli_aliases = tuple(metadata.get("deprecated_cli_aliases", ()))
@@ -390,8 +392,8 @@ def summarize(directory, data_dir, config, identity, model_indices, datasets, sm
                     "turns":sum(len(r["turns"]) for r in expected), **row})
     report = {"protocol":"ddtree_official_t0",
               "training":False, "full_split":False,
-              "method_schema_version":2,
-              "primary_adaptive_method":"adaptive",
+              "method_schema_version":METHOD_SCHEMA_VERSION,
+              "primary_adaptive_method":PRIMARY_ADAPTIVE_METHOD,
               "protocol_identity":identity, "environment_sha256":file_hash(directory / "environment.json"),
               "dataset_manifest":metadata["dataset_manifest"],
               "source_lock":source_lock,

@@ -13,6 +13,7 @@ import torch
 from dflash_specblock.ddtree_builder import DDTreeBuilder, LatencyAwareDDTreeBuilder
 from dflash_specblock.paper.common import BASELINES, ROOT, VARIANTS, atomic_json, contract, load_config, load_json
 from dflash_specblock.paper.controller import (B128_ABLATION_VARIANT,
+    B256_ABLATION_VARIANT,
     EXTENDED_BUDGETS, FixedBudgetBuilder,
     PaperAdaptiveBuilder, make_builder, make_paper_builder)
 from dflash_specblock.paper.data import make_row
@@ -113,8 +114,8 @@ def test_budget_aware_stage_attribution_is_isolated_and_exact():
     assert factory.timing_partition == "budget_aware"
 
 
-def test_formal_adaptive_builds_all_256_nodes():
-    builder = make_paper_builder(cfg(), "adaptive")
+def test_budget_extension_ablation_builds_all_256_nodes():
+    builder = make_paper_builder(cfg(), B256_ABLATION_VARIANT)
     assert builder.budget_candidates == EXTENDED_BUDGETS
     assert builder.tree_budget == 256
     logits = torch.randn(15, 320, generator=torch.Generator().manual_seed(91))
@@ -126,7 +127,7 @@ def test_formal_adaptive_builds_all_256_nodes():
                         accepted_draft_tokens=1)
     assert set(selected) == set(EXTENDED_BUDGETS)
     assert selected[-1] == 256
-    restored = make_paper_builder(cfg(), "adaptive")
+    restored = make_paper_builder(cfg(), B256_ABLATION_VARIANT)
     restored.load_state_dict(builder.state_dict())
     assert restored.state_dict() == builder.state_dict()
     with pytest.raises(ValueError, match="identity/schema mismatch"):

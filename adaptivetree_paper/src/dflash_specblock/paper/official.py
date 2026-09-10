@@ -9,7 +9,8 @@ from pathlib import Path
 import subprocess
 import sys
 
-from .common import ROOT, atomic_json, code_identity, contract, load_json, run_lock
+from .common import (METHOD_SCHEMA_VERSION, PRIMARY_ADAPTIVE_METHOD, ROOT,
+                     atomic_json, code_identity, contract, load_json, run_lock)
 from .official_data import check_manifest, prepare
 from .official_spec import LIMITS, MODELS, PINNED_MODEL_REVISIONS, load_config, verify_sources
 from .controller import deprecated_experiment_flags
@@ -37,8 +38,8 @@ def plan(config, model_indices, datasets, smoke_count, nproc,
                 for i in model_indices],
             "benchmark_process_groups":len(datasets)*len(model_indices)*2,
             "generation_calls":turns*len(model_indices)*(11+len(config["variants"])),
-            "method_schema_version":2,
-            "primary_adaptive_method":"adaptive",
+            "method_schema_version":METHOD_SCHEMA_VERSION,
+            "primary_adaptive_method":PRIMARY_ADAPTIVE_METHOD,
             "full_split":False, "official_samples":not bool(smoke_count),
             "launches_models":False}
     if legacy_cli_aliases:
@@ -86,9 +87,9 @@ def main(argv=None):
                         default="official-fixed",
                         help="preserve upstream order or rotate every method through timed positions")
     parser.add_argument("--experimental-cost-attribution", action="store_true",
-                        help="deprecated compatibility alias; adaptive_b128 is now in the formal matrix")
+                        help="deprecated compatibility alias; adaptive_b128 is the formal primary")
     parser.add_argument("--experimental-extended-budgets", action="store_true",
-                        help="deprecated compatibility alias; adaptive is now budget-aware through B=256")
+                        help="deprecated compatibility alias; adaptive_b256 is the budget-extension ablation")
     parser.add_argument("--wandb-project",
                         help="stream non-secret progress metrics to this W&B project")
     parser.add_argument("--wandb-entity", help="optional W&B entity/team")
@@ -133,12 +134,12 @@ def main(argv=None):
             return
     audit_policy = args.greedy_audit_policy
     manifest = check_manifest(args.data_dir)
-    metadata = {"version":5, "config":config, "source_manifest":verify_sources(),
+    metadata = {"version":6, "config":config, "source_manifest":verify_sources(),
                 "dataset_manifest":manifest, "code_identity":code_identity(),
                 "nproc_per_node":args.nproc_per_node, "model_indices":models, "datasets":datasets,
                 "smoke_count":args.smoke_count, "max_new_tokens":32 if args.smoke_count else 2048,
-                "method_schema_version":2,
-                "primary_adaptive_method":"adaptive",
+                "method_schema_version":METHOD_SCHEMA_VERSION,
+                "primary_adaptive_method":PRIMARY_ADAPTIVE_METHOD,
                 "greedy_audit_policy":audit_policy,
                 "method_order_policy":args.method_order_policy}
     if legacy_cli_aliases:

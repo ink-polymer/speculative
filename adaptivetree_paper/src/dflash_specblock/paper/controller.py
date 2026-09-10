@@ -12,8 +12,9 @@ from ..ddtree_builder import BudgetDecision, DDTreeBuilder, LatencyAwareDDTreeBu
 from .common import BASELINES, K, OFFICIAL_VARIANTS, VARIANTS, digest
 
 TIMING_PARTITIONS = ("legacy", "budget_aware")
-# Canonical formal method names.
-ADAPTIVE_VARIANT = "adaptive"
+# Canonical formal method names.  The primary name is defined in common.py;
+# B256 is deliberately named as an ablation rather than owning a generic key.
+B256_ABLATION_VARIANT = "adaptive_b256"
 LEGACY_ADAPTIVE_VARIANT = "adaptive_legacy"
 B128_ABLATION_VARIANT = "adaptive_b128"
 LEGACY_COST_ATTRIBUTION_ABLATION_VARIANT = "adaptive_legacy_cost_attribution"
@@ -36,7 +37,7 @@ DIAGNOSTIC_VARIANTS = (COST_ATTRIBUTED_VARIANT, EXTENDED_BUDGET_VARIANT)
 # artifact; neither a changed factory nor a forged artifact can redefine the
 # expected method semantics at validation time.
 OFFICIAL_CONTROLLER_REGISTRY = {
-    ADAPTIVE_VARIANT: {
+    B256_ABLATION_VARIANT: {
         "budget_candidates": EXTENDED_BUDGETS,
         "maximum_draft_nodes": 256,
         "timing_partition": "budget_aware",
@@ -58,36 +59,36 @@ OFFICIAL_CONTROLLER_REGISTRY = {
         "exploration_interval": 0,
     },
     LEGACY_COST_ATTRIBUTION_ABLATION_VARIANT: {
-        "budget_candidates": EXTENDED_BUDGETS,
-        "maximum_draft_nodes": 256,
+        "budget_candidates": LEGACY_BUDGETS,
+        "maximum_draft_nodes": 128,
         "timing_partition": "legacy",
         "controller_variant": "no_exploration",
         "exploration_interval": 0,
     },
     EXPLORATION_ABLATION_VARIANT: {
-        "budget_candidates": EXTENDED_BUDGETS,
-        "maximum_draft_nodes": 256,
+        "budget_candidates": LEGACY_BUDGETS,
+        "maximum_draft_nodes": 128,
         "timing_partition": "budget_aware",
         "controller_variant": "adaptive",
         "exploration_interval": 64,
     },
     NO_ACCEPTANCE_ABLATION_VARIANT: {
-        "budget_candidates": EXTENDED_BUDGETS,
-        "maximum_draft_nodes": 256,
+        "budget_candidates": LEGACY_BUDGETS,
+        "maximum_draft_nodes": 128,
         "timing_partition": "budget_aware",
         "controller_variant": "no_acceptance_calibration",
         "exploration_interval": 0,
     },
     NO_LATENCY_ABLATION_VARIANT: {
-        "budget_candidates": EXTENDED_BUDGETS,
-        "maximum_draft_nodes": 256,
+        "budget_candidates": LEGACY_BUDGETS,
+        "maximum_draft_nodes": 128,
         "timing_partition": "budget_aware",
         "controller_variant": "no_latency",
         "exploration_interval": 0,
     },
     FROZEN_ABLATION_VARIANT: {
-        "budget_candidates": EXTENDED_BUDGETS,
-        "maximum_draft_nodes": 256,
+        "budget_candidates": LEGACY_BUDGETS,
+        "maximum_draft_nodes": 128,
         "timing_partition": "budget_aware",
         "controller_variant": "frozen_after_warmup",
         "exploration_interval": 0,
@@ -257,10 +258,10 @@ def make_builder(cfg, method):
 def make_paper_builder(cfg, method):
     """Build a canonical official controller or a historical reproduction.
 
-    The canonical ``adaptive`` name intentionally denotes the corrected
-    controller: tree construction is charged to the selected budget, periodic
-    exploration is disabled, and candidates extend through B=256.  The exact
-    pre-migration method remains available as ``adaptive_legacy``.
+    The formal primary ``adaptive_b128`` charges tree construction to the
+    selected budget, disables periodic exploration, and uses the original
+    B<=128 candidates.  ``adaptive_b256`` changes only the candidate ceiling.
+    The exact pre-migration method remains available as ``adaptive_legacy``.
     """
     configured = tuple(cfg["budget_candidates"])
     if configured not in (LEGACY_BUDGETS, EXTENDED_BUDGETS):
@@ -306,7 +307,7 @@ def selected_diagnostic_variants(*, cost_attribution=False,
     """Compatibility shim for pre-migration CLI feature flags.
 
     Both experiments have been promoted into the canonical matrix as
-    ``adaptive_b128`` and ``adaptive``.  The old flags are accepted so launch
+    ``adaptive_b128`` and ``adaptive_b256``.  The old flags are accepted so launch
     scripts do not fail, but must not duplicate an identical timed method.
     """
     del cost_attribution, extended_budgets
@@ -320,12 +321,12 @@ def deprecated_experiment_flags(*, cost_attribution=False,
     if cost_attribution:
         aliases.append("experimental_cost_attribution_is_adaptive_b128")
     if extended_budgets:
-        aliases.append("experimental_extended_budgets_is_adaptive")
+        aliases.append("experimental_extended_budgets_is_adaptive_b256")
     return tuple(aliases)
 
 
 assert set(OFFICIAL_VARIANTS) == {
-    ADAPTIVE_VARIANT,
+    B256_ABLATION_VARIANT,
     LEGACY_ADAPTIVE_VARIANT,
     B128_ABLATION_VARIANT,
     LEGACY_COST_ATTRIBUTION_ABLATION_VARIANT,

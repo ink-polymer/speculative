@@ -4,7 +4,7 @@
 
 本套件只运行两组不能混合统计的正式实验：
 
-- T=0：Qwen3-4B 与 Qwen3-8B 上的修正版 `adaptive` 主方法、冻结的 AdaptiveTree 消融、Target、DFlash，以及七个固定预算 DDTree。
+- T=0：Qwen3-4B 与 Qwen3-8B 上的动态 `adaptive_b128` 主方法、以它为锚点的 AdaptiveTree 消融、Target、DFlash，以及七个固定预算 DDTree。
 - T=1：同一组 Qwen3-4B 与 Qwen3-8B revision 上的 Target、DFlash、DDTree；DDTree 固定 L=15、B=45、FP64 概率计算。
 
 树状块验证在本服务器明确为 `deferred_not_run`，不会启动，也不会出现在结果表中。T=0 与 T=1 使用不同采样律，禁止合并加速比或置信区间。30B 不属于本轮正式矩阵。
@@ -42,7 +42,7 @@ MT-Bench 的质量列显示 `--`，表示外部 judge 结果单独报告，并�
 
 ```bash
 export INTEGRATED_PYTHON=/root/autodl-tmp/envs/speculative/bin/python
-export INTEGRATED_RUN_DIR=/root/autodl-tmp/outputs/adaptivetree-t0-t1-h20-001
+export INTEGRATED_RUN_DIR=/root/autodl-tmp/outputs/adaptive-b128-t0-t1-h20-001
 export ADAPTIVE_DATA_DIR=/root/autodl-tmp/data/adaptive-t0
 export SAMPLING_DATA_DIR=/root/autodl-tmp/data/sampling-t1
 export CODE_BACKEND=process

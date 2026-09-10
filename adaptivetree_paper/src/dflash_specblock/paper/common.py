@@ -13,14 +13,16 @@ ORIGINAL_COMMIT = "9dd67698ad828b8c3fca8659e3a388f0b2dfbdf7"
 # local legacy harness continue to reproduce the original B<=128 controller.
 VARIANTS = ("adaptive", "no_acceptance_calibration", "no_latency", "no_exploration", "frozen_after_warmup")
 
-# Canonical names for new official runs.  ``adaptive`` is the corrected
-# budget-aware B<=256 controller; every comparison that changes one of its
-# design choices is named explicitly.  In particular, the historical method
-# is never silently reported under the primary name again.
+# Canonical names for method-schema v3 runs.  The corrected dynamic B<=128
+# controller is the formal primary.  B<=256 is retained only as an explicitly
+# named budget-extension ablation; the historical method is never silently
+# reported under the primary name.
+METHOD_SCHEMA_VERSION = 3
+PRIMARY_ADAPTIVE_METHOD = "adaptive_b128"
 OFFICIAL_VARIANTS = (
-    "adaptive",
-    "adaptive_legacy",
     "adaptive_b128",
+    "adaptive_b256",
+    "adaptive_legacy",
     "adaptive_legacy_cost_attribution",
     "adaptive_with_exploration",
     "adaptive_no_acceptance_calibration",

@@ -30,6 +30,6 @@
 
 采用官方 seed=0 抽样，不保留全量作为默认正式评测。十套数据共 1,072 题/对话；包括 MT-Bench 双轮后每方法 1,152 次回答。独立包的原始 `paper_t0_full.json` 仍可列出官方三组模型和默认八进程，温度限定为 AdaptiveTree 适用的 T=0；当前 integrated formal 重跑只选择其中 4B/8B，30B 因单卡 H20/MoE 路径尚未验收而延期。官方未锁定历史 Hugging Face revision，因此本项目固定本次复现实验快照，不能凭空保证与作者历史数据快照逐字一致。
 
-默认入口已切换到 official.py、official_data.py、official_worker.py 和 official_reporting.py；底层 DDTree best-first 构树器保持不变。当前 canonical `adaptive` 则明确为 B≤256、预算相关 tree-build 成本归因、无周期探索；`adaptive_legacy` 只作为历史对照。正式 registry 是主方法、legacy 历史对照和六个消融/控制共 8 个键，并以来源锁定和失败即停审计约束产物。这里的 DDTree 对齐记录不包含树状块验证；当前 integrated formal 已将树状块验证延期。未完成的新 GPU 运行不能提前宣称结果。
+默认入口已切换到 official.py、official_data.py、official_worker.py 和 official_reporting.py；底层 DDTree best-first 构树器保持不变。当前主方法 `adaptive_b128` 明确为 B≤128、预算相关 tree-build 成本归因、无周期探索并持续在线更新；`adaptive_b256` 只作为预算上限消融，`adaptive_legacy` 只作为历史对照。正式 registry 是主方法、legacy 历史对照和六个消融/控制共 8 个键，并以来源锁定和失败即停审计约束产物。这里的 DDTree 对齐记录不包含树状块验证；当前 integrated formal 已将树状块验证延期。未完成的新 GPU 运行不能提前宣称结果。
 
 原始依据：[数据处理](https://github.com/liranringel/ddtree/blob/c96427a185677bf4133ed865dd1626a5041aef9b/model/utils.py)、[benchmark](https://github.com/liranringel/ddtree/blob/c96427a185677bf4133ed865dd1626a5041aef9b/benchmark.py)、[运行脚本](https://github.com/liranringel/ddtree/blob/c96427a185677bf4133ed865dd1626a5041aef9b/run_benchmark.sh)、[汇总口径](https://github.com/liranringel/ddtree/blob/c96427a185677bf4133ed865dd1626a5041aef9b/make_latex_table.py)。已通过原始 GitHub 提交重新核对数据处理、benchmark、DDTree 生成及表格脚本，不仅依赖本地文件的“official”名称。

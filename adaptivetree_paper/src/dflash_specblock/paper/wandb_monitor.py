@@ -6,6 +6,8 @@ import os
 from pathlib import Path
 from statistics import fmean
 
+from .common import METHOD_SCHEMA_VERSION, PRIMARY_ADAPTIVE_METHOD
+
 
 def wandb_contract(args):
     """Return public W&B settings only; credentials must never enter contracts."""
@@ -59,8 +61,8 @@ def initialize_wandb(args, *, model_name, draft_name, backend, rank, world_size,
             "world_size":world_size,
             "temperature":0,
             "smoke_count":args.smoke_count,
-            "method_schema_version":2,
-            "primary_adaptive_method":"adaptive",
+            "method_schema_version":METHOD_SCHEMA_VERSION,
+            "primary_adaptive_method":PRIMARY_ADAPTIVE_METHOD,
             "controller_configs":controller_configs,
         },
         tags=["adaptivetree", "t0", backend, "official"],

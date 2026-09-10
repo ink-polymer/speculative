@@ -2,13 +2,13 @@
 
 新增 [Qwen3-8B 独立版本](docs/ADAPTIVE_QWEN3_8B.md)：bash scripts/run_paper_t0_qwen3_8b.sh plan。包含同一套正式方法、历史控制及六项消融，默认独立输出；不传参数仅显示计划，不启动 GPU。8B 权重 revision 与已上传 GBV 配置一致。
 
-本包以修正成本归因并扩展到 B=256 的控制器作为正式 `adaptive`，同时保留明确命名的历史对照、消融、数学证明、正式评测和测试。**没有 RL 训练、GBV、模型权重、数据文件或新 GPU 实验结果。** 文件名中的 full 指完整实验矩阵，采样数量按用户要求采用 DDTree 官方设置，并非全量数据集。
+本包以修正成本归因、保留原始六候选预算的动态 `adaptive_b128` 作为正式主方法，同时保留明确命名的历史对照、单因素消融、数学证明、正式评测和测试。`adaptive_b256` 只用于检验扩大预算上限。**没有 RL 训练、GBV、模型权重、数据文件或新 GPU 实验结果。** 文件名中的 full 指完整实验矩阵，采样数量按用户要求采用 DDTree 官方设置，并非全量数据集。
 
 [构树与流程图](docs/ADAPTIVE_DDTREE_METHOD.md) · [论文版数学证明](docs/ADAPTIVE_DDTREE_T0_PAPER_PROOF.md) · [控制器公式与实现边界](docs/ADAPTIVE_DDTREE_T0_PROOF.md) · [完整实验说明](docs/PAPER_T0_EXPERIMENTS.md) · [官方对齐核对](docs/DDTREE_PROTOCOL_ALIGNMENT.md)
 
 ## 方法与评测
 
-- 保留原版 DDTree best-first；正式 `adaptive` 最多枚举 256 节点，在 30/45/60/80/100/128/160/192/256 的嵌套树间按校准接受收益与完整预算相关实测成本选预算。没有 policy 网络、训练集或 checkpoint。
+- 保留原版 DDTree best-first；正式 `adaptive_b128` 最多枚举 128 节点，在 30/45/60/80/100/128 的嵌套树间按校准接受收益与完整预算相关实测成本动态选预算并持续更新。没有 policy 网络、训练集或 checkpoint。
 - 官方十数据集：GSM8K 128、MATH-500 128、AIME24 30、AIME25 30、HumanEval 164、MBPP-sanitized 128、LiveCodeBench 128、SWE-bench 128、MT-Bench 80、Alpaca 128。
 - 共 1,072 题/对话，含 MT-Bench 双轮后每方法 1,152 次回答。直接执行固定版官方数据处理和 seed=0 抽样，不是全量测试集。
 - 三组原始 Target/DFlash 模型：Qwen3-4B、Qwen3-8B、Qwen3-Coder-30B-A3B-Instruct。T=0、BF16、每回答最多 2,048 新 token。
@@ -41,16 +41,16 @@ CUDA_VISIBLE_DEVICES=0 bash scripts/run_paper_t0_full.sh all \
 
 smoke 不能用于论文；显式单卡/模型子集会记录为协议范围或硬件偏离。正式运行可分别调用 evaluate 和 summarize。上游未公开历史 HF 快照，本包锁定本次数据和权重 revision；不能声称复原未知的作者历史快照。没有 collect/train 步骤。
 
-成本归因修正和 B=256 候选预算现已注册为正式 `adaptive`。tree-build、编译、
+成本归因修正和 B=128 六候选现已注册为正式 `adaptive_b128`。tree-build、编译、
 Target 验证和 KV/commit 延迟都计入所选预算；仅 proposal 作为固定成本。旧方法明确
 命名为 `adaptive_legacy`，不再占用主方法名称。正式方法/对照如下：
 
 | 名称 | 作用 |
 |---|---|
-| `adaptive` | 修正成本归因、B≤256、无周期探索的正式主方法 |
+| `adaptive_b128` | 修正成本归因、B≤128、无周期探索的动态正式主方法 |
+| `adaptive_b256` | 仅将候选预算上限扩到 B=256 的单因素消融 |
 | `adaptive_legacy` | B≤128、旧成本归因、带周期探索的历史控制 |
-| `adaptive_b128` | 只移除 B>128 候选的单因素消融 |
-| `adaptive_legacy_cost_attribution` | 保持 B≤256、关闭探索，仅恢复旧成本归因的单因素消融 |
+| `adaptive_legacy_cost_attribution` | 保持 B≤128、关闭探索，仅恢复旧成本归因的单因素消融 |
 | `adaptive_with_exploration` | 只恢复周期探索的单因素消融 |
 | `adaptive_no_acceptance_calibration` | 去接受率校准 |
 | `adaptive_no_latency` | 去延迟判别 |

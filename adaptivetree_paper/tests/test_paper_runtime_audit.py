@@ -5,7 +5,8 @@ from types import SimpleNamespace
 import pytest
 
 from dflash_specblock.paper import official_audit
-from dflash_specblock.paper.common import atomic_json, contract, load_json
+from dflash_specblock.paper.common import (METHOD_SCHEMA_VERSION,
+    PRIMARY_ADAPTIVE_METHOD, atomic_json, contract, load_json)
 from dflash_specblock.paper.official import main
 from dflash_specblock.paper.official_reporting import validate_run_contract
 from test_paper_official_protocol import cfg, synthetic_environment, synthetic_run
@@ -16,7 +17,8 @@ def worker_fixture(tmp_path, monkeypatch):
     metadata = {"config":config, "code_identity":"current-test-code", "source_manifest":{"test":True},
         "dataset_manifest":{"test":True}, "model_indices":[1], "datasets":["gsm8k"],
         "nproc_per_node":1, "smoke_count":0, "max_new_tokens":2048,
-        "method_schema_version":2, "primary_adaptive_method":"adaptive"}
+        "method_schema_version":METHOD_SCHEMA_VERSION,
+        "primary_adaptive_method":PRIMARY_ADAPTIVE_METHOD}
     monkeypatch.setattr(official_audit,"code_identity",lambda:"current-test-code")
     monkeypatch.setattr(official_audit,"verify_sources",lambda:{"test":True})
     monkeypatch.setattr(official_audit,"check_manifest",lambda _: {"test":True})

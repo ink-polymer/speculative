@@ -13,9 +13,11 @@ import torch
 
 from dflash_specblock.ddtree_builder import DDTreeBuilder
 from dflash_specblock.paper.common import (OFFICIAL_VARIANTS as VARIANTS, ROOT,
-    atomic_json, code_identity, digest, load_json)
+    METHOD_SCHEMA_VERSION, PRIMARY_ADAPTIVE_METHOD, atomic_json, code_identity,
+    digest, load_json)
 from dflash_specblock.paper.controller import (B128_ABLATION_VARIANT,
-    COST_ATTRIBUTED_VARIANT, EXTENDED_BUDGETS, EXTENDED_BUDGET_VARIANT,
+    B256_ABLATION_VARIANT, COST_ATTRIBUTED_VARIANT, EXTENDED_BUDGETS,
+    EXTENDED_BUDGET_VARIANT,
     LEGACY_ADAPTIVE_VARIANT, LEGACY_COST_ATTRIBUTION_ABLATION_VARIANT,
     controller_config, expected_official_controller_configs,
     make_paper_builder, selected_diagnostic_variants)
@@ -46,8 +48,8 @@ def test_official_matrix_is_extracted_from_pinned_script_and_cli(capsys):
     result = json.loads(capsys.readouterr().out)
     assert result["cases"] == 1072 and result["turns_per_method"] == 1152
     assert result["generation_calls"] == 65664 and result["nproc_per_node"] == 8
-    assert result["method_schema_version"] == 2
-    assert result["primary_adaptive_method"] == "adaptive"
+    assert result["method_schema_version"] == METHOD_SCHEMA_VERSION
+    assert result["primary_adaptive_method"] == PRIMARY_ADAPTIVE_METHOD
     assert result["official_samples"] and not result["full_split"] and not result["training"]
     assert len(result["models"]) == 3
     main(["plan", "--experimental-cost-attribution", "--run-dir",
@@ -61,7 +63,7 @@ def test_official_matrix_is_extracted_from_pinned_script_and_cli(capsys):
     extended = json.loads(capsys.readouterr().out)
     assert extended["generation_calls"] == 65664
     assert extended["deprecated_cli_aliases"] == [
-        "experimental_extended_budgets_is_adaptive"]
+        "experimental_extended_budgets_is_adaptive_b256"]
     main(["plan", "--wandb-project", "adaptive-test", "--wandb-group", "test-group"])
     monitored = json.loads(capsys.readouterr().out)
     assert monitored["wandb"] == {
@@ -159,7 +161,8 @@ def test_official_adaptive_loop_matches_official_ar_on_mock(limit,stops,monkeypa
         result = adaptive_generate(**kwargs,block_size=16,builder=builder)
         assert torch.equal(result.output_ids,ar.output_ids)
         assert result.time_per_output_token > 0 and result.adaptive_decisions
-        assert all(d["tree_nodes"] in cfg()["adaptive"]["budget_candidates"] for d in result.adaptive_decisions)
+        assert all(d["tree_nodes"] in builder.budget_candidates
+                   for d in result.adaptive_decisions)
 
 
 def response(tpot,token=7):
@@ -176,11 +179,11 @@ def test_official_mean_tpot_not_ratio_of_total_times():
             **{v:response(1.) for v in VARIANTS}})
         fa["responses"].append({"baseline":response(base/2),"dflash":response(1.8)})
     rows = {r["method"]:r for r in official_rows(sdpa,fa,VARIANTS)}
-    assert rows["adaptive"]["speedup_vs_target"] == 3.
-    assert rows["adaptive"]["speedup_vs_best_ddtree"] == 1.5
+    assert rows[PRIMARY_ADAPTIVE_METHOD]["speedup_vs_target"] == 3.
+    assert rows[PRIMARY_ADAPTIVE_METHOD]["speedup_vs_best_ddtree"] == 1.5
     assert rows["DDTree-best"]["selected_key"] == "ddtree_tb128"
     assert rows["DFlash"]["method_backend"] == "flash_attention_2"
-    assert rows["adaptive"]["target_baseline_backend"] == "flash_attention_2"
+    assert rows[PRIMARY_ADAPTIVE_METHOD]["target_baseline_backend"] == "flash_attention_2"
 
 
 def test_mismatch_audit_is_fail_closed(tmp_path):
@@ -205,11 +208,14 @@ def test_mismatch_record_policy_is_explicit_and_non_lossless(tmp_path):
 def test_official_method_order_and_no_t1_support():
     assert method_names("sdpa",VARIANTS)[:9] == ["baseline","dflash"]+[f"ddtree_tb{b}" for b in BUDGETS]
     assert method_names("flash_attention_2",VARIANTS) == ["baseline","dflash"]
-    primary = make_paper_builder(cfg()["adaptive"], "adaptive")
+    primary = make_paper_builder(cfg()["adaptive"], PRIMARY_ADAPTIVE_METHOD)
     assert primary.variant == "no_exploration"
     assert primary.timing_partition == "budget_aware"
-    assert primary.budget_candidates == EXTENDED_BUDGETS
-    assert primary.tree_budget == 256
+    assert primary.budget_candidates == tuple(cfg()["adaptive"]["budget_candidates"])
+    assert primary.tree_budget == 128
+    extended = make_paper_builder(cfg()["adaptive"], B256_ABLATION_VARIANT)
+    assert extended.budget_candidates == EXTENDED_BUDGETS
+    assert extended.tree_budget == 256
     legacy = make_paper_builder(cfg()["adaptive"], LEGACY_ADAPTIVE_VARIANT)
     assert legacy.variant == "adaptive" and legacy.timing_partition == "legacy"
     assert legacy.tree_budget == 128
@@ -218,11 +224,11 @@ def test_official_method_order_and_no_t1_support():
     legacy_cost = make_paper_builder(
         cfg()["adaptive"], LEGACY_COST_ATTRIBUTION_ABLATION_VARIANT)
     assert legacy_cost.variant == "no_exploration"
-    assert legacy_cost.tree_budget == 256
+    assert legacy_cost.tree_budget == 128
     assert legacy_cost.timing_partition == "legacy"
     assert legacy_cost.exploration_interval == 0
     exploration = make_paper_builder(cfg()["adaptive"], "adaptive_with_exploration")
-    assert exploration.tree_budget == 256 and exploration.exploration_interval == 64
+    assert exploration.tree_budget == 128 and exploration.exploration_interval == 64
     for method, behavior in {
         "adaptive_no_acceptance_calibration":"no_acceptance_calibration",
         "adaptive_no_latency":"no_latency",
@@ -230,7 +236,7 @@ def test_official_method_order_and_no_t1_support():
     }.items():
         ablation = make_paper_builder(cfg()["adaptive"], method)
         assert ablation.variant == behavior
-        assert ablation.tree_budget == 256
+        assert ablation.tree_budget == 128
         assert ablation.timing_partition == "budget_aware"
         assert ablation.exploration_interval == 0
     assert not set(VARIANTS) & {COST_ATTRIBUTED_VARIANT, EXTENDED_BUDGET_VARIANT}
@@ -277,17 +283,17 @@ def test_controlled_table_never_uses_faster_cross_backend_baseline():
             **{f"ddtree_tb{budget}":response(1.5 if budget == 128 else 3.)
                for budget in BUDGETS},
             **{variant:response(1.) for variant in VARIANTS}})
-    sdpa["responses"][1]["adaptive"] = response(1., 8)
+    sdpa["responses"][1][PRIMARY_ADAPTIVE_METHOD] = response(1., 8)
     rows = {row["method"]:row for row in controlled_sdpa_rows(sdpa, VARIANTS)}
-    assert rows["adaptive"]["speedup_vs_target"] == 6.
-    assert rows["adaptive"]["exact_output_rate"] == .5
+    assert rows[PRIMARY_ADAPTIVE_METHOD]["speedup_vs_target"] == 6.
+    assert rows[PRIMARY_ADAPTIVE_METHOD]["exact_output_rate"] == .5
     exact = {row["method"]:row
              for row in controlled_exact_output_subset_rows(sdpa, VARIANTS)}
-    assert exact["adaptive"]["exact_output_responses"] == 1
-    assert exact["adaptive"]["exact_subset_speedup_vs_target"] == 10.
-    assert exact["adaptive"]["selection_bias_warning"] is True
+    assert exact[PRIMARY_ADAPTIVE_METHOD]["exact_output_responses"] == 1
+    assert exact[PRIMARY_ADAPTIVE_METHOD]["exact_subset_speedup_vs_target"] == 10.
+    assert exact[PRIMARY_ADAPTIVE_METHOD]["selection_bias_warning"] is True
     assert rows["DFlash"]["method_backend"] == "sdpa"
-    assert rows["adaptive"]["target_baseline_backend"] == "sdpa"
+    assert rows[PRIMARY_ADAPTIVE_METHOD]["target_baseline_backend"] == "sdpa"
 
 
 def synthetic_environment():
@@ -313,7 +319,9 @@ def synthetic_run(backend="sdpa"):
                 "temperature":0., "max_samples":128, "max_new_tokens":2048,
                 "tree_budget":",".join(map(str,BUDGETS)), "flash_attn":backend!="sdpa"},
         "methods":methods, "block_size":16, "smoke":False, "source_lock":{"test_only":True},
-        "method_schema_version":2, "controller_configs":controller_configs,
+        "method_schema_version":METHOD_SCHEMA_VERSION,
+        "primary_adaptive_method":PRIMARY_ADAPTIVE_METHOD,
+        "controller_configs":controller_configs,
         "hardware":[{"rank":0,"gpu":"synthetic","uuid":"synthetic","flash_attn":"test-only"}], "world_size":1,
         "responses":[{**method_results,
                       "_audit":{"index":0,"turn":0,"exact_match":True,
@@ -389,9 +397,10 @@ def test_record_policy_validates_mismatches_without_lossless_gate():
         audit = run["responses"][0]["_audit"]
         audit.update({"greedy_audit_policy":policy,"mismatching_methods":[],
                       "first_mismatch_indices":{}})
-    sdpa["responses"][0]["adaptive"] = response(1.,8)
+    sdpa["responses"][0][PRIMARY_ADAPTIVE_METHOD] = response(1.,8)
     sdpa["responses"][0]["_audit"].update({"exact_match":False,
-        "mismatching_methods":["adaptive"],"first_mismatch_indices":{"adaptive":0}})
+        "mismatching_methods":[PRIMARY_ADAPTIVE_METHOD],
+        "first_mismatch_indices":{PRIMARY_ADAPTIVE_METHOD:0}})
     stats = validate_pair(sdpa,fa,"gsm8k",0,VARIANTS,expected,policy)
     assert stats == {"responses":2,"exact_responses":1,"mismatching_responses":1,
                      "cross_backend_input_mismatches":0,
@@ -470,7 +479,8 @@ def test_summary_checks_contract_completion_environment_and_artifact_hash(tmp_pa
     metadata = {"config":config,"model_indices":[0],"datasets":["gsm8k"],"smoke_count":0,
         "code_identity":code_identity(),
         "dataset_manifest":manifest,"source_manifest":verify_sources(),"nproc_per_node":1,
-        "method_schema_version":2,"primary_adaptive_method":"adaptive"}
+        "method_schema_version":METHOD_SCHEMA_VERSION,
+        "primary_adaptive_method":PRIMARY_ADAPTIVE_METHOD}
     identity = contract(run_dir,metadata)
     atomic_json(run_dir/"environment.json",synthetic_environment())
     atomic_json(data_dir/"source_revisions.json",{"test_only":True})
@@ -488,7 +498,7 @@ def test_summary_checks_contract_completion_environment_and_artifact_hash(tmp_pa
     assert not report["full_official_t0_model_dataset_matrix"]
     assert report["controlled_exact_output_subset_rows"]
     assert report["exact_output_subset_warning"]
-    assert report["primary_rows"][0]["selected_key"] == "adaptive"
+    assert report["primary_rows"][0]["selected_key"] == PRIMARY_ADAPTIVE_METHOD
     assert {row["method_role"] for row in report["ablation_rows"]} == {
         "ablation", "historical_control"}
     assert report["adaptive_budget_usage"]
@@ -516,7 +526,8 @@ def test_corrected_adaptive_summary_is_formal_and_roles_are_explicit(tmp_path, m
     metadata = {"config":config,"model_indices":[0],"datasets":["gsm8k"],"smoke_count":0,
         "code_identity":code_identity(),
         "dataset_manifest":manifest,"source_manifest":verify_sources(),"nproc_per_node":1,
-        "method_schema_version":2,"primary_adaptive_method":"adaptive"}
+        "method_schema_version":METHOD_SCHEMA_VERSION,
+        "primary_adaptive_method":PRIMARY_ADAPTIVE_METHOD}
     identity = contract(run_dir, metadata)
     atomic_json(run_dir/"environment.json", synthetic_environment())
     atomic_json(data_dir/"source_revisions.json", {"test_only":True})
@@ -536,25 +547,26 @@ def test_corrected_adaptive_summary_is_formal_and_roles_are_explicit(tmp_path, m
     assert not report["full_official_t0_model_dataset_matrix"]
     assert all(row["method"] not in {COST_ATTRIBUTED_VARIANT, EXTENDED_BUDGET_VARIANT}
                for row in report["rows"])
-    primary = next(row for row in report["rows"] if row["selected_key"] == "adaptive")
+    primary = next(row for row in report["rows"]
+                   if row["selected_key"] == PRIMARY_ADAPTIVE_METHOD)
     assert primary["method_role"] == "primary"
     usage = next(row for row in report["adaptive_budget_usage"]
-                 if row["method"] == "adaptive")
-    assert usage["selected_budget_counts"] == {"256":2}
+                 if row["method"] == PRIMARY_ADAPTIVE_METHOD)
+    assert usage["selected_budget_counts"] == {"128":2}
 
 
 def test_extended_budget_usage_reports_cap_and_above_128():
     run = synthetic_run("sdpa")
     first = run["responses"][0]
-    first["adaptive"].adaptive_decisions = [
+    first[B256_ABLATION_VARIANT].adaptive_decisions = [
         {"decision":{"budget":128}, "tree_nodes":128}]
     second = copy.deepcopy(first)
     second["_audit"]["index"] = 1
-    second["adaptive"].adaptive_decisions.append(
+    second[B256_ABLATION_VARIANT].adaptive_decisions.append(
         {"decision":{"budget":256}, "tree_nodes":256})
     run["responses"].append(second)
     from dflash_specblock.paper.official_reporting import adaptive_budget_usage
-    usage = adaptive_budget_usage(run, "adaptive")
+    usage = adaptive_budget_usage(run, B256_ABLATION_VARIANT)
     assert usage["candidate_budgets"] == list(EXTENDED_BUDGETS)
     assert usage["rounds"] == 3 and usage["max_selected_budget"] == 256
     assert usage["selected_budget_counts"] == {"128":2, "256":1}
@@ -637,13 +649,14 @@ def test_worker_multiturn_keeps_official_history_method_and_run_completion(
     assert saved["responses"][1]["_audit"]["conditioning_history_sha256"] == digest([[1024]])
     assert "diagnostic_variants" not in saved
     assert "diagnostic_controllers" not in saved
-    assert saved["method_schema_version"] == 2
-    assert saved["controller_configs"]["adaptive"]["maximum_draft_nodes"] == 256
-    assert saved["controller_configs"]["adaptive"]["timing_partition"] == "budget_aware"
+    assert saved["method_schema_version"] == METHOD_SCHEMA_VERSION
+    assert saved["primary_adaptive_method"] == PRIMARY_ADAPTIVE_METHOD
+    assert saved["controller_configs"][PRIMARY_ADAPTIVE_METHOD]["maximum_draft_nodes"] == 128
+    assert saved["controller_configs"][B256_ABLATION_VARIANT]["maximum_draft_nodes"] == 256
     expected_aliases = []
     if experimental_cost:
         expected_aliases.append("experimental_cost_attribution_is_adaptive_b128")
     if experimental_extended:
-        expected_aliases.append("experimental_extended_budgets_is_adaptive")
+        expected_aliases.append("experimental_extended_budgets_is_adaptive_b256")
     assert saved.get("deprecated_cli_aliases", []) == expected_aliases
     assert args.output.with_suffix(".complete.json").exists()

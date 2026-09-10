@@ -1,12 +1,12 @@
 # 修正版 AdaptiveTree：DDTree 官方 T=0 实验与消融
 
-当前统一为 **非 RL、成本归因修正且预算扩至 B=256 的 AdaptiveTree**。用户已确认连抽样数量也与官方一致，因此默认不再使用七套全量测试集。文件名中的 full 表示完整实验矩阵，不表示全量数据。
+当前统一为 **非 RL、成本归因修正且保留原始 B=128 上限的动态 AdaptiveTree**。用户已确认连抽样数量也与官方一致，因此默认不再使用七套全量测试集。文件名中的 full 表示完整实验矩阵，不表示全量数据。
 
 [构树介绍与流程图](ADAPTIVE_DDTREE_METHOD.md) · [论文数学证明](ADAPTIVE_DDTREE_T0_PROOF.md) · [官方对齐说明](DDTREE_PROTOCOL_ALIGNMENT.md)
 
 ## 1. 方法与官方依据
 
-底层构树器逐字节恢复自本项目提交 `9dd67698ad828b8c3fca8659e3a388f0b2dfbdf7`。正式 `adaptive` 用一次 DFlash block 前向，DDTree best-first 枚举最多 256 节点，再从九个嵌套前缀中选预算；初始 60、每预算预热一轮、EMA α=0.2，并按当前注册合同关闭周期探索。旧 B≤128、旧成本归因、间隔 64 次探索的实现保留为 `adaptive_legacy`。不训练 policy、reward、rank head 或 draft，不需要训练集/checkpoint。
+底层构树器逐字节恢复自本项目提交 `9dd67698ad828b8c3fca8659e3a388f0b2dfbdf7`。正式 `adaptive_b128` 用一次 DFlash block 前向，DDTree best-first 枚举最多 128 节点，再从六个嵌套前缀中动态选预算；初始 60、每预算预热一轮、EMA α=0.2，并按当前注册合同关闭周期探索。旧 B≤128、旧成本归因、间隔 64 次探索的实现保留为 `adaptive_legacy`；B256 仅以 `adaptive_b256` 单因素消融保留。不训练 policy、reward、rank head 或 draft，不需要训练集/checkpoint。
 
 评测对齐 DDTree 官方提交 `c96427a185677bf4133ed865dd1626a5041aef9b`。只复现其 **T=0 部分**，不将此方法扩展为 T=1 GBV。
 
@@ -69,14 +69,14 @@ formal 新服务器重跑只选择 4B/8B，并把 30B 与树状块验证明确�
 |---|---|
 | 两个 Target 后端 | 官方 Target-only、官方 DFlash |
 | SDPA 固定预算 | 官方 DDTree：16/32/64/128/256/512/1024 |
-| SDPA 主方法 | `adaptive`：正确成本归因、九候选预算（B≤256）、关闭周期探索 |
+| SDPA 主方法 | `adaptive_b128`：正确成本归因、六候选预算（B≤128）、关闭周期探索并持续更新 |
 | 历史控制 | `adaptive_legacy`：旧 B≤128、旧成本归因、带周期探索方法 |
-| 预算消融 | `adaptive_b128`：正确成本归因但只保留 B≤128 |
-| 成本归因消融 | `adaptive_legacy_cost_attribution`：保持 B≤256、关闭探索，只恢复旧成本归因 |
+| 预算消融 | `adaptive_b256`：只把候选上限扩展到 B≤256 |
+| 成本归因消融 | `adaptive_legacy_cost_attribution`：保持 B≤128、关闭探索，只恢复旧成本归因 |
 | 探索消融 | `adaptive_with_exploration`：在正式方法上恢复周期探索 |
 | 校准消融 | `adaptive_no_acceptance_calibration`：接受率校准系数固定 1 |
 | 延迟消融 | `adaptive_no_latency`：决策时去除成本判别 |
-| 冻结消融 | `adaptive_frozen_after_warmup`：九预算预热后冻结耗时及接受率校准 |
+| 冻结消融 | `adaptive_frozen_after_warmup`：六预算预热后冻结耗时及接受率校准 |
 
 消融均不重训模型。Adaptive 的构树转换与控制器开销计入官方 decode timer。各方法使用同一组实测阶段时间，但按 registry 中冻结的分区更新：canonical 以“草稿”为共享固定成本，将“构树＋树编译＋验证＋KV/提交”归入所选预算；`adaptive_legacy` 与成本归因消融才恢复旧分区。换用官方执行器后，这些观测来自它的阶段计时，而不是伪称仍为旧 engine 的 CUDA-event 数字。
 

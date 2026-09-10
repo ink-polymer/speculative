@@ -35,6 +35,8 @@ TEMPERATURES = (1.0,)
 SAMPLING_METHODS = ("target", "dflash", "ddtree")
 TREE_BLOCK_STATUS = "deferred_not_run"
 FORMAL_MODEL_IDS = ("qwen3_4b", "qwen3_8b")
+ADAPTIVE_PRIMARY_METHOD = "adaptive_b128"
+ADAPTIVE_METHOD_SCHEMA_VERSION = 3
 T1_DATASET_COUNTS = {
     "gsm8k":128, "math500":128, "aime24":30, "aime25":30,
     "humaneval":164, "mbpp_sanitized":128, "livecodebench":128,
@@ -546,15 +548,15 @@ def _validate_adaptive_summary(summary: dict, adaptive_run: Path, model: dict,
     if (contract.get("identity") != _adaptive_contract_digest(metadata)
             or summary.get("protocol_identity") != contract.get("identity")
             or summary.get("environment_sha256") != file_hash(environment_path)
-            or metadata.get("version") != 5
+            or metadata.get("version") != 6
             or metadata.get("config") != config
             or metadata.get("nproc_per_node") != 1
             or metadata.get("model_indices") != [model["adaptive_model_index"]]
             or metadata.get("datasets") != datasets
             or metadata.get("smoke_count") != 0
             or metadata.get("max_new_tokens") != 2048
-            or metadata.get("method_schema_version") != 2
-            or metadata.get("primary_adaptive_method") != "adaptive"
+            or metadata.get("method_schema_version") != ADAPTIVE_METHOD_SCHEMA_VERSION
+            or metadata.get("primary_adaptive_method") != ADAPTIVE_PRIMARY_METHOD
             or metadata.get("greedy_audit_policy") != "record-bf16-mismatches"
             or metadata.get("method_order_policy") != "balanced-rotation"
             or "diagnostic_variants" in metadata
@@ -638,8 +640,8 @@ def _validate_adaptive_summary(summary: dict, adaptive_run: Path, model: dict,
     if (summary.get("protocol") != "ddtree_official_t0"
             or summary.get("training") is not False
             or summary.get("official_samples") is not True
-            or summary.get("method_schema_version") != 2
-            or summary.get("primary_adaptive_method") != "adaptive"
+            or summary.get("method_schema_version") != ADAPTIVE_METHOD_SCHEMA_VERSION
+            or summary.get("primary_adaptive_method") != ADAPTIVE_PRIMARY_METHOD
             or summary.get("greedy_audit_policy") != "record-bf16-mismatches"
             or summary.get("method_order_policy") != "balanced-rotation"
             or summary.get("controlled_protocol_gate_passed") is not True
@@ -661,7 +663,7 @@ def _validate_adaptive_summary(summary: dict, adaptive_run: Path, model: dict,
             raise ValueError("AdaptiveTree best-DDTree row selected an unregistered budget")
         if (expected_key is not None and selected != expected_key):
             raise ValueError("AdaptiveTree summary method label/key mismatch")
-        expected_role = ("primary" if selected == "adaptive" else
+        expected_role = ("primary" if selected == ADAPTIVE_PRIMARY_METHOD else
                          "historical_control" if selected == "adaptive_legacy" else
                          "ablation" if selected.startswith("adaptive_") else "baseline")
         numeric = (row.get("speedup_vs_target"), row.get("speedup_vs_best_ddtree"),
@@ -911,12 +913,12 @@ def load_integrated_suite(path: Path, model_ids=None) -> dict:
                              "method_order_policy"}:
         raise ValueError("Invalid AdaptiveTree suite section")
     if (adaptive_spec["temperature"] != 0
-            or adaptive_spec["primary_method"] != "adaptive"
-            or adaptive_spec["method_schema_version"] != 2
+            or adaptive_spec["primary_method"] != ADAPTIVE_PRIMARY_METHOD
+            or adaptive_spec["method_schema_version"] != ADAPTIVE_METHOD_SCHEMA_VERSION
             or adaptive_spec["greedy_audit_policy"] != "record-bf16-mismatches"
             or adaptive_spec["method_order_policy"] != "balanced-rotation"):
         raise ValueError(
-            "Integrated AdaptiveTree requires canonical adaptive, method schema v2, "
+            "Integrated AdaptiveTree requires dynamic adaptive_b128, method schema v3, "
             "BF16 divergence recording, and balanced order"
         )
     sampling_spec = spec["positive_temperature"]
@@ -938,6 +940,8 @@ def load_integrated_suite(path: Path, model_ids=None) -> dict:
             or adaptive_config.get("temperature") != 0
             or adaptive_config.get("seed") != 0
             or adaptive_config.get("max_new_tokens") != 2048
+            or adaptive_config.get("primary_adaptive_method") != ADAPTIVE_PRIMARY_METHOD
+            or adaptive_config.get("method_schema_version") != ADAPTIVE_METHOD_SCHEMA_VERSION
             or adaptive_config.get("official_commit") !=
                "c96427a185677bf4133ed865dd1626a5041aef9b"):
         raise ValueError("AdaptiveTree must use the pinned official T=0 protocol")
@@ -1033,7 +1037,7 @@ def audit_integrated_suite(path: Path, output: Path | None = None, model_ids=Non
         "checks":{
             "immutable_model_revisions":True,
             "adaptive_official_t0_protocol":True,
-            "adaptive_primary_is_canonical_corrected_method":True,
+            "adaptive_primary_is_dynamic_b128":True,
             "adaptive_token_divergence_recorded":True,
             "adaptive_strict_lossless_claim_disabled":True,
             "adaptive_balanced_method_positions":True,
@@ -1263,8 +1267,8 @@ def plan_integrated_suite(path: Path, model_ids=None) -> dict:
             "methods_per_turn_across_backends":adaptive_methods_per_turn,
             "generation_calls":adaptive_calls,
             "registered_variants":list(config["variants"]),
-            "primary_method":"adaptive",
-            "method_schema_version":2,
+            "primary_method":ADAPTIVE_PRIMARY_METHOD,
+            "method_schema_version":ADAPTIVE_METHOD_SCHEMA_VERSION,
             "primary_backend":"sdpa",
             "greedy_audit_policy":suite["spec"]["adaptive"]["greedy_audit_policy"],
             "strict_lossless_claim_allowed":False,
@@ -1396,8 +1400,8 @@ def run_integrated_suite(path: Path, adaptive_data_dir: Path, block_data_dir: Pa
         smoke_summary = _load_json(smoke_dir / "tables.json")
         if (smoke_summary.get("protocol") != "ddtree_official_t0"
                 or smoke_summary.get("official_samples") is not False
-                or smoke_summary.get("method_schema_version") != 2
-                or smoke_summary.get("primary_adaptive_method") != "adaptive"
+                or smoke_summary.get("method_schema_version") != ADAPTIVE_METHOD_SCHEMA_VERSION
+                or smoke_summary.get("primary_adaptive_method") != ADAPTIVE_PRIMARY_METHOD
                 or smoke_summary.get("greedy_audit_policy") !=
                    "record-bf16-mismatches"
                 or smoke_summary.get("method_order_policy") != "balanced-rotation"

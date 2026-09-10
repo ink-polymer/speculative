@@ -32,9 +32,9 @@ EXPECTED_T1_DATASETS = {
     "mt-bench": 80,
 }
 EXPECTED_T0_VARIANTS = {
-    "adaptive",
-    "adaptive_legacy",
     "adaptive_b128",
+    "adaptive_b256",
+    "adaptive_legacy",
     "adaptive_legacy_cost_attribution",
     "adaptive_with_exploration",
     "adaptive_no_acceptance_calibration",
@@ -94,6 +94,9 @@ def audit(matrix_path: Path) -> dict:
         require(suite.get("adaptive", {}).get("config") ==
                 matrix.get("adaptive_t0", {}).get("config"),
                 "formal matrix and integrated suite select different T=0 configs")
+        require(suite.get("adaptive", {}).get("primary_method") == "adaptive_b128"
+                and suite.get("adaptive", {}).get("method_schema_version") == 3,
+                "integrated suite must register dynamic adaptive_b128 under method schema v3")
         require(suite.get("positive_temperature") == {
             "temperatures":[1.0], "methods":["target", "dflash", "ddtree"],
             "length":15, "tree_budget":45, "probability_dtype":"float64",
@@ -128,7 +131,8 @@ def audit(matrix_path: Path) -> dict:
         *t0.get("adaptive_ablations", []),
     }
     require(registered_variants == EXPECTED_T0_VARIANTS, "T=0 canonical AdaptiveTree/ablation keys are incomplete")
-    require(t0.get("adaptive_primary") == "adaptive", "corrected B256 no-exploration method must own the adaptive key")
+    require(t0.get("adaptive_primary") == "adaptive_b128",
+            "corrected dynamic B128 must be the formal primary")
     require(t0.get("sample_seed") == 0 and t0.get("generation_seed") == 0,
             "T=0 official selection/generation seed must be zero")
     require(t0.get("max_new_tokens") == 2048, "T=0 max_new_tokens must be 2048")
@@ -150,8 +154,12 @@ def audit(matrix_path: Path) -> dict:
         require(cfg.get("tree_budgets") == t0.get("ddtree_budgets"), "underlying DDTree budgets drifted")
         require(set(cfg.get("variants", [])) == EXPECTED_T0_VARIANTS,
                 "underlying T=0 config does not use all canonical AdaptiveTree keys")
-        require(cfg.get("adaptive", {}).get("budget_candidates") == [30, 45, 60, 80, 100, 128, 160, 192, 256],
-                "canonical adaptive must expose the registered B256 candidate set")
+        require(cfg.get("version") == 6
+                and cfg.get("primary_adaptive_method") == "adaptive_b128"
+                and cfg.get("method_schema_version") == 3,
+                "underlying T=0 config must register dynamic B128 schema v3")
+        require(cfg.get("adaptive", {}).get("budget_candidates") == [30, 45, 60, 80, 100, 128],
+                "dynamic B128 primary must use the original six candidates")
         selected_pairs = [cfg.get("models", [])[m["adaptive_model_index"]] for m in matrix.get("models", [])
                           if isinstance(m.get("adaptive_model_index"), int)
                           and m["adaptive_model_index"] < len(cfg.get("models", []))]

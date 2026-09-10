@@ -37,17 +37,17 @@ MoE 路径也未完成相同实现审计。正式结论只能覆盖 4B 与 8B；
 | Target | `baseline` | Target-only |
 | DFlash | `dflash` | 官方 DFlash |
 | DDTree | `ddtree_tb16` … `ddtree_tb1024` | B=16/32/64/128/256/512/1024 |
-| 正式主方法 | `adaptive` | 修正成本归因、候选预算扩至 B=256、关闭周期探索 |
+| 正式主方法 | `adaptive_b128` | 修正成本归因、原始六候选预算 B≤128、关闭周期探索；预热后持续动态选择并更新 |
+| 预算上限消融 | `adaptive_b256` | 只把候选集扩至 B=256，其余与主方法相同 |
 | 历史对照 | `adaptive_legacy` | 修改前的旧 AdaptiveTree |
-| 预算对照 | `adaptive_b128` | 修正成本归因，但预算上限保持 B=128 |
-| 成本归因消融 | `adaptive_legacy_cost_attribution` | 保持 B≤256 和关闭探索，只恢复旧计时归因 |
+| 成本归因消融 | `adaptive_legacy_cost_attribution` | 保持 B≤128 和关闭探索，只恢复旧计时归因 |
 | 探索对照 | `adaptive_with_exploration` | 新主方法恢复周期探索 |
 | 接受率消融 | `adaptive_no_acceptance_calibration` | 在新主方法上移除接受率校准 |
 | 延迟消融 | `adaptive_no_latency` | 在新主方法上移除实测延迟项 |
 | 在线更新消融 | `adaptive_frozen_after_warmup` | 在新主方法上预热后冻结估计 |
 
-`no_exploration` 不再作为主方法旁边的消融键，因为关闭探索已经是新
-`adaptive` 的组成部分；探索的作用由 `adaptive_with_exploration` 做反向对照。
+`no_exploration` 不再作为主方法旁边的消融键，因为关闭探索已经是
+`adaptive_b128` 的组成部分；探索的作用由 `adaptive_with_exploration` 做反向对照。
 
 ### 公平条件
 
@@ -133,7 +133,7 @@ python scripts/audit_formal_experiment_matrix.py \
 PYTHONPATH=src pytest -q tests/gbv_paper/test_formal_experiment_matrix.py
 ```
 
-审计会检查 canonical 方法名、B=256 候选、模型 revision、数据数量、后端、三颗
+审计会检查主方法名、B=128 六候选、B256 单因素消融、模型 revision、数据数量、后端、三颗
 T=1 seed、均衡顺序、聚簇 bootstrap 和延期声明。任一项不一致即返回非零状态，
 禁止以“完整正式实验”名义启动。
 

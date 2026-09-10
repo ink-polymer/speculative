@@ -14,6 +14,8 @@ from gbv_experiments.common import ROOT, digest, file_hash, source_hashes, write
 from gbv_experiments.config import Variant, build_variants
 from gbv_experiments.data import DATASETS
 from gbv_experiments.integrated_suite import (
+    ADAPTIVE_METHOD_SCHEMA_VERSION,
+    ADAPTIVE_PRIMARY_METHOD,
     DISTRIBUTION_LAW_TESTS,
     T1_DOCTOR_TESTS,
     T1_IMPLEMENTATION_TESTS,
@@ -38,7 +40,10 @@ from gbv_experiments.runner import dataset_local_schedule, make_plan, scheduled_
 SUITE = ROOT / "configs/adaptive_tree_block_suite.json"
 
 
-@pytest.mark.skipif(os.name != "posix", reason="formal process scorer is POSIX-only")
+@pytest.mark.skipif(
+    os.name != "posix" or (hasattr(os, "geteuid") and os.geteuid() == 0),
+    reason="symlink semantics test requires a non-root POSIX interpreter",
+)
 def test_process_scorer_identity_preserves_venv_invocation_symlink(tmp_path, monkeypatch):
     from gbv_experiments.scoring import process_python_identity
 
@@ -66,6 +71,8 @@ def test_integrated_plan_keeps_protocol_families_separate_and_complete():
     plan = plan_integrated_suite(SUITE)
     assert plan["models"] == ["qwen3_4b", "qwen3_8b"]
     assert plan["adaptive_t0"]["generation_calls"] == 43776
+    assert plan["adaptive_t0"]["primary_method"] == ADAPTIVE_PRIMARY_METHOD
+    assert plan["adaptive_t0"]["method_schema_version"] == ADAPTIVE_METHOD_SCHEMA_VERSION
     assert plan["adaptive_t0"]["greedy_audit_policy"] == "record-bf16-mismatches"
     assert not plan["adaptive_t0"]["strict_lossless_claim_allowed"]
     assert plan["positive_temperature_t1"]["temperatures"] == [1.0]
@@ -89,6 +96,7 @@ def test_models_revisions_backends_and_t1_controls_are_exactly_matched():
     assert suite["spec"]["adaptive"]["greedy_audit_policy"] == (
         "record-bf16-mismatches"
     )
+    assert suite["spec"]["adaptive"]["primary_method"] == ADAPTIVE_PRIMARY_METHOD
     assert [model["adaptive_model_index"] for model in suite["models"]] == [0, 1]
     for model in suite["models"]:
         cfg = model["config"]
@@ -517,13 +525,14 @@ def test_adaptive_summary_contract_requires_complete_registered_matrix(tmp_path)
         },
     }
     metadata = {
-        "version":5, "config":cfg, "nproc_per_node":1,
+        "version":6, "config":cfg, "nproc_per_node":1,
         "source_manifest":source_manifest,
         "dataset_manifest":dataset_manifest,
         "code_identity":_adaptive_code_identity(suite["adaptive_root"]),
         "model_indices":[model["adaptive_model_index"]], "datasets":cfg["datasets"],
-        "smoke_count":0, "max_new_tokens":2048, "method_schema_version":2,
-        "primary_adaptive_method":"adaptive",
+        "smoke_count":0, "max_new_tokens":2048,
+        "method_schema_version":ADAPTIVE_METHOD_SCHEMA_VERSION,
+        "primary_adaptive_method":ADAPTIVE_PRIMARY_METHOD,
         "greedy_audit_policy":"record-bf16-mismatches",
         "method_order_policy":"balanced-rotation",
     }
@@ -568,7 +577,7 @@ def test_adaptive_summary_contract_requires_complete_registered_matrix(tmp_path)
     for dataset in cfg["datasets"]:
         turns = cfg["sample_limits"][dataset] * (2 if dataset == "mt-bench" else 1)
         for method, selected in methods:
-            role = ("primary" if selected == "adaptive" else
+            role = ("primary" if selected == ADAPTIVE_PRIMARY_METHOD else
                     "historical_control" if selected == "adaptive_legacy" else
                     "ablation" if selected.startswith("adaptive_") else "baseline")
             controlled.append({
@@ -608,8 +617,9 @@ def test_adaptive_summary_contract_requires_complete_registered_matrix(tmp_path)
     )
     summary = {
         "protocol":"ddtree_official_t0", "training":False,
-        "official_samples":True, "method_schema_version":2,
-        "primary_adaptive_method":"adaptive",
+        "official_samples":True,
+        "method_schema_version":ADAPTIVE_METHOD_SCHEMA_VERSION,
+        "primary_adaptive_method":ADAPTIVE_PRIMARY_METHOD,
         "greedy_audit_policy":"record-bf16-mismatches",
         "method_order_policy":"balanced-rotation",
         "controlled_protocol_gate_passed":True,

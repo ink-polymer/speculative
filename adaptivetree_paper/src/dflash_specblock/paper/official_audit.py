@@ -3,7 +3,8 @@ from __future__ import annotations
 
 import os
 
-from .common import code_identity, digest, load_json
+from .common import (METHOD_SCHEMA_VERSION, PRIMARY_ADAPTIVE_METHOD,
+                     code_identity, digest, load_json)
 from .official_data import check_manifest
 from .official_spec import verify_sources
 from .controller import deprecated_experiment_flags
@@ -27,8 +28,8 @@ def validate_worker_contract(args, config):
             or args.nproc_per_node != metadata["nproc_per_node"]
             or args.smoke_count != metadata["smoke_count"]
             or metadata["max_new_tokens"] != (32 if args.smoke_count else 2048)
-            or metadata.get("method_schema_version") != 2
-            or metadata.get("primary_adaptive_method") != "adaptive"
+            or metadata.get("method_schema_version") != METHOD_SCHEMA_VERSION
+            or metadata.get("primary_adaptive_method") != PRIMARY_ADAPTIVE_METHOD
             or metadata.get("greedy_audit_policy", "strict")
                != getattr(args, "greedy_audit_policy", "strict")
             or metadata.get("method_order_policy", "official-fixed")

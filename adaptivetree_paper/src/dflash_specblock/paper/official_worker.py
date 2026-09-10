@@ -6,7 +6,8 @@ import random
 import numpy as np
 import torch
 
-from .common import atomic_json, digest, file_hash, load_json
+from .common import (METHOD_SCHEMA_VERSION, PRIMARY_ADAPTIVE_METHOD, atomic_json,
+                     digest, file_hash, load_json)
 from .controller import (DIAGNOSTIC_VARIANTS, controller_config,
                          deprecated_experiment_flags,
                          expected_official_controller_configs,
@@ -232,7 +233,8 @@ def worker(args, config):
                 "protocol_identity":args.identity, "source_lock":lock,
                 "world_size":world, "hardware":hardware,
                 "smoke":bool(args.smoke_count), "methods":methods,
-                "method_schema_version":2,
+                "method_schema_version":METHOD_SCHEMA_VERSION,
+                "primary_adaptive_method":PRIMARY_ADAPTIVE_METHOD,
                 "greedy_audit_policy":audit_policy,
                 "method_order_policy":order_policy,
                 "adaptive_timing":"timing attribution is method-specific and frozen in controller_configs; all controller overhead is included in the official decode timer",

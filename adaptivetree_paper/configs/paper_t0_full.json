@@ -1,5 +1,5 @@
 {
-  "version": 5,
+  "version": 6,
   "protocol": "ddtree_official_t0",
   "official_commit": "c96427a185677bf4133ed865dd1626a5041aef9b",
   "temperature": 0,
@@ -52,10 +52,12 @@
       "z-lab/Qwen3-Coder-30B-A3B-DFlash"
     ]
   ],
+  "primary_adaptive_method": "adaptive_b128",
+  "method_schema_version": 3,
   "variants": [
-    "adaptive",
-    "adaptive_legacy",
     "adaptive_b128",
+    "adaptive_b256",
+    "adaptive_legacy",
     "adaptive_legacy_cost_attribution",
     "adaptive_with_exploration",
     "adaptive_no_acceptance_calibration",
@@ -69,10 +71,7 @@
       60,
       80,
       100,
-      128,
-      160,
-      192,
-      256
+      128
     ],
     "initial_budget": 60,
     "warmup_rounds_per_budget": 1,

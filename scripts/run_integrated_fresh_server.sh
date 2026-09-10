@@ -15,7 +15,7 @@ PYTHON_RESOLVED="$(command -v "$PYTHON_BIN")"
 export PATH="$(dirname "$PYTHON_RESOLVED"):$PATH"
 PYTHON_BIN="$PYTHON_RESOLVED"
 SUITE="${INTEGRATED_SUITE:-$REPOSITORY_ROOT/configs/adaptive_tree_block_suite.json}"
-RUN_DIR="${INTEGRATED_RUN_DIR:-$REPOSITORY_ROOT/outputs/integrated-adaptive-ddtree-dflash-t0-t1}"
+RUN_DIR="${INTEGRATED_RUN_DIR:-$REPOSITORY_ROOT/outputs/integrated-adaptive-b128-ddtree-dflash-t0-t1}"
 ADAPTIVE_DATA_DIR="${ADAPTIVE_DATA_DIR:-$REPOSITORY_ROOT/adaptivetree_paper/datasets/ddtree_official_t0}"
 # BLOCK_DATA_DIR remains a compatibility alias for older launch commands. This
 # phase contains only T=1 Target/DFlash/DDTree; tree-block verification is not run.

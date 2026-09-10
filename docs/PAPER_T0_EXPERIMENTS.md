@@ -13,9 +13,9 @@
 |---|---|
 | 基线 | Target、DFlash |
 | 固定树 | DDTree：7 个固定预算 |
-| AdaptiveTree 主方法 | `adaptive`：`B<=256`，构树成本采用 budget-aware attribution，无周期探索 |
+| AdaptiveTree 主方法 | `adaptive_b128`：`B<=128`，构树成本采用 budget-aware attribution，无周期探索，在线动态更新 |
 | 历史对照 | `adaptive_legacy`：保留旧 B<=128、旧计时归因和周期探索语义 |
-| 消融/控制 | 6 项；其中 `adaptive_legacy_cost_attribution` 只改变成本归因，是严格单因素对照 |
+| 消融/控制 | `adaptive_b256` 只扩大预算候选；其余机制消融固定 B128；另保留 `adaptive_legacy` 历史对照 |
 
 AdaptiveTree 的完整注册表固定为 8 个方法（主方法 + 1 个历史对照 + 6 项消融/控制）。
 方法键、角色、预算和控制器参数由配置与审计器共同冻结，不能在运行时用同名参数覆盖。
@@ -34,7 +34,7 @@ bash scripts/run_integrated_fresh_server.sh plan
 - 同一模型、数据集和温度内，各方法共享输入、顺序、输出长度与环境身份。
 - T=0 的固定预算 DDTree 和 AdaptiveTree 使用相同 target/draft 权重与验证路径；差异只来自
   已注册的构树预算策略。
-- `adaptive_legacy_cost_attribution` 除成本归因外必须与 canonical 配置相同，避免把多个变化
+- `adaptive_legacy_cost_attribution` 除成本归因外必须与 `adaptive_b128` 配置相同，避免把多个变化
   混成一个消融结论。
 - 汇总前重新验证数据、代码、权重、Python/CUDA/GPU UUID、包版本、结果覆盖与数值完整性；
   旧目录、部分结果或缺少契约字段的清单不得续用。
@@ -46,9 +46,9 @@ bash scripts/run_integrated_fresh_server.sh plan
 
 ## 旧协议为何归档
 
-旧方案曾把“原版 adaptive”描述为最大 128 节点、六候选预算、每 64 次周期探索，并只列四项
-消融；还计划同时运行 Qwen3-Coder-30B-A3B-Instruct。该描述现在仅对应
-`adaptive_legacy` 历史对照，不能代表修正后的 canonical AdaptiveTree。
+旧方案曾把 B256 方法占用含糊的 `adaptive` 名称，也曾把“原版 adaptive”描述为最大
+128 节点、六候选预算、每 64 次周期探索。schema v3 中主方法明确为动态
+`adaptive_b128`，B256 明确为 `adaptive_b256`，原版则仅是 `adaptive_legacy` 历史对照。
 
 旧 `run_paper_t0_full.sh`、`run_paper_t0_qwen3_8b.sh`、历史数据目录和历史结果目录仍可用于
 追溯旧实验，但不得用于启动、续跑或汇总当前正式矩阵。旧证明说明也只覆盖其明确写出的
