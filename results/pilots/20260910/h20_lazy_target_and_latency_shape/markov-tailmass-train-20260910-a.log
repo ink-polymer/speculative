@@ -1,0 +1,44 @@
+`torch_dtype` is deprecated! Use `dtype` instead!
+Loading checkpoint shards:   0%|                         | 0/3 [00:00<?, ?it/s]Loading checkpoint shards: 100%|█████████████████| 3/3 [00:00<00:00, 79.11it/s]
+`torch_dtype` is deprecated! Use `dtype` instead!
+epoch=1/2 step=40/256 kl=1.298432 baseline=1.315420
+epoch=1/2 step=80/256 kl=1.238534 baseline=1.284019
+epoch=1/2 step=120/256 kl=1.207913 baseline=1.260506
+epoch=1/2 step=160/256 kl=1.208307 baseline=1.277855
+epoch=1/2 step=200/256 kl=1.232828 baseline=1.318695
+epoch=1/2 step=240/256 kl=1.249377 baseline=1.344975
+epoch=2/2 step=40/256 kl=1.207443 baseline=1.324275
+epoch=2/2 step=80/256 kl=1.220738 baseline=1.344914
+epoch=2/2 step=120/256 kl=1.218055 baseline=1.351478
+epoch=2/2 step=160/256 kl=1.193398 baseline=1.332940
+epoch=2/2 step=200/256 kl=1.189880 baseline=1.341049
+epoch=2/2 step=240/256 kl=1.207469 baseline=1.370992
+{
+  "saved": "/root/autodl-tmp/outputs/markov-tailmass-20260910-a.pt",
+  "architecture": "markov_branch_topr_v1",
+  "hidden_size": 2560,
+  "rank": 32,
+  "support_size": 16,
+  "max_length": 15,
+  "start_depth": 2,
+  "training_objective": "coarse_target_kl",
+  "updates": 512,
+  "epochs": 2,
+  "learning_rate": 0.0005,
+  "max_context": 512,
+  "seed": 20260910,
+  "training_examples": 256,
+  "holdout_examples": 64,
+  "training_sha256": "66a1a2cfdb5713744886256d9ba073f100be97f5e3c02b13d2ee1f1701b454f5",
+  "target": "Qwen/Qwen3-4B",
+  "target_revision": "1cfa9a7208912126459214e8b04321603b3df60c",
+  "draft": "z-lab/Qwen3-4B-DFlash-b16",
+  "draft_revision": "b74e3a329c4d963783143b1e970d95b002be72bd",
+  "train_kl": 1.2022949410619095,
+  "baseline_train_kl": 1.3700404656034717,
+  "holdout_kl": 1.0598744313265342,
+  "baseline_holdout_kl": 1.2758148721259204,
+  "holdout_improved": true,
+  "adds_target_or_draft_forward_at_runtime": false,
+  "branch_conditioned": true
+}

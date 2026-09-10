@@ -78,9 +78,14 @@ LAZY_TARGET_TREE_PREFETCH = {
     "ddtree_lazy_target_deferred_leaf":0,
     "ddtree_lazy_target_prefetch1":1,
     "ddtree_lazy_target_prefetch2":2,
+    "ddtree_lazy_target_aligned32":-32,
+    "ddtree_lazy_target_aligned40":-40,
 }
 LAZY_TARGET_TREE_METHODS = set(LAZY_TARGET_TREE_PREFETCH)
-DEFERRED_LEAF_TREE_METHODS = {"ddtree_lazy_target_deferred_leaf"}
+DEFERRED_LEAF_TREE_METHODS = {
+    "ddtree_lazy_target_deferred_leaf",
+    "ddtree_lazy_target_aligned32", "ddtree_lazy_target_aligned40",
+}
 
 
 class StageMeter:
@@ -733,9 +738,15 @@ class Engine:
                     # probability_tree assigns node ids in descending Draft
                     # prefix-mass order, so the earliest leaves are the safest
                     # no-synchronization prefetch choices.
-                    prefetched_leaf_nodes = leaf_nodes[
-                        :LAZY_TARGET_TREE_PREFETCH[variant.method]
+                    prefetch_control = LAZY_TARGET_TREE_PREFETCH[
+                        variant.method
                     ]
+                    prefetch_count = (
+                        prefetch_control
+                        if prefetch_control >= 0
+                        else max(0, -prefetch_control - len(internal_nodes))
+                    )
+                    prefetched_leaf_nodes = leaf_nodes[:prefetch_count]
                     verified_nodes = sorted(
                         internal_nodes + prefetched_leaf_nodes
                     )
@@ -1154,6 +1165,17 @@ class Engine:
                     nodes = tree.path_nodes[chosen][:accepted]
                     tokens = paths[chosen, :accepted].tolist()
             if (terminal_leaf >= 0
+                    and terminal_leaf in verified_node_to_compact):
+                # A prefetched leaf already has its posterior row in this
+                # round's aligned Target block, so retain DDTree's exact bonus
+                # without another Target invocation.
+                with meter.measure("prefetched_leaf_sample"):
+                    leaf_p = verified_p[
+                        verified_node_to_compact[terminal_leaf]
+                    ]
+                    bonus = int(sample(leaf_p, generator))
+                prefetched_leaf_hit = True
+            elif (terminal_leaf >= 0
                     and variant.method in DEFERRED_LEAF_TREE_METHODS):
                 # Do not spend a separate Target call only to sample the leaf
                 # continuation.  Commit the leaf as this round's last token;
@@ -1162,14 +1184,6 @@ class Engine:
                 bonus = -1
                 append_bonus = False
                 deferred_leaf_stop = True
-            elif (terminal_leaf >= 0
-                    and terminal_leaf in verified_node_to_compact):
-                with meter.measure("prefetched_leaf_sample"):
-                    leaf_p = verified_p[
-                        verified_node_to_compact[terminal_leaf]
-                    ]
-                    bonus = int(sample(leaf_p, generator))
-                prefetched_leaf_hit = True
             elif terminal_leaf >= 0:
                 # The reached leaf is the only omitted tree row that can affect
                 # the output.  Commit the already accepted internal path to the

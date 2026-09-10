@@ -1,0 +1,445 @@
+{
+  "deferred_leaf": {
+    "passed": true,
+    "official_precision_preserved": "BF16 model/SDPA; FP64 probabilities",
+    "predeclared_ar_noninferiority_margin": 0.005,
+    "leaf_observed": true,
+    "deferred_leaf_observed": true,
+    "max_internal_total_variation": 0.0568328645701055,
+    "max_leaf_total_variation": null,
+    "max_leaf_vs_ar_total_variation": null,
+    "max_full_ddtree_vs_ar_total_variation": 0.056729356723388184,
+    "max_lazy_target_vs_ar_total_variation": 0.01428889456113819,
+    "mean_full_ddtree_vs_ar_total_variation": 0.006820288839377842,
+    "mean_lazy_target_vs_ar_total_variation": 0.0012659562970950167,
+    "attempts": [
+      {
+        "seed": 20261000,
+        "topology_equal": true,
+        "full_rows": 46,
+        "internal_rows": 27,
+        "internal_max_absolute_probability_error": 0.056807808019046446,
+        "internal_max_total_variation": 0.0568328645701055,
+        "internal_top1_equal": true,
+        "reached_leaf": 25,
+        "leaf_max_absolute_probability_error": null,
+        "leaf_total_variation": null,
+        "leaf_top1_equal": null,
+        "leaf_vs_ar_total_variation": null,
+        "full_leaf_vs_ar_total_variation": null,
+        "leaf_vs_ar_top1_equal": null,
+        "deferred_leaf": true,
+        "largest_internal_row_differences": [
+          {
+            "node": 1,
+            "depth": 1,
+            "total_variation": 0.0568328645701055,
+            "max_absolute_probability_error": 0.056807808019046446,
+            "full_top1_token": 7460,
+            "lazy_top1_token": 7460,
+            "full_top1_probability": 0.6172637834669048,
+            "lazy_top1_probability": 0.6723202562522933
+          },
+          {
+            "node": 23,
+            "depth": 7,
+            "total_variation": 0.04356852420833874,
+            "max_absolute_probability_error": 0.043463123677067644,
+            "full_top1_token": 14011,
+            "lazy_top1_token": 14011,
+            "full_top1_probability": 0.7957886819174855,
+            "lazy_top1_probability": 0.7536366944934108
+          },
+          {
+            "node": 16,
+            "depth": 2,
+            "total_variation": 0.02451079791491946,
+            "max_absolute_probability_error": 0.02451079791491939,
+            "full_top1_token": 553,
+            "lazy_top1_token": 553,
+            "full_top1_probability": 0.8734774374260749,
+            "lazy_top1_probability": 0.8979882353409943
+          },
+          {
+            "node": 4,
+            "depth": 2,
+            "total_variation": 0.0208822631903946,
+            "max_absolute_probability_error": 0.020283005375932778,
+            "full_top1_token": 458,
+            "lazy_top1_token": 458,
+            "full_top1_probability": 0.7749163802056135,
+            "lazy_top1_probability": 0.7546559502635682
+          },
+          {
+            "node": 29,
+            "depth": 2,
+            "total_variation": 0.005992206711346815,
+            "max_absolute_probability_error": 0.005976852568017221,
+            "full_top1_token": 41375,
+            "lazy_top1_token": 41375,
+            "full_top1_probability": 0.9508263838897268,
+            "lazy_top1_probability": 0.9450435853579477
+          }
+        ],
+        "ar_reference": [
+          {
+            "node": 0,
+            "depth": 0,
+            "full_vs_ar_total_variation": 1.0341722478175137e-08,
+            "lazy_vs_ar_total_variation": 6.675615149539222e-12,
+            "full_vs_ar_top1_equal": true,
+            "lazy_vs_ar_top1_equal": true
+          },
+          {
+            "node": 1,
+            "depth": 1,
+            "full_vs_ar_total_variation": 0.056729356723388184,
+            "lazy_vs_ar_total_variation": 0.0006896336028352648,
+            "full_vs_ar_top1_equal": true,
+            "lazy_vs_ar_top1_equal": true
+          },
+          {
+            "node": 2,
+            "depth": 2,
+            "full_vs_ar_total_variation": 1.1550371017983979e-08,
+            "lazy_vs_ar_total_variation": 2.3857881590379284e-08,
+            "full_vs_ar_top1_equal": true,
+            "lazy_vs_ar_top1_equal": true
+          },
+          {
+            "node": 3,
+            "depth": 3,
+            "full_vs_ar_total_variation": 3.893485793598699e-07,
+            "lazy_vs_ar_total_variation": 2.7680730407322106e-09,
+            "full_vs_ar_top1_equal": true,
+            "lazy_vs_ar_top1_equal": true
+          },
+          {
+            "node": 4,
+            "depth": 2,
+            "full_vs_ar_total_variation": 0.02046958972474028,
+            "lazy_vs_ar_total_variation": 0.0006910340107549541,
+            "full_vs_ar_top1_equal": true,
+            "lazy_vs_ar_top1_equal": true
+          },
+          {
+            "node": 5,
+            "depth": 4,
+            "full_vs_ar_total_variation": 1.0928090428407317e-07,
+            "lazy_vs_ar_total_variation": 1.4971920713943724e-07,
+            "full_vs_ar_top1_equal": true,
+            "lazy_vs_ar_top1_equal": true
+          },
+          {
+            "node": 6,
+            "depth": 3,
+            "full_vs_ar_total_variation": 0.006652220622388267,
+            "lazy_vs_ar_total_variation": 0.00645764841134585,
+            "full_vs_ar_top1_equal": true,
+            "lazy_vs_ar_top1_equal": true
+          },
+          {
+            "node": 7,
+            "depth": 5,
+            "full_vs_ar_total_variation": 1.0769856404622507e-08,
+            "lazy_vs_ar_total_variation": 1.0659664389031085e-08,
+            "full_vs_ar_top1_equal": true,
+            "lazy_vs_ar_top1_equal": true
+          },
+          {
+            "node": 8,
+            "depth": 4,
+            "full_vs_ar_total_variation": 0.0022387202158032247,
+            "lazy_vs_ar_total_variation": 0.002110416151547074,
+            "full_vs_ar_top1_equal": true,
+            "lazy_vs_ar_top1_equal": true
+          },
+          {
+            "node": 9,
+            "depth": 6,
+            "full_vs_ar_total_variation": 1.2475535342216655e-11,
+            "lazy_vs_ar_total_variation": 4.4404003003259105e-11,
+            "full_vs_ar_top1_equal": true,
+            "lazy_vs_ar_top1_equal": true
+          },
+          {
+            "node": 10,
+            "depth": 5,
+            "full_vs_ar_total_variation": 3.2071232714826104e-08,
+            "lazy_vs_ar_total_variation": 2.344363349147171e-08,
+            "full_vs_ar_top1_equal": true,
+            "lazy_vs_ar_top1_equal": true
+          },
+          {
+            "node": 11,
+            "depth": 4,
+            "full_vs_ar_total_variation": 0.004048517194853065,
+            "lazy_vs_ar_total_variation": 0.003750506797706444,
+            "full_vs_ar_top1_equal": true,
+            "lazy_vs_ar_top1_equal": true
+          },
+          {
+            "node": 12,
+            "depth": 6,
+            "full_vs_ar_total_variation": 2.3838975900302747e-11,
+            "lazy_vs_ar_total_variation": 4.1809639850695277e-10,
+            "full_vs_ar_top1_equal": true,
+            "lazy_vs_ar_top1_equal": true
+          },
+          {
+            "node": 13,
+            "depth": 5,
+            "full_vs_ar_total_variation": 1.0542869507211633e-07,
+            "lazy_vs_ar_total_variation": 1.0498925668694583e-07,
+            "full_vs_ar_top1_equal": true,
+            "lazy_vs_ar_top1_equal": true
+          },
+          {
+            "node": 14,
+            "depth": 7,
+            "full_vs_ar_total_variation": 2.7852512584185426e-09,
+            "lazy_vs_ar_total_variation": 2.216941631276506e-08,
+            "full_vs_ar_top1_equal": true,
+            "lazy_vs_ar_top1_equal": true
+          },
+          {
+            "node": 15,
+            "depth": 4,
+            "full_vs_ar_total_variation": 1.6400242072345803e-05,
+            "lazy_vs_ar_total_variation": 1.794491340408456e-05,
+            "full_vs_ar_top1_equal": true,
+            "lazy_vs_ar_top1_equal": true
+          },
+          {
+            "node": 16,
+            "depth": 2,
+            "full_vs_ar_total_variation": 0.025150706975965408,
+            "lazy_vs_ar_total_variation": 0.0007215820991208195,
+            "full_vs_ar_top1_equal": true,
+            "lazy_vs_ar_top1_equal": true
+          },
+          {
+            "node": 17,
+            "depth": 2,
+            "full_vs_ar_total_variation": 9.429470304378995e-12,
+            "lazy_vs_ar_total_variation": 4.1241794735175276e-10,
+            "full_vs_ar_top1_equal": true,
+            "lazy_vs_ar_top1_equal": true
+          },
+          {
+            "node": 19,
+            "depth": 3,
+            "full_vs_ar_total_variation": 0.014730486856742614,
+            "lazy_vs_ar_total_variation": 0.01428889456113819,
+            "full_vs_ar_top1_equal": true,
+            "lazy_vs_ar_top1_equal": true
+          },
+          {
+            "node": 20,
+            "depth": 3,
+            "full_vs_ar_total_variation": 0.00020158484979086781,
+            "lazy_vs_ar_total_variation": 2.4103058352265764e-05,
+            "full_vs_ar_top1_equal": true,
+            "lazy_vs_ar_top1_equal": true
+          },
+          {
+            "node": 21,
+            "depth": 4,
+            "full_vs_ar_total_variation": 1.035795329506638e-09,
+            "lazy_vs_ar_total_variation": 1.051100912160708e-09,
+            "full_vs_ar_top1_equal": true,
+            "lazy_vs_ar_top1_equal": true
+          },
+          {
+            "node": 22,
+            "depth": 2,
+            "full_vs_ar_total_variation": 3.094635534794869e-06,
+            "lazy_vs_ar_total_variation": 0.0005318266268064287,
+            "full_vs_ar_top1_equal": true,
+            "lazy_vs_ar_top1_equal": true
+          },
+          {
+            "node": 23,
+            "depth": 7,
+            "full_vs_ar_total_variation": 0.043430521332122315,
+            "lazy_vs_ar_total_variation": 0.000413793658893417,
+            "full_vs_ar_top1_equal": true,
+            "lazy_vs_ar_top1_equal": true
+          },
+          {
+            "node": 24,
+            "depth": 5,
+            "full_vs_ar_total_variation": 4.883778715907409e-06,
+            "lazy_vs_ar_total_variation": 1.7158280716094062e-07,
+            "full_vs_ar_top1_equal": true,
+            "lazy_vs_ar_top1_equal": true
+          },
+          {
+            "node": 29,
+            "depth": 2,
+            "full_vs_ar_total_variation": 0.005989008646048183,
+            "lazy_vs_ar_total_variation": 6.288428223394187e-05,
+            "full_vs_ar_top1_equal": true,
+            "lazy_vs_ar_top1_equal": true
+          },
+          {
+            "node": 35,
+            "depth": 2,
+            "full_vs_ar_total_variation": 1.3094762915744052e-07,
+            "lazy_vs_ar_total_variation": 4.354785916274157e-11,
+            "full_vs_ar_top1_equal": true,
+            "lazy_vs_ar_top1_equal": true
+          },
+          {
+            "node": 36,
+            "depth": 2,
+            "full_vs_ar_total_variation": 0.004481903259255194,
+            "lazy_vs_ar_total_variation": 0.004420040681244175,
+            "full_vs_ar_top1_equal": true,
+            "lazy_vs_ar_top1_equal": true
+          }
+        ]
+      },
+      {
+        "seed": 20261001,
+        "topology_equal": true,
+        "full_rows": 46,
+        "internal_rows": 27,
+        "internal_max_absolute_probability_error": 0.056807808019046446,
+        "internal_max_total_variation": 0.0568328645701055,
+        "internal_top1_equal": true,
+        "reached_leaf": 25,
+        "leaf_max_absolute_probability_error": null,
+        "leaf_total_variation": null,
+        "leaf_top1_equal": null,
+        "leaf_vs_ar_total_variation": null,
+        "full_leaf_vs_ar_total_variation": null,
+        "leaf_vs_ar_top1_equal": null,
+        "deferred_leaf": true,
+        "largest_internal_row_differences": [
+          {
+            "node": 1,
+            "depth": 1,
+            "total_variation": 0.0568328645701055,
+            "max_absolute_probability_error": 0.056807808019046446,
+            "full_top1_token": 7460,
+            "lazy_top1_token": 7460,
+            "full_top1_probability": 0.6172637834669048,
+            "lazy_top1_probability": 0.6723202562522933
+          },
+          {
+            "node": 23,
+            "depth": 7,
+            "total_variation": 0.04356852420833874,
+            "max_absolute_probability_error": 0.043463123677067644,
+            "full_top1_token": 14011,
+            "lazy_top1_token": 14011,
+            "full_top1_probability": 0.7957886819174855,
+            "lazy_top1_probability": 0.7536366944934108
+          },
+          {
+            "node": 16,
+            "depth": 2,
+            "total_variation": 0.02451079791491946,
+            "max_absolute_probability_error": 0.02451079791491939,
+            "full_top1_token": 553,
+            "lazy_top1_token": 553,
+            "full_top1_probability": 0.8734774374260749,
+            "lazy_top1_probability": 0.8979882353409943
+          },
+          {
+            "node": 4,
+            "depth": 2,
+            "total_variation": 0.0208822631903946,
+            "max_absolute_probability_error": 0.020283005375932778,
+            "full_top1_token": 458,
+            "lazy_top1_token": 458,
+            "full_top1_probability": 0.7749163802056135,
+            "lazy_top1_probability": 0.7546559502635682
+          },
+          {
+            "node": 29,
+            "depth": 2,
+            "total_variation": 0.005992206711346815,
+            "max_absolute_probability_error": 0.005976852568017221,
+            "full_top1_token": 41375,
+            "lazy_top1_token": 41375,
+            "full_top1_probability": 0.9508263838897268,
+            "lazy_top1_probability": 0.9450435853579477
+          }
+        ],
+        "ar_reference": []
+      },
+      {
+        "seed": 20261002,
+        "topology_equal": true,
+        "full_rows": 46,
+        "internal_rows": 27,
+        "internal_max_absolute_probability_error": 0.056807808019046446,
+        "internal_max_total_variation": 0.0568328645701055,
+        "internal_top1_equal": true,
+        "reached_leaf": -1,
+        "leaf_max_absolute_probability_error": null,
+        "leaf_total_variation": null,
+        "leaf_top1_equal": null,
+        "leaf_vs_ar_total_variation": null,
+        "full_leaf_vs_ar_total_variation": null,
+        "leaf_vs_ar_top1_equal": null,
+        "deferred_leaf": false,
+        "largest_internal_row_differences": [
+          {
+            "node": 1,
+            "depth": 1,
+            "total_variation": 0.0568328645701055,
+            "max_absolute_probability_error": 0.056807808019046446,
+            "full_top1_token": 7460,
+            "lazy_top1_token": 7460,
+            "full_top1_probability": 0.6172637834669048,
+            "lazy_top1_probability": 0.6723202562522933
+          },
+          {
+            "node": 23,
+            "depth": 7,
+            "total_variation": 0.04356852420833874,
+            "max_absolute_probability_error": 0.043463123677067644,
+            "full_top1_token": 14011,
+            "lazy_top1_token": 14011,
+            "full_top1_probability": 0.7957886819174855,
+            "lazy_top1_probability": 0.7536366944934108
+          },
+          {
+            "node": 16,
+            "depth": 2,
+            "total_variation": 0.02451079791491946,
+            "max_absolute_probability_error": 0.02451079791491939,
+            "full_top1_token": 553,
+            "lazy_top1_token": 553,
+            "full_top1_probability": 0.8734774374260749,
+            "lazy_top1_probability": 0.8979882353409943
+          },
+          {
+            "node": 4,
+            "depth": 2,
+            "total_variation": 0.0208822631903946,
+            "max_absolute_probability_error": 0.020283005375932778,
+            "full_top1_token": 458,
+            "lazy_top1_token": 458,
+            "full_top1_probability": 0.7749163802056135,
+            "lazy_top1_probability": 0.7546559502635682
+          },
+          {
+            "node": 29,
+            "depth": 2,
+            "total_variation": 0.005992206711346815,
+            "max_absolute_probability_error": 0.005976852568017221,
+            "full_top1_token": 41375,
+            "lazy_top1_token": 41375,
+            "full_top1_probability": 0.9508263838897268,
+            "lazy_top1_probability": 0.9450435853579477
+          }
+        ],
+        "ar_reference": []
+      }
+    ]
+  }
+}

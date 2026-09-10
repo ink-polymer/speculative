@@ -1,0 +1,90 @@
+{
+  "kind": "architecture_level_ddtree_tbv_budget_scan",
+  "formal_complete": false,
+  "created_at_utc": "2026-09-10T14:04:48.004943+00:00",
+  "uses_cuda_graph": false,
+  "official_precision": {
+    "dtype": "bfloat16",
+    "target_attention": "sdpa",
+    "draft_attention": "sdpa",
+    "allow_tf32": false
+  },
+  "temperature": 1.0,
+  "length": 15,
+  "baseline_budget": 45,
+  "candidate_budgets": [],
+  "candidate_tree_proposal_temperatures": [],
+  "candidate_sparse_exit_temperatures": [],
+  "temperature_budget_grid": false,
+  "candidate_tree_depth_rewards": [],
+  "candidate_tree_temperature_schedules": [],
+  "candidate_learned_temperature_schedule": null,
+  "candidate_learned_bias_path": null,
+  "candidate_adaptive_budgets": [],
+  "rank_checkpoint": null,
+  "candidate_block_spines": [],
+  "slot_mixer_checkpoint": null,
+  "markov_branch_checkpoint": "/root/autodl-tmp/outputs/markov-tailmass-20260910-a.pt",
+  "candidate_markov_budgets": [
+    45
+  ],
+  "candidate_latency_shapes": [],
+  "target_sampling_temperature": 1.0,
+  "tokens": 64,
+  "repeats": 3,
+  "prompt_count": 3,
+  "prompt_policy": "synthetic development prompts only",
+  "stage_profiles_file": "stage_profiles.json",
+  "comparisons": {
+    "adaptive_markov_branch_b45": {
+      "versus_ddtree": {
+        "candidate": "adaptive_markov_branch_b45",
+        "baseline": "ddtree_b45",
+        "speedup": 0.8997219600232536,
+        "ci95": [
+          0.8170044381635554,
+          0.9783637285065475
+        ],
+        "prompt_clusters": 3
+      },
+      "versus_dflash": {
+        "candidate": "adaptive_markov_branch_b45",
+        "baseline": "dflash",
+        "speedup": 1.4933104869492662,
+        "ci95": [
+          1.2054721345509336,
+          1.988849749533047
+        ],
+        "prompt_clusters": 3
+      }
+    }
+  },
+  "best_point_estimate": "adaptive_markov_branch_b45",
+  "ddtree_vs_dflash": {
+    "candidate": "ddtree_b45",
+    "baseline": "dflash",
+    "speedup": 1.6597466254026645,
+    "ci95": [
+      1.4754780736082258,
+      2.0328326690616243
+    ],
+    "prompt_clusters": 3
+  },
+  "decision": "reject_architecture_candidate",
+  "source_sha256": {
+    "engine": "cbffb48ce9fc21f68e74a6d716d74aa24489143fe7b474ffcca91edccb7cd568",
+    "script": "797e873534dd81132b0f8a3f7ab31ae2e05113b3c9fa6c33885edf6511fa51a3",
+    "config": "b8e0043d0866289aefd8155dc5e5e496689315db7add78ff4a34fa0c85616641",
+    "rank_checkpoint": null,
+    "slot_mixer_checkpoint": null,
+    "markov_branch_checkpoint": "5468c66a7854f9a85bc6e9091cf758c3bebe15df9f133b32c02c1aea1dfd391f"
+  },
+  "telemetry_end": {
+    "utc": "2026-09-10T14:04:48.007581+00:00",
+    "hostname": "autodl-container-26d148a435-8171fde0",
+    "pid": 54564,
+    "slurm_job_id": null,
+    "gpu_uuid": "b32e1465-06c0-9da4-928e-ca196f12f2cf",
+    "nvidia_smi": "GPU-b32e1465-06c0-9da4-928e-ca196f12f2cf, NVIDIA H20, P0, 38, 176.77 W, 1980 MHz, 2619 MHz, 9461 MiB, 52 %"
+  }
+}

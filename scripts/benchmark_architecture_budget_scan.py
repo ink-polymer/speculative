@@ -89,12 +89,14 @@ def variants(budgets: list[int], tree_temperatures: list[float],
              slot_mixer: bool = False,
              markov_branch: bool = False,
              markov_budgets: list[int] | None = None,
+             latency_shapes: list[tuple[int, int]] | None = None,
              ) -> list[Variant]:
     depth_rewards = depth_rewards or []
     temperature_schedules = temperature_schedules or []
     adaptive_budgets = adaptive_budgets or []
     block_spines = block_spines or []
     markov_budgets = markov_budgets or [45]
+    latency_shapes = latency_shapes or []
     base = Variant(
         name="base", method="ddtree", paths=1, length=15,
         temperature=1.0, draft_temperature=1.0, tree_budget=45,
@@ -103,6 +105,13 @@ def variants(budgets: list[int], tree_temperatures: list[float],
     values = [
         replace(base, name="dflash", method="dflash", draft_temperature=None),
         replace(base, name="ddtree_b45", method="ddtree"),
+        *[
+            replace(
+                base, name=f"adaptive_shape_l{length}_b{budget}",
+                method="ddtree", length=length, tree_budget=budget,
+            )
+            for length, budget in latency_shapes
+        ],
         *([] if temperature_budget_grid else [
             replace(
                 base, name=f"adaptive_tbv_b{budget}",
@@ -248,6 +257,7 @@ def run(config: Path, output: Path, budgets: list[int], tokens: int,
         slot_mixer_checkpoint: Path | None = None,
         markov_branch_checkpoint: Path | None = None,
         markov_budgets: list[int] | None = None,
+        latency_shapes: list[tuple[int, int]] | None = None,
         ) -> dict:
     tree_temperatures = tree_temperatures or []
     sparse_temperatures = sparse_temperatures or []
@@ -256,6 +266,7 @@ def run(config: Path, output: Path, budgets: list[int], tokens: int,
     adaptive_budgets = adaptive_budgets or []
     block_spines = block_spines or []
     markov_budgets = markov_budgets or [45]
+    latency_shapes = latency_shapes or []
     if (len(set(budgets)) != len(budgets)
             or any(not 1 <= budget <= 45 for budget in budgets)):
         raise ValueError("Budgets must be unique integers in 1..45")
@@ -274,13 +285,17 @@ def run(config: Path, output: Path, budgets: list[int], tokens: int,
             or any(not 1 <= value <= 16 for value in block_spines)
             or len(set(markov_budgets)) != len(markov_budgets)
             or any(not 1 <= value <= 45 for value in markov_budgets)
+            or len(set(latency_shapes)) != len(latency_shapes)
+            or any(not 2 <= length <= 32 or not 1 <= budget <= 256
+                   for length, budget in latency_shapes)
             or (not budgets and not tree_temperatures
                 and not sparse_temperatures and not depth_rewards
                 and not temperature_schedules
                 and learned_temperature_schedule is None
                 and not adaptive_budgets and rank_checkpoint is None
                 and not block_spines and slot_mixer_checkpoint is None
-                and markov_branch_checkpoint is None)):
+                and markov_branch_checkpoint is None
+                and not latency_shapes)):
         raise ValueError(
             "Tree temperatures must be unique values in 0.1..4.0, and at "
             "least one scan value is required"
@@ -308,6 +323,7 @@ def run(config: Path, output: Path, budgets: list[int], tokens: int,
         slot_mixer_checkpoint is not None,
         markov_branch_checkpoint is not None,
         markov_budgets,
+        latency_shapes,
     )
     by_name = {value.name: value for value in declared}
     with output_lock(output):
@@ -465,6 +481,10 @@ def run(config: Path, output: Path, budgets: list[int], tokens: int,
                 if markov_branch_checkpoint is not None else None
             ),
             "candidate_markov_budgets": markov_budgets,
+            "candidate_latency_shapes": [
+                {"length": length, "tree_budget": budget}
+                for length, budget in latency_shapes
+            ],
             "target_sampling_temperature": 1.0,
             "tokens": tokens,
             "repeats": repeats,
@@ -538,6 +558,10 @@ def main() -> None:
     parser.add_argument(
         "--markov-budgets", type=int, nargs="*", default=[45],
     )
+    parser.add_argument(
+        "--latency-shapes", nargs="*", default=[], metavar="L:B",
+        help="exact ancestral DDTree shape candidates (length:node-budget)",
+    )
     parser.add_argument("--device", default="cuda:0")
     args = parser.parse_args()
     schedules = []
@@ -563,6 +587,16 @@ def main() -> None:
                 f"Invalid adaptive budget {value!r}; use MIN:THRESHOLD"
             ) from error
         adaptive_budgets.append(pair)
+    latency_shapes = []
+    for value in args.latency_shapes:
+        try:
+            length_text, budget_text = value.split(":")
+            pair = (int(length_text), int(budget_text))
+        except (TypeError, ValueError) as error:
+            raise ValueError(
+                f"Invalid latency shape {value!r}; use L:B"
+            ) from error
+        latency_shapes.append(pair)
     run(
         args.config.resolve(), args.output.resolve(), args.budgets,
         args.tokens, args.repeats, args.device,
@@ -589,6 +623,7 @@ def main() -> None:
             if args.markov_branch_checkpoint is not None else None
         ),
         markov_budgets=args.markov_budgets,
+        latency_shapes=latency_shapes,
     )
 
 

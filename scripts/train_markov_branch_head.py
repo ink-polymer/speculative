@@ -30,6 +30,12 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--rank", type=int, default=32)
     result.add_argument("--support-size", type=int, default=16)
     result.add_argument("--start-depth", type=int, default=1)
+    result.add_argument(
+        "--objective", choices=("coarse_target_kl", "selected_kl"),
+        default="coarse_target_kl",
+        help=("coarse_target_kl preserves the candidate-support mass and "
+              "aggregates the untouched vocabulary into an exact tail bin"),
+    )
     result.add_argument("--length", type=int, default=15)
     result.add_argument("--max-context", type=int, default=512)
     result.add_argument("--seed", type=int, default=20260910)
@@ -64,6 +70,49 @@ def selected_kl(scores: torch.Tensor, teacher_logits: torch.Tensor,
     )
     per_depth = F.kl_div(
         torch.log_softmax(scores.float(), dim=-1), teacher,
+        reduction="none",
+    ).sum(-1)
+    weight = torch.arange(
+        per_depth.shape[-1], 0, -1,
+        dtype=per_depth.dtype, device=per_depth.device,
+    )
+    return (per_depth * (weight / weight.mean())).mean()
+
+
+def coarse_target_kl(scores: torch.Tensor, draft_logits: torch.Tensor,
+                     teacher_logits: torch.Tensor,
+                     candidates: torch.Tensor) -> torch.Tensor:
+    """KL on candidate tokens plus the exact untouched-vocabulary tail.
+
+    The runtime branch head only adjusts the selected top-R logits and leaves
+    every other Draft logit unchanged.  Renormalizing teacher mass inside R
+    (the historical objective) loses the probability of exiting that support,
+    even though that mass controls tree coverage.  This objective represents
+    all unselected tokens as one tail event, matching runtime normalization.
+    """
+    draft_log_probability = torch.log_softmax(draft_logits.float(), dim=-1)
+    selected_draft_log = draft_log_probability.gather(2, candidates)
+    correction = scores.float() - draft_logits.float().gather(2, candidates)
+    selected_student_unnormalized = selected_draft_log + correction
+    selected_draft_mass = selected_draft_log.exp().sum(-1).clamp(
+        max=1.0 - torch.finfo(torch.float32).eps,
+    )
+    tail_student_unnormalized = torch.log1p(-selected_draft_mass)
+    student_log_normalizer = torch.logaddexp(
+        torch.logsumexp(selected_student_unnormalized, dim=-1),
+        tail_student_unnormalized,
+    )
+    student_log_probability = torch.cat((
+        selected_student_unnormalized - student_log_normalizer[..., None],
+        (tail_student_unnormalized - student_log_normalizer)[..., None],
+    ), dim=-1)
+
+    teacher_probability = torch.softmax(teacher_logits.float(), dim=-1)
+    selected_teacher = teacher_probability.gather(2, candidates)
+    tail_teacher = (1.0 - selected_teacher.sum(-1)).clamp_min(0.0)
+    coarse_teacher = torch.cat((selected_teacher, tail_teacher[..., None]), -1)
+    per_depth = F.kl_div(
+        student_log_probability, coarse_teacher,
         reduction="none",
     ).sum(-1)
     weight = torch.arange(
@@ -111,6 +160,11 @@ def main() -> None:
     holdout = order[:holdout_count]
     train = order[holdout_count:holdout_count + args.max_samples]
     token_embeddings = engine.target.get_output_embeddings().weight
+    objective = coarse_target_kl if args.objective == "coarse_target_kl" else (
+        lambda scores, _draft, teacher, candidates: selected_kl(
+            scores, teacher, candidates,
+        )
+    )
 
     def example(index: int, seed: int):
         ids = tokenizer(
@@ -164,10 +218,12 @@ def main() -> None:
             scores, candidates = head.teacher_forced_scores(
                 hidden, draft_logits, token_embeddings, labels,
             )
-            loss = selected_kl(scores, teacher_logits, candidates)
+            loss = objective(
+                scores, draft_logits, teacher_logits, candidates,
+            )
             with torch.no_grad():
-                baseline = selected_kl(
-                    draft_logits.gather(2, candidates),
+                baseline = objective(
+                    draft_logits.gather(2, candidates), draft_logits,
                     teacher_logits, candidates,
                 )
             loss.backward()
@@ -195,9 +251,12 @@ def main() -> None:
             scores, candidates = head.teacher_forced_scores(
                 hidden, draft_logits, token_embeddings, labels,
             )
-            held += float(selected_kl(scores, teacher_logits, candidates))
-            held_baseline += float(selected_kl(
-                draft_logits.gather(2, candidates), teacher_logits, candidates,
+            held += float(objective(
+                scores, draft_logits, teacher_logits, candidates,
+            ))
+            held_baseline += float(objective(
+                draft_logits.gather(2, candidates), draft_logits,
+                teacher_logits, candidates,
             ))
             held_count += 1
     if updates < 1 or held_count < 1:
@@ -207,6 +266,7 @@ def main() -> None:
         "hidden_size": head.hidden_size, "rank": head.rank,
         "support_size": head.support_size, "max_length": head.max_length,
         "start_depth": head.start_depth,
+        "training_objective": args.objective,
         "updates": updates, "epochs": args.epochs,
         "learning_rate": args.learning_rate,
         "max_context": args.max_context, "seed": args.seed,

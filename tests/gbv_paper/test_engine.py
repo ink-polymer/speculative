@@ -42,6 +42,8 @@ def test_tree_merge_keeps_candidate_multiplicity():
      "ddtree_lazy_target", "ddtree_lazy_target_deferred_leaf",
      "ddtree_lazy_target_prefetch1",
      "ddtree_lazy_target_prefetch2",
+     "ddtree_lazy_target_aligned32",
+     "ddtree_lazy_target_aligned40",
      "ddtree_lazy_projection", "ddtree_lazy_softmax_fused_scan",
      "ddtree_lazy_projection_fused_scan"],
 )
@@ -236,12 +238,17 @@ def test_lazy_target_verifies_only_internal_rows_and_matches_full_rows(
     )
 
 
+@pytest.mark.parametrize("method", [
+    "ddtree_lazy_target_deferred_leaf",
+    "ddtree_lazy_target_aligned32",
+    "ddtree_lazy_target_aligned40",
+])
 def test_deferred_leaf_uses_exactly_one_target_tree_forward_per_round(
-        tiny_engine):
+        tiny_engine, method):
     result = tiny_engine.generate(
         torch.tensor([[1, 4, 2, 6]]),
         Variant(
-            name="deferred", method="ddtree_lazy_target_deferred_leaf",
+            name="deferred", method=method,
             paths=1, length=3, temperature=1.0, draft_temperature=1.0,
             probability_dtype="float64", tree_budget=12,
         ),
@@ -249,7 +256,10 @@ def test_deferred_leaf_uses_exactly_one_target_tree_forward_per_round(
     )
     assert result["generated_tokens"] == 24
     assert result["target_forward_calls"] == 1 + len(result["rounds"])
-    assert any(row["deferred_leaf_stop"] for row in result["rounds"])
+    assert any(
+        row["deferred_leaf_stop"] or row["prefetched_leaf_hit"]
+        for row in result["rounds"]
+    )
     assert all(
         not row["lazy_leaf_target_forward"] for row in result["rounds"]
     )

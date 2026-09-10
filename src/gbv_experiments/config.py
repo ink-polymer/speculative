@@ -99,6 +99,8 @@ class Variant:
                                "ddtree_lazy_target_deferred_leaf",
                                "ddtree_lazy_target_prefetch1",
                                "ddtree_lazy_target_prefetch2",
+                               "ddtree_lazy_target_aligned32",
+                               "ddtree_lazy_target_aligned40",
                                "ddtree_lazy_projection",
                                "ddtree_lazy_softmax_fused_scan",
                                "ddtree_lazy_projection_fused_scan",
@@ -162,6 +164,8 @@ class Variant:
                             "ddtree_lazy_target_deferred_leaf",
                             "ddtree_lazy_target_prefetch1",
                             "ddtree_lazy_target_prefetch2",
+                            "ddtree_lazy_target_aligned32",
+                            "ddtree_lazy_target_aligned40",
                             "ddtree_lazy_softmax_fused_scan",
                             "ddtree_direct_logits_fused_scan",
                             "ddtree_lazy_projection_fused_scan"}

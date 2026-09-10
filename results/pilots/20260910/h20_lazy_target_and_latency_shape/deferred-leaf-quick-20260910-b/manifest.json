@@ -1,0 +1,228 @@
+{
+  "kind": "development_lazy_target_tree_gate",
+  "formal_complete": false,
+  "created_at_utc": "2026-09-10T13:43:00.941626+00:00",
+  "official_precision": {
+    "dtype": "bfloat16",
+    "target_attention": "sdpa",
+    "draft_attention": "sdpa",
+    "allow_tf32": false
+  },
+  "temperature": 1.0,
+  "tokens": 64,
+  "repeats": 3,
+  "prompt_count": 3,
+  "prompt_policy": "synthetic development prompts; never formal data",
+  "prompt_sha256": [
+    "a4bb6e0223f986883290a4c5212fda779ee64e300cb7017418289332d6c6e51d",
+    "a80f05ae4a3e3c0d69d048f78133fc2a48d6e9650904ccc6cfd46daa750a10e5",
+    "7c002afff4461c1e8b0cb9e8efbed1bd06a9fe4c967e2d5fbdfd02acf889eae9"
+  ],
+  "variants": [
+    {
+      "name": "dflash",
+      "method": "dflash",
+      "paths": 1,
+      "length": 15,
+      "temperature": 1.0,
+      "draft_temperature": null,
+      "share_prefixes": true,
+      "reuse_draft_cache": true,
+      "draft_attention": "bidirectional",
+      "condition_features": "target",
+      "probability_dtype": "float64",
+      "tree_budget": 45,
+      "diffusion_support_size": 8,
+      "diffusion_spur_length": 4,
+      "prefix_strength": 1.0,
+      "tree_proposal_temperature": null,
+      "tree_proposal_temperature_end": null,
+      "tree_proposal_temperature_schedule": null,
+      "tree_proposal_bias_path": null,
+      "tree_adaptive_confidence_threshold": null,
+      "tree_adaptive_min_budget": null,
+      "tree_depth_reward": 0.0
+    },
+    {
+      "name": "ddtree",
+      "method": "ddtree",
+      "paths": 1,
+      "length": 15,
+      "temperature": 1.0,
+      "draft_temperature": 1.0,
+      "share_prefixes": true,
+      "reuse_draft_cache": true,
+      "draft_attention": "bidirectional",
+      "condition_features": "target",
+      "probability_dtype": "float64",
+      "tree_budget": 45,
+      "diffusion_support_size": 8,
+      "diffusion_spur_length": 4,
+      "prefix_strength": 1.0,
+      "tree_proposal_temperature": null,
+      "tree_proposal_temperature_end": null,
+      "tree_proposal_temperature_schedule": null,
+      "tree_proposal_bias_path": null,
+      "tree_adaptive_confidence_threshold": null,
+      "tree_adaptive_min_budget": null,
+      "tree_depth_reward": 0.0
+    },
+    {
+      "name": "fused_scan",
+      "method": "ddtree_fused_scan",
+      "paths": 1,
+      "length": 15,
+      "temperature": 1.0,
+      "draft_temperature": 1.0,
+      "share_prefixes": true,
+      "reuse_draft_cache": true,
+      "draft_attention": "bidirectional",
+      "condition_features": "target",
+      "probability_dtype": "float64",
+      "tree_budget": 45,
+      "diffusion_support_size": 8,
+      "diffusion_spur_length": 4,
+      "prefix_strength": 1.0,
+      "tree_proposal_temperature": null,
+      "tree_proposal_temperature_end": null,
+      "tree_proposal_temperature_schedule": null,
+      "tree_proposal_bias_path": null,
+      "tree_adaptive_confidence_threshold": null,
+      "tree_adaptive_min_budget": null,
+      "tree_depth_reward": 0.0
+    },
+    {
+      "name": "deferred_leaf",
+      "method": "ddtree_lazy_target_deferred_leaf",
+      "paths": 1,
+      "length": 15,
+      "temperature": 1.0,
+      "draft_temperature": 1.0,
+      "share_prefixes": true,
+      "reuse_draft_cache": true,
+      "draft_attention": "bidirectional",
+      "condition_features": "target",
+      "probability_dtype": "float64",
+      "tree_budget": 45,
+      "diffusion_support_size": 8,
+      "diffusion_spur_length": 4,
+      "prefix_strength": 1.0,
+      "tree_proposal_temperature": null,
+      "tree_proposal_temperature_end": null,
+      "tree_proposal_temperature_schedule": null,
+      "tree_proposal_bias_path": null,
+      "tree_adaptive_confidence_threshold": null,
+      "tree_adaptive_min_budget": null,
+      "tree_depth_reward": 0.0
+    }
+  ],
+  "fairness": {
+    "deferred_leaf": {
+      "comparison": "architecture_only",
+      "architecture_delta": {
+        "baseline": {
+          "method": "ddtree",
+          "name": "ddtree",
+          "paths": 1,
+          "tree_adaptive_confidence_threshold": null,
+          "tree_adaptive_min_budget": null,
+          "tree_depth_reward": 0.0,
+          "tree_proposal_bias_path": null,
+          "tree_proposal_temperature": null,
+          "tree_proposal_temperature_end": null,
+          "tree_proposal_temperature_schedule": null
+        },
+        "candidate": {
+          "method": "ddtree_lazy_target_deferred_leaf",
+          "name": "deferred_leaf",
+          "paths": 1,
+          "tree_adaptive_confidence_threshold": null,
+          "tree_adaptive_min_budget": null,
+          "tree_depth_reward": 0.0,
+          "tree_proposal_bias_path": null,
+          "tree_proposal_temperature": null,
+          "tree_proposal_temperature_end": null,
+          "tree_proposal_temperature_schedule": null
+        }
+      },
+      "frozen_variant_controls": {
+        "length": 15,
+        "temperature": 1.0,
+        "draft_temperature": 1.0,
+        "share_prefixes": true,
+        "reuse_draft_cache": true,
+        "draft_attention": "bidirectional",
+        "condition_features": "target",
+        "probability_dtype": "float64",
+        "tree_budget": 45,
+        "diffusion_support_size": 8,
+        "diffusion_spur_length": 4,
+        "prefix_strength": 1.0
+      },
+      "frozen_model_controls": {
+        "dtype": "bfloat16",
+        "target_attention": "sdpa",
+        "draft_attention": "sdpa",
+        "enable_thinking": false,
+        "allow_tf32": false
+      }
+    }
+  },
+  "dflash_fairness": {
+    "comparison": "official_dflash_control",
+    "method_specific_proposals": {
+      "ddtree": "T=1 probability_tree",
+      "dflash": "greedy_argmax masked block"
+    },
+    "frozen_shared_variant_controls": {
+      "paths": 1,
+      "length": 15,
+      "temperature": 1.0,
+      "share_prefixes": true,
+      "reuse_draft_cache": true,
+      "draft_attention": "bidirectional",
+      "condition_features": "target",
+      "probability_dtype": "float64",
+      "tree_budget": 45,
+      "diffusion_support_size": 8,
+      "diffusion_spur_length": 4,
+      "prefix_strength": 1.0,
+      "tree_proposal_temperature": null,
+      "tree_proposal_temperature_end": null,
+      "tree_proposal_temperature_schedule": null,
+      "tree_proposal_bias_path": null,
+      "tree_adaptive_confidence_threshold": null,
+      "tree_adaptive_min_budget": null,
+      "tree_depth_reward": 0.0
+    },
+    "recorded_draft_temperatures": {
+      "ddtree": 1.0,
+      "dflash": null
+    },
+    "frozen_model_controls": {
+      "dtype": "bfloat16",
+      "target_attention": "sdpa",
+      "draft_attention": "sdpa",
+      "enable_thinking": false,
+      "allow_tf32": false
+    }
+  },
+  "timing_primary": "vendored official unweighted response TPOT",
+  "runtime": {
+    "gpu": "NVIDIA H20",
+    "telemetry_start": {
+      "utc": "2026-09-10T13:43:00.941862+00:00",
+      "hostname": "autodl-container-26d148a435-8171fde0",
+      "pid": 53595,
+      "slurm_job_id": null,
+      "gpu_uuid": "b32e1465-06c0-9da4-928e-ca196f12f2cf",
+      "nvidia_smi": "GPU-b32e1465-06c0-9da4-928e-ca196f12f2cf, NVIDIA H20, P0, 38, 120.89 W, 1980 MHz, 2619 MHz, 9099 MiB, 0 %"
+    }
+  },
+  "source_sha256": {
+    "engine": "779ca6a66b5fe35446c836653f5115b61b198f4acea3a5cc757f29bd62062eb0",
+    "sampling": "106212daf3bd1613ff9ee31a82e32b515f35ac3a8a2ca43b79418a3b8977ea0e",
+    "script": "8391b7e7e094891df20b564b1c93a9bde986f83cbdf94ce817e9d711b83d395c",
+    "config": "b8e0043d0866289aefd8155dc5e5e496689315db7add78ff4a34fa0c85616641"
+  }
+}

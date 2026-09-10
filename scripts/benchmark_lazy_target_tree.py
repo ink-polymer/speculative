@@ -1,9 +1,10 @@
-"""Development gate for internal-only Target verification of a DDTree.
+"""Development gate for reduced/aligned Target verification of a DDTree.
 
 The candidate keeps the official DDTree proposal and ancestral sampling law.
-It runs the first Target verification only on the ancestor-closed internal
-subtree, then runs one cached single-token Target step iff the realized walk
-reaches a leaf.  Synthetic prompts are used only for candidate selection.
+It verifies the ancestor-closed internal subtree and optionally enough
+high-Draft-mass leaves to reach an aligned row count.  An unprefetched reached
+leaf is deferred to the next round.  Synthetic prompts are used only for
+candidate selection.
 """
 from __future__ import annotations
 
@@ -39,6 +40,8 @@ DEVELOPMENT_PROMPTS = (
     "Solve x squared minus 11x plus 24 equals zero and verify both roots.",
 )
 
+CANDIDATE_NAMES = ("deferred_leaf", "aligned32", "aligned40")
+
 
 def variants() -> list[Variant]:
     base = Variant(
@@ -52,6 +55,10 @@ def variants() -> list[Variant]:
         replace(base, name="fused_scan", method="ddtree_fused_scan"),
         replace(base, name="deferred_leaf",
                 method="ddtree_lazy_target_deferred_leaf"),
+        replace(base, name="aligned32",
+                method="ddtree_lazy_target_aligned32"),
+        replace(base, name="aligned40",
+                method="ddtree_lazy_target_aligned40"),
     ]
     for value in values:
         value.validate()
@@ -407,7 +414,7 @@ def run(config: Path, output: Path, device: str, tokens: int,
         name:assert_architecture_only_pair(
             by_name["ddtree"], by_name[name], cfg["model"],
         )
-        for name in ("deferred_leaf",)
+        for name in CANDIDATE_NAMES
     }
     dflash_fairness = assert_official_dflash_control(
         by_name["ddtree"], by_name["dflash"], cfg["model"],
@@ -461,7 +468,7 @@ def run(config: Path, output: Path, device: str, tokens: int,
             name:numerical_audit(
                 engine, encoded[0], by_name["ddtree"], by_name[name],
             )
-            for name in ("deferred_leaf",)
+            for name in CANDIDATE_NAMES
         }
         write_json(output / "numerical_audit.json", audits)
 
@@ -496,21 +503,17 @@ def run(config: Path, output: Path, device: str, tokens: int,
 
         official_field = "official_scope_time_per_output_token_ms"
         comparisons = {
-            "deferred_leaf_vs_ddtree":compare(
-                rows, "deferred_leaf", "ddtree", official_field,
-            ),
-            "deferred_leaf_vs_fused_scan":compare(
-                rows, "deferred_leaf", "fused_scan", official_field,
-            ),
-            "deferred_leaf_vs_dflash":compare(
-                rows, "deferred_leaf", "dflash", official_field,
-            ),
-            "ddtree_vs_dflash":compare(
-                rows, "ddtree", "dflash", official_field,
-            ),
+            f"{name}_vs_{baseline}":compare(
+                rows, name, baseline, official_field,
+            )
+            for name in CANDIDATE_NAMES
+            for baseline in ("ddtree", "fused_scan", "dflash")
         }
+        comparisons["ddtree_vs_dflash"] = compare(
+            rows, "ddtree", "dflash", official_field,
+        )
         aggregates = {name:aggregate(rows, name) for name in names}
-        candidate_names = ("deferred_leaf",)
+        candidate_names = CANDIDATE_NAMES
         row_savings = {
             name:aggregates[name]["mean_target_rows_per_round"]
             < aggregates[name]["mean_full_rows_per_round"]
