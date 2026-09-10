@@ -182,7 +182,10 @@ def test_single_path_scaffold_bypasses_multi_branch_transport(monkeypatch):
 
 
 @pytest.mark.parametrize("temperature", [.3, .6, 1.])
-@pytest.mark.parametrize("method", sorted(DIFFUSION_SCAFFOLD_METHODS))
+@pytest.mark.parametrize(
+    "method",
+    sorted(DIFFUSION_SCAFFOLD_METHODS - {"diffusion_core_spur_bv"}),
+)
 @pytest.mark.parametrize("branches", [1, 2])
 def test_scaffold_tiny_qwen_caches_eos_caps_and_checkpoint(tiny_engine, temperature, method, branches):
     from gbv_experiments.diffusion_preflight import probe
@@ -201,6 +204,95 @@ def test_scaffold_tiny_qwen_caches_eos_caps_and_checkpoint(tiny_engine, temperat
     end = result["generated_token_ids"].index(eos) + 1
     assert tiny_engine.generate(ids, v, 24, [eos], seed=42)["generated_token_ids"] == result["generated_token_ids"][:end]
     assert probe(tiny_engine, ids, v, tokens=18, seed=42, tv_limit=1e-6)["passed"]
+
+
+def test_core_spur_tree_keeps_labelled_spur_and_probability_core():
+    q = tensor([
+        [.55, .30, .15],
+        [.60, .25, .15],
+        [.50, .35, .15],
+        [.65, .20, .15],
+    ])
+    law = diffusion.DiffusionBlockLaw.from_logits(
+        q.log(), torch.tensor([0, 2, 2, 2, 2]), 1., 2,
+    )
+    full = diffusion.propose(law, 1, torch.Generator().manual_seed(17))
+    proposal = diffusion.truncate_proposal(full, 2)
+    tree = diffusion.core_spur_tree(proposal, q, 8)
+    present = set(prefixes(tree))
+
+    assert len(tree.tokens) <= 8
+    assert tree.path_nodes == [[1, 2]]
+    assert tuple(proposal.paths()[0].tolist()) in present
+    assert set(prefixes(probability_tree(q, 6))) <= present
+
+
+@pytest.mark.parametrize("case", range(6))
+def test_core_spur_complete_output_law_is_exact(monkeypatch, case):
+    vocab, length, spur = 2 + case % 2, 3, 2
+    rows = fraction_rows(Random(14293 + case), vocab, length)
+    q = tensor([[3, 2] if vocab == 2 else [4, 2, 1]] * length)
+    q /= q.sum(-1, keepdim=True)
+    temperature = [.3, .6, 1.][case % 3]
+    law = diffusion.DiffusionBlockLaw.from_logits(
+        q.log() * temperature,
+        torch.tensor([0] + [vocab - 1] * length),
+        temperature, vocab - 1, support_size=vocab,
+    )
+    full = diffusion.propose(
+        law, 1, torch.Generator().manual_seed(100 + case),
+    )
+    proposal = diffusion.truncate_proposal(full, spur)
+    actual = enumerate_scaffold(
+        monkeypatch, proposal, rows, q.argmax(-1), 7,
+        temperature=temperature,
+        continuation="ancestral",
+        build=lambda current: diffusion.core_spur_tree(current, q, 7),
+    )
+    expected = {
+        seq: float(probability(rows, seq))
+        for seq in product(range(vocab), repeat=length + 1)
+    }
+    completed = complete(actual, rows, length + 1)
+
+    assert sum(actual.values()) == pytest.approx(1., abs=1e-10)
+    assert {
+        seq: completed.get(seq, 0.) for seq in expected
+    } == pytest.approx(expected, abs=1e-10, rel=0)
+
+
+@pytest.mark.parametrize("temperature", [.3, .6, 1.])
+def test_core_spur_tiny_qwen_caches_eos_caps_and_checkpoint(
+        tiny_engine, temperature):
+    from gbv_experiments.diffusion_preflight import probe
+
+    variant = Variant(
+        name="core_spur", method="diffusion_core_spur_bv",
+        paths=1, length=3, diffusion_spur_length=2,
+        tree_budget=9, diffusion_support_size=8,
+        temperature=temperature, draft_temperature=temperature,
+    )
+    ids = torch.tensor([[1, 3, 5]])
+    result = tiny_engine.generate(ids, variant, 24, [], seed=42)
+
+    assert result["target_forward_calls"] == 1 + result["draft_forward_calls"]
+    assert result["draft_forward_calls"] == len(result["rounds"])
+    assert all(
+        round_["tree_nodes"] <= 9
+        and not round_["fixed_greedy_scaffold"]
+        and round_["core_spur_length"] == 2
+        for round_ in result["rounds"]
+    )
+    assert tiny_engine.generate(
+        ids, replace(variant, reuse_draft_cache=False), 24, [], seed=42,
+    )["generated_token_ids"] == result["generated_token_ids"]
+    for cap in (1, 2, 7):
+        assert tiny_engine.generate(
+            ids, variant, cap, [], seed=42,
+        )["generated_token_ids"] == result["generated_token_ids"][:cap]
+    assert probe(
+        tiny_engine, ids, variant, tokens=18, seed=42, tv_limit=1e-6,
+    )["passed"]
 
 
 def test_scaffold_engine_does_not_eagerly_normalize_the_full_tree(tiny_engine, monkeypatch):

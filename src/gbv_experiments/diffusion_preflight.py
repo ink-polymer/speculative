@@ -131,9 +131,14 @@ def scaffold_contract(tree, proposal, variant, greedy, nodes, tokens, bonus, voc
     proposal.validate(vocab)
     if variant.method not in DIFFUSION_SCAFFOLD_METHODS:
         raise ValueError("Scaffold contract requires a scaffold variant")
+    labelled_length = (
+        variant.diffusion_spur_length
+        if variant.method == "diffusion_core_spur_bv"
+        else variant.length
+    )
     if (len(tree.tokens) > variant.tree_budget or len(tree.parents) != len(tree.tokens) + 1
             or len(tree.depths) != len(tree.parents) or tree.parents[0] != -1 or tree.depths[0] != 0
-            or proposal.slots.shape[:2] != (variant.paths, variant.length)):
+            or proposal.slots.shape[:2] != (variant.paths, labelled_length)):
         raise ValueError("Scaffold contract: invalid budget, topology or labelled shape")
     children = {}
     for node, (parent, token) in enumerate(zip(tree.parents[1:], tree.tokens), 1):
@@ -149,11 +154,12 @@ def scaffold_contract(tree, proposal, variant, greedy, nodes, tokens, bonus, voc
     if len(greedy) != variant.length:
         raise ValueError("Scaffold contract: missing original greedy tokens")
     parent, greedy_nodes = 0, []
-    for token in greedy:
-        if (parent, token) not in children:
-            raise ValueError("Scaffold contract: original greedy path is missing")
-        parent = children[parent, token]
-        greedy_nodes.append(parent)
+    if variant.method != "diffusion_core_spur_bv":
+        for token in greedy:
+            if (parent, token) not in children:
+                raise ValueError("Scaffold contract: original greedy path is missing")
+            parent = children[parent, token]
+            greedy_nodes.append(parent)
     if len(nodes) != len(tokens):
         raise ValueError("Scaffold contract: selected node/token length mismatch")
     parent = 0

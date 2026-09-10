@@ -22,18 +22,20 @@ from .sampling import (block_verify_batched, block_verify_sparse,
                        sample, select_and_reweight, select_greedy_path,
                        tree_block_verify_recycle,
                        tree_block_verify_terminal_mass,
+                       tree_verify_internal_ancestral_batched,
                        tree_verify_ancestral_lazy_projection,
                        tree_verify_ancestral_batched,
                        token_verify)
 from .fused_tree_sampling import (tree_verify_ancestral_fused,
                                   tree_verify_ancestral_fused_parallel,
                                   tree_verify_ancestral_fused_scan,
+                                  tree_verify_ancestral_same_draw_fused,
                                   tree_verify_ancestral_logits_fused_scan,
                                   tree_verify_ancestral_lazy_projection_fused_scan,
                                   tree_verify_ancestral_lazy_softmax_fused_scan)
 from .tree import (adaptive_path_proposal, adaptive_prefix_proposal,
                    budgeted_prefix_proposal, compact_cache, probability_tree,
-                   sampled_tree)
+                   sampled_tree, Tree)
 
 
 SPARSE_FULL_TREE_METHODS = {
@@ -59,12 +61,21 @@ TERMINAL_TREE_METHODS = {
 }
 FUSED_TREE_METHODS = {
     "ddtree_fused", "ddtree_fused_parallel", "ddtree_fused_scan",
+    "ddtree_same_draw_fused",
 }
 LAZY_HEAD_TREE_METHODS = {
     "ddtree_lazy_projection", "ddtree_lazy_projection_fused_scan",
 }
 LAZY_SOFTMAX_TREE_METHODS = {"ddtree_lazy_softmax_fused_scan"}
 DIRECT_LOGITS_TREE_METHODS = {"ddtree_direct_logits_fused_scan"}
+LAZY_TARGET_TREE_PREFETCH = {
+    "ddtree_lazy_target":0,
+    "ddtree_lazy_target_deferred_leaf":0,
+    "ddtree_lazy_target_prefetch1":1,
+    "ddtree_lazy_target_prefetch2":2,
+}
+LAZY_TARGET_TREE_METHODS = set(LAZY_TARGET_TREE_PREFETCH)
+DEFERRED_LEAF_TREE_METHODS = {"ddtree_lazy_target_deferred_leaf"}
 
 
 class StageMeter:
@@ -357,7 +368,8 @@ class Engine:
     def generate(self, input_ids, variant: Variant, max_new_tokens: int, stop_ids,
                  seed=0, profile=False, audit_greedy=False, tree_observer=None,
                  shared_suffix_observer=None, atom_observer=None, diffusion_observer=None,
-                 ar_observer=None, scaffold_observer=None, verifier_observer=None):
+                 ar_observer=None, scaffold_observer=None, verifier_observer=None,
+                 lazy_target_observer=None):
         variant.validate()
         if input_ids.shape[0] != 1 or max_new_tokens < 1:
             raise ValueError("Expected one prompt and max_new_tokens >= 1")
@@ -367,6 +379,8 @@ class Engine:
             raise ValueError("Candidate length exceeds the checkpoint's future slots")
         if audit_greedy and variant.temperature != 0:
             raise ValueError("Greedy logit auditing requires temperature=0")
+        if audit_greedy and variant.method in LAZY_TARGET_TREE_METHODS:
+            raise ValueError("Lazy Target verification is defined only for T>0")
         generator = torch.Generator(device=self.device).manual_seed(seed)
         host_generator = torch.Generator(device="cpu").manual_seed(
             seed ^ 0x5A17_2026
@@ -478,9 +492,17 @@ class Engine:
                 q = (None if variant.method == "dflash" or variant.method in DIFFUSION_TREE_METHODS
                      else probabilities(logits, draft_temp, dtype))
                 if variant.method in DIFFUSION_TREE_METHODS:
+                    law_length = (
+                        variant.diffusion_spur_length
+                        if variant.method == "diffusion_core_spur_bv"
+                        else variant.length
+                    )
                     diffusion_law = diffusion_tree_bv.DiffusionBlockLaw.from_logits(
-                        logits, noise_ids[0], draft_temp, int(self.draft.mask_token_id),
+                        logits[:law_length], noise_ids[0, :law_length + 1],
+                        draft_temp, int(self.draft.mask_token_id),
                         support_size=variant.diffusion_support_size)
+                    if variant.method == "diffusion_core_spur_bv":
+                        q = probabilities(logits, draft_temp, dtype)
                 draft_calls += 1
             if first_draft:
                 # This synchronization and reset reproduce the start boundary
@@ -493,7 +515,7 @@ class Engine:
                 if (variant.method == "ddtree" or variant.method in
                         TERMINAL_TREE_METHODS | FUSED_TREE_METHODS
                         | LAZY_HEAD_TREE_METHODS | LAZY_SOFTMAX_TREE_METHODS
-                        | DIRECT_LOGITS_TREE_METHODS):
+                        | DIRECT_LOGITS_TREE_METHODS | LAZY_TARGET_TREE_METHODS):
                     tree = probability_tree(q, variant.tree_budget)
                     paths = None
                     tree_proposal = None
@@ -510,7 +532,11 @@ class Engine:
                     tree_proposal = diffusion_tree_bv.propose(diffusion_law, variant.paths, generator,
                                                              coupling=coupling)
                     paths = tree_proposal.paths()
-                    if variant.method in DIFFUSION_SCAFFOLD_METHODS:
+                    if variant.method == "diffusion_core_spur_bv":
+                        tree = diffusion_tree_bv.core_spur_tree(
+                            tree_proposal, q, variant.tree_budget,
+                        )
+                    elif variant.method in DIFFUSION_SCAFFOLD_METHODS:
                         tree = diffusion_tree_bv.scaffold_tree(
                             tree_proposal, logits.argmax(-1), variant.tree_budget,
                             fill=variant.method != "diffusion_scaffold_no_fill")
@@ -558,16 +584,82 @@ class Engine:
                     tree = sampled_tree(paths, variant.share_prefixes)
                     tree_proposal = None
             with meter.measure("tree_compile"):
-                ids = torch.tensor([[generated[-1]] + tree.tokens], device=self.device)
-                positions = (torch.tensor(tree.depths, device=self.device) + prefix_len)[None]
-                mask = tree.mask(prefix_len, next(self.target.parameters()).dtype, self.device)
+                if variant.method in LAZY_TARGET_TREE_METHODS:
+                    # A posterior row is needed to choose an outgoing edge.
+                    # Verify the ancestor-closed internal subtree plus a small
+                    # fixed set of high-Draft-mass leaves; defer only an
+                    # unprefetched leaf that the realized walk reaches.
+                    internal_nodes = sorted(set(tree.parents[1:]))
+                    internal_node_set = set(internal_nodes)
+                    leaf_nodes = [
+                        node for node in range(1, len(tree.parents))
+                        if node not in internal_node_set
+                    ]
+                    # probability_tree assigns node ids in descending Draft
+                    # prefix-mass order, so the earliest leaves are the safest
+                    # no-synchronization prefetch choices.
+                    prefetched_leaf_nodes = leaf_nodes[
+                        :LAZY_TARGET_TREE_PREFETCH[variant.method]
+                    ]
+                    verified_nodes = sorted(
+                        internal_nodes + prefetched_leaf_nodes
+                    )
+                    verified_node_to_compact = {
+                        node: row for row, node in enumerate(verified_nodes)
+                    }
+                    sparse_target_tree = Tree(
+                        tokens=[tree.tokens[node - 1]
+                                for node in verified_nodes[1:]],
+                        parents=[-1] + [
+                            verified_node_to_compact[tree.parents[node]]
+                            for node in verified_nodes[1:]
+                        ],
+                        depths=[tree.depths[node] for node in verified_nodes],
+                        path_nodes=[],
+                    )
+                    verify_tree = sparse_target_tree
+                else:
+                    verify_tree = tree
+                ids = torch.tensor(
+                    [[generated[-1]] + verify_tree.tokens], device=self.device
+                )
+                positions = (
+                    torch.tensor(verify_tree.depths, device=self.device)
+                    + prefix_len
+                )[None]
+                mask = verify_tree.mask(
+                    prefix_len, next(self.target.parameters()).dtype, self.device
+                )
                 lazy_lm_head = (
                     variant.method in LAZY_HEAD_TREE_METHODS
-                    or variant.method in DIFFUSION_SCAFFOLD_METHODS
+                    or (
+                        variant.method in DIFFUSION_SCAFFOLD_METHODS
+                        and variant.method != "diffusion_core_spur_bv"
+                    )
                 )
             with meter.measure("verify"):
                 packed_cache = None
-                if variant.method in PACKED_TREE_METHODS:
+                if variant.method in LAZY_TARGET_TREE_METHODS:
+                    output = self.target_hidden_forward(
+                        ids, target_cache, positions=positions, mask=mask
+                    )
+                    verified_logits = self.target.get_output_embeddings()(
+                        output.last_hidden_state[0]
+                    )
+                    verified_p = probabilities(
+                        verified_logits, variant.temperature, dtype
+                    )
+                    internal_compact_indices = torch.tensor(
+                        [verified_node_to_compact[node]
+                         for node in internal_nodes],
+                        device=self.device,
+                    )
+                    internal_p = verified_p.index_select(
+                        0, internal_compact_indices
+                    )
+                    all_p = None
+                    target_tokens += ids.shape[1]
+                elif variant.method in PACKED_TREE_METHODS:
                     # Verify complete support paths as a regular causal batch.
                     # This duplicates shared tree nodes, but avoids the arbitrary
                     # 4-D tree mask and lets SDPA select its fast causal kernel.
@@ -626,6 +718,10 @@ class Engine:
             if tree_observer is not None:
                 # Only diagnostic runs attach an observer. Captures and their
                 # synchronization must never contaminate primary throughput.
+                if variant.method in LAZY_TARGET_TREE_METHODS:
+                    raise ValueError(
+                        "Use lazy_target_observer for internal-only verification"
+                    )
                 tree_observer(tree.parents, tree.tokens,
                               all_p if all_p is not None else probabilities(
                                   self.target.get_output_embeddings()(
@@ -649,6 +745,12 @@ class Engine:
                     variant.temperature,
                 )
             executed_verifier = None
+            terminal_leaf = -1
+            prefetched_leaf_hit = False
+            fallback_leaf_forward = False
+            deferred_leaf_stop = False
+            append_bonus = True
+            target_cache_precompacted = False
             with meter.measure("select_and_correct"):
                 if variant.method in RECYCLE_TREE_METHODS:
                     node_paths = torch.tensor(
@@ -707,6 +809,7 @@ class Engine:
                         "ddtree_fused": tree_verify_ancestral_fused,
                         "ddtree_fused_parallel": tree_verify_ancestral_fused_parallel,
                         "ddtree_fused_scan": tree_verify_ancestral_fused_scan,
+                        "ddtree_same_draw_fused": tree_verify_ancestral_same_draw_fused,
                     }[variant.method]
                     generator_before = (
                         self._runtime_generator_identity(generator)
@@ -752,6 +855,13 @@ class Engine:
                         )
                     )
                     accepted = len(nodes)
+                elif variant.method in LAZY_TARGET_TREE_METHODS:
+                    (nodes, tokens, bonus, terminal_leaf,
+                     lazy_target_stats) = tree_verify_internal_ancestral_batched(
+                        tree.parents, tree.tokens, internal_p, generator,
+                        validate=False,
+                    )
+                    accepted = len(nodes)
                 elif variant.method in {"ddtree", "root_shared_ddtree", "atom_tree_ancestral", "diffusion_tree_ancestral"}:
                     verifier = tree_verify_ancestral_batched
                     generator_before = (
@@ -766,6 +876,14 @@ class Engine:
                     accepted = len(nodes)
                     if generator_before is not None:
                         executed_verifier = (verifier, generator_before)
+                elif variant.method == "diffusion_core_spur_bv":
+                    nodes, tokens, bonus = diffusion_tree_bv.verify_scaffold_logits(
+                        output.logits[0], tree, tree_proposal,
+                        variant.temperature, generator,
+                        continuation="ancestral", validate=False,
+                        node_probabilities=all_p,
+                    )
+                    accepted = len(nodes)
                 elif variant.method in DIFFUSION_SCAFFOLD_METHODS:
                     nodes, tokens, bonus = diffusion_tree_bv.verify_scaffold_hidden(
                         output.last_hidden_state[0],
@@ -773,7 +891,10 @@ class Engine:
                         tree, tree_proposal, variant.temperature, generator,
                         recycle=variant.method != "diffusion_scaffold_no_recycle",
                         continuation=("ancestral"
-                                      if variant.method == "diffusion_scaffold_ancestral"
+                                      if variant.method in {
+                                          "diffusion_scaffold_ancestral",
+                                          "diffusion_core_spur_bv",
+                                      }
                                       else "terminal"),
                         validate=False,
                     )
@@ -885,6 +1006,68 @@ class Engine:
                         accepted, bonus = verifier(paths[chosen], p_by_path[chosen], r, generator)
                     nodes = tree.path_nodes[chosen][:accepted]
                     tokens = paths[chosen, :accepted].tolist()
+            if (terminal_leaf >= 0
+                    and variant.method in DEFERRED_LEAF_TREE_METHODS):
+                # Do not spend a separate Target call only to sample the leaf
+                # continuation.  Commit the leaf as this round's last token;
+                # the next round verifies that leaf as its root and samples
+                # exactly the same autoregressive continuation distribution.
+                bonus = -1
+                append_bonus = False
+                deferred_leaf_stop = True
+            elif (terminal_leaf >= 0
+                    and terminal_leaf in verified_node_to_compact):
+                with meter.measure("prefetched_leaf_sample"):
+                    leaf_p = verified_p[
+                        verified_node_to_compact[terminal_leaf]
+                    ]
+                    bonus = int(sample(leaf_p, generator))
+                prefetched_leaf_hit = True
+            elif terminal_leaf >= 0:
+                # The reached leaf is the only omitted tree row that can affect
+                # the output.  Commit the already accepted internal path to the
+                # cache, then verify that one leaf token as a regular cached
+                # Target step and sample its exact continuation distribution.
+                internal_path_nodes = nodes[:-1]
+                compact_verified_keep = [verified_node_to_compact[0]] + [
+                    verified_node_to_compact[node]
+                    for node in internal_path_nodes
+                ]
+                with meter.measure("lazy_leaf_cache_compact"):
+                    compact_cache(
+                        target_cache, prefix_len, compact_verified_keep,
+                        self.device,
+                    )
+                leaf_token = tree.tokens[terminal_leaf - 1]
+                with meter.measure("lazy_leaf_verify"):
+                    leaf_output = self.target_forward(
+                        torch.tensor([[leaf_token]], device=self.device),
+                        target_cache, hidden=True,
+                        positions=torch.tensor(
+                            [[prefix_len + tree.depths[terminal_leaf]]],
+                            device=self.device,
+                        ),
+                        last_only=True,
+                    )
+                    target_calls += 1
+                    target_tokens += 1
+                with meter.measure("lazy_leaf_sample"):
+                    leaf_p = probabilities(
+                        leaf_output.logits[0, -1], variant.temperature, dtype
+                    )
+                    bonus = int(sample(leaf_p, generator))
+                target_cache_precompacted = True
+                fallback_leaf_forward = True
+            if (lazy_target_observer is not None
+                    and variant.method in LAZY_TARGET_TREE_METHODS):
+                # Diagnostic-only capture.  Tensor copies/synchronization are
+                # deliberately absent from primary throughput runs.
+                lazy_target_observer(
+                    tree.parents, tree.tokens, internal_nodes, internal_p,
+                    terminal_leaf,
+                    leaf_p if terminal_leaf >= 0 and not deferred_leaf_stop
+                    else None,
+                )
             if executed_verifier is not None:
                 # This is deliberately after the selected callable returned.
                 # The normal timing path has no observer, performs no source
@@ -937,7 +1120,7 @@ class Engine:
                     "sequential_top1_margin": (sequential_top2.values[:, 0] - sequential_top2.values[:, 1]).tolist(),
                 })
             with meter.measure("stop_check"):
-                appended = tokens + [bonus]
+                appended = tokens + ([bonus] if append_bonus else [])
                 committed = appended[:max_new_tokens - len(generated)]
                 for i, token in enumerate(committed):
                     if token in stops:
@@ -947,7 +1130,36 @@ class Engine:
                 generated.extend(committed)
                 keep = [0] + nodes
                 index = torch.tensor(keep, device=self.device)
-                if variant.method in PACKED_TREE_METHODS:
+                if variant.method in LAZY_TARGET_TREE_METHODS:
+                    accepted_verified_nodes = (
+                        nodes[:-1]
+                        if fallback_leaf_forward or deferred_leaf_stop
+                        else nodes
+                    )
+                    compact_verified_keep = [verified_node_to_compact[0]] + [
+                        verified_node_to_compact[node]
+                        for node in accepted_verified_nodes
+                    ]
+                    feature_index = torch.tensor(
+                        compact_verified_keep, device=self.device
+                    )
+                    if fallback_leaf_forward:
+                        selected_hidden = tuple(
+                            torch.cat((
+                                layer.index_select(1, feature_index),
+                                leaf_layer,
+                            ), dim=1)
+                            for layer, leaf_layer in zip(
+                                output.hidden_states,
+                                leaf_output.hidden_states,
+                            )
+                        )
+                        update = self.features(selected_hidden)
+                    else:
+                        update = self.features(
+                            output.hidden_states, feature_index
+                        )
+                elif variant.method in PACKED_TREE_METHODS:
                     cache_leaf = next(
                         leaf for leaf, leaf_nodes in enumerate(tree.path_nodes)
                         if leaf_nodes[:len(nodes)] == nodes
@@ -972,8 +1184,16 @@ class Engine:
                     update = self.features(output.hidden_states, index)
                 if full_features is not None:
                     full_features = torch.cat((full_features, update), dim=1)
-                if variant.method not in PACKED_TREE_METHODS:
-                    compact_cache(target_cache, prefix_len, keep, self.device)
+                if (variant.method not in PACKED_TREE_METHODS
+                        and not target_cache_precompacted):
+                    cache_keep = (
+                        compact_verified_keep
+                        if variant.method in LAZY_TARGET_TREE_METHODS
+                        else keep
+                    )
+                    compact_cache(
+                        target_cache, prefix_len, cache_keep, self.device
+                    )
                 round_stats = {
                     "accepted_draft_tokens": accepted,
                     "committed_tokens": len(committed),
@@ -985,6 +1205,22 @@ class Engine:
                     "tree_nodes": len(tree.tokens),
                     "verify_tokens": len(tree.parents),
                 }
+                if variant.method in LAZY_TARGET_TREE_METHODS:
+                    round_stats.update({
+                        "full_target_tree_rows": len(tree.parents),
+                        "internal_target_tree_rows": len(internal_nodes),
+                        "prefetched_leaf_rows": len(prefetched_leaf_nodes),
+                        "target_verified_rows": (
+                            len(verified_nodes) + int(fallback_leaf_forward)
+                        ),
+                        "prefetched_leaf_hit": prefetched_leaf_hit,
+                        "lazy_leaf_target_forward": fallback_leaf_forward,
+                        "deferred_leaf_stop": deferred_leaf_stop,
+                        "posterior_probability_rows": (
+                            lazy_target_stats["internal_probability_rows"]
+                            + lazy_target_stats["leaf_probability_rows"]
+                        ),
+                    })
                 if variant.method in RECYCLE_TREE_METHODS:
                     round_stats.update({
                         "tree_bv_segments": recycle_stats["segments"],
@@ -1004,10 +1240,11 @@ class Engine:
                                         "labelled_paths": variant.paths, "coupling": coupling,
                                         "joint_block_verification": variant.method != "diffusion_tree_ancestral"})
                     if variant.method in DIFFUSION_SCAFFOLD_METHODS:
-                        round_stats.update({"fixed_greedy_scaffold": True,
-                                            "scaffold_fill": variant.method != "diffusion_scaffold_no_fill",
+                        round_stats.update({"fixed_greedy_scaffold": variant.method != "diffusion_core_spur_bv",
+                                            "scaffold_fill": variant.method not in {"diffusion_scaffold_no_fill", "diffusion_core_spur_bv"},
                                             "correction_recycling": variant.method != "diffusion_scaffold_no_recycle",
-                                            "continuation_backend": "ancestral" if variant.method == "diffusion_scaffold_ancestral" else "terminal"})
+                                            "continuation_backend": "ancestral" if variant.method == "diffusion_scaffold_ancestral" else "terminal",
+                                            "core_spur_length": variant.diffusion_spur_length if variant.method == "diffusion_core_spur_bv" else None})
                 if variant.method in LAZY_HEAD_TREE_METHODS | LAZY_SOFTMAX_TREE_METHODS:
                     round_stats.update({
                         "posterior_probability_rows": lazy_projection_stats.get(
@@ -1033,6 +1270,18 @@ class Engine:
                     })
                 rounds.append(round_stats)
                 del output, all_p, hidden, logits
+                if variant.method in LAZY_TARGET_TREE_METHODS:
+                    del (verified_logits, verified_p, internal_p,
+                         sparse_target_tree, internal_nodes,
+                         internal_node_set, leaf_nodes,
+                         prefetched_leaf_nodes, verified_nodes,
+                         verified_node_to_compact, verify_tree,
+                         internal_compact_indices, feature_index,
+                         compact_verified_keep, lazy_target_stats)
+                    if terminal_leaf >= 0 and not deferred_leaf_stop:
+                        del leaf_p
+                    if fallback_leaf_forward:
+                        del (leaf_output, selected_hidden, internal_path_nodes)
                 if variant.method in PACKED_TREE_METHODS:
                     del packed_cache, packed_ids, packed_positions, packed_p, selected_hidden
                 if variant.method in RECYCLE_TREE_METHODS:

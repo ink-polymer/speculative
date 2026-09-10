@@ -343,7 +343,6 @@ def block_verify_sparse(path, p, proposal_tokens, proposal_probabilities,
 def _sparse_residual_totals(p, prefix_weights, proposal_tokens,
                             proposal_probabilities):
     """Compute BV residual masses using only the sparse proposal support."""
-    length = proposal_tokens.shape[0]
     # Multiple tree leaves can propose the same token.  Aggregate their mass,
     # then count each distinct support token exactly once in both terms below.
     equal_tokens = proposal_tokens[:, :, None].eq(proposal_tokens[:, None, :])
@@ -831,6 +830,74 @@ def tree_verify_ancestral_lazy_projection(
         "projected_rows": len(internal_nodes) + leaf_projected,
         "total_tree_rows": node_count,
     }
+
+
+def tree_verify_internal_ancestral_batched(
+        parents, tokens, internal_p, generator=None, validate: bool = True):
+    """Walk a DDTree from posterior rows for internal nodes only.
+
+    A leaf has no proposed child, so its posterior row cannot affect whether
+    the leaf is reached.  When the walk reaches a leaf this function returns
+    ``bonus == -1`` and the leaf node separately; the caller must obtain and
+    sample that one leaf posterior row.  Otherwise ``bonus`` is the exact exit
+    token sampled at an internal node.
+    """
+    parents = list(parents)
+    tokens = list(tokens)
+    node_count = len(parents)
+    internal_nodes = sorted(set(parents[1:]))
+    if (node_count < 2 or len(tokens) != node_count - 1
+            or not internal_nodes or internal_nodes[0] != 0
+            or internal_p.ndim != 2
+            or internal_p.shape[0] != len(internal_nodes)
+            or internal_p.shape[-1] < 1):
+        raise ValueError("Internal-only DDTree posterior tensor shape mismatch")
+    if not internal_p.is_floating_point():
+        raise TypeError("DDTree posterior probabilities must be floating point")
+    if parents[0] != -1 or any(parent < 0 or parent >= node
+                               for node, parent in enumerate(parents[1:], 1)):
+        raise ValueError("Tree parents must precede their children")
+    if len(set(zip(parents[1:], tokens))) != len(tokens):
+        raise ValueError("A tree parent cannot repeat a child token")
+    vocab = internal_p.shape[-1]
+    if any(token < 0 or token >= vocab for token in tokens):
+        raise ValueError("Tree token is outside the Target vocabulary")
+    if validate:
+        valid = (torch.isfinite(internal_p).all() & (internal_p >= 0).all()
+                 & (internal_p.sum(-1) > 0).all())
+        if not bool(valid):
+            raise FloatingPointError("Invalid internal Target probabilities for DDTree")
+
+    internal_lookup = {node: row for row, node in enumerate(internal_nodes)}
+    children = {
+        (parents[node], tokens[node - 1]): node
+        for node in range(1, node_count)
+    }
+    # As in official DDTree, draw the available independent posterior rows in
+    # one GPU batch.  Draws for internal nodes outside the realized path are
+    # discarded and do not change the ancestral distribution.
+    posterior_tokens = sample(internal_p, generator).tolist()
+    nodes = []
+    output_tokens = []
+    node = 0
+    while True:
+        bonus = int(posterior_tokens[internal_lookup[node]])
+        child = children.get((node, bonus))
+        if child is None:
+            return nodes, output_tokens, bonus, -1, {
+                "internal_probability_rows": len(internal_nodes),
+                "leaf_probability_rows": 0,
+                "total_tree_rows": node_count,
+            }
+        node = child
+        nodes.append(node)
+        output_tokens.append(bonus)
+        if node not in internal_lookup:
+            return nodes, output_tokens, -1, node, {
+                "internal_probability_rows": len(internal_nodes),
+                "leaf_probability_rows": 1,
+                "total_tree_rows": node_count,
+            }
 
 
 def tree_verify_ancestral_batched(parents, tokens, all_p, generator=None,

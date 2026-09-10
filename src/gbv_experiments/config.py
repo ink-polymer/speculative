@@ -21,7 +21,7 @@ DIFFUSION_TREE_METHODS = frozenset({
 })
 DIFFUSION_SCAFFOLD_METHODS = frozenset({
     "diffusion_scaffold_bv", "diffusion_scaffold_no_fill", "diffusion_scaffold_no_recycle",
-    "diffusion_scaffold_ancestral",
+    "diffusion_scaffold_ancestral", "diffusion_core_spur_bv",
 })
 DIFFUSION_LAW_METHODS = DIFFUSION_TREE_METHODS | DIFFUSION_SCAFFOLD_METHODS
 
@@ -41,6 +41,7 @@ class Variant:
     probability_dtype: str = "float64"
     tree_budget: int = 60
     diffusion_support_size: int = 8
+    diffusion_spur_length: int = 4
 
     def validate(self) -> None:
         if self.method not in {"target", "dflash", "token", "bv", "gbv", "tree_gbv",
@@ -61,7 +62,12 @@ class Variant:
                                "ddtree_terminal_serial", "ddtree_terminal_dense",
                                "ddtree_fused", "ddtree_fused_parallel",
                                "ddtree_fused_scan",
+                               "ddtree_same_draw_fused",
                                "ddtree_direct_logits_fused_scan",
+                               "ddtree_lazy_target",
+                               "ddtree_lazy_target_deferred_leaf",
+                               "ddtree_lazy_target_prefetch1",
+                               "ddtree_lazy_target_prefetch2",
                                "ddtree_lazy_projection",
                                "ddtree_lazy_softmax_fused_scan",
                                "ddtree_lazy_projection_fused_scan"} | SHARED_SUFFIX_METHODS | ATOM_TREE_METHODS | DIFFUSION_LAW_METHODS:
@@ -71,7 +77,8 @@ class Variant:
         if not math.isfinite(self.temperature) or any(
                 not isinstance(v, int) or isinstance(v, bool)
                 for v in (self.paths, self.length, self.tree_budget,
-                          self.diffusion_support_size)):
+                          self.diffusion_support_size,
+                          self.diffusion_spur_length)):
             raise ValueError("Counts must be integers and temperature must be finite")
         if self.method in {"dflash", "token", "bv"} and self.paths != 1:
             raise ValueError("Single-path token/BV baselines require paths=1")
@@ -83,7 +90,11 @@ class Variant:
             raise ValueError("Invalid condition_features")
         if self.probability_dtype not in {"float32", "float64"} or self.tree_budget < 1:
             raise ValueError("Invalid numerical precision/tree budget")
-        if (self.method in {"ddtree_lazy_softmax_fused_scan",
+        if (self.method in {"ddtree_lazy_target",
+                            "ddtree_lazy_target_deferred_leaf",
+                            "ddtree_lazy_target_prefetch1",
+                            "ddtree_lazy_target_prefetch2",
+                            "ddtree_lazy_softmax_fused_scan",
                             "ddtree_direct_logits_fused_scan",
                             "ddtree_lazy_projection_fused_scan"}
                 and (self.temperature <= 0 or self.probability_dtype != "float64")):
@@ -99,7 +110,13 @@ class Variant:
                 raise ValueError("Diffusion theorem requires the one-step target-conditioned masked block")
             if self.paths * self.length > self.tree_budget:
                 raise ValueError("Diffusion trie worst-case nodes exceed tree_budget")
-            if self.method in DIFFUSION_SCAFFOLD_METHODS:
+            if self.method == "diffusion_core_spur_bv":
+                if (self.paths != 1 or not 1 <= self.diffusion_spur_length < self.length
+                        or self.tree_budget <= self.diffusion_spur_length):
+                    raise ValueError(
+                        "Core-spur BV requires K=1 and 1 <= spur < L <= B"
+                    )
+            elif self.method in DIFFUSION_SCAFFOLD_METHODS:
                 if not self.share_prefixes or (self.paths + 1) * self.length > self.tree_budget:
                     raise ValueError("Scaffold needs prefix sharing and (paths+1)*length <= tree_budget")
         if self.method in SHARED_SUFFIX_METHODS | ATOM_TREE_METHODS:

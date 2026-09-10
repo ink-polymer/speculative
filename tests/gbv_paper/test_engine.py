@@ -9,7 +9,10 @@ from gbv_experiments import engine as engine_module
 from gbv_experiments.common import ROOT, digest, file_hash
 from gbv_experiments.config import SHARED_SUFFIX_METHODS as ROOT_MARGINAL_METHODS, Variant
 from gbv_experiments.engine import Engine
-from gbv_experiments.sampling import tree_verify_ancestral_batched
+from gbv_experiments.sampling import (
+    tree_verify_ancestral_batched,
+    tree_verify_internal_ancestral_batched,
+)
 from gbv_experiments.preflight import (
     _same_tree_runtime_witness,
     classify_greedy_mismatch,
@@ -32,7 +35,11 @@ def test_tree_merge_keeps_candidate_multiplicity():
 @pytest.mark.parametrize(
     "method",
     ["ddtree_fused", "ddtree_fused_parallel", "ddtree_fused_scan",
+     "ddtree_same_draw_fused",
      "ddtree_direct_logits_fused_scan",
+     "ddtree_lazy_target", "ddtree_lazy_target_deferred_leaf",
+     "ddtree_lazy_target_prefetch1",
+     "ddtree_lazy_target_prefetch2",
      "ddtree_lazy_projection", "ddtree_lazy_softmax_fused_scan",
      "ddtree_lazy_projection_fused_scan"],
 )
@@ -49,6 +56,7 @@ def test_fused_tree_methods_are_valid_probability_tree_variants(method):
     ("ddtree_fused", "tree_verify_ancestral_fused"),
     ("ddtree_fused_parallel", "tree_verify_ancestral_fused_parallel"),
     ("ddtree_fused_scan", "tree_verify_ancestral_fused_scan"),
+    ("ddtree_same_draw_fused", "tree_verify_ancestral_same_draw_fused"),
 ])
 def test_fused_tree_methods_dispatch_in_generation(
         tiny_engine, monkeypatch, method, attribute):
@@ -132,6 +140,114 @@ def test_lazy_fused_tree_methods_dispatch_and_record_saved_rows(
         row["posterior_probability_rows"]
         < row["full_vocabulary_projection_rows"]
         for row in result["rounds"]
+    )
+
+
+def test_internal_only_tree_walk_defers_exactly_the_reached_leaf():
+    parents = [-1, 0, 0, 1, 1]
+    tokens = [1, 2, 3, 4]
+    # Internal rows are original nodes 0 and 1.  Root chooses node 1 and
+    # node 1 chooses leaf node 4; no other leaf posterior is needed.
+    internal_p = torch.zeros((2, 7), dtype=torch.float64)
+    internal_p[0, 1] = 1
+    internal_p[1, 4] = 1
+    nodes, output_tokens, bonus, leaf, stats = (
+        tree_verify_internal_ancestral_batched(
+            parents, tokens, internal_p,
+            torch.Generator().manual_seed(1),
+        )
+    )
+    assert (nodes, output_tokens, bonus, leaf) == ([1, 4], [1, 4], -1, 4)
+    assert stats == {
+        "internal_probability_rows":2,
+        "leaf_probability_rows":1,
+        "total_tree_rows":5,
+    }
+
+    # An internal-node exit has its complete bonus already and needs no
+    # deferred Target call.
+    internal_p[1].zero_()
+    internal_p[1, 6] = 1
+    nodes, output_tokens, bonus, leaf, stats = (
+        tree_verify_internal_ancestral_batched(
+            parents, tokens, internal_p,
+            torch.Generator().manual_seed(1),
+        )
+    )
+    assert (nodes, output_tokens, bonus, leaf) == ([1], [1], 6, -1)
+    assert stats["leaf_probability_rows"] == 0
+
+
+def test_lazy_target_verifies_only_internal_rows_and_matches_full_rows(
+        tiny_engine):
+    full_captures = []
+    lazy_captures = []
+
+    def capture_full(parents, tokens, p):
+        full_captures.append((list(parents), list(tokens), p.detach().clone()))
+
+    def capture_lazy(parents, tokens, internal_nodes, p, leaf, leaf_p):
+        lazy_captures.append((
+            list(parents), list(tokens), list(internal_nodes),
+            p.detach().clone(), leaf,
+            None if leaf_p is None else leaf_p.detach().clone(),
+        ))
+
+    ids = torch.tensor([[1, 4, 2, 6]])
+    common = dict(
+        paths=1, length=3, temperature=1.0, draft_temperature=1.0,
+        probability_dtype="float64", tree_budget=12,
+    )
+    tiny_engine.generate(
+        ids, Variant(name="ddtree", method="ddtree", **common),
+        6, [], seed=19, tree_observer=capture_full,
+    )
+    result = tiny_engine.generate(
+        ids, Variant(
+            name="ddtree_lazy_target", method="ddtree_lazy_target", **common,
+        ),
+        6, [], seed=19, lazy_target_observer=capture_lazy,
+    )
+    full_parents, full_tokens, full_p = full_captures[0]
+    (lazy_parents, lazy_tokens, internal_nodes, internal_p,
+     leaf, leaf_p) = lazy_captures[0]
+    assert (lazy_parents, lazy_tokens) == (full_parents, full_tokens)
+    torch.testing.assert_close(
+        internal_p,
+        full_p.index_select(0, torch.tensor(internal_nodes)),
+        rtol=0,
+        atol=1e-7,
+    )
+    if leaf >= 0:
+        torch.testing.assert_close(
+            leaf_p, full_p[leaf], rtol=0, atol=1e-7,
+        )
+    assert all(
+        row["target_verified_rows"] <= row["full_target_tree_rows"]
+        for row in result["rounds"]
+    )
+    assert any(
+        row["target_verified_rows"] < row["full_target_tree_rows"]
+        for row in result["rounds"]
+    )
+
+
+def test_deferred_leaf_uses_exactly_one_target_tree_forward_per_round(
+        tiny_engine):
+    result = tiny_engine.generate(
+        torch.tensor([[1, 4, 2, 6]]),
+        Variant(
+            name="deferred", method="ddtree_lazy_target_deferred_leaf",
+            paths=1, length=3, temperature=1.0, draft_temperature=1.0,
+            probability_dtype="float64", tree_budget=12,
+        ),
+        24, [], seed=19,
+    )
+    assert result["generated_tokens"] == 24
+    assert result["target_forward_calls"] == 1 + len(result["rounds"])
+    assert any(row["deferred_leaf_stop"] for row in result["rounds"])
+    assert all(
+        not row["lazy_leaf_target_forward"] for row in result["rounds"]
     )
 
 

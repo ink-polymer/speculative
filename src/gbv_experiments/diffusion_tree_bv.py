@@ -15,7 +15,7 @@ import torch
 
 from . import atom_tree_bv as transport, sampling
 from .root_marginalized_bv import _normalize
-from .tree import Tree, sampled_tree
+from .tree import Tree, probability_tree, sampled_tree
 
 
 @dataclass
@@ -373,6 +373,74 @@ def restore(state):
     return DiffusionProposal(law, **{key: state["diffusion_" + key] for key in ("slots", "source", "draws")})
 
 
+def truncate_proposal(proposal, length):
+    """Keep the leading positions of a sampled diffusion block and its law."""
+    full_length = proposal.law.tokens.shape[0]
+    if type(length) is not int or not 1 <= length < full_length:
+        raise ValueError("Truncated diffusion length must be in 1..L-1")
+    law = DiffusionBlockLaw(
+        proposal.law.tokens[:length],
+        proposal.law.weights[:length],
+        proposal.law.retained_mass[:length],
+        proposal.law.noise_ids[:length + 1],
+        proposal.law.draft_temperature,
+        proposal.law.mask_token_id,
+    )
+    return DiffusionProposal(
+        law,
+        proposal.slots[:, :length],
+        proposal.source[:length],
+        proposal.draws[:length],
+    )
+
+
+def core_spur_tree(proposal, position_probabilities, budget):
+    """Union one labelled BV spur with the best DDTree prefix core.
+
+    The sampled spur is inserted first so ``path_nodes`` remains a compact
+    labelled prefix for the existing diffusion-BV kernel.  Remaining capacity
+    is filled in DDTree best-first order.  The tree is fixed before seeing any
+    Target row; its only randomness is the retained proposal witness.
+    """
+    paths = proposal.paths()
+    if (paths.ndim != 2 or paths.shape[0] != 1
+            or position_probabilities.ndim != 2
+            or position_probabilities.shape[0] < paths.shape[1]
+            or position_probabilities.shape[1] < 1
+            or type(budget) is not int or budget <= paths.shape[1]):
+        raise ValueError("Invalid core-spur proposal, probabilities, or budget")
+    tree = sampled_tree(paths)
+    children = {
+        (tree.parents[node], token): node
+        for node, token in enumerate(tree.tokens, 1)
+    }
+
+    def insert(parent, token):
+        child = children.get((parent, token))
+        if child is None:
+            child = len(tree.parents)
+            children[parent, token] = child
+            tree.tokens.append(token)
+            tree.parents.append(parent)
+            tree.depths.append(tree.depths[parent] + 1)
+        return child
+
+    # Up to ``spur_length`` source nodes can overlap the random path, so ask
+    # for that many extra best-first prefixes and stop at the strict B cap.
+    core = probability_tree(
+        position_probabilities, budget + paths.shape[1],
+    )
+    source_to_union = {0: 0}
+    for source in range(1, len(core.parents)):
+        parent = source_to_union[core.parents[source]]
+        source_to_union[source] = insert(parent, core.tokens[source - 1])
+        if len(tree.tokens) == budget:
+            break
+    if len(tree.tokens) > budget:
+        raise RuntimeError("Core-spur tree exceeded its node budget")
+    return tree
+
+
 def scaffold_tree(proposal, greedy, budget, *, fill=True):
     """Retain the original random paths AND a fixed greedy chain within B nodes.
 
@@ -451,7 +519,8 @@ def verify_scaffold_logits(node_logits, tree, proposal, temperature, generator=N
         if (tree.parents[0] != -1 or tree.depths[0] != 0
                 or any(parent < 0 or parent >= n or tree.depths[n] != tree.depths[parent] + 1
                        for n, parent in enumerate(tree.parents[1:], 1))
-                or max(tree.depths) > proposal.source.shape[0]
+                or any(len(path) != proposal.source.shape[0]
+                       for path in tree.path_nodes)
                 or len(set(zip(tree.parents[1:], tree.tokens))) != len(tree.tokens)
                 or any(token < 0 or token >= node_logits.shape[-1] for token in tree.tokens)
                 or bool(torch.isnan(node_logits).any() | torch.isposinf(node_logits).any()

@@ -29,6 +29,12 @@ torch::Tensor fused_tree_sample_scan_cuda(
     torch::Tensor uniforms,
     int64_t max_depth);
 
+torch::Tensor fused_tree_follow_cuda(
+    torch::Tensor posterior_tokens,
+    torch::Tensor edge_parents,
+    torch::Tensor edge_tokens,
+    int64_t max_depth);
+
 torch::Tensor fused_tree_sample_logits_scan_cuda(
     torch::Tensor logits,
     torch::Tensor edge_parents,
@@ -63,6 +69,79 @@ CUDA_SOURCE = r"""
 #include <cmath>
 
 namespace cg = cooperative_groups;
+
+__global__ void fused_tree_follow_kernel(
+    const int64_t* __restrict__ posterior_tokens,
+    const int64_t* __restrict__ edge_parents,
+    const int64_t* __restrict__ edge_tokens,
+    int64_t* __restrict__ output,
+    int node_count,
+    int max_depth) {
+  if (blockIdx.x != 0 || threadIdx.x != 0) {
+    return;
+  }
+  int current_node = 0;
+  int accepted_count = 0;
+  int bonus = static_cast<int>(posterior_tokens[0]);
+  for (int depth = 0; depth < max_depth; ++depth) {
+    int child = -1;
+    for (int edge = 0; edge < node_count - 1; ++edge) {
+      if (edge_parents[edge] == current_node
+          && edge_tokens[edge] == bonus) {
+        child = edge + 1;
+        break;
+      }
+    }
+    if (child < 0) {
+      break;
+    }
+    output[accepted_count++] = child;
+    current_node = child;
+    bonus = static_cast<int>(posterior_tokens[current_node]);
+  }
+  output[max_depth] = accepted_count;
+  output[max_depth + 1] = bonus;
+}
+
+torch::Tensor fused_tree_follow_cuda(
+    torch::Tensor posterior_tokens,
+    torch::Tensor edge_parents,
+    torch::Tensor edge_tokens,
+    int64_t max_depth) {
+  TORCH_CHECK(posterior_tokens.is_cuda()
+              && posterior_tokens.scalar_type() == torch::kLong
+              && posterior_tokens.is_contiguous()
+              && posterior_tokens.dim() == 1,
+              "posterior tokens must be contiguous CUDA long");
+  TORCH_CHECK(edge_parents.is_cuda() && edge_tokens.is_cuda()
+              && edge_parents.scalar_type() == torch::kLong
+              && edge_tokens.scalar_type() == torch::kLong
+              && edge_parents.is_contiguous() && edge_tokens.is_contiguous(),
+              "tree edges must be contiguous CUDA long");
+  const int64_t node_count = posterior_tokens.numel();
+  TORCH_CHECK(node_count > 0 && edge_parents.numel() == node_count - 1
+              && edge_tokens.numel() == node_count - 1,
+              "tree dimensions mismatch");
+  TORCH_CHECK(max_depth >= 0 && max_depth <= INT_MAX
+              && node_count <= INT_MAX,
+              "tree dimensions exceed CUDA limits");
+
+  c10::cuda::CUDAGuard device_guard(posterior_tokens.device());
+  auto output = torch::full(
+      {max_depth + 2}, -1,
+      torch::TensorOptions().dtype(torch::kLong)
+          .device(posterior_tokens.device()));
+  auto stream = at::cuda::getCurrentCUDAStream();
+  fused_tree_follow_kernel<<<1, 1, 0, stream>>>(
+      posterior_tokens.data_ptr<int64_t>(),
+      edge_parents.data_ptr<int64_t>(),
+      edge_tokens.data_ptr<int64_t>(),
+      output.data_ptr<int64_t>(),
+      static_cast<int>(node_count),
+      static_cast<int>(max_depth));
+  C10_CUDA_KERNEL_LAUNCH_CHECK();
+  return output;
+}
 
 template <typename scalar_t>
 __global__ void fused_tree_sample_kernel(
@@ -879,11 +958,12 @@ def load_fused_tree_sampler():
     from torch.utils.cpp_extension import load_inline
 
     return load_inline(
-        name="gbv_fused_tree_sampler_v13",
+        name="gbv_fused_tree_sampler_v14",
         cpp_sources=[CPP_SOURCE],
         cuda_sources=[CUDA_SOURCE],
         functions=["fused_tree_sample_cuda", "fused_tree_sample_parallel_cuda",
                    "fused_tree_sample_scan_cuda",
+                   "fused_tree_follow_cuda",
                    "fused_tree_sample_logits_scan_cuda",
                    "fused_internal_tree_sample_scan_cuda"],
         extra_cflags=["-O3"],
@@ -1005,6 +1085,47 @@ def tree_verify_ancestral_fused_scan(parents, tokens, all_p, generator=None,
     bonus = int(packed[max_depth + 1])
     if not 0 <= accepted_count <= max_depth or not 0 <= bonus < all_p.shape[1]:
         raise RuntimeError("Scan-fused tree sampler returned invalid control values")
+    nodes = [int(node) for node in packed[:accepted_count]]
+    return nodes, [tokens[node - 1] for node in nodes], bonus
+
+
+def tree_verify_ancestral_same_draw_fused(
+        parents, tokens, all_p, generator=None, validate: bool = True):
+    """Use DDTree's exact multinomial draws and fuse only the tree walk.
+
+    This consumes the same random primitive, in the same shape and order, as
+    :func:`gbv_experiments.sampling.tree_verify_ancestral_batched`.  Therefore
+    a fixed generator state produces identical accepted nodes and bonus token;
+    the only change is that traversal happens on CUDA and only the short path
+    record is copied to the host.
+    """
+    parents, tokens, max_depth = _topology(parents, tokens)
+    node_count = len(parents)
+    if (not all_p.is_cuda or all_p.ndim != 2
+            or all_p.shape[0] != node_count or all_p.shape[1] < 1
+            or not all_p.is_floating_point()):
+        raise ValueError("Same-draw DDTree probability tensor mismatch")
+    if any(token < 0 or token >= all_p.shape[1] for token in tokens):
+        raise ValueError("Tree token is outside the Target vocabulary")
+    if validate:
+        valid = (torch.isfinite(all_p).all() & (all_p >= 0).all()
+                 & (all_p.sum(-1) > 0).all())
+        if not bool(valid):
+            raise FloatingPointError("Invalid Target probabilities for DDTree")
+
+    posterior_tokens = torch.multinomial(
+        all_p, 1, generator=generator,
+    ).reshape(-1)
+    metadata = torch.tensor(
+        [parents[1:], tokens], dtype=torch.long, device=all_p.device,
+    )
+    packed = load_fused_tree_sampler().fused_tree_follow_cuda(
+        posterior_tokens, metadata[0], metadata[1], max_depth,
+    ).tolist()
+    accepted_count = int(packed[max_depth])
+    bonus = int(packed[max_depth + 1])
+    if not 0 <= accepted_count <= max_depth or not 0 <= bonus < all_p.shape[1]:
+        raise RuntimeError("Same-draw fused tree walk returned invalid controls")
     nodes = [int(node) for node in packed[:accepted_count]]
     return nodes, [tokens[node - 1] for node in nodes], bonus
 

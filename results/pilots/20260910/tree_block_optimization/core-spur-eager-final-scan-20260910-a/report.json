@@ -1,0 +1,211 @@
+{
+  "kind": "block_friendly_tree_architecture_scan",
+  "formal_complete": false,
+  "created_at_utc": "2026-09-10T07:52:49.729752+00:00",
+  "uses_cuda_graph": false,
+  "official_precision": {
+    "dtype": "bfloat16",
+    "target_attention": "sdpa",
+    "draft_attention": "sdpa",
+    "allow_tf32": false
+  },
+  "frozen_common_controls": {
+    "temperature": 1.0,
+    "length": 15,
+    "maximum_tree_budget": 45,
+    "maximum_draft_forwards_per_round": 1,
+    "maximum_target_forwards_per_round": 1
+  },
+  "tokens": 64,
+  "repeats": 2,
+  "prompt_policy": "synthetic development prompts only",
+  "focused_core_spur": true,
+  "aggregate": {
+    "dflash": {
+      "records": 6,
+      "mean_official_tpot_ms": 9.754053249101466,
+      "mean_tree_nodes": 15.0,
+      "mean_committed_tokens_per_round": 3.7678846153846153,
+      "mean_round_count": 18.0
+    },
+    "ddtree": {
+      "records": 6,
+      "mean_official_tpot_ms": 5.988182121654972,
+      "mean_tree_nodes": 45.0,
+      "mean_committed_tokens_per_round": 7.0,
+      "mean_round_count": 10.333333333333334
+    },
+    "core_spur_1": {
+      "records": 6,
+      "mean_official_tpot_ms": 7.8364224852217985,
+      "mean_tree_nodes": 45.0,
+      "mean_committed_tokens_per_round": 5.333333333333333,
+      "mean_round_count": 12.333333333333334
+    },
+    "core_spur_2": {
+      "records": 6,
+      "mean_official_tpot_ms": 7.889273217491184,
+      "mean_tree_nodes": 45.0,
+      "mean_committed_tokens_per_round": 5.700757575757575,
+      "mean_round_count": 12.333333333333334
+    },
+    "core_spur_4": {
+      "records": 6,
+      "mean_official_tpot_ms": 7.348690463307624,
+      "mean_tree_nodes": 45.0,
+      "mean_committed_tokens_per_round": 5.583333333333333,
+      "mean_round_count": 11.666666666666666
+    },
+    "core_spur_6": {
+      "records": 6,
+      "mean_official_tpot_ms": 6.619439431233332,
+      "mean_tree_nodes": 45.0,
+      "mean_committed_tokens_per_round": 6.8090909090909095,
+      "mean_round_count": 10.666666666666666
+    },
+    "core_spur_8": {
+      "records": 6,
+      "mean_official_tpot_ms": 7.679028446242834,
+      "mean_tree_nodes": 45.0,
+      "mean_committed_tokens_per_round": 5.916666666666667,
+      "mean_round_count": 12.333333333333334
+    }
+  },
+  "comparisons": {
+    "core_spur_1": {
+      "versus_ddtree": {
+        "candidate": "core_spur_1",
+        "baseline": "ddtree",
+        "speedup": 0.730736307308493,
+        "ci95": [
+          0.61783873133727,
+          0.9704468228076981
+        ],
+        "prompt_clusters": 3
+      },
+      "versus_dflash": {
+        "candidate": "core_spur_1",
+        "baseline": "dflash",
+        "speedup": 1.2251453996164465,
+        "ci95": [
+          0.9619346297648921,
+          1.5158447877466517
+        ],
+        "prompt_clusters": 3
+      }
+    },
+    "core_spur_2": {
+      "versus_ddtree": {
+        "candidate": "core_spur_2",
+        "baseline": "ddtree",
+        "speedup": 0.7500434504471419,
+        "ci95": [
+          0.672832892324995,
+          0.8309833581661022
+        ],
+        "prompt_clusters": 3
+      },
+      "versus_dflash": {
+        "candidate": "core_spur_2",
+        "baseline": "dflash",
+        "speedup": 1.2575155683893333,
+        "ci95": [
+          1.1788070393782013,
+          1.3733925609651434
+        ],
+        "prompt_clusters": 3
+      }
+    },
+    "core_spur_4": {
+      "versus_ddtree": {
+        "candidate": "core_spur_4",
+        "baseline": "ddtree",
+        "speedup": 0.7750494031029227,
+        "ci95": [
+          0.6113843556324128,
+          0.9746031484541511
+        ],
+        "prompt_clusters": 3
+      },
+      "versus_dflash": {
+        "candidate": "core_spur_4",
+        "baseline": "dflash",
+        "speedup": 1.299440305880614,
+        "ci95": [
+          1.1549319621147995,
+          1.5223369977465002
+        ],
+        "prompt_clusters": 3
+      }
+    },
+    "core_spur_6": {
+      "versus_ddtree": {
+        "candidate": "core_spur_6",
+        "baseline": "ddtree",
+        "speedup": 0.906335877273425,
+        "ci95": [
+          0.8434166672261277,
+          0.9456910571623312
+        ],
+        "prompt_clusters": 3
+      },
+      "versus_dflash": {
+        "candidate": "core_spur_6",
+        "baseline": "dflash",
+        "speedup": 1.519553934084325,
+        "ci95": [
+          1.2466729969647619,
+          1.93035310504804
+        ],
+        "prompt_clusters": 3
+      }
+    },
+    "core_spur_8": {
+      "versus_ddtree": {
+        "candidate": "core_spur_8",
+        "baseline": "ddtree",
+        "speedup": 0.7837386069915637,
+        "ci95": [
+          0.7727577116571792,
+          0.803636872081801
+        ],
+        "prompt_clusters": 3
+      },
+      "versus_dflash": {
+        "candidate": "core_spur_8",
+        "baseline": "dflash",
+        "speedup": 1.3140085407746873,
+        "ci95": [
+          1.1422304179590004,
+          1.6403908227799944
+        ],
+        "prompt_clusters": 3
+      }
+    }
+  },
+  "best_point_estimate": "core_spur_6",
+  "ddtree_vs_dflash": {
+    "candidate": "ddtree",
+    "baseline": "dflash",
+    "speedup": 1.6765902930552348,
+    "ci95": [
+      1.4781223153496414,
+      2.041209008405256
+    ],
+    "prompt_clusters": 3
+  },
+  "decision": "none_of_the_existing_tree_architectures_beats_ddtree",
+  "source_sha256": {
+    "engine": "abd2c679ea6175b7f411881345f3eb2010a15bda0f0478df718bd86f0c28040f",
+    "script": "00bfb6135f6978a0920fac7a745b85f208df77298330cf99054524777051e3c5",
+    "config": "ffb45dc9393d92f9eaf2fb02ee868eb819b5fd730b75c8ae9791c0c5153a84d4"
+  },
+  "telemetry_end": {
+    "utc": "2026-09-10T07:52:49.731248+00:00",
+    "hostname": "autodl-container-26d148a435-8171fde0",
+    "pid": 39304,
+    "slurm_job_id": null,
+    "gpu_uuid": "b32e1465-06c0-9da4-928e-ca196f12f2cf",
+    "nvidia_smi": "GPU-b32e1465-06c0-9da4-928e-ca196f12f2cf, NVIDIA H20, P0, 43, 170.06 W, 1980 MHz, 2619 MHz, 9557 MiB, 45 %"
+  }
+}
