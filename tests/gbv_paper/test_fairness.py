@@ -71,6 +71,33 @@ def test_tree_depth_reward_is_an_audited_architecture_delta():
     ] == 0.25
 
 
+def test_online_rank_controls_are_audited_architecture_deltas():
+    baseline, _ = pair()
+    candidate = replace(
+        baseline, name="online_rank", method="ddtree_online_rank",
+        tree_online_ewma=0.5, tree_online_clip=2.0,
+    )
+    manifest = assert_architecture_only_pair(baseline, candidate, MODEL)
+    assert manifest["architecture_delta"]["candidate"][
+        "tree_online_ewma"
+    ] == 0.5
+    assert manifest["architecture_delta"]["candidate"][
+        "tree_online_clip"
+    ] == 2.0
+
+
+def test_prefix_hybrid_core_is_an_audited_architecture_delta():
+    baseline, _ = pair()
+    candidate = replace(
+        baseline, name="hybrid", method="prefix_hybrid_tree",
+        prefix_core_budget=30,
+    )
+    manifest = assert_architecture_only_pair(baseline, candidate, MODEL)
+    assert manifest["architecture_delta"]["candidate"][
+        "prefix_core_budget"
+    ] == 30
+
+
 def test_tree_temperature_schedule_is_an_audited_architecture_delta():
     baseline, _ = pair()
     candidate = replace(

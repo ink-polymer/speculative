@@ -187,6 +187,105 @@ def probability_tree(q, budget: int, depth_reward: float = 0.0,
     return Tree(tokens, parents, depths, [])
 
 
+def online_rank_calibrated_tree(q: torch.Tensor, budget: int,
+                                rank_log_bias: torch.Tensor) -> Tree:
+    """Build DDTree after history-only depth/rank calibration.
+
+    ``rank_log_bias[d, r]`` estimates ``log(p/q)`` for Draft rank ``r`` at
+    future depth ``d``.  The unobserved vocabulary tail keeps its Draft mass,
+    so its normalization remains part of every prefix score.
+    """
+    if (q.ndim != 2 or rank_log_bias.ndim != 2
+            or rank_log_bias.shape[0] != q.shape[0]
+            or rank_log_bias.shape[1] < min(budget, q.shape[1])
+            or budget < 1 or not bool(torch.isfinite(rank_log_bias).all())):
+        raise ValueError("Invalid online rank calibration")
+    length, vocab = q.shape
+    width = min(budget, vocab)
+    values, indices = torch.topk(q, width, dim=-1, sorted=True)
+    adjusted = values.double() * rank_log_bias[:, :width].double().exp()
+    tail = (1. - values.double().sum(-1)).clamp_min(0.)
+    normalizer = (tail + adjusted.sum(-1)).clamp_min(
+        torch.finfo(torch.float64).tiny,
+    )
+    calibrated = adjusted / normalizer[:, None]
+    calibrated, order = calibrated.sort(dim=-1, descending=True)
+    indices = indices.gather(1, order)
+    logs = calibrated.log().tolist()
+    ids = indices.tolist()
+    tokens, parents, depths = [], [-1], [0]
+    heap = [(-logs[0][0], 0, 0, 0, 0.0)]
+    while heap and len(tokens) < budget:
+        negative, parent, depth, rank, parent_log = heapq.heappop(heap)
+        node = len(parents)
+        tokens.append(ids[depth][rank])
+        parents.append(parent)
+        depths.append(depth + 1)
+        if rank + 1 < width:
+            heapq.heappush(heap, (
+                -(parent_log + logs[depth][rank + 1]),
+                parent, depth, rank + 1, parent_log,
+            ))
+        if depth + 1 < length:
+            heapq.heappush(heap, (
+                negative - logs[depth + 1][0], node, depth + 1,
+                0, -negative,
+            ))
+    return Tree(tokens, parents, depths, [])
+
+
+def update_online_rank_bias(q: torch.Tensor, tree: Tree,
+                            target_probabilities: torch.Tensor,
+                            rank_log_bias: torch.Tensor, ewma: float,
+                            clip: float) -> torch.Tensor:
+    """Update depth/rank ``log(p/q)`` from an already verified tree."""
+    if (q.ndim != 2 or target_probabilities.ndim != 2
+            or target_probabilities.shape[0] != len(tree.parents)
+            or rank_log_bias.ndim != 2
+            or rank_log_bias.shape[0] != q.shape[0]
+            or not 0 < ewma <= 1 or not math.isfinite(clip) or clip <= 0):
+        raise ValueError("Invalid online rank-bias update")
+    width = min(rank_log_bias.shape[1], q.shape[1])
+    ranked_tokens = q.topk(width, dim=-1, sorted=True).indices
+    depth = torch.tensor(
+        [value - 1 for value in tree.depths[1:]],
+        dtype=torch.long, device=q.device,
+    )
+    parent = torch.tensor(
+        tree.parents[1:], dtype=torch.long, device=q.device,
+    )
+    token = torch.tensor(tree.tokens, dtype=torch.long, device=q.device)
+    if token.numel() == 0:
+        return rank_log_bias
+    matches = ranked_tokens.index_select(0, depth).eq(token[:, None])
+    observed = matches.any(-1)
+    if not bool(observed.any()):
+        return rank_log_bias
+    depth = depth[observed]
+    parent = parent[observed]
+    token = token[observed]
+    rank = matches[observed].to(torch.int64).argmax(-1)
+    tiny = torch.finfo(torch.float64).tiny
+    ratio = (
+        target_probabilities[parent, token].double().clamp_min(tiny).log()
+        - q[depth, token].double().clamp_min(tiny).log()
+    ).clamp(-clip, clip)
+    flat = depth * rank_log_bias.shape[1] + rank
+    size = rank_log_bias.numel()
+    sums = ratio.new_zeros(size).scatter_add_(0, flat, ratio)
+    counts = ratio.new_zeros(size).scatter_add_(
+        0, flat, torch.ones_like(ratio),
+    )
+    mask = counts > 0
+    estimate = rank_log_bias.double().flatten().clone()
+    estimate[mask] = sums[mask] / counts[mask]
+    previous = rank_log_bias.double().flatten()
+    updated = torch.where(
+        mask, previous.lerp(estimate, float(ewma)), previous,
+    )
+    return updated.view_as(rank_log_bias).to(rank_log_bias.dtype)
+
+
 def _finite_path_proposal(q: torch.Tensor,
                           weighted_paths: list[tuple[tuple[int, ...], float]]):
     if not weighted_paths:
@@ -398,6 +497,52 @@ def budgeted_prefix_proposal(q: torch.Tensor, budget: int):
     proposal = _finite_path_proposal(q, admitted)
     if len(sampled_tree(proposal.paths).tokens) > budget:
         raise AssertionError("Hard-budget proposal exceeded verification cap")
+    return proposal
+
+
+def embedded_prefix_proposal(q: torch.Tensor, tree: Tree, length: int):
+    """Put a finite block proposal inside an already allocated DDTree.
+
+    Only prefixes that already reach ``length`` in ``tree`` become proposal
+    leaves.  Consequently block verification and correction recycling do not
+    consume a single extra Target row: the verified topology remains exactly
+    the original B-node DDTree.
+    """
+    if (q.ndim != 2 or not 1 <= length <= q.shape[0]
+            or len(tree.parents) != len(tree.tokens) + 1
+            or tree.parents[0] != -1):
+        raise ValueError("Invalid embedded-prefix proposal inputs")
+    # High-entropy rounds can spend all B nodes before the requested depth.
+    # Use the deepest actually verified prefix rather than adding nodes or
+    # silently changing the DDTree allocation.
+    actual_length = min(length, max(tree.depths))
+    prefixes: list[tuple[int, ...]] = [()]
+    node_paths: list[list[int]] = [[]]
+    log_mass = [0.]
+    weighted_paths = []
+    path_nodes_by_path: dict[tuple[int, ...], list[int]] = {}
+    for node, (parent, token) in enumerate(
+            zip(tree.parents[1:], tree.tokens), 1):
+        if parent < 0 or parent >= node:
+            raise ValueError("Embedded-prefix tree is not topological")
+        prefix = prefixes[parent] + (token,)
+        nodes = node_paths[parent] + [node]
+        depth = len(prefix)
+        score = log_mass[parent] + math.log(float(q[depth - 1, token]))
+        prefixes.append(prefix)
+        node_paths.append(nodes)
+        log_mass.append(score)
+        if depth == actual_length:
+            weighted_paths.append((prefix, score))
+            path_nodes_by_path[prefix] = nodes
+    if not weighted_paths:
+        raise ValueError("DDTree has no prefix at the requested block length")
+    proposal = _finite_path_proposal(q[:actual_length], weighted_paths)
+    tree.path_nodes = [
+        path_nodes_by_path[tuple(path)] for path in proposal.paths.tolist()
+    ]
+    if any(len(nodes) != actual_length for nodes in tree.path_nodes):
+        raise AssertionError("Embedded proposal lost a verified prefix")
     return proposal
 
 

@@ -40,7 +40,9 @@ from .fused_tree_sampling import (tree_verify_ancestral_fused,
                                   tree_verify_ancestral_lazy_softmax_fused_scan)
 from .tree import (adaptive_path_proposal, adaptive_prefix_proposal,
                    budgeted_prefix_proposal, compact_cache, probability_tree,
-                   sampled_tree, block_aligned_spine_tree, Tree)
+                   sampled_tree, block_aligned_spine_tree,
+                   embedded_prefix_proposal, online_rank_calibrated_tree,
+                   update_online_rank_bias, Tree)
 
 
 SPARSE_FULL_TREE_METHODS = {
@@ -56,6 +58,7 @@ RECYCLE_TREE_METHODS = {
     "tree_gbv_budgeted_prefix_recycle_host",
     "tree_gbv_slot_mixer_recycle",
     "tree_gbv_ratio_transport_recycle",
+    "tree_gbv_embedded_prefix_recycle",
     "tree_gbv_prefix_recycle_packed",
 }
 PACKED_TREE_METHODS = {"tree_gbv_prefix_recycle_packed", "tree_gbv_packed"}
@@ -453,6 +456,14 @@ class Engine:
         target_calls, draft_calls = 1, 0
         target_tokens = input_ids.shape[1]
         verifier_observed = False
+        online_rank_bias = (
+            torch.zeros(
+                (variant.length, min(variant.tree_budget,
+                                     self.target.config.vocab_size)),
+                dtype=torch.float32, device=self.device,
+            )
+            if variant.method == "ddtree_online_rank" else None
+        )
         while len(generated) < max_new_tokens and generated[-1] not in stops:
             if variant.method == "target":
                 with meter.measure("target_decode"):
@@ -569,7 +580,13 @@ class Engine:
                     self.sync()
                 official_scope_decode_start = time.perf_counter()
             with meter.measure("tree_build"):
-                if (variant.method in {"ddtree", "ddtree_slot_mixer"}
+                if variant.method == "ddtree_online_rank":
+                    tree = online_rank_calibrated_tree(
+                        q, variant.tree_budget, online_rank_bias,
+                    )
+                    paths = None
+                    tree_proposal = None
+                elif (variant.method in {"ddtree", "ddtree_slot_mixer"}
                         or variant.method in
                         TERMINAL_TREE_METHODS | FUSED_TREE_METHODS
                         | LAZY_HEAD_TREE_METHODS | LAZY_SOFTMAX_TREE_METHODS
@@ -635,7 +652,9 @@ class Engine:
                         proposal_hidden, logits,
                         self.target.get_output_embeddings().weight,
                         **({"position_probabilities": q}
-                           if variant.method == "prefix_rescored_tree" else {}),
+                           if variant.method in {
+                               "prefix_rescored_tree", "prefix_hybrid_tree",
+                           } else {}),
                         budget=variant.tree_budget,
                         temperature=draft_temp,
                         prefix_embeddings=(
@@ -643,6 +662,11 @@ class Engine:
                         ),
                         support_size=variant.diffusion_support_size,
                         strength=variant.prefix_strength,
+                        **({"pool_factor": variant.prefix_pool_factor}
+                           if variant.method == "prefix_rescored_tree" else {}),
+                        **({"pool_factor": variant.prefix_pool_factor,
+                            "core_budget": variant.prefix_core_budget}
+                           if variant.method == "prefix_hybrid_tree" else {}),
                     )
                     paths = None
                     tree_proposal = None
@@ -698,6 +722,15 @@ class Engine:
                     tree_proposal = adaptive_path_proposal(q, variant.tree_budget)
                     paths, proposal_token_probabilities = tree_proposal.sample(variant.paths, generator)
                     tree = sampled_tree(paths, variant.share_prefixes)
+                elif variant.method == "tree_gbv_embedded_prefix_recycle":
+                    tree = probability_tree(q, variant.tree_budget)
+                    tree_proposal = embedded_prefix_proposal(
+                        q, tree, variant.diffusion_spur_length,
+                    )
+                    paths = tree_proposal.paths
+                    proposal_token_probabilities = (
+                        tree_proposal.token_probabilities
+                    )
                 elif variant.method in FINITE_TREE_METHODS:
                     if variant.method in {
                         "tree_gbv_budgeted_prefix_recycle",
@@ -778,6 +811,7 @@ class Engine:
                 )
                 lazy_lm_head = (
                     variant.method in LAZY_HEAD_TREE_METHODS
+                    or variant.method == "prefix_core_spur_bv_lazy"
                     or (
                         variant.method in DIFFUSION_SCAFFOLD_METHODS
                         and variant.method != "diffusion_core_spur_bv"
@@ -1013,7 +1047,8 @@ class Engine:
                     )
                     accepted = len(nodes)
                 elif variant.method in {
-                        "ddtree", "root_shared_ddtree", "atom_tree_ancestral",
+                        "ddtree", "ddtree_online_rank", "root_shared_ddtree",
+                        "atom_tree_ancestral",
                         "diffusion_tree_ancestral", "prefix_core_spur_tree",
                         "rank_calibrated_tree",
                         "block_aligned_tree",
@@ -1035,12 +1070,25 @@ class Engine:
                         executed_verifier = (verifier, generator_before)
                 elif variant.method in (
                         {"diffusion_core_spur_bv"} | PREFIX_CORE_SPUR_METHODS):
-                    nodes, tokens, bonus = diffusion_tree_bv.verify_scaffold_logits(
-                        output.logits[0], tree, tree_proposal,
-                        variant.temperature, generator,
-                        continuation="ancestral", validate=False,
-                        node_probabilities=all_p,
-                    )
+                    if variant.method == "prefix_core_spur_bv_lazy":
+                        nodes, tokens, bonus = (
+                            diffusion_tree_bv.verify_scaffold_hidden(
+                                output.last_hidden_state[0],
+                                self.target.get_output_embeddings(),
+                                tree, tree_proposal, variant.temperature,
+                                generator, recycle=True,
+                                continuation="ancestral", validate=False,
+                            )
+                        )
+                    else:
+                        nodes, tokens, bonus = (
+                            diffusion_tree_bv.verify_scaffold_logits(
+                                output.logits[0], tree, tree_proposal,
+                                variant.temperature, generator,
+                                continuation="ancestral", validate=False,
+                                node_probabilities=all_p,
+                            )
+                        )
                     accepted = len(nodes)
                 elif variant.method in DIFFUSION_SCAFFOLD_METHODS:
                     nodes, tokens, bonus = diffusion_tree_bv.verify_scaffold_hidden(
@@ -1245,6 +1293,12 @@ class Engine:
                 # Tree logits alone cannot certify fixed greedy coverage or
                 # maximal continuation, the premises of the DFlash tail bound.
                 scaffold_observer(tree, tree_proposal, logits, nodes, tokens, bonus)
+            if variant.method == "ddtree_online_rank":
+                with meter.measure("tree_adapt"):
+                    online_rank_bias = update_online_rank_bias(
+                        q, tree, all_p, online_rank_bias,
+                        variant.tree_online_ewma, variant.tree_online_clip,
+                    )
             if audit_greedy and variant.method != "target":
                 row_index = torch.tensor([0] + nodes, device=self.device)
                 tree_logits = (

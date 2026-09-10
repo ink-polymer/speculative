@@ -15,6 +15,8 @@ ARCHITECTURE_FIELDS = frozenset({
     "tree_proposal_temperature_end", "tree_proposal_temperature_schedule",
     "tree_proposal_bias_path", "tree_depth_reward",
     "tree_adaptive_confidence_threshold", "tree_adaptive_min_budget",
+    "prefix_pool_factor", "prefix_core_budget",
+    "tree_online_ewma", "tree_online_clip",
 })
 FROZEN_MODEL_SETTINGS = {
     "dtype": "bfloat16",

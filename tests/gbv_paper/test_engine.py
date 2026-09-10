@@ -20,7 +20,9 @@ from gbv_experiments.preflight import (
 from gbv_experiments.tree import (adaptive_path_proposal, adaptive_prefix_proposal,
                                   block_aligned_spine_tree,
                                   budgeted_prefix_proposal, compact_cache,
-                                  probability_tree, sampled_tree)
+                                  online_rank_calibrated_tree,
+                                  probability_tree, sampled_tree,
+                                  update_online_rank_bias)
 
 
 def test_tree_merge_keeps_candidate_multiplicity():
@@ -672,6 +674,27 @@ def test_probability_tree_adaptive_budget_prunes_confident_blocks():
     )
     assert len(full.tokens) == 5
     assert len(pruned.tokens) == 2
+
+
+def test_online_rank_tree_starts_exactly_as_ddtree():
+    q = torch.tensor([[.63, .25, .12], [.71, .2, .09]], dtype=torch.float64)
+    baseline = probability_tree(q, 4)
+    calibrated = online_rank_calibrated_tree(q, 4, torch.zeros(2, 3))
+    assert calibrated == baseline
+
+
+def test_online_rank_update_uses_verified_target_ratios():
+    q = torch.tensor([[.7, .2, .1]], dtype=torch.float64)
+    tree = probability_tree(q, 2)
+    target = torch.tensor([
+        [.1, .8, .1], [.1, .8, .1], [.1, .8, .1],
+    ], dtype=torch.float64)
+    bias = update_online_rank_bias(
+        q, tree, target, torch.zeros(1, 2), ewma=1., clip=4.,
+    )
+    assert bias[0, 0] < 0 < bias[0, 1]
+    calibrated = online_rank_calibrated_tree(q, 2, bias)
+    assert calibrated.tokens[0] == 1
 
 
 def test_block_aligned_spine_tree_keeps_full_paths_within_budget():

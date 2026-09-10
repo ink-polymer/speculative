@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 from pathlib import Path
 import random
 
@@ -60,7 +61,9 @@ def parser() -> argparse.ArgumentParser:
         help="Fraction of updates distilled on prefixes sampled by the head.",
     )
     result.add_argument(
-        "--objective", choices=("mean_kl", "remaining_kl", "coverage_kl"),
+        "--objective", choices=(
+            "mean_kl", "remaining_kl", "coverage_kl", "tree_mass_kl",
+        ),
         default="remaining_kl",
         help=("coverage_kl additionally preserves actual top-R versus tail "
               "mass, matching finite-tree allocation"),
@@ -90,7 +93,9 @@ def distillation_loss(log_scores: torch.Tensor, teacher: torch.Tensor,
 def coverage_distillation_loss(scores: torch.Tensor,
                                draft_logits: torch.Tensor,
                                target_logits: torch.Tensor,
-                               candidates: torch.Tensor) -> torch.Tensor:
+                               candidates: torch.Tensor, *,
+                               depth_weights: torch.Tensor | None = None
+                               ) -> torch.Tensor:
     """Suffix-weighted KL over top-R candidates plus one exact tail event."""
     draft_log_probability = torch.log_softmax(draft_logits.float(), dim=-1)
     selected_base_log = draft_log_probability.gather(2, candidates)
@@ -110,9 +115,46 @@ def coverage_distillation_loss(scores: torch.Tensor,
     selected_target = target_probability.gather(2, candidates)
     target_tail = (1.0 - selected_target.sum(-1)).clamp_min(0.0)
     teacher = torch.cat((selected_target, target_tail[..., None]), dim=-1)
-    return distillation_loss(
-        student_log_probability, teacher, "remaining_kl",
+    per_depth = F.kl_div(
+        student_log_probability, teacher, reduction="none",
+    ).sum(-1)
+    length = per_depth.shape[-1]
+    suffix = torch.arange(
+        length, 0, -1, dtype=per_depth.dtype, device=per_depth.device,
     )
+    suffix = suffix / suffix.mean()
+    weights = suffix[None]
+    if depth_weights is not None:
+        if depth_weights.shape != per_depth.shape:
+            raise ValueError("Tree-mass depth weights disagree with KL rows")
+        weights = weights * depth_weights.to(per_depth.dtype)
+    return (per_depth * weights).mean()
+
+
+def tree_mass_importance_weights(target_logits: torch.Tensor,
+                                 labels: torch.Tensor,
+                                 selected_proposal: torch.Tensor,
+                                 clip: float = 8.) -> torch.Tensor:
+    """On-policy prefix weights for expected finite-tree coverage.
+
+    A node at depth ``d`` contributes only when its first ``d`` ancestors are
+    reached under Target sampling.  Prefixes are rolled out from the current
+    proposal, so the detached cumulative ``P/Q`` ratio turns the tokenwise KL
+    into an estimator focused on Target-likely tree nodes.  Clipping controls
+    the variance of the deliberately small pilot training sets.
+    """
+    if (target_logits.ndim != 3 or labels.shape != target_logits.shape[:2]
+            or selected_proposal.shape != labels.shape
+            or not math.isfinite(clip) or clip <= 0):
+        raise ValueError("Invalid tree-mass importance inputs")
+    selected_target = torch.softmax(
+        target_logits.float(), dim=-1,
+    ).gather(2, labels[..., None])[..., 0]
+    ratio = selected_target / selected_proposal.float().clamp_min(1e-12)
+    prefix = torch.ones_like(ratio)
+    if ratio.shape[1] > 1:
+        prefix[:, 1:] = ratio[:, :-1].cumprod(-1)
+    return prefix.detach().clamp(max=float(clip))
 
 
 def main() -> None:
@@ -124,6 +166,8 @@ def main() -> None:
             or not 2 <= args.length <= 15
             or not 0 <= args.rollout_probability <= 1):
         raise ValueError("Invalid prefix-head training controls")
+    if args.objective == "tree_mass_kl" and args.rollout_probability != 1:
+        raise ValueError("tree_mass_kl requires --rollout-probability 1")
     config_path = Path(args.config)
     train_path = Path(args.train_data)
     cfg = load_config(config_path)
@@ -176,6 +220,7 @@ def main() -> None:
             context = adapter.extract_target_context(context_output.hidden_states)
             draft_logits, draft_hidden = adapter.draft_first_raw(context, anchor)
             labels = corpus_labels
+            selected_proposal = None
             if rollout:
                 noise_ids = torch.full(
                     (args.length + 1,), int(engine.draft.mask_token_id),
@@ -185,12 +230,16 @@ def main() -> None:
                 rollout_generator = torch.Generator(device=device).manual_seed(
                     anchor_seed + 1_000_000,
                 )
-                labels = head.propose(
+                proposal = head.propose(
                     draft_hidden[:, :args.length],
                     draft_logits[0, :args.length], candidate_embedding,
                     noise_ids, args.length, 1., rollout_generator,
                     prefix_embeddings=prefix_embedding,
-                ).paths()
+                )
+                labels = proposal.paths()
+                selected_proposal = proposal.source.gather(
+                    1, proposal.draws[:, None],
+                )[:, 0][None]
             teacher_input = torch.cat((prefix[0], anchor, labels[0, :-1]))[None]
             target_logits = engine.target(
                 input_ids=teacher_input, output_hidden_states=False,
@@ -199,7 +248,7 @@ def main() -> None:
         return (
             draft_hidden[:, :args.length].clone(),
             draft_logits[:, :args.length].clone(),
-            target_logits.clone(), labels,
+            target_logits.clone(), labels, selected_proposal,
         )
 
     updates = 0
@@ -216,15 +265,27 @@ def main() -> None:
             )
             if batch is None:
                 continue
-            hidden, draft_logits, target_logits, labels = batch
+            hidden, draft_logits, target_logits, labels, selected_proposal = batch
             optimizer.zero_grad(set_to_none=True)
             scores, candidates = head.teacher_forced_scores(
                 hidden, draft_logits, candidate_embedding, labels,
                 prefix_embeddings=prefix_embedding,
             )
-            if args.objective == "coverage_kl":
+            if args.objective in {"coverage_kl", "tree_mass_kl"}:
+                if args.objective == "tree_mass_kl":
+                    if selected_proposal is None:
+                        raise RuntimeError(
+                            "tree_mass_kl requires proposal rollouts; use "
+                            "--rollout-probability 1"
+                        )
+                    depth_weights = tree_mass_importance_weights(
+                        target_logits, labels, selected_proposal,
+                    )
+                else:
+                    depth_weights = None
                 loss = coverage_distillation_loss(
                     scores, draft_logits, target_logits, candidates,
+                    depth_weights=depth_weights,
                 )
                 with torch.no_grad():
                     baseline_kl = coverage_distillation_loss(
@@ -272,12 +333,14 @@ def main() -> None:
             batch = example(sample_index, args.seed + 10_000 + sample_index)
             if batch is None:
                 continue
-            hidden, draft_logits, target_logits, labels = batch
+            hidden, draft_logits, target_logits, labels, selected_proposal = batch
             scores, candidates = head.teacher_forced_scores(
                 hidden, draft_logits, candidate_embedding, labels,
                 prefix_embeddings=prefix_embedding,
             )
-            if args.objective == "coverage_kl":
+            if args.objective in {"coverage_kl", "tree_mass_kl"}:
+                # Holdout is teacher-forced and therefore reports the stable
+                # unweighted coverage KL for comparability across objectives.
                 holdout_loss += float(coverage_distillation_loss(
                     scores, draft_logits, target_logits, candidates,
                 ))

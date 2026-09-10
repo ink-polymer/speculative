@@ -199,11 +199,17 @@ class PrefixConditionalHead(nn.Module):
     def build_tree(self, hidden: torch.Tensor, draft_logits: torch.Tensor,
                    token_embeddings: torch.Tensor,
                    position_probabilities: torch.Tensor, budget: int,
-                   temperature: float, pool_factor: int = 4, *,
+                   temperature: float, pool_factor: int = 2, *,
                    prefix_embeddings: torch.Tensor | None = None,
                    support_size: int | None = None,
-                   strength: float = 1.) -> Tree:
-        """Rerank a broad DFlash prefix pool with prefix-conditional scores."""
+                   strength: float = 1., core_budget: int = 0) -> Tree:
+        """Rerank a broad DFlash prefix pool with prefix-conditional scores.
+
+        A 2B pool matches the selector's hard-negative training set.  The old
+        4B pool doubled recurrent scoring and host materialization cost while
+        admitting mostly very-low-Draft-mass nodes that never survived the
+        final B-node selection.
+        """
         if (hidden.ndim != 3 or hidden.shape[0] != 1
                 or hidden.shape[-1] != self.hidden_size
                 or draft_logits.ndim != 2
@@ -211,6 +217,7 @@ class PrefixConditionalHead(nn.Module):
                 or position_probabilities.shape != draft_logits.shape
                 or not 1 <= hidden.shape[1] <= self.max_length
                 or budget < hidden.shape[1] or pool_factor < 1
+                or not 0 <= core_budget < budget
                 or not math.isfinite(temperature) or temperature <= 0
                 or not math.isfinite(strength) or not 0 <= strength <= 2):
             raise ValueError("Invalid prefix-conditioned tree inputs")
@@ -241,94 +248,145 @@ class PrefixConditionalHead(nn.Module):
         tail_base_log = (1.0 - q_values.double().sum(-1)).clamp_min(
             torch.finfo(torch.float64).tiny,
         ).log()
-        rank_by_token = [
-            {token: rank for rank, token in enumerate(row)}
-            for row in candidate_ids.tolist()
-        ]
         pool_children: dict[int, list[int]] = defaultdict(list)
         for node in range(1, len(pool.parents)):
             pool_children[pool.parents[node]].append(node)
 
+        # Score every distinct parent that actually owns a candidate edge in
+        # one recurrent batch.  Leaves need no outgoing distribution, so
+        # excluding them is an exact reduction rather than a tree heuristic.
+        # It also replaces the old per-depth GRU launches with one batch.
+        default_path = candidate_ids[:, 0].tolist()
+        prefixes: list[list[int]] = [[]]
+        for parent, token in zip(pool.parents[1:], pool.tokens):
+            prefix = prefixes[parent] + [token]
+            prefixes.append(prefix)
+        scored_parents = sorted(pool_children)
+        parent_to_row = {
+            parent: row for row, parent in enumerate(scored_parents)
+        }
+        path_rows: list[list[int]] = []
+        for parent in scored_parents:
+            row = default_path.copy()
+            row[:len(prefixes[parent])] = prefixes[parent]
+            path_rows.append(row)
+        paths = torch.tensor(
+            path_rows, dtype=torch.long, device=hidden.device,
+        )
+        previous = hidden.new_zeros(
+            (len(scored_parents), length, self.hidden_size), dtype=dtype,
+        )
+        if length > 1:
+            previous[:, 1:] = F.embedding(
+                paths[:, :-1], prefix_embeddings,
+            ).to(dtype)
+        recurrent_input = base[None] + self.prefix_down(
+            self.token_norm(previous)
+        )
+        states, _ = self.recurrent(recurrent_input)
+        parent_depth = torch.tensor(
+            [pool.depths[parent] for parent in scored_parents],
+            dtype=torch.long, device=hidden.device,
+        )
+        rows = torch.arange(len(scored_parents), device=hidden.device)
+        parent_states = self.query(states[rows, parent_depth])
+        parent_keys = candidate_keys.index_select(0, parent_depth)
+        corrections = (
+            parent_states[:, None] * parent_keys
+        ).sum(-1) / self.rank ** .5
+        residual = self.correction_scale * (
+            corrections + self.depth_bias.index_select(0, parent_depth)[
+                :, :width
+            ]
+        )
+        adjusted = candidate_base_log.index_select(0, parent_depth) + (
+            float(strength) * residual.double() / float(temperature)
+        )
+        denominator = torch.logaddexp(
+            tail_base_log.index_select(0, parent_depth),
+            torch.logsumexp(adjusted, dim=-1),
+        )
+        parent_log_probabilities = adjusted - denominator[:, None]
+
+        node_depth = torch.tensor(
+            [depth - 1 for depth in pool.depths[1:]],
+            dtype=torch.long, device=hidden.device,
+        )
+        edge_tokens = torch.tensor(
+            pool.tokens, dtype=torch.long, device=hidden.device,
+        )
+        edge_ranks = candidate_ids.index_select(0, node_depth).eq(
+            edge_tokens[:, None]
+        ).to(torch.int64).argmax(-1)
+        edge_parent_rows = torch.tensor(
+            [parent_to_row[parent] for parent in pool.parents[1:]],
+            dtype=torch.long, device=hidden.device,
+        )
+        edge_log_probability = parent_log_probabilities.index_select(
+            0, edge_parent_rows,
+        ).gather(
+            1, edge_ranks[:, None],
+        )[:, 0]
         cumulative = torch.zeros(
             len(pool.parents), dtype=torch.float64, device=hidden.device,
         )
-        states: dict[int, torch.Tensor] = {}
-        for depth in range(length):
-            parents_at_depth = [
-                parent for parent in pool_children
-                if pool.depths[parent] == depth
-            ]
-            if not parents_at_depth:
-                continue
-            if depth == 0:
-                previous = hidden.new_zeros(
-                    (len(parents_at_depth), self.hidden_size), dtype=dtype,
+        parent_tensor = torch.tensor(
+            pool.parents[1:], dtype=torch.long, device=hidden.device,
+        )
+        for depth in range(1, length + 1):
+            nodes = (node_depth == depth - 1).nonzero()[:, 0] + 1
+            if nodes.numel():
+                cumulative[nodes] = (
+                    cumulative[parent_tensor.index_select(0, nodes - 1)]
+                    + edge_log_probability.index_select(0, nodes - 1)
                 )
-                prior = hidden.new_zeros(
-                    (1, len(parents_at_depth), self.rank), dtype=dtype,
-                )
-            else:
-                parent_tokens = torch.tensor(
-                    [pool.tokens[parent - 1] for parent in parents_at_depth],
-                    dtype=torch.long, device=hidden.device,
-                )
-                previous = F.embedding(
-                    parent_tokens, prefix_embeddings,
-                ).to(dtype)
-                prior = torch.stack(
-                    [states[parent] for parent in parents_at_depth], dim=0,
-                )[None]
-            inputs = base[depth][None].expand(len(parents_at_depth), -1)
-            inputs = inputs + self.prefix_down(self.token_norm(previous))
-            outputs, state = self.recurrent(inputs[:, None], prior)
-            queries = self.query(outputs[:, 0])[:, None]
-            corrections = (
-                queries * candidate_keys[depth][None]
-            ).sum(-1) / self.rank ** .5
-            residual = (
-                self.correction_scale * corrections
-                + self.depth_bias[depth, :width][None]
-            )
-            adjusted = (
-                candidate_base_log[depth][None]
-                + float(strength) * residual.double() / float(temperature)
-            )
-            denominator = torch.logaddexp(
-                tail_base_log[depth], torch.logsumexp(adjusted, dim=-1),
-            )
-            log_probabilities = adjusted - denominator[:, None]
-            child_nodes, parent_nodes, parent_rows, child_ranks = [], [], [], []
-            for row, parent in enumerate(parents_at_depth):
-                for child in pool_children[parent]:
-                    token = pool.tokens[child - 1]
-                    child_nodes.append(child)
-                    parent_nodes.append(parent)
-                    parent_rows.append(row)
-                    child_ranks.append(rank_by_token[depth][token])
-                    states[child] = state[0, row]
-            child_tensor = torch.tensor(
-                child_nodes, dtype=torch.long, device=hidden.device,
-            )
-            parent_tensor = torch.tensor(
-                parent_nodes, dtype=torch.long, device=hidden.device,
-            )
-            row_tensor = torch.tensor(
-                parent_rows, dtype=torch.long, device=hidden.device,
-            )
-            rank_tensor = torch.tensor(
-                child_ranks, dtype=torch.long, device=hidden.device,
-            )
-            cumulative[child_tensor] = (
-                cumulative[parent_tensor]
-                + log_probabilities[row_tensor, rank_tensor]
+
+        # With no forced DDTree core, cumulative log probability is
+        # non-increasing along every edge.  Therefore the global top-B pool
+        # nodes are already ancestor closed.  Select them on-device and copy
+        # only B ids to the host; the old heap copied all pool scores and then
+        # repeated the best-first search in Python.
+        if core_budget == 0:
+            selected_sources = torch.argsort(
+                cumulative[1:], descending=True, stable=True,
+            )[:budget].add(1).sort().values.tolist()
+            source_to_selected = {0: 0}
+            selected_tokens: list[int] = []
+            selected_parents = [-1]
+            selected_depths = [0]
+            for source in selected_sources:
+                parent = source_to_selected.get(pool.parents[source])
+                if parent is None:
+                    raise RuntimeError(
+                        "Conditioned top-B set was not ancestor closed"
+                    )
+                source_to_selected[source] = len(selected_parents)
+                selected_tokens.append(pool.tokens[source - 1])
+                selected_parents.append(parent)
+                selected_depths.append(pool.depths[source])
+            return Tree(
+                selected_tokens, selected_parents, selected_depths, [],
             )
 
         selected_tokens, selected_parents, selected_depths = [], [-1], [0]
         source_to_selected = {0: 0}
         heap: list[tuple[float, int]] = []
         cumulative_values = cumulative.tolist()
-        for child in pool_children[0]:
-            heapq.heappush(heap, (-cumulative_values[child], child))
+        # Pool ids are emitted in exact DDTree best-first order. Preserve a
+        # high-confidence DDTree prefix and let the learned score replace only
+        # its tail; the mandatory prefix is already ancestor closed.
+        for source in range(1, core_budget + 1):
+            parent = source_to_selected[pool.parents[source]]
+            source_to_selected[source] = len(selected_parents)
+            selected_tokens.append(pool.tokens[source - 1])
+            selected_parents.append(parent)
+            selected_depths.append(pool.depths[source])
+        for source in range(core_budget + 1):
+            for child in pool_children.get(source, ()):
+                if child > core_budget:
+                    heapq.heappush(
+                        heap, (-cumulative_values[child], child),
+                    )
         while heap and len(selected_tokens) < budget:
             _, source = heapq.heappop(heap)
             parent = source_to_selected[pool.parents[source]]
@@ -427,9 +485,8 @@ class PrefixConditionalHead(nn.Module):
             correction = (
                 queries * candidate_keys[depth][None]
             ).sum(-1) / self.rank ** .5
-            residual = (
-                self.correction_scale * correction
-                + self.depth_bias[depth, :width][None]
+            residual = self.correction_scale * (
+                correction + self.depth_bias[depth, :width][None]
             )
             adjusted = (
                 candidate_base_log[depth][None]
@@ -544,9 +601,8 @@ class PrefixConditionalHead(nn.Module):
             correction = (
                 query * candidate_keys[depth][None]
             ).sum(-1) / self.rank ** 0.5
-            residual = (
-                self.correction_scale * correction
-                + self.depth_bias[depth, :width][None]
+            residual = self.correction_scale * (
+                correction + self.depth_bias[depth, :width][None]
             )
             scores = values[depth][None].to(dtype) + float(strength) * residual
             weights = torch.softmax(

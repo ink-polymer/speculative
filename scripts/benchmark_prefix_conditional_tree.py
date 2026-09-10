@@ -45,7 +45,9 @@ DEVELOPMENT_PROMPTS = (
 
 def declared_variants(spurs: tuple[int, ...],
                       supports: tuple[int, ...],
-                      strengths: tuple[float, ...]) -> list[Variant]:
+                      strengths: tuple[float, ...],
+                      hybrid_cores: tuple[int, ...] = (), *,
+                      tree_only: bool = False) -> list[Variant]:
     base = Variant(
         name="base", method="ddtree", paths=1, length=15,
         temperature=1., draft_temperature=1., tree_budget=45,
@@ -58,20 +60,68 @@ def declared_variants(spurs: tuple[int, ...],
             base, name="unconditioned_spur_6",
             method="diffusion_core_spur_bv", diffusion_spur_length=6,
         ),
-        replace(
-            base, name="prefix_rescored_tree",
-            method="prefix_rescored_tree",
-        ),
-        replace(
-            base, name="prefix_beam_tree",
-            method="prefix_beam_tree",
-        ),
+        *[
+            replace(
+                base, name=f"prefix_finite_brbv_k{k}",
+                method="tree_gbv_budgeted_prefix_recycle_sparse_lazy",
+                paths=k,
+            )
+            for k in (1, 2, 3, 4)
+        ],
+        *[
+            replace(
+                base, name=f"prefix_embedded_brbv_s{spur}_k{k}",
+                method="tree_gbv_embedded_prefix_recycle",
+                paths=k, diffusion_spur_length=spur,
+            )
+            for spur in spurs for k in (1, 2, 3, 4)
+        ],
+        *[
+            replace(
+                base, name=f"prefix_rescored_tree_p{pool}_x{strength:g}",
+                method="prefix_rescored_tree", prefix_strength=strength,
+                prefix_pool_factor=pool,
+                diffusion_support_size=max(supports),
+            )
+            for pool in (2, 6, 12) for strength in strengths
+        ],
+        *[
+            replace(
+                base,
+                name=f"prefix_hybrid_c{core}_p{pool}_x{strength:g}",
+                method="prefix_hybrid_tree", prefix_strength=strength,
+                prefix_pool_factor=pool, prefix_core_budget=core,
+                diffusion_support_size=max(supports),
+            )
+            for core in hybrid_cores for pool in (2, 6, 12)
+            for strength in strengths
+        ],
+        *[
+            replace(
+                base, name=f"prefix_beam_tree_x{strength:g}",
+                method="prefix_beam_tree", prefix_strength=strength,
+                diffusion_support_size=max(supports),
+            )
+            for strength in strengths
+        ],
         *[
             replace(
                 base, name=(
                     f"prefix_spur_{spur}_r{support}_x{strength:g}"
                 ),
                 method="prefix_core_spur_bv", diffusion_spur_length=spur,
+                diffusion_support_size=support,
+                prefix_strength=strength,
+            )
+            for spur in spurs for support in supports for strength in strengths
+        ],
+        *[
+            replace(
+                base, name=(
+                    f"prefix_lazy_spur_{spur}_r{support}_x{strength:g}"
+                ),
+                method="prefix_core_spur_bv_lazy",
+                diffusion_spur_length=spur,
                 diffusion_support_size=support,
                 prefix_strength=strength,
             )
@@ -92,6 +142,14 @@ def declared_variants(spurs: tuple[int, ...],
             for spur in spurs
         ],
     ]
+    if tree_only:
+        values = [
+            value for value in values
+            if value.name in {"dflash", "ddtree"}
+            or value.name.startswith((
+                "prefix_rescored_", "prefix_hybrid_", "prefix_beam_",
+            ))
+        ]
     for value in values:
         value.validate()
     return values
@@ -149,7 +207,8 @@ def compare(rows: list[dict], candidate: str, baseline: str,
 def run(config: Path, checkpoint: Path, output: Path, tokens: int,
         repeats: int, device: str, spurs: tuple[int, ...],
         supports: tuple[int, ...], strengths: tuple[float, ...],
-        prompt_count: int) -> dict:
+        prompt_count: int, *, hybrid_cores: tuple[int, ...] = (),
+        tree_only: bool = False) -> dict:
     if not 32 <= tokens <= 128 or not 1 <= repeats <= 5:
         raise ValueError("Use 32..128 tokens and 1..5 repeats")
     if not 1 <= prompt_count <= len(DEVELOPMENT_PROMPTS):
@@ -168,7 +227,9 @@ def run(config: Path, checkpoint: Path, output: Path, tokens: int,
             "dtype": "bfloat16", "target_attention": "sdpa",
             "draft_attention": "sdpa", "allow_tf32": False}:
         raise ValueError(f"Official precision controls changed: {precision}")
-    methods = declared_variants(spurs, supports, strengths)
+    methods = declared_variants(
+        spurs, supports, strengths, hybrid_cores, tree_only=tree_only,
+    )
     by_name = {value.name: value for value in methods}
     with output_lock(output):
         if (output / "report.json").exists():
@@ -253,9 +314,11 @@ def run(config: Path, checkpoint: Path, output: Path, tokens: int,
                 "versus_dflash": compare(
                     rows, name, "dflash", prompt_count,
                 ),
-                "versus_unconditioned": compare(
-                    rows, name, "unconditioned_spur_6", prompt_count,
-                ),
+                **({} if tree_only else {
+                    "versus_unconditioned": compare(
+                        rows, name, "unconditioned_spur_6", prompt_count,
+                    ),
+                }),
             }
             for name in candidates
         }
@@ -265,10 +328,12 @@ def run(config: Path, checkpoint: Path, output: Path, tokens: int,
         )
         profiles = {}
         block_candidate = next(
-            name for name in candidates if name.startswith("prefix_spur_")
+            (name for name in candidates if name.startswith("prefix_spur_")),
+            best,
         )
         profile_names = tuple(dict.fromkeys((
-            "dflash", "ddtree", "unconditioned_spur_6",
+            "dflash", "ddtree",
+            *(() if tree_only else ("unconditioned_spur_6",)),
             block_candidate, best,
         )))
         for name in profile_names:
@@ -342,21 +407,29 @@ def main() -> None:
     parser.add_argument("--spurs", default="2,4,6,8")
     parser.add_argument("--supports", default="32")
     parser.add_argument("--strengths", default="1")
+    parser.add_argument("--hybrid-cores", default="")
     parser.add_argument("--prompt-count", type=int, default=3)
+    parser.add_argument("--tree-only", action="store_true")
     args = parser.parse_args()
     spurs = tuple(int(value) for value in args.spurs.split(","))
     supports = tuple(int(value) for value in args.supports.split(","))
     strengths = tuple(float(value) for value in args.strengths.split(","))
+    hybrid_cores = tuple(
+        int(value) for value in args.hybrid_cores.split(",") if value
+    )
     if not spurs or any(not 1 <= value < 15 for value in spurs):
         raise ValueError("Every spur must be in [1, 14]")
     if not supports or any(not 1 <= value <= 256 for value in supports):
         raise ValueError("Every support must be in [1, 256]")
     if not strengths or any(not 0 <= value <= 2 for value in strengths):
         raise ValueError("Every strength must be in [0, 2]")
+    if any(not 1 <= value < 45 for value in hybrid_cores):
+        raise ValueError("Every hybrid core must be in [1, 44]")
     run(
         args.config.resolve(), args.checkpoint.resolve(),
         args.output.resolve(), args.tokens, args.repeats,
         args.device, spurs, supports, strengths, args.prompt_count,
+        hybrid_cores=hybrid_cores, tree_only=args.tree_only,
     )
 
 

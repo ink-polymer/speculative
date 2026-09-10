@@ -11,7 +11,9 @@ from gbv_experiments.prefix_conditional import (
 )
 from gbv_experiments.train_prefix_conditional import (
     coverage_distillation_loss, distillation_loss,
+    tree_mass_importance_weights,
 )
+from scripts.train_prefix_tree_selector import selection_loss
 
 
 def test_remaining_kl_weights_early_prefix_errors_more():
@@ -40,6 +42,52 @@ def test_coverage_kl_is_zero_for_unchanged_target_distribution():
         scores, logits, logits.clone(), candidates,
     )
     torch.testing.assert_close(loss, torch.zeros_like(loss), atol=2e-7, rtol=0)
+
+
+def test_tree_mass_weights_are_prefix_causal_and_clipped():
+    target = torch.full((1, 3, 5), -20.)
+    labels = torch.tensor([[1, 2, 3]])
+    target[0, 0, 1] = 0.
+    target[0, 1, 2] = 0.
+    target[0, 2, 3] = 0.
+    proposal = torch.tensor([[.5, .25, .125]])
+
+    weights = tree_mass_importance_weights(
+        target, labels, proposal, clip=3.,
+    )
+
+    torch.testing.assert_close(weights[:, :1], torch.ones(1, 1))
+    assert weights[0, 1] == pytest.approx(2.)
+    assert weights[0, 2] == pytest.approx(3.)
+
+
+def test_weighted_coverage_kl_focuses_selected_depths():
+    torch.manual_seed(20)
+    draft = torch.randn(1, 3, 13)
+    target = torch.randn(1, 3, 13)
+    candidates = draft.topk(4, -1).indices
+    scores = draft.gather(2, candidates)
+    all_rows = coverage_distillation_loss(
+        scores, draft, target, candidates,
+    )
+    first_only = coverage_distillation_loss(
+        scores, draft, target, candidates,
+        depth_weights=torch.tensor([[1., 0., 0.]]),
+    )
+
+    assert all_rows > 0
+    assert first_only > 0
+    assert not torch.isclose(all_rows, first_only)
+
+
+def test_selector_loss_prefers_correct_top_budget_order():
+    target = torch.tensor([0., 5., 4., 3., 2., 1.])
+    correct = target.clone()
+    reversed_scores = torch.cat((target[:1], target[1:].flip(0)))
+
+    assert selection_loss(correct, target, 2) < selection_loss(
+        reversed_scores, target, 2,
+    )
 
 
 def test_teacher_forcing_is_strictly_prefix_causal():
@@ -140,6 +188,33 @@ def test_greedy_proposal_selects_each_conditional_argmax():
     assert torch.equal(proposal.draws, proposal.source.argmax(-1))
 
 
+def test_runtime_proposal_matches_teacher_forced_scaled_scores():
+    torch.manual_seed(141)
+    head = PrefixConditionalHead(10, rank=4, support_size=3, max_length=4)
+    torch.nn.init.normal_(head.query.weight)
+    torch.nn.init.normal_(head.depth_bias)
+    head.correction_scale.data.fill_(0.37)
+    hidden = torch.randn(1, 4, 10)
+    logits = torch.randn(4, 13)
+    embeddings = torch.randn(13, 10)
+    proposal = head.propose(
+        hidden, logits, embeddings, torch.tensor([7, 12, 12, 12, 12]),
+        length=3, temperature=.7, greedy=True,
+    )
+    labels = proposal.law.tokens.gather(
+        1, proposal.draws[:, None],
+    )[:, 0][None]
+    scores, candidate_ids = head.teacher_forced_scores(
+        hidden[:, :3], logits[None, :3], embeddings, labels,
+    )
+
+    assert torch.equal(candidate_ids[0], proposal.law.tokens)
+    torch.testing.assert_close(
+        torch.softmax(scores[0].double() / .7, -1),
+        proposal.law.weights,
+    )
+
+
 def test_rescored_tree_is_ancestry_closed_and_budgeted():
     torch.manual_seed(15)
     head = PrefixConditionalHead(10, rank=4, support_size=5, max_length=4)
@@ -176,6 +251,26 @@ def test_zero_residual_tree_preserves_actual_topr_mass():
     assert actual.tokens == expected.tokens
     assert actual.parents == expected.parents
     assert actual.depths == expected.depths
+
+
+def test_hybrid_tree_preserves_the_declared_ddtree_core():
+    torch.manual_seed(191)
+    head = PrefixConditionalHead(10, rank=4, support_size=5, max_length=4)
+    torch.nn.init.normal_(head.query.weight)
+    hidden = torch.randn(1, 4, 10)
+    logits = torch.randn(4, 13)
+    embeddings = torch.randn(13, 10)
+    q = torch.softmax(logits.double(), -1)
+    values, candidate_ids = q.topk(5, dim=-1, sorted=True)
+    core = head._sparse_probability_tree(candidate_ids, values, budget=4)
+    hybrid = head.build_tree(
+        hidden, logits, embeddings, q, budget=9, temperature=1.,
+        pool_factor=3, core_budget=4,
+    )
+
+    assert hybrid.tokens[:4] == core.tokens
+    assert hybrid.parents[:5] == core.parents
+    assert hybrid.depths[:5] == core.depths
 
 
 def test_conditional_beam_tree_is_ancestry_closed_and_budgeted():
@@ -228,8 +323,32 @@ def test_prefix_head_checkpoint_contract(tmp_path: Path):
         )
 
 
+def test_embedded_prefix_proposal_preserves_the_exact_ddtree_nodes():
+    from gbv_experiments.tree import (
+        embedded_prefix_proposal, probability_tree,
+    )
+
+    q = torch.tensor([
+        [.55, .30, .10, .05],
+        [.50, .25, .15, .10],
+        [.45, .30, .15, .10],
+    ], dtype=torch.float64)
+    tree = probability_tree(q, budget=9)
+    before = (tree.tokens.copy(), tree.parents.copy(), tree.depths.copy())
+    proposal = embedded_prefix_proposal(q, tree, length=2)
+
+    assert (tree.tokens, tree.parents, tree.depths) == before
+    assert proposal.paths.shape[1] == 2
+    assert proposal.leaf_probabilities.sum() == pytest.approx(1.)
+    for path, nodes in zip(proposal.paths.tolist(), tree.path_nodes):
+        assert [tree.tokens[node - 1] for node in nodes] == path
+        assert all(tree.parents[node] == (0 if i == 0 else nodes[i - 1])
+                   for i, node in enumerate(nodes))
+
+
 @pytest.mark.parametrize("method", [
-    "prefix_core_spur_bv", "prefix_core_spur_tree",
+    "prefix_core_spur_bv", "prefix_core_spur_bv_lazy",
+    "prefix_core_spur_tree",
     "prefix_sampled_spur_tree", "prefix_rescored_tree", "prefix_beam_tree",
 ])
 @pytest.mark.parametrize("temperature", [.3, 1.])

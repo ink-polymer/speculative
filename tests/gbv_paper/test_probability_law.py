@@ -822,3 +822,28 @@ def test_matching_verifier_preserves_target_output_law(monkeypatch):
         for i, token in enumerate(sequence):
             expected *= target(sequence[:i])[token]
         assert law[sequence] == pytest.approx(float(expected), abs=1e-12)
+
+
+def test_tree_recycle_falls_back_to_ancestral_verified_branch():
+    # The finite proposal labels only nodes 1 -> 2.  Target correction token 2
+    # enters verified node 3, which is deliberately outside those leaves.
+    paths = torch.tensor([[1, 1]])
+    path_nodes = torch.tensor([[1, 2]])
+    children = {(0, 1): 1, (1, 1): 2, (0, 2): 3}
+    p = torch.zeros(4, 4, dtype=torch.float64)
+    p[0, 2] = 1.
+    p[1, 0] = 1.
+    p[2, 0] = 1.
+    p[3, 3] = 1.
+
+    nodes, tokens, bonus, stats = sampling.tree_block_verify_recycle(
+        paths, path_nodes, children, p,
+        leaf_probabilities=torch.ones(1, dtype=torch.float64),
+        proposal_token_probabilities=torch.ones(1, 2, dtype=torch.float64),
+        k=1, segment_verifier="sparse_lazy",
+    )
+
+    assert nodes == [3]
+    assert tokens == [2]
+    assert bonus == 3
+    assert stats == {"segments": 2, "recycled_corrections": 1}

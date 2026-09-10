@@ -65,6 +65,10 @@ def adaptive_budget_name(minimum: int, threshold: float) -> str:
     return f"adaptive_cost_b{minimum}_c{threshold:.3f}".replace(".", "p")
 
 
+def online_rank_name(ewma: float, clip: float) -> str:
+    return f"adaptive_online_rank_e{ewma:.2f}_c{clip:.2f}".replace(".", "p")
+
+
 def learned_calibration(path: Path) -> tuple[tuple[float, ...], str | None]:
     payload = json.loads(path.read_text())
     values = tuple(float(value) for value in payload["temperatures"])
@@ -90,6 +94,7 @@ def variants(budgets: list[int], tree_temperatures: list[float],
              markov_branch: bool = False,
              markov_budgets: list[int] | None = None,
              latency_shapes: list[tuple[int, int]] | None = None,
+             online_rank_settings: list[tuple[float, float]] | None = None,
              ) -> list[Variant]:
     depth_rewards = depth_rewards or []
     temperature_schedules = temperature_schedules or []
@@ -97,6 +102,7 @@ def variants(budgets: list[int], tree_temperatures: list[float],
     block_spines = block_spines or []
     markov_budgets = markov_budgets or [45]
     latency_shapes = latency_shapes or []
+    online_rank_settings = online_rank_settings or []
     base = Variant(
         name="base", method="ddtree", paths=1, length=15,
         temperature=1.0, draft_temperature=1.0, tree_budget=45,
@@ -197,6 +203,14 @@ def variants(budgets: list[int], tree_temperatures: list[float],
         ]),
         *[
             replace(
+                base, name=online_rank_name(ewma, clip),
+                method="ddtree_online_rank", tree_online_ewma=ewma,
+                tree_online_clip=clip,
+            )
+            for ewma, clip in online_rank_settings
+        ],
+        *[
+            replace(
                 base,
                 name=temperature_name(value).replace(
                     "adaptive_tbv_", "adaptive_sparse_"
@@ -258,6 +272,7 @@ def run(config: Path, output: Path, budgets: list[int], tokens: int,
         markov_branch_checkpoint: Path | None = None,
         markov_budgets: list[int] | None = None,
         latency_shapes: list[tuple[int, int]] | None = None,
+        online_rank_settings: list[tuple[float, float]] | None = None,
         ) -> dict:
     tree_temperatures = tree_temperatures or []
     sparse_temperatures = sparse_temperatures or []
@@ -267,6 +282,7 @@ def run(config: Path, output: Path, budgets: list[int], tokens: int,
     block_spines = block_spines or []
     markov_budgets = markov_budgets or [45]
     latency_shapes = latency_shapes or []
+    online_rank_settings = online_rank_settings or []
     if (len(set(budgets)) != len(budgets)
             or any(not 1 <= budget <= 45 for budget in budgets)):
         raise ValueError("Budgets must be unique integers in 1..45")
@@ -288,6 +304,9 @@ def run(config: Path, output: Path, budgets: list[int], tokens: int,
             or len(set(latency_shapes)) != len(latency_shapes)
             or any(not 2 <= length <= 32 or not 1 <= budget <= 256
                    for length, budget in latency_shapes)
+            or len(set(online_rank_settings)) != len(online_rank_settings)
+            or any(not 0 < ewma <= 1 or not 0 < clip <= 4
+                   for ewma, clip in online_rank_settings)
             or (not budgets and not tree_temperatures
                 and not sparse_temperatures and not depth_rewards
                 and not temperature_schedules
@@ -295,7 +314,7 @@ def run(config: Path, output: Path, budgets: list[int], tokens: int,
                 and not adaptive_budgets and rank_checkpoint is None
                 and not block_spines and slot_mixer_checkpoint is None
                 and markov_branch_checkpoint is None
-                and not latency_shapes)):
+                and not latency_shapes and not online_rank_settings)):
         raise ValueError(
             "Tree temperatures must be unique values in 0.1..4.0, and at "
             "least one scan value is required"
@@ -324,6 +343,7 @@ def run(config: Path, output: Path, budgets: list[int], tokens: int,
         markov_branch_checkpoint is not None,
         markov_budgets,
         latency_shapes,
+        online_rank_settings,
     )
     by_name = {value.name: value for value in declared}
     with output_lock(output):
@@ -485,6 +505,10 @@ def run(config: Path, output: Path, budgets: list[int], tokens: int,
                 {"length": length, "tree_budget": budget}
                 for length, budget in latency_shapes
             ],
+            "candidate_online_rank_settings": [
+                {"ewma": ewma, "clip": clip}
+                for ewma, clip in online_rank_settings
+            ],
             "target_sampling_temperature": 1.0,
             "tokens": tokens,
             "repeats": repeats,
@@ -562,6 +586,10 @@ def main() -> None:
         "--latency-shapes", nargs="*", default=[], metavar="L:B",
         help="exact ancestral DDTree shape candidates (length:node-budget)",
     )
+    parser.add_argument(
+        "--online-rank-settings", nargs="*", default=[],
+        metavar="EWMA:CLIP",
+    )
     parser.add_argument("--device", default="cuda:0")
     args = parser.parse_args()
     schedules = []
@@ -597,6 +625,16 @@ def main() -> None:
                 f"Invalid latency shape {value!r}; use L:B"
             ) from error
         latency_shapes.append(pair)
+    online_rank_settings = []
+    for value in args.online_rank_settings:
+        try:
+            ewma_text, clip_text = value.split(":")
+            pair = (float(ewma_text), float(clip_text))
+        except (TypeError, ValueError) as error:
+            raise ValueError(
+                f"Invalid online rank setting {value!r}; use EWMA:CLIP"
+            ) from error
+        online_rank_settings.append(pair)
     run(
         args.config.resolve(), args.output.resolve(), args.budgets,
         args.tokens, args.repeats, args.device,
@@ -624,6 +662,7 @@ def main() -> None:
         ),
         markov_budgets=args.markov_budgets,
         latency_shapes=latency_shapes,
+        online_rank_settings=online_rank_settings,
     )
 
 

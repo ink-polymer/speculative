@@ -1037,15 +1037,34 @@ def tree_block_verify_recycle(paths, path_nodes, children, all_p, leaf_probabili
     segments, recycled_corrections = 0, 0
     node_count = len(subtree_start) if precompute_subtrees else len(subtree_indices)
     current_node, depth = 0, 0
+
+    def finish_with_ancestral_target(node):
+        """Continue through verified nodes outside the finite proposal trie."""
+        while True:
+            row = (
+                all_p[node].cpu()
+                if control_device == "cpu" else all_p[node]
+            )
+            token = int(sample(row, segment_generator).item())
+            child = children.get((node, token))
+            if child is None:
+                return output_nodes, output_tokens, token, {
+                    "segments": segments,
+                    "recycled_corrections": recycled_corrections,
+                }
+            output_nodes.append(child)
+            output_tokens.append(token)
+            node = child
+
     while depth < length:
         segments += 1
         if current_node >= node_count:
-            raise RuntimeError("Correction branch is absent from finite-tree leaves")
+            return finish_with_ancestral_target(current_node)
         if precompute_subtrees:
             start = int(subtree_start[current_node].item())
             active_size = int(subtree_count[current_node].item())
             if start < 0 or active_size <= 0:
-                raise RuntimeError("Correction branch is absent from finite-tree leaves")
+                return finish_with_ancestral_target(current_node)
             active_indices = subtree_flattened_leaf_indices.narrow(0, start, active_size)
             active_depth = int(node_depth_tensor[current_node].item())
         else:
@@ -1055,7 +1074,7 @@ def tree_block_verify_recycle(paths, path_nodes, children, all_p, leaf_probabili
             )
             active_depth = node_depth[current_node]
         if active_indices.numel() == 0:
-            raise RuntimeError("Correction branch is absent from finite-tree leaves")
+            return finish_with_ancestral_target(current_node)
         if active_depth != depth:
             # Node depth and current depth must stay synchronized.
             raise RuntimeError("Tree node depth drifted from the verified prefix")

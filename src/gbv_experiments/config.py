@@ -25,11 +25,12 @@ DIFFUSION_SCAFFOLD_METHODS = frozenset({
 })
 DIFFUSION_LAW_METHODS = DIFFUSION_TREE_METHODS | DIFFUSION_SCAFFOLD_METHODS
 PREFIX_CORE_SPUR_METHODS = frozenset({
-    "prefix_core_spur_bv", "prefix_core_spur_tree",
+    "prefix_core_spur_bv", "prefix_core_spur_bv_lazy",
+    "prefix_core_spur_tree",
     "prefix_sampled_spur_tree",
 })
 PREFIX_RESCORED_TREE_METHODS = frozenset({
-    "prefix_rescored_tree", "prefix_beam_tree",
+    "prefix_rescored_tree", "prefix_hybrid_tree", "prefix_beam_tree",
 })
 PREFIX_TREE_METHODS = PREFIX_CORE_SPUR_METHODS | PREFIX_RESCORED_TREE_METHODS
 
@@ -51,6 +52,8 @@ class Variant:
     diffusion_support_size: int = 8
     diffusion_spur_length: int = 4
     prefix_strength: float = 1.0
+    prefix_pool_factor: int = 2
+    prefix_core_budget: int = 0
     # Architecture-only temperature used to score DDTree proposal prefixes.
     # It never changes the Target sampling temperature or verifier law.
     tree_proposal_temperature: float | None = None
@@ -72,6 +75,9 @@ class Variant:
     # Per-edge utility reward used only when allocating proposal-tree nodes.
     # Positive values favor deeper prefixes that can commit more tokens.
     tree_depth_reward: float = 0.0
+    # History-only Target/Draft calibration for proposal-tree allocation.
+    tree_online_ewma: float = 0.25
+    tree_online_clip: float = 1.0
 
     def validate(self) -> None:
         if self.method not in {"target", "dflash", "token", "bv", "gbv", "tree_gbv",
@@ -86,9 +92,11 @@ class Variant:
                                "tree_gbv_budgeted_prefix_recycle_host",
                                "tree_gbv_slot_mixer_recycle",
                                "tree_gbv_ratio_transport_recycle",
+                               "tree_gbv_embedded_prefix_recycle",
                                "tree_gbv_prefix_recycle_packed",
                                "tree_gbv_packed",
-                               "ddtree", "ddtree_terminal_block",
+                               "ddtree", "ddtree_online_rank",
+                               "ddtree_terminal_block",
                                "ddtree_terminal_serial", "ddtree_terminal_dense",
                                "ddtree_fused", "ddtree_fused_parallel",
                                "ddtree_fused_scan",
@@ -117,8 +125,19 @@ class Variant:
                 not isinstance(v, int) or isinstance(v, bool)
                 for v in (self.paths, self.length, self.tree_budget,
                           self.diffusion_support_size,
-                          self.diffusion_spur_length))):
+                          self.diffusion_spur_length,
+                          self.prefix_pool_factor,
+                          self.prefix_core_budget))):
             raise ValueError("Counts must be integers and temperature must be finite")
+        if self.prefix_pool_factor < 1:
+            raise ValueError("Prefix candidate-pool factor must be positive")
+        if not 0 <= self.prefix_core_budget < self.tree_budget:
+            raise ValueError("Prefix DDTree core must be below tree_budget")
+        if (self.method == "prefix_hybrid_tree") != (
+                self.prefix_core_budget > 0):
+            raise ValueError(
+                "Only prefix_hybrid_tree may declare a positive DDTree core"
+            )
         if self.method in {"dflash", "token", "bv"} and self.paths != 1:
             raise ValueError("Single-path token/BV baselines require paths=1")
         if self.draft_temperature is not None and (self.draft_temperature <= 0 or not math.isfinite(self.draft_temperature)):
@@ -154,6 +173,10 @@ class Variant:
                 raise ValueError("Adaptive tree minimum budget must be below tree_budget")
         if not math.isfinite(self.tree_depth_reward):
             raise ValueError("Tree depth reward must be finite")
+        if (not 0 < self.tree_online_ewma <= 1
+                or not math.isfinite(self.tree_online_clip)
+                or self.tree_online_clip <= 0):
+            raise ValueError("Invalid online tree-calibration controls")
         if self.draft_attention not in {"bidirectional", "causal"}:
             raise ValueError("Invalid draft_attention")
         if self.condition_features not in {"target", "zero"}:
