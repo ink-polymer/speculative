@@ -242,6 +242,7 @@ def adaptive_generate(
             use_cache=True,
             is_causal=False,
         )[:, -draft_horizon:, :]
+        draft_hidden = builder.adapt_draft_hidden(draft_hidden)
         draft_logits = target.lm_head(draft_hidden)
         past_key_values_draft.crop(start)
         draft_stage_elapsed = cuda_time() - draft_stage_start

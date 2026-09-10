@@ -12,6 +12,7 @@ from typing import Any
 
 import torch
 from torch import nn
+import torch.nn.functional as F
 
 
 def distribution_summary(
@@ -212,6 +213,73 @@ def load_ratio_transport_head(
         hidden_size=hidden_size,
         rank=int(metadata["rank"]),
         candidates=int(metadata["candidates"]),
+    )
+    model.load_state_dict(payload["state_dict"], strict=True)
+    return model.to(device=device, dtype=dtype).eval().requires_grad_(False)
+
+
+class CausalSlotMixer(nn.Module):
+    """Low-rank residual mixer using only earlier DFlash slots."""
+
+    def __init__(self, hidden_size: int, rank: int = 64,
+                 kernel_size: int = 3) -> None:
+        super().__init__()
+        if hidden_size < 1 or rank < 1 or kernel_size < 2:
+            raise ValueError("Invalid causal slot mixer dimensions")
+        self.hidden_size = int(hidden_size)
+        self.rank = int(rank)
+        self.kernel_size = int(kernel_size)
+        self.norm = nn.RMSNorm(hidden_size)
+        self.down = nn.Linear(hidden_size, rank, bias=False)
+        self.causal = nn.Conv1d(
+            rank, rank, kernel_size, groups=rank, bias=False)
+        self.up = nn.Linear(rank, hidden_size, bias=False)
+        nn.init.zeros_(self.up.weight)
+
+    def forward(self, hidden: torch.Tensor) -> torch.Tensor:
+        if hidden.ndim != 3 or hidden.shape[-1] != self.hidden_size:
+            raise ValueError("Slot mixer expects [batch, slots, hidden_size]")
+        dtype = self.down.weight.dtype
+        working = hidden.to(dtype)
+        projected = self.down(self.norm(working)).transpose(1, 2)
+        shifted = F.pad(projected, (self.kernel_size, 0))[..., :-1]
+        mixed = self.causal(shifted).transpose(1, 2)
+        return hidden + self.up(F.silu(mixed)).to(hidden.dtype)
+
+
+def load_slot_mixer(
+    checkpoint: str | Path,
+    hidden_size: int,
+    device: torch.device,
+    expected_metadata: Mapping[str, Any] | None = None,
+    dtype: torch.dtype | None = None,
+) -> CausalSlotMixer:
+    """Strictly load and freeze a causal slot-mixer checkpoint."""
+    payload = torch.load(Path(checkpoint), map_location="cpu", weights_only=True)
+    if not isinstance(payload, dict) or set(payload) < {"state_dict", "metadata"}:
+        raise ValueError("slot-mixer checkpoint requires state_dict and metadata")
+    metadata = payload["metadata"]
+    if not isinstance(metadata, dict):
+        raise ValueError("slot-mixer metadata must be a dictionary")
+    required = {
+        "architecture": "parallel_causal_slot_mixer_v1",
+        "hidden_size": int(hidden_size),
+        **dict(expected_metadata or {}),
+    }
+    missing = sorted(set(required) - set(metadata))
+    mismatched = {
+        key: (metadata.get(key), value)
+        for key, value in required.items() if metadata.get(key) != value
+    }
+    if missing or mismatched or int(metadata.get("updates", 0)) < 1:
+        raise ValueError(
+            f"slot-mixer checkpoint contract failed: missing={missing}, "
+            f"mismatched={mismatched}, updates={metadata.get('updates')}"
+        )
+    model = CausalSlotMixer(
+        hidden_size=hidden_size,
+        rank=int(metadata["rank"]),
+        kernel_size=int(metadata["kernel_size"]),
     )
     model.load_state_dict(payload["state_dict"], strict=True)
     return model.to(device=device, dtype=dtype).eval().requires_grad_(False)

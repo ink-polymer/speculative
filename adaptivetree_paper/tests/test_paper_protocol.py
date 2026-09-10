@@ -408,6 +408,22 @@ def test_prebuild_b192_accepts_frozen_ratio_transport():
     assert calibrated[0].item() == 7
 
 
+def test_prebuild_b192_slot_mixer_is_strength_bounded():
+    class AddOne(torch.nn.Module):
+        def forward(self, hidden):
+            return hidden + 1
+
+    builder = make_paper_builder(cfg(), DYNAMIC_B192_V12_VARIANT)
+    hidden = torch.zeros((1, 15, 4))
+    assert builder.adapt_draft_hidden(hidden) is hidden
+    builder.slot_mixer = AddOne().eval()
+    builder.slot_mixer_strength = .25
+    assert torch.equal(builder.adapt_draft_hidden(hidden), hidden + .25)
+    builder.slot_mixer_strength = 3.
+    with pytest.raises(ValueError, match="slot_mixer_strength"):
+        builder.adapt_draft_hidden(hidden)
+
+
 def test_guarded_raw_tree_matches_fixed_ddtree_at_b128():
     from dflash_specblock.paper.adaptive_official import build_with_controller
     builder = make_paper_builder(cfg(), B128_ABLATION_VARIANT)

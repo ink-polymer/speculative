@@ -218,6 +218,8 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
             self.ratio_transport_head = None
             self.ratio_transport_token_embeddings = None
             self.ratio_transport_strength = 1.
+            self.slot_mixer = None
+            self.slot_mixer_strength = 1.
             self._warmup_order = tuple(reversed(self.budget_candidates))
             self._latency_samples = {budget: [] for budget in self.budget_candidates}
             self._acceptance_scale_by_budget = {
@@ -374,6 +376,18 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
         calibrated_log = calibrated.clamp_min(1e-30).log()
         return ((1. - strength) * base_log_probs
                 + strength * calibrated_log)
+
+    def adapt_draft_hidden(self, draft_hidden):
+        """Apply a frozen strictly-causal proposal residual when configured."""
+        if self.slot_mixer is None:
+            return draft_hidden
+        if self.rank_head is not None or self.ratio_transport_head is not None:
+            raise ValueError("slot mixer cannot be combined with score calibration")
+        strength = float(self.slot_mixer_strength)
+        if not math.isfinite(strength) or not 0. <= strength <= 2.:
+            raise ValueError("slot_mixer_strength must be in [0, 2]")
+        mixed = self.slot_mixer(draft_hidden)
+        return draft_hidden + strength * (mixed - draft_hidden)
 
     def _ratio_transport_log_probs(self, draft_hidden, top_values,
                                    top_token_ids, log_z):
