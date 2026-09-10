@@ -17,7 +17,7 @@ VARIANTS = ("adaptive", "no_acceptance_calibration", "no_latency", "no_explorati
 # controller is the formal primary.  B<=256 is retained only as an explicitly
 # named budget-extension ablation; the historical method is never silently
 # reported under the primary name.
-METHOD_SCHEMA_VERSION = 3
+METHOD_SCHEMA_VERSION = 4
 PRIMARY_ADAPTIVE_METHOD = "adaptive_b128"
 OFFICIAL_VARIANTS = (
     "adaptive_b128",

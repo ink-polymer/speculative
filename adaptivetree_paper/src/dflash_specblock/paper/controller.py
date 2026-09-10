@@ -6,7 +6,12 @@ Serialization preserves causal state across prompts and process restarts.
 from __future__ import annotations
 
 from dataclasses import asdict
+import heapq
 import math
+import statistics
+
+import numpy as np
+import torch
 
 from ..ddtree_builder import BudgetDecision, DDTreeBuilder, LatencyAwareDDTreeBuilder
 from .common import BASELINES, K, OFFICIAL_VARIANTS, VARIANTS, digest
@@ -55,8 +60,17 @@ OFFICIAL_CONTROLLER_REGISTRY = {
         "budget_candidates": LEGACY_BUDGETS,
         "maximum_draft_nodes": 128,
         "timing_partition": "budget_aware",
-        "controller_variant": "no_exploration",
+        "controller_variant": "guarded_raw_prefix",
         "exploration_interval": 0,
+        "architecture": "guarded_raw_prefix_v3",
+        "initial_latency_samples": 1,
+        "minimum_latency_samples": 3,
+        "latency_window": 9,
+        "probe_latency_saving_ratio": 0.15,
+        "minimum_latency_saving_ratio": 0.08,
+        "minimum_utility_gain_ratio": 0.03,
+        "reevaluation_interval": 32,
+        "proposal_temperature": 1.0,
     },
     LEGACY_COST_ATTRIBUTION_ABLATION_VARIANT: {
         "budget_candidates": LEGACY_BUDGETS,
@@ -98,13 +112,26 @@ OFFICIAL_CONTROLLER_REGISTRY = {
 
 def controller_config(builder):
     """Return the complete public contract recorded in a run artifact."""
-    return {
+    result = {
         "budget_candidates": list(builder.budget_candidates),
         "maximum_draft_nodes": builder.tree_budget,
         "timing_partition": builder.timing_partition,
         "controller_variant": builder.variant,
         "exploration_interval": builder.exploration_interval,
     }
+    if builder.variant == "guarded_raw_prefix":
+        result.update({
+            "architecture": "guarded_raw_prefix_v3",
+            "initial_latency_samples": builder.initial_latency_samples,
+            "minimum_latency_samples": builder.minimum_latency_samples,
+            "latency_window": builder.latency_window,
+            "probe_latency_saving_ratio": builder.probe_latency_saving_ratio,
+            "minimum_latency_saving_ratio": builder.minimum_latency_saving_ratio,
+            "minimum_utility_gain_ratio": builder.minimum_utility_gain_ratio,
+            "reevaluation_interval": builder.reevaluation_interval,
+            "proposal_temperature": builder.proposal_temperature,
+        })
+    return result
 
 
 def expected_official_controller_configs(methods=OFFICIAL_VARIANTS):
@@ -130,7 +157,7 @@ class FixedBudgetBuilder(DDTreeBuilder):
 
 class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
     def __init__(self, cfg, variant="adaptive", timing_partition="legacy"):
-        if variant not in VARIANTS:
+        if variant not in (*VARIANTS, "guarded_raw_prefix"):
             raise ValueError(f"Unknown controller variant: {variant}")
         if timing_partition not in TIMING_PARTITIONS:
             raise ValueError(f"Unknown timing partition: {timing_partition}")
@@ -139,6 +166,35 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
                          cfg["ewma_alpha"], 0 if variant == "no_exploration" else cfg["exploration_interval"])
         self.variant = variant
         self.timing_partition = timing_partition
+        if variant == "guarded_raw_prefix":
+            # The production path materializes the official verifier tensors
+            # directly.  Avoiding DraftTree construction followed by an
+            # immediate conversion removes work that fixed DDTree never pays.
+            self.initial_latency_samples = 1
+            self.minimum_latency_samples = 3
+            self.latency_window = 9
+            self.probe_latency_saving_ratio = .15
+            self.minimum_latency_saving_ratio = .08
+            self.minimum_utility_gain_ratio = .03
+            self.reevaluation_interval = 32
+            self.proposal_temperature = 1.
+            self._warmup_order = tuple(reversed(self.budget_candidates))
+            self._latency_samples = {budget: [] for budget in self.budget_candidates}
+            self._acceptance_scale_by_budget = {
+                budget: 1. for budget in self.budget_candidates
+            }
+            self._acceptance_observations = {
+                budget: 0 for budget in self.budget_candidates
+            }
+            self._guard_diagnostics = None
+            self._evaluated_last_decision = False
+            self._raw_node_token_ids = np.empty(self.tree_budget, dtype=np.int64)
+            self._raw_node_depths = np.empty(self.tree_budget, dtype=np.int64)
+            self._raw_node_scores = np.empty(self.tree_budget, dtype=np.float64)
+            self._raw_parents = np.empty(self.tree_budget + 1, dtype=np.int32)
+            self._raw_visibility = np.empty(
+                (self.tree_budget + 1, self.tree_budget + 1), dtype=np.bool_)
+            self._raw_child_maps = [{} for _ in range(self.tree_budget + 1)]
         identity = {"variant": variant, "budgets": self.budget_candidates,
             "initial": self.initial_budget, "warmup": self.warmup_rounds_per_budget,
             "alpha": self.ewma_alpha, "explore": self.exploration_interval}
@@ -146,10 +202,96 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
         # The corrected experimental controller must never load legacy state.
         if timing_partition != "legacy":
             identity["timing_partition"] = timing_partition
+        if variant == "guarded_raw_prefix":
+            identity.update({
+                "architecture": "guarded_raw_prefix_v3",
+                "initial_latency_samples": self.initial_latency_samples,
+                "minimum_latency_samples": self.minimum_latency_samples,
+                "latency_window": self.latency_window,
+                "probe_latency_saving_ratio": self.probe_latency_saving_ratio,
+                "minimum_latency_saving_ratio": self.minimum_latency_saving_ratio,
+                "minimum_utility_gain_ratio": self.minimum_utility_gain_ratio,
+                "reevaluation_interval": self.reevaluation_interval,
+                "proposal_temperature": self.proposal_temperature,
+            })
         self.identity = digest(identity)
         self.trace = []
 
+    def build_official_tree_from_logits(self, draft_logits):
+        """Build one max-budget official tree and materialize only its prefix.
+
+        The heap order is byte-for-byte the pinned DDTree rule.  Unlike the
+        generic adapter, this path does not allocate DraftNode objects and then
+        reconstruct verifier tensors from them.  All candidate budgets remain
+        nested prefixes of the one max-budget heap enumeration.
+        """
+        if self.variant != "guarded_raw_prefix":
+            raise ValueError("Raw official-tree path is reserved for guarded_raw_prefix")
+        if draft_logits.ndim != 2:
+            raise ValueError("draft_logits must be [K, V]")
+        if (not math.isfinite(self.proposal_temperature)
+                or self.proposal_temperature <= 0):
+            raise ValueError("proposal_temperature must be finite and positive")
+        budget = self.tree_budget
+        depth_limit = min(int(draft_logits.shape[0]), self.block_size)
+        topk = min(budget, int(draft_logits.shape[-1]))
+        logits = draft_logits.float() / self.proposal_temperature
+        top_values, top_token_ids = torch.topk(logits, k=topk, dim=-1)
+        log_z = torch.logsumexp(logits, dim=-1, keepdim=True)
+        top_log_probs, top_token_ids = self._to_host(
+            top_values - log_z, top_token_ids.to(torch.int64))
+
+        node_token_ids = self._raw_node_token_ids
+        node_depths = self._raw_node_depths
+        node_scores = self._raw_node_scores
+        parents = self._raw_parents
+        parents[0] = -1
+        first = float(top_log_probs[0, 0])
+        heap = [(-first, (0,), 0, 1, 0, first)]
+        node_count = 0
+        while heap and node_count < budget:
+            _, ranks, parent, depth, rank, logw = heapq.heappop(heap)
+            current = node_count + 1
+            node_token_ids[node_count] = int(top_token_ids[depth - 1, rank])
+            node_depths[node_count] = depth
+            node_scores[node_count] = logw
+            parents[current] = parent
+            node_count += 1
+            if rank + 1 < topk:
+                sibling_logw = (logw - float(top_log_probs[depth - 1, rank])
+                                + float(top_log_probs[depth - 1, rank + 1]))
+                heapq.heappush(heap, (-sibling_logw,
+                    ranks[:-1] + (rank + 1,), parent, depth, rank + 1,
+                    sibling_logw))
+            if depth < depth_limit:
+                child_logw = logw + float(top_log_probs[depth, 0])
+                heapq.heappush(heap, (-child_logw, ranks + (0,), current,
+                                      depth + 1, 0, child_logw))
+
+        selected = self._select_node_count(node_scores[:node_count])
+        if not 0 <= selected <= node_count:
+            raise AssertionError("Adaptive budget is outside the enumerated tree")
+        length = selected + 1
+        child_maps = self._raw_child_maps[:length]
+        for mapping in child_maps:
+            mapping.clear()
+        for index in range(1, length):
+            child_maps[int(parents[index])][int(node_token_ids[index - 1])] = index
+        visibility = self._raw_visibility[:length, :length]
+        visibility.fill(False)
+        visibility[0, 0] = True
+        for index in range(1, length):
+            parent = int(parents[index])
+            visibility[index, :index] = visibility[parent, :index]
+            visibility[index, index] = True
+        return (torch.from_numpy(node_token_ids[:selected]),
+                torch.from_numpy(node_depths[:selected]),
+                parents[:length].tolist(), child_maps,
+                torch.from_numpy(visibility), {})
+
     def _select_node_count(self, scores):
+        if self.variant == "guarded_raw_prefix":
+            return self._select_guarded_node_count(scores)
         if self.variant != "no_latency":
             return super()._select_node_count(scores)
         # Remove cost discrimination, but preserve warmup/exploration and observations.
@@ -161,21 +303,232 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
         finally:
             self._fixed_ms, self._verify_ms = fixed, verify
 
+    @staticmethod
+    def _isotonic_latency(budgets, values, weights):
+        """Weighted PAVA fit enforcing nondecreasing latency with node count."""
+        blocks = []
+        for budget, value, weight in zip(budgets, values, weights):
+            blocks.append([budget, budget, float(value) * weight, float(weight)])
+            while len(blocks) > 1:
+                left, right = blocks[-2], blocks[-1]
+                if left[2] / left[3] <= right[2] / right[3]:
+                    break
+                blocks[-2:] = [[left[0], right[1], left[2] + right[2],
+                                left[3] + right[3]]]
+        fitted = {}
+        for first, last, weighted_sum, total_weight in blocks:
+            value = weighted_sum / total_weight
+            for budget in budgets:
+                if first <= budget <= last:
+                    fitted[budget] = value
+        return fitted
+
+    def _robust_latency_by_budget(self, available):
+        measured = [budget for budget in available if self._latency_samples[budget]]
+        if not measured:
+            return {}
+        medians = [statistics.median(self._latency_samples[budget])
+                   for budget in measured]
+        weights = [len(self._latency_samples[budget]) for budget in measured]
+        return self._isotonic_latency(measured, medians, weights)
+
+    def _select_guarded_node_count(self, node_scores):
+        """Choose a challenger only when it robustly dominates the B128 arm.
+
+        A single noisy latency observation must never demote the equal-capacity
+        reference.  Three observations per arm, a rolling median, and a
+        monotone latency projection make the comparison robust.  The controller
+        still reacts to the current proposal through prefix probability mass.
+        """
+        node_count = int(node_scores.shape[0])
+        available = tuple(value for value in self.budget_candidates
+                          if value <= node_count)
+        if not available:
+            return node_count
+
+        calibration = [budget for budget in self._warmup_order
+                       if budget in available and
+                       self._observations[budget] < self.initial_latency_samples]
+        safe_budget = available[-1]
+        if (not calibration and self._decision_count % self.reevaluation_interval):
+            # Most rounds take the equal-capacity safe arm without computing
+            # proposal mass or refitting latency.  This keeps the online policy
+            # off the hot path while still allowing periodic contextual checks.
+            previous = self.last_decision
+            self._last_mass_by_budget = {}
+            self._last_selected_budget = safe_budget
+            self._last_expected_draft_tokens = None
+            self._decision_count += 1
+            self.last_decision = BudgetDecision(
+                budget=safe_budget,
+                expected_draft_tokens=(previous.expected_draft_tokens
+                                       if previous is not None else 0.),
+                predicted_round_ms=None,
+                predicted_tokens_per_ms=None,
+            )
+            self._guard_diagnostics = {
+                "safe_budget": safe_budget,
+                "reason": "cached_safe_arm",
+            }
+            self._evaluated_last_decision = False
+            return safe_budget
+
+        probability_mass = np.exp(np.clip(
+            node_scores.astype(np.float64), -745., 0.))
+        cumulative_mass = np.cumsum(probability_mass)
+        mass_by_budget = {
+            budget: float(cumulative_mass[budget - 1]) for budget in available
+        }
+        self._last_mass_by_budget = mass_by_budget
+
+        selected = (min(calibration, key=lambda budget: (
+            self._observations[budget], self._warmup_order.index(budget)))
+            if calibration else None)
+        robust_latency = self._robust_latency_by_budget(available)
+        utilities = {}
+        round_ms = {}
+        if self._fixed_ms is not None:
+            for budget, latency in robust_latency.items():
+                expected = min(
+                    float(self.block_size),
+                    self._acceptance_scale_by_budget[budget]
+                    * mass_by_budget[budget],
+                )
+                round_ms[budget] = self._fixed_ms + latency
+                utilities[budget] = ((1. + expected)
+                                     / max(round_ms[budget], 1e-6))
+
+        guard = {
+            "safe_budget": safe_budget,
+            "reason": "latency_calibration" if selected is not None else "safe_fallback",
+            "robust_budget_ms": robust_latency,
+        }
+        if selected is None and safe_budget in utilities:
+            safe_utility = utilities[safe_budget]
+            safe_ms = round_ms[safe_budget]
+            probes = []
+            if self._observations[safe_budget] >= self.minimum_latency_samples:
+                for budget in available[:-1]:
+                    if (self.initial_latency_samples
+                            <= self._observations[budget]
+                            < self.minimum_latency_samples
+                            and budget in round_ms):
+                        saving = ((safe_ms - round_ms[budget])
+                                  / max(safe_ms, 1e-6))
+                        if saving >= self.probe_latency_saving_ratio:
+                            probes.append((saving, budget))
+            if probes:
+                _, selected = max(probes)
+                guard.update({"reason": "targeted_latency_probe",
+                              "latency_saving_ratio": max(probes)[0]})
+            qualified = []
+            if not probes:
+                for budget in available[:-1]:
+                    if (self._observations[budget] < self.minimum_latency_samples
+                            or budget not in utilities):
+                        continue
+                    latency_saving = ((safe_ms - round_ms[budget])
+                                      / max(safe_ms, 1e-6))
+                    utility_gain = ((utilities[budget] - safe_utility)
+                                    / max(safe_utility, 1e-9))
+                    if (latency_saving >= self.minimum_latency_saving_ratio
+                            and utility_gain >= self.minimum_utility_gain_ratio):
+                        qualified.append((utilities[budget], budget,
+                                          latency_saving, utility_gain))
+                if qualified:
+                    _, selected, latency_saving, utility_gain = max(qualified)
+                    guard.update({"reason": "qualified_challenger",
+                                  "latency_saving_ratio": latency_saving,
+                                  "utility_gain_ratio": utility_gain})
+                else:
+                    selected = safe_budget
+        elif selected is None:
+            selected = safe_budget
+
+        expected = min(
+            float(self.block_size),
+            self._acceptance_scale_by_budget[selected] * mass_by_budget[selected],
+        )
+        predicted_ms = round_ms.get(selected)
+        utility = utilities.get(selected)
+        self._last_selected_budget = selected
+        self._last_expected_draft_tokens = mass_by_budget[selected]
+        self._decision_count += 1
+        self.last_decision = BudgetDecision(
+            budget=selected,
+            expected_draft_tokens=expected,
+            predicted_round_ms=predicted_ms,
+            predicted_tokens_per_ms=utility,
+        )
+        self._guard_diagnostics = guard
+        self._evaluated_last_decision = True
+        return selected
+
     def observe(self, **kwargs):
+        accepted_node_indices = kwargs.pop("accepted_node_indices", None)
         frozen = self.variant == "frozen_after_warmup" and all(
             n >= self.warmup_rounds_per_budget for n in self._observations.values())
         previous = self._fixed_ms, self._verify_ms.copy(), self._acceptance_scale
-        super().observe(**kwargs)
+        if self.variant == "guarded_raw_prefix":
+            selected = self._last_selected_budget
+            if selected is not None:
+                self._observations[selected] += 1
+                self._fixed_ms = self._ewma(
+                    self._fixed_ms, max(float(kwargs["draft_ms"]), 0.),
+                    self.ewma_alpha)
+                self._verify_ms[selected] = self._ewma(
+                    self._verify_ms.get(selected),
+                    max(float(kwargs["verify_ms"]), 0.), self.ewma_alpha)
+        else:
+            super().observe(**kwargs)
         if frozen:
             self._fixed_ms, self._verify_ms, self._acceptance_scale = previous
         if self.variant == "no_acceptance_calibration":
             self._acceptance_scale = 1.
-        self.trace.append({"decision": asdict(self.last_decision) if self.last_decision else None,
-                           **kwargs})
+        if self.variant == "guarded_raw_prefix":
+            selected = self._last_selected_budget
+            if selected is not None:
+                samples = self._latency_samples[selected]
+                samples.append(float(kwargs["verify_ms"]))
+                del samples[:-self.latency_window]
+            observed_budgets = ()
+            if (self._evaluated_last_decision
+                    and accepted_node_indices is not None and selected is not None):
+                indices = tuple(int(index) for index in accepted_node_indices
+                                if int(index) > 0)
+                observed_budgets = tuple(
+                    budget for budget in self.budget_candidates
+                    if budget <= selected and budget in self._last_mass_by_budget
+                )
+                for budget in observed_budgets:
+                    accepted = sum(index <= budget for index in indices)
+                    mass = self._last_mass_by_budget[budget]
+                    if mass > 1e-9:
+                        ratio = max(0., min(2., accepted / mass))
+                        self._acceptance_scale_by_budget[budget] = self._ewma(
+                            self._acceptance_scale_by_budget[budget], ratio,
+                            self.ewma_alpha)
+                        self._acceptance_observations[budget] += 1
+            elif self._evaluated_last_decision and selected is not None:
+                mass = self._last_mass_by_budget.get(selected, 0.)
+                if mass > 1e-9:
+                    ratio = max(0., min(
+                        2., float(kwargs["accepted_draft_tokens"]) / mass))
+                    self._acceptance_scale_by_budget[selected] = self._ewma(
+                        self._acceptance_scale_by_budget[selected], ratio,
+                        self.ewma_alpha)
+                    self._acceptance_observations[selected] += 1
+                    observed_budgets = (selected,)
+        trace = {"decision": asdict(self.last_decision) if self.last_decision else None,
+                 **kwargs}
+        if self.variant == "guarded_raw_prefix":
+            trace["guard"] = self._guard_diagnostics
+            trace["counterfactual_acceptance_budgets"] = list(observed_budgets)
+        self.trace.append(trace)
 
     def observe_stages(self, *, tree_nodes, draft_ms, tree_build_ms,
                        tree_compile_ms, target_verify_ms, commit_ms,
-                       accepted_draft_tokens):
+                       accepted_draft_tokens, accepted_node_indices=None):
         """Attribute measured stages without changing the frozen default.
 
         Tree construction varies materially with the selected node budget.  The
@@ -202,13 +555,14 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
                          + stages["target_verify"] + stages["commit"])
         self.observe(tree_nodes=tree_nodes, draft_ms=fixed_ms,
                      verify_ms=budget_ms,
-                     accepted_draft_tokens=accepted_draft_tokens)
+                     accepted_draft_tokens=accepted_draft_tokens,
+                     accepted_node_indices=accepted_node_indices)
         if self.trace and self.timing_partition != "legacy":
             self.trace[-1]["raw_stage_ms"] = stages
             self.trace[-1]["timing_partition"] = self.timing_partition
 
     def state_dict(self):
-        return {"version": 1, "identity": self.identity,
+        state = {"version": 1, "identity": self.identity,
                 "observations": {str(k): v for k, v in self._observations.items()},
                 "verify_ms": {str(k): v for k, v in self._verify_ms.items()},
                 "fixed_ms": self._fixed_ms, "acceptance_scale": self._acceptance_scale,
@@ -217,9 +571,26 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
                 "last_selected_budget": self._last_selected_budget,
                 "last_expected_draft_tokens": self._last_expected_draft_tokens,
                 "last_decision": asdict(self.last_decision) if self.last_decision else None}
+        if self.variant == "guarded_raw_prefix":
+            state.update({
+                "version": 2,
+                "latency_samples": {str(k): list(v)
+                                    for k, v in self._latency_samples.items()},
+                "acceptance_scale_by_budget": {
+                    str(k): v for k, v in self._acceptance_scale_by_budget.items()
+                },
+                "acceptance_observations": {
+                    str(k): v for k, v in self._acceptance_observations.items()
+                },
+                "evaluated_last_decision": self._evaluated_last_decision,
+            })
+        return state
 
     def load_state_dict(self, state):
-        if set(state) != set(self.state_dict()) or state["version"] != 1 or state["identity"] != self.identity:
+        expected_version = 2 if self.variant == "guarded_raw_prefix" else 1
+        if (set(state) != set(self.state_dict())
+                or state["version"] != expected_version
+                or state["identity"] != self.identity):
             raise ValueError("Controller state identity/schema mismatch")
         observations = {int(k): v for k, v in state["observations"].items()}
         verify = {int(k): v for k, v in state["verify_ms"].items()}
@@ -242,6 +613,34 @@ class PaperAdaptiveBuilder(LatencyAwareDDTreeBuilder):
         self._last_selected_budget = state["last_selected_budget"]
         self._last_expected_draft_tokens = state["last_expected_draft_tokens"]
         self.last_decision = BudgetDecision(**state["last_decision"]) if state["last_decision"] else None
+        if self.variant == "guarded_raw_prefix":
+            latency_samples = {int(k): list(v)
+                               for k, v in state["latency_samples"].items()}
+            scales = {int(k): v for k, v in
+                      state["acceptance_scale_by_budget"].items()}
+            acceptance_observations = {int(k): v for k, v in
+                                       state["acceptance_observations"].items()}
+            if (set(latency_samples) != set(self.budget_candidates)
+                    or set(scales) != set(self.budget_candidates)
+                    or set(acceptance_observations) != set(self.budget_candidates)):
+                raise ValueError("Invalid guarded controller budgets")
+            flat_samples = [value for values in latency_samples.values()
+                            for value in values]
+            if (any(len(values) > self.latency_window
+                    for values in latency_samples.values())
+                    or any(not isinstance(value, (int, float))
+                           or not math.isfinite(value) or value < 0
+                           for value in flat_samples + list(scales.values()))
+                    or any(type(value) is not int or value < 0
+                           for value in acceptance_observations.values())):
+                raise ValueError("Invalid guarded controller state")
+            self._latency_samples = latency_samples
+            self._acceptance_scale_by_budget = scales
+            self._acceptance_observations = acceptance_observations
+            self._guard_diagnostics = None
+            if type(state["evaluated_last_decision"]) is not bool:
+                raise ValueError("Invalid guarded controller state")
+            self._evaluated_last_decision = state["evaluated_last_decision"]
         self.trace = []
 
 
@@ -258,10 +657,12 @@ def make_builder(cfg, method):
 def make_paper_builder(cfg, method):
     """Build a canonical official controller or a historical reproduction.
 
-    The formal primary ``adaptive_b128`` charges tree construction to the
-    selected budget, disables periodic exploration, and uses the original
-    B<=128 candidates.  ``adaptive_b256`` changes only the candidate ceiling.
-    The exact pre-migration method remains available as ``adaptive_legacy``.
+    The formal primary ``adaptive_b128`` is the guarded greedy-spine
+    architecture.  It charges tree construction to the selected budget,
+    uses B128 as a safe arm, and only admits a smaller challenger after robust
+    latency calibration.  ``adaptive_b256`` remains the historical
+    budget-extension ablation.  The exact pre-migration method remains
+    available as ``adaptive_legacy``.
     """
     configured = tuple(cfg["budget_candidates"])
     if configured not in (LEGACY_BUDGETS, EXTENDED_BUDGETS):

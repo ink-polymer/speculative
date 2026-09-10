@@ -1,0 +1,51 @@
+{
+  "study": "adaptive_tree_ddtree_dflash_t0_t1",
+  "passed": true,
+  "model_ids": [
+    "qwen3_4b",
+    "qwen3_8b"
+  ],
+  "checks": {
+    "immutable_model_revisions": true,
+    "adaptive_official_t0_protocol": true,
+    "adaptive_primary_is_dynamic_b128": true,
+    "adaptive_token_divergence_recorded": true,
+    "adaptive_strict_lossless_claim_disabled": true,
+    "adaptive_balanced_method_positions": true,
+    "adaptive_primary_table_same_target_backend_sdpa": true,
+    "t1_same_target_and_draft_backend_sdpa": true,
+    "t1_same_data_seeds_limits_and_order": true,
+    "t1_only_target_dflash_ddtree_registered": true,
+    "t1_official_dflash_greedy_draft": true,
+    "t1_fp64_probability_math": true,
+    "lazy_projection_excluded": true,
+    "tree_block_verification_deferred_not_run": true,
+    "pinned_ddtree_sources_identical": true
+  },
+  "claim_boundaries": {
+    "adaptive_t0_primary": "same-backend SDPA Target/DFlash/DDTree/AdaptiveTree only",
+    "adaptive_t0_output_control": "all-response performance includes pairwise exact-output rates; exact-output subset speed is a selection-biased diagnostic only",
+    "adaptive_strict_lossless_claim_allowed": false,
+    "adaptive_best_backend": "auxiliary table only; never mixed into the primary architecture table",
+    "positive_temperature": "T=1 Target/DFlash/DDTree within one SDPA/SDPA engine; DFlash draft is greedy",
+    "tree_block_verification": "deferred_not_run",
+    "cross_protocol_speedup_pooling_allowed": false,
+    "old_server_result_reuse_allowed": false,
+    "reason": "T=0 AdaptiveTree and T=1 sampling controls use different sampling laws, data matrices, and draft attention backends"
+  },
+  "source_sha256": {
+    "adaptivetree_paper/src/dflash_specblock/paper/controller.py": "59dba9b0df5788f5742127662eb903fd9357752936199e232f233d60673a5061",
+    "adaptivetree_paper/src/dflash_specblock/paper/adaptive_official.py": "29beb1a7fe5ff84773430340aab4690a88e519f3c24d21ade7e1fd07a6122f38",
+    "adaptivetree_paper/src/dflash_specblock/paper/official_worker.py": "d66ffa23a7bf5b138eb7cf44bb36923ada2607939b27e6093f4c948fd6337415",
+    "src/gbv_experiments/engine.py": "6b5e62ddb45591f397a00797def498ca432e471b23f039567cdb7ec5ea0d7864",
+    "src/gbv_experiments/sampling.py": "43b246af3511f94a487fd462d8198ad574a71e8de407deb44f572ecbfe31a205",
+    "src/gbv_experiments/config.py": "a95bb1f53bd2d7fabd20dd37bedfdf72983d7e7aab79bcf44bb38e6c609c62b6",
+    "src/gbv_experiments/runner.py": "c1b8251486b330e2018b54cca58d5e5672370f48a68f2e896575f95ea18d876c",
+    "src/gbv_experiments/report.py": "aff745d5b6ba0efb35790285690a0b42fd60c6d2db060ad9d6ac597d0ed53652",
+    "src/gbv_experiments/integrated_suite.py": "b9bdc2e52189a8105aa5bdc00968838e2b55dcfa2e9eba2b46f95f74a23ccf21",
+    "third_party/ddtree_pinned/ddtree.py": "8d0ecd9d07a7266d3825eefd176811502313a0da7cedfcdc8aec1a4971c3a99b",
+    "third_party/ddtree_pinned/dflash.py": "297e5126980ff7bad7650ce7ede9dea9b11b1b3485154ab5b9a2a3f899b33159"
+  },
+  "adaptive_distribution_files": 89,
+  "pinned_ddtree_commit": "c96427a185677bf4133ed865dd1626a5041aef9b"
+}

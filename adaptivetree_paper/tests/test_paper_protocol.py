@@ -110,7 +110,8 @@ def test_budget_aware_stage_attribution_is_isolated_and_exact():
     restored.load_state_dict(corrected.state_dict())
     assert restored.state_dict() == corrected.state_dict()
     factory = make_paper_builder(cfg(), B128_ABLATION_VARIANT)
-    assert factory.variant == "no_exploration"
+    assert factory.variant == "guarded_raw_prefix"
+    assert factory.reserve_greedy_chain is False
     assert factory.timing_partition == "budget_aware"
 
 
@@ -133,6 +134,58 @@ def test_budget_extension_ablation_builds_all_256_nodes():
     with pytest.raises(ValueError, match="identity/schema mismatch"):
         make_paper_builder(cfg(), B128_ABLATION_VARIANT).load_state_dict(
             builder.state_dict())
+
+
+def test_guarded_raw_prefix_calibrates_robustly_and_resumes():
+    builder = make_paper_builder(cfg(), B128_ABLATION_VARIANT)
+    scores = np.concatenate((np.full(80, -2.), np.full(48, -20.)))
+    warmup = []
+    latency = {30:4., 45:4.5, 60:5., 80:5.5, 100:9., 128:10.}
+    for _ in range(6):
+        budget = builder._select_node_count(scores)
+        warmup.append(budget)
+        builder.observe(tree_nodes=budget, draft_ms=2.,
+                        verify_ms=latency[budget],
+                        accepted_draft_tokens=5)
+    assert warmup == [128,100,80,60,45,30]
+    # With materially lower end-to-end latency and essentially the same
+    # proposal mass, B80 is an admissible challenger.
+    for budget in builder.budget_candidates:
+        builder._observations[budget] = builder.minimum_latency_samples
+        builder._latency_samples[budget] = [latency[budget]] * 3
+    builder._decision_count = builder.reevaluation_interval
+    assert builder._select_node_count(scores) == 80
+    assert builder._guard_diagnostics["reason"] == "qualified_challenger"
+
+    # A B128 observation reveals the realized target path for every nested
+    # prefix budget, so all smaller acceptance calibrators can update without
+    # extra target-model calls.
+    builder._last_selected_budget = 128
+    builder._last_expected_draft_tokens = builder._last_mass_by_budget[128]
+    builder._evaluated_last_decision = True
+    before = dict(builder._acceptance_observations)
+    builder.observe(tree_nodes=128, draft_ms=2., verify_ms=10.,
+                    accepted_draft_tokens=2,
+                    accepted_node_indices=[0, 1, 85])
+    assert all(builder._acceptance_observations[budget] == before[budget] + 1
+               for budget in builder.budget_candidates)
+
+    restored = make_paper_builder(cfg(), B128_ABLATION_VARIANT)
+    restored.load_state_dict(json.loads(json.dumps(builder.state_dict())))
+    assert restored.state_dict() == builder.state_dict()
+
+
+def test_guarded_raw_tree_matches_fixed_ddtree_at_b128():
+    from dflash_specblock.paper.adaptive_official import build_with_controller
+    builder = make_paper_builder(cfg(), B128_ABLATION_VARIANT)
+    generator = torch.Generator().manual_seed(812)
+    for _ in range(3):
+        logits = torch.randn(15, 256, generator=generator)
+        expected = build_with_controller(logits, DDTreeBuilder(15, 128))
+        actual = build_with_controller(logits, builder)
+        for index in (0, 1, 4):
+            assert torch.equal(expected[index], actual[index])
+        assert expected[2:4] == actual[2:4]
 
 
 @pytest.mark.parametrize("seed", range(6))

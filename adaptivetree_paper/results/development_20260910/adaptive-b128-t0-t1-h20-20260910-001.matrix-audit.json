@@ -1,0 +1,36 @@
+{
+  "passed": true,
+  "errors": [],
+  "registered_scope": {
+    "models": [
+      "qwen3_4b",
+      "qwen3_8b"
+    ],
+    "adaptive_t0_datasets": 10,
+    "adaptive_t0_turns_per_method_model": 1152,
+    "adaptive_t0_generation_calls": 43776,
+    "stochastic_t1_datasets": 8,
+    "stochastic_t1_seeds": 3,
+    "stochastic_t1_generation_calls": 16128,
+    "total_generation_calls": 59904
+  },
+  "claim_boundaries": {
+    "pool_t0_and_t1_speedups": false,
+    "claim_adaptivetree_at_t1": false,
+    "claim_strict_lossless_when_bf16_mismatch_exists": false,
+    "claim_tree_block_results": false,
+    "reuse_old_server_timings": false
+  },
+  "deferred": {
+    "tree_block_verification": {
+      "run_in_this_matrix": false,
+      "publication_claim_allowed": false,
+      "reason": "No registered and validated tree-block verifier is included in this run. ddtree_lazy_projection is only an implementation control and is not tree-block verification."
+    },
+    "qwen3_coder_30b": {
+      "run_in_this_matrix": false,
+      "publication_claim_allowed": false,
+      "reason": "A single H20 has not passed the memory and MoE-compatibility preflight for the target/draft pair."
+    }
+  }
+}

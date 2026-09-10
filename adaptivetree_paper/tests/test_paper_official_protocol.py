@@ -209,7 +209,8 @@ def test_official_method_order_and_no_t1_support():
     assert method_names("sdpa",VARIANTS)[:2 + len(BUDGETS)] == ["baseline","dflash"]+[f"ddtree_tb{b}" for b in BUDGETS]
     assert method_names("flash_attention_2",VARIANTS) == ["baseline","dflash"]
     primary = make_paper_builder(cfg()["adaptive"], PRIMARY_ADAPTIVE_METHOD)
-    assert primary.variant == "no_exploration"
+    assert primary.variant == "guarded_raw_prefix"
+    assert primary.reserve_greedy_chain is False
     assert primary.timing_partition == "budget_aware"
     assert primary.budget_candidates == tuple(cfg()["adaptive"]["budget_candidates"])
     assert primary.tree_budget == 128
@@ -220,7 +221,7 @@ def test_official_method_order_and_no_t1_support():
     assert legacy.variant == "adaptive" and legacy.timing_partition == "legacy"
     assert legacy.tree_budget == 128
     b128 = make_paper_builder(cfg()["adaptive"], B128_ABLATION_VARIANT)
-    assert b128.variant == "no_exploration" and b128.tree_budget == 128
+    assert b128.variant == "guarded_raw_prefix" and b128.tree_budget == 128
     legacy_cost = make_paper_builder(
         cfg()["adaptive"], LEGACY_COST_ATTRIBUTION_ABLATION_VARIANT)
     assert legacy_cost.variant == "no_exploration"

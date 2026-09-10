@@ -15,6 +15,8 @@ from .official_spec import upstream
 
 
 def build_with_controller(logits, builder):
+    if getattr(builder, "variant", None) == "guarded_raw_prefix":
+        return builder.build_official_tree_from_logits(logits)
     tree = builder.build_from_logits(logits)
     nodes = tree.nodes
     token_ids = torch.tensor([n.token_id for n in nodes], dtype=torch.long)
@@ -225,6 +227,7 @@ def adaptive_generate(
                 target_verify_ms=1000 * (stage_times["verify"] - stage_before["verify"]),
                 commit_ms=1000 * (stage_times["commit"] - stage_before["commit"]),
                 accepted_draft_tokens=len(accepted_indices) - 1,
+                accepted_node_indices=accepted_indices,
             )
         round_timestamps.append(cuda_time() - round_clock_start)
         if save_tree_traces:

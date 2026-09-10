@@ -47,7 +47,7 @@
     ]
   ],
   "primary_adaptive_method": "adaptive_b128",
-  "method_schema_version": 3,
+  "method_schema_version": 4,
   "variants": [
     "adaptive_b128",
     "adaptive_b256",
