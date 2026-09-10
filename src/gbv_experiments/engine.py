@@ -96,6 +96,85 @@ class StageMeter:
         return {"host_ms": dict(self.host), "cuda_event_ms": dict(gpu)}
 
 
+def summarize_stage_profile(
+        stages: dict, *, e2e_ms: float, decode_ms: float,
+        official_scope_decode_ms: float) -> dict:
+    """Rank diagnostic stages without presenting them as primary wall time.
+
+    Host intervals measure Python submission time on CUDA and CUDA events
+    measure stream time. Neither is silently substituted for the synchronized
+    end-to-end timer. The residuals make uninstrumented orchestration visible.
+    """
+    excluded_from_decode = {"prefill"}
+    excluded_from_official = {
+        "prefill", "draft_prefill", "first_draft_boundary_sync",
+    }
+
+    def view(values: dict[str, float], *, excluded: set[str]) -> dict:
+        selected = {
+            name: float(milliseconds)
+            for name, milliseconds in values.items()
+            if name not in excluded
+        }
+        total = sum(selected.values())
+        ranked = sorted(selected.items(), key=lambda item: item[1], reverse=True)
+        return {
+            "measured_stage_ms": selected,
+            "measured_stage_total_ms": total,
+            "ranked_stages": [
+                {
+                    "stage": name,
+                    "milliseconds": milliseconds,
+                    "percent_of_measured_stages": (
+                        100 * milliseconds / total if total else None
+                    ),
+                }
+                for name, milliseconds in ranked
+            ],
+            "longest_stage": ranked[0][0] if ranked else None,
+        }
+
+    host = {name: float(value) for name, value in stages["host_ms"].items()}
+    cuda = {
+        name: float(value) for name, value in stages["cuda_event_ms"].items()
+    }
+    host_decode = view(host, excluded=excluded_from_decode)
+    host_official = view(host, excluded=excluded_from_official)
+    cuda_decode = view(cuda, excluded=excluded_from_decode)
+    cuda_official = view(cuda, excluded=excluded_from_official)
+    return {
+        "diagnostic_only": True,
+        "eligible_for_primary_timing": False,
+        "profile_instrumentation_enabled": True,
+        "interpretation": {
+            "host_ms": "Python/CPU interval; on CUDA this is mainly launch and orchestration time",
+            "cuda_event_ms": "GPU stream interval; use this ranking for GPU-kernel hotspots",
+            "unattributed_ms": "synchronized wall time not enclosed by a named stage",
+        },
+        "synchronized_wall_ms": {
+            "e2e": float(e2e_ms),
+            "decode_including_first_draft": float(decode_ms),
+            "official_scope_decode": float(official_scope_decode_ms),
+        },
+        "host_decode_scope": {
+            **host_decode,
+            "unattributed_ms": max(
+                0.0, float(decode_ms) - host_decode["measured_stage_total_ms"]
+            ),
+        },
+        "host_official_scope": {
+            **host_official,
+            "unattributed_ms": max(
+                0.0,
+                float(official_scope_decode_ms)
+                - host_official["measured_stage_total_ms"],
+            ),
+        },
+        "cuda_decode_scope": cuda_decode,
+        "cuda_official_scope": cuda_official,
+    }
+
+
 def draft_model_class():
     # Load the vendored package under a private name to avoid 'model' collisions.
     path = ROOT / "third_party/ddtree_official/model/__init__.py"
@@ -316,6 +395,13 @@ class Engine:
             del initial
         self.sync()
         prefill_end = time.perf_counter()
+        # The vendored DDTree/DFlash timer resets after the first Draft forward
+        # and divides by every returned token, including the anchor sampled by
+        # Target prefill. Preserve our stricter end-to-end decode fields below,
+        # while recording that published scope independently.
+        official_scope_decode_start = (
+            prefill_end if variant.method == "target" else None
+        )
         generated = [anchor]
         rounds = []
         greedy_audit = []
@@ -340,7 +426,8 @@ class Engine:
                 continue
             prefix_len = int(target_cache.get_seq_length())
             block_width = int(self.draft.block_size)
-            with meter.measure("draft"):
+            first_draft = draft_calls == 0
+            with meter.measure("draft_prefill" if first_draft else "draft"):
                 if not variant.reuse_draft_cache:
                     draft_cache = self.cache_factory()
                     context = full_features
@@ -395,6 +482,13 @@ class Engine:
                         logits, noise_ids[0], draft_temp, int(self.draft.mask_token_id),
                         support_size=variant.diffusion_support_size)
                 draft_calls += 1
+            if first_draft:
+                # This synchronization and reset reproduce the start boundary
+                # at ddtree.py:374-377 and dflash.py:80-83. It is deliberately
+                # outside the published numerator but remains in decode_ms.
+                with meter.measure("first_draft_boundary_sync"):
+                    self.sync()
+                official_scope_decode_start = time.perf_counter()
             with meter.measure("tree_build"):
                 if (variant.method == "ddtree" or variant.method in
                         TERMINAL_TREE_METHODS | FUSED_TREE_METHODS
@@ -463,6 +557,7 @@ class Engine:
                     paths = sample(q[None].expand(variant.paths, -1, -1), generator)
                     tree = sampled_tree(paths, variant.share_prefixes)
                     tree_proposal = None
+            with meter.measure("tree_compile"):
                 ids = torch.tensor([[generated[-1]] + tree.tokens], device=self.device)
                 positions = (torch.tensor(tree.depths, device=self.device) + prefix_len)[None]
                 mask = tree.mask(prefix_len, next(self.target.parameters()).dtype, self.device)
@@ -841,13 +936,14 @@ class Engine:
                     "tree_top1_margin": (tree_top2.values[:, 0] - tree_top2.values[:, 1]).tolist(),
                     "sequential_top1_margin": (sequential_top2.values[:, 0] - sequential_top2.values[:, 1]).tolist(),
                 })
-            with meter.measure("commit"):
+            with meter.measure("stop_check"):
                 appended = tokens + [bonus]
                 committed = appended[:max_new_tokens - len(generated)]
                 for i, token in enumerate(committed):
                     if token in stops:
                         committed = committed[:i + 1]
                         break
+            with meter.measure("commit"):
                 generated.extend(committed)
                 keep = [0] + nodes
                 index = torch.tensor(keep, device=self.device)
@@ -954,12 +1050,54 @@ class Engine:
         prefill_ms = (prefill_end - started) * 1000
         decode_ms = (ended - prefill_end) * 1000
         decode_tokens = len(generated) - 1
+        if official_scope_decode_start is None:
+            # Only reachable when max_new_tokens=1 (no speculative round).
+            # The production gates use >=32 tokens, but keep the record total.
+            official_scope_decode_start = prefill_end
+        official_scope_decode_ms = (
+            ended - official_scope_decode_start
+        ) * 1000
+        official_scope_output_tokens = len(generated)
+        stages = meter.result()
+        stage_profile = (
+            summarize_stage_profile(
+                stages,
+                e2e_ms=(ended - started) * 1000,
+                decode_ms=decode_ms,
+                official_scope_decode_ms=official_scope_decode_ms,
+            )
+            if profile else None
+        )
         return {
             "generated_token_ids": generated, "generated_tokens": len(generated),
             "decode_tokens": decode_tokens, "prefill_ms": prefill_ms, "decode_ms": decode_ms,
             "e2e_ms": (ended - started) * 1000,
             "decode_tokens_per_second": 1000 * decode_tokens / decode_ms if decode_tokens else None,
             "e2e_tokens_per_second": 1000 * len(generated) / ((ended - started) * 1000),
+            "official_scope_decode_ms": official_scope_decode_ms,
+            "official_scope_output_tokens": official_scope_output_tokens,
+            "official_scope_time_per_output_token_ms": (
+                official_scope_decode_ms / official_scope_output_tokens
+            ),
+            "official_scope_tokens_per_second": (
+                1000 * official_scope_output_tokens / official_scope_decode_ms
+                if official_scope_decode_ms else None
+            ),
+            "timing_contract": {
+                "decode_ms": (
+                    "after Target prefill through completion; includes first Draft forward"
+                ),
+                "decode_tokens": "returned tokens after the prefill-sampled anchor",
+                "official_scope_decode_ms": (
+                    "vendored DDTree/DFlash start/end scope; excludes Target prefill "
+                    "and first Draft forward for speculative methods"
+                ),
+                "official_scope_output_tokens": (
+                    "all returned tokens, including the prefill-sampled anchor"
+                ),
+                "internal_official_stage_synchronizations_reproduced": False,
+                "upstream_scope_applicable": variant.method != "target",
+            },
             "finish_reason": "eos" if generated[-1] in stops else "length",
             "target_forward_calls": target_calls, "draft_forward_calls": draft_calls,
             "target_tokens_processed": target_tokens, "rounds": rounds,
@@ -967,5 +1105,6 @@ class Engine:
             "target_greedy_trace": target_greedy_trace,
             "peak_allocated_bytes": torch.cuda.max_memory_allocated(self.device) if self.device.type == "cuda" else None,
             "peak_reserved_bytes": torch.cuda.max_memory_reserved(self.device) if self.device.type == "cuda" else None,
-            "stages": meter.result(),
+            "stages": stages,
+            "stage_profile": stage_profile,
         }

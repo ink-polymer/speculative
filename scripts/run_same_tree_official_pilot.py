@@ -61,6 +61,15 @@ def compact(result: dict, variant: str, row: dict, seed: int,
         "decode_tokens": result["decode_tokens"],
         "prefill_ms": result["prefill_ms"],
         "decode_ms": result["decode_ms"],
+        "official_scope_decode_ms": result["official_scope_decode_ms"],
+        "official_scope_output_tokens": result["official_scope_output_tokens"],
+        "official_scope_time_per_output_token_ms": result[
+            "official_scope_time_per_output_token_ms"
+        ],
+        "official_scope_turn_tpot_ms": [
+            turn["official_scope_time_per_output_token_ms"]
+            for turn in result.get("turn_results", [result])
+        ],
         "e2e_ms": result["e2e_ms"],
         "target_forward_calls": result["target_forward_calls"],
         "draft_forward_calls": result["draft_forward_calls"],
@@ -128,6 +137,31 @@ def compare(rows: list[dict], candidate: str, baseline: str,
     }
 
 
+def compare_official_scope(rows: list[dict], candidate: str,
+                           baseline: str) -> dict:
+    """Match the paper table's arithmetic mean over generated turns."""
+    candidate_tpots = [
+        tpot for row in rows if row["variant"] == candidate
+        for tpot in row["official_scope_turn_tpot_ms"]
+    ]
+    baseline_tpots = [
+        tpot for row in rows if row["variant"] == baseline
+        for tpot in row["official_scope_turn_tpot_ms"]
+    ]
+    candidate_mean = sum(candidate_tpots) / len(candidate_tpots)
+    baseline_mean = sum(baseline_tpots) / len(baseline_tpots)
+    return {
+        "candidate": candidate,
+        "baseline": baseline,
+        "metric": "vendored_official_unweighted_mean_turn_tpot_speedup",
+        "speedup": baseline_mean / candidate_mean,
+        "candidate_mean_tpot_ms": candidate_mean,
+        "baseline_mean_tpot_ms": baseline_mean,
+        "generated_turns_per_method": len(candidate_tpots),
+        "used_for_gate": False,
+    }
+
+
 def aggregate(rows: list[dict], variant: str) -> dict:
     selected = [row for row in rows if row["variant"] == variant]
     rounds = [round_ for row in selected for round_ in row["rounds"]]
@@ -138,6 +172,10 @@ def aggregate(rows: list[dict], variant: str) -> dict:
         "decode_tokens": tokens,
         "decode_ms": elapsed,
         "tokens_per_second": 1000 * tokens / elapsed,
+        "official_scope_mean_turn_tpot_ms": sum(
+            tpot for row in selected
+            for tpot in row["official_scope_turn_tpot_ms"]
+        ) / sum(len(row["official_scope_turn_tpot_ms"]) for row in selected),
         "mean_accepted_draft_tokens_per_round": sum(
             round_["accepted_draft_tokens"] for round_ in rounds
         ) / len(rounds),
@@ -352,15 +390,60 @@ def run(config_path: Path, data_dir: Path, output: Path, device: str,
             rows, "ddtree", "dflash", cfg["datasets"],
             cfg["bootstrap_samples"],
         )
+        official_scope_comparisons = {
+            baseline: compare_official_scope(
+                rows, "tree_block_verification", baseline,
+            ) for baseline in ("ddtree", "dflash")
+        }
+        official_scope_baseline_sanity = compare_official_scope(
+            rows, "ddtree", "dflash",
+        )
         passed = (
             all(value["ci95"][0] > 1 for value in comparisons.values())
             and baseline_sanity["ci95"][0] > 1
         )
+        profile_tokens = min(cfg["max_new_tokens"], 64)
+        stage_profiles = {}
+        profile_row = data[0]
+        profile_seed = prompt_seed(
+            cfg["seeds"][0], profile_row["dataset"], profile_row["source_id"],
+        )
+        for name, variant in variants.items():
+            allocation_gate(device)
+            profiled = generate_conversation(
+                engine, tokenizer, profile_row, variant, profile_tokens,
+                stops, profile_seed, cfg["model"], profile=True,
+            )
+            stage_profiles[name] = {
+                "generated_sha256": digest(profiled["generated_token_ids"]),
+                "generated_tokens": profiled["generated_tokens"],
+                "timing_contract": profiled["timing_contract"],
+                "stages": profiled["stages"],
+                "stage_profile": profiled["stage_profile"],
+            }
+        write_json(output / "stage_profiles.json", {
+            "primary_timing": False,
+            "diagnostic_only": True,
+            "dataset": profile_row["dataset"],
+            "source_id": profile_row["source_id"],
+            "tokens_per_turn": profile_tokens,
+            "rows": stage_profiles,
+        })
         report = {
             "gate_passed": passed,
             "formal_complete": False,
             "comparisons": comparisons,
             "baseline_sanity": baseline_sanity,
+            "official_scope_comparisons": official_scope_comparisons,
+            "official_scope_baseline_sanity": official_scope_baseline_sanity,
+            "official_scope_results_used_for_gate": False,
+            "stage_profiles_file": "stage_profiles.json",
+            "stage_profile_hottest_cuda": {
+                name: profile["stage_profile"]["cuda_official_scope"][
+                    "longest_stage"
+                ]
+                for name, profile in stage_profiles.items()
+            },
             "aggregate": {
                 name: aggregate(rows, name) for name in variants
             },

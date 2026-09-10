@@ -66,6 +66,14 @@ fused scan, and both lazy-fused candidates.  An eligible candidate must satisfy:
 - DDTree/DFlash lower bound greater than 1; and
 - measured posterior rows strictly below complete-tree rows.
 
+After every unprofiled timing row has completed, the script performs one
+separate diagnostic profile per method and writes `stage_profiles.json`. It
+splits first-Draft initialization, later Draft work, tree build, tree compile,
+Target verification, sampling/correction, stop checks, and KV commit; those
+profiled calls are never used by the speed gate. The report also includes the
+vendored official start/end and mean-response-TPOT view alongside the existing
+paired statistical endpoint. See `docs/OFFICIAL_TIMING_AND_STAGE_AUDIT.md`.
+
 If both candidates pass, the script preselects the one with the larger
 candidate/DDTree lower confidence bound.  That implementation must then be
 frozen before a fresh, disjoint confirmation run.  Development prompts and the

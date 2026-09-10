@@ -83,6 +83,11 @@ def compact(result: dict, prompt: int, repeat: int, position: int,
         "generated_sha256": digest(result["generated_token_ids"]),
         "decode_tokens": result["decode_tokens"],
         "decode_ms": result["decode_ms"],
+        "official_scope_decode_ms": result["official_scope_decode_ms"],
+        "official_scope_output_tokens": result["official_scope_output_tokens"],
+        "official_scope_time_per_output_token_ms": result[
+            "official_scope_time_per_output_token_ms"
+        ],
         "e2e_ms": result["e2e_ms"],
         "round_count": len(rounds),
         "mean_projected_rows": (
@@ -128,6 +133,31 @@ def compare(rows: list[dict], candidate: str, baseline: str,
     }
 
 
+def compare_official_scope(rows: list[dict], candidate: str,
+                           baseline: str) -> dict:
+    """Match DDTree's table aggregation: arithmetic mean response TPOT."""
+    candidate_tpots = [
+        row["official_scope_time_per_output_token_ms"]
+        for row in rows if row["variant"] == candidate
+    ]
+    baseline_tpots = [
+        row["official_scope_time_per_output_token_ms"]
+        for row in rows if row["variant"] == baseline
+    ]
+    candidate_mean = sum(candidate_tpots) / len(candidate_tpots)
+    baseline_mean = sum(baseline_tpots) / len(baseline_tpots)
+    return {
+        "candidate": candidate,
+        "baseline": baseline,
+        "metric": "vendored_official_unweighted_mean_response_tpot_speedup",
+        "speedup": baseline_mean / candidate_mean,
+        "candidate_mean_tpot_ms": candidate_mean,
+        "baseline_mean_tpot_ms": baseline_mean,
+        "records_per_method": len(candidate_tpots),
+        "used_for_gate": False,
+    }
+
+
 def aggregate(rows: list[dict], name: str) -> dict:
     selected = [row for row in rows if row["variant"] == name]
     tokens = sum(row["decode_tokens"] for row in selected)
@@ -141,6 +171,9 @@ def aggregate(rows: list[dict], name: str) -> dict:
         "decode_tokens": tokens,
         "decode_ms": milliseconds,
         "tokens_per_second": 1000 * tokens / milliseconds,
+        "official_scope_mean_tpot_ms": sum(
+            row["official_scope_time_per_output_token_ms"] for row in selected
+        ) / len(selected),
         "mean_projected_rows_per_round": (
             sum(projected) / len(projected) if projected else None
         ),
@@ -282,6 +315,20 @@ def run(config: Path, output: Path, device: str, tokens: int,
             ),
             "ddtree_vs_dflash": compare(rows, "ddtree", "dflash"),
         }
+        official_scope_comparisons = {
+            key: compare_official_scope(
+                rows, value[0], value[1],
+            )
+            for key, value in {
+                "candidate_vs_ddtree": ("lazy_softmax_fused_scan", "ddtree"),
+                "candidate_vs_fused_scan": ("lazy_softmax_fused_scan", "fused_scan"),
+                "candidate_vs_dflash": ("lazy_softmax_fused_scan", "dflash"),
+                "projection_candidate_vs_ddtree": ("lazy_projection_fused_scan", "ddtree"),
+                "projection_candidate_vs_fused_scan": ("lazy_projection_fused_scan", "fused_scan"),
+                "projection_candidate_vs_dflash": ("lazy_projection_fused_scan", "dflash"),
+                "ddtree_vs_dflash": ("ddtree", "dflash"),
+            }.items()
+        }
         first = {
             (row["prompt"], row["variant"]): row["generated_sha256"]
             for row in rows if row["repeat"] == 0
@@ -322,6 +369,27 @@ def run(config: Path, output: Path, device: str, tokens: int,
             key=lambda name: comparisons[candidate_specs[name][0]]["speedup"],
             reverse=True,
         )
+        profile_tokens = min(tokens, 64)
+        stage_profiles = {}
+        for name, variant in by_name.items():
+            allocation_gate(device)
+            profiled = engine.generate(
+                encoded[0], variant, profile_tokens, stops,
+                seed=20260911, profile=True,
+            )
+            stage_profiles[name] = {
+                "generated_sha256": digest(profiled["generated_token_ids"]),
+                "generated_tokens": profiled["generated_tokens"],
+                "timing_contract": profiled["timing_contract"],
+                "stages": profiled["stages"],
+                "stage_profile": profiled["stage_profile"],
+            }
+        write_json(output / "stage_profiles.json", {
+            "primary_timing": False,
+            "diagnostic_only": True,
+            "tokens": profile_tokens,
+            "rows": stage_profiles,
+        })
         report = {
             "gate_passed": bool(
                 repeat_equal
@@ -331,6 +399,15 @@ def run(config: Path, output: Path, device: str, tokens: int,
             "formal_complete": False,
             "within_method_repeat_equal": repeat_equal,
             "comparisons": comparisons,
+            "official_scope_comparisons": official_scope_comparisons,
+            "official_scope_results_used_for_gate": False,
+            "stage_profiles_file": "stage_profiles.json",
+            "stage_profile_hottest_cuda": {
+                name: profile["stage_profile"]["cuda_official_scope"][
+                    "longest_stage"
+                ]
+                for name, profile in stage_profiles.items()
+            },
             "candidate_gates": candidate_gates,
             "selected_candidate_for_fresh_confirmation": selected_candidate,
             "quick_selection_metric": "point estimate versus DDTree",

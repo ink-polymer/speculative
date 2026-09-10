@@ -89,6 +89,11 @@ def compact(result: dict, *, prompt: int, repeat: int, order: int,
         "decode_tokens": result["decode_tokens"],
         "prefill_ms": result["prefill_ms"],
         "decode_ms": result["decode_ms"],
+        "official_scope_decode_ms": result["official_scope_decode_ms"],
+        "official_scope_output_tokens": result["official_scope_output_tokens"],
+        "official_scope_time_per_output_token_ms": result[
+            "official_scope_time_per_output_token_ms"
+        ],
         "e2e_ms": result["e2e_ms"],
         "target_forward_calls": result["target_forward_calls"],
         "draft_forward_calls": result["draft_forward_calls"],
@@ -126,6 +131,31 @@ def compare(rows: list[dict], candidate: str, baseline: str,
     }
 
 
+def compare_official_scope(rows: list[dict], candidate: str,
+                           baseline: str) -> dict:
+    """Match the paper script's unweighted mean-of-response-TPOT rule."""
+    candidate_tpots = [
+        row["official_scope_time_per_output_token_ms"]
+        for row in rows if row["variant"] == candidate
+    ]
+    baseline_tpots = [
+        row["official_scope_time_per_output_token_ms"]
+        for row in rows if row["variant"] == baseline
+    ]
+    candidate_mean = sum(candidate_tpots) / len(candidate_tpots)
+    baseline_mean = sum(baseline_tpots) / len(baseline_tpots)
+    return {
+        "candidate": candidate,
+        "baseline": baseline,
+        "metric": "vendored_official_unweighted_mean_response_tpot_speedup",
+        "speedup": baseline_mean / candidate_mean,
+        "candidate_mean_tpot_ms": candidate_mean,
+        "baseline_mean_tpot_ms": baseline_mean,
+        "records_per_method": len(candidate_tpots),
+        "used_for_gate": False,
+    }
+
+
 def aggregate(rows: list[dict], name: str) -> dict:
     selected = [row for row in rows if row["variant"] == name]
     rounds = [round_ for row in selected for round_ in row["rounds"]]
@@ -135,6 +165,9 @@ def aggregate(rows: list[dict], name: str) -> dict:
         "decode_tokens": decode_tokens,
         "decode_ms": decode_ms,
         "tokens_per_second": 1000 * decode_tokens / decode_ms,
+        "official_scope_mean_tpot_ms": sum(
+            row["official_scope_time_per_output_token_ms"] for row in selected
+        ) / len(selected),
         "mean_accepted_draft_tokens_per_round": sum(
             round_["accepted_draft_tokens"] for round_ in rounds
         ) / len(rounds),
@@ -298,6 +331,14 @@ def run(config_path: Path, output: Path, device: str,
             ) for baseline in ("ddtree", "dflash")
         }
         baseline_sanity = compare(rows, "ddtree", "dflash")
+        official_scope_comparisons = {
+            baseline: compare_official_scope(
+                rows, "tree_block_verification", baseline,
+            ) for baseline in ("ddtree", "dflash")
+        }
+        official_scope_baseline_sanity = compare_official_scope(
+            rows, "ddtree", "dflash",
+        )
         first = {
             (row["prompt"], row["variant"]): row["generated_sha256"]
             for row in rows if row["repeat"] == 0
@@ -311,12 +352,43 @@ def run(config_path: Path, output: Path, device: str,
             and all(value["ci95"][0] > 1 for value in comparisons.values())
             and baseline_sanity["ci95"][0] > 1
         )
+        profile_tokens = min(tokens, 64)
+        stage_profiles = {}
+        for name, variant in by_name.items():
+            allocation_gate(device)
+            profiled = engine.generate(
+                encoded[0], variant, profile_tokens, stops,
+                seed=20260915, profile=True,
+            )
+            stage_profiles[name] = {
+                "generated_sha256": digest(profiled["generated_token_ids"]),
+                "generated_tokens": profiled["generated_tokens"],
+                "timing_contract": profiled["timing_contract"],
+                "stages": profiled["stages"],
+                "stage_profile": profiled["stage_profile"],
+            }
+        write_json(output / "stage_profiles.json", {
+            "primary_timing": False,
+            "diagnostic_only": True,
+            "tokens": profile_tokens,
+            "rows": stage_profiles,
+        })
         report = {
             "gate_passed": passed,
             "formal_complete": False,
             "within_method_repeat_equal": repeat_equal,
             "comparisons": comparisons,
             "baseline_sanity": baseline_sanity,
+            "official_scope_comparisons": official_scope_comparisons,
+            "official_scope_baseline_sanity": official_scope_baseline_sanity,
+            "official_scope_results_used_for_gate": False,
+            "stage_profiles_file": "stage_profiles.json",
+            "stage_profile_hottest_cuda": {
+                name: profile["stage_profile"]["cuda_official_scope"][
+                    "longest_stage"
+                ]
+                for name, profile in stage_profiles.items()
+            },
             "aggregate": {
                 name: aggregate(rows, name) for name in names
             },
