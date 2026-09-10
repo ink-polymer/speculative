@@ -225,7 +225,9 @@ class PrefixConditionalHead(nn.Module):
         q_values, candidate_ids = position_probabilities.topk(
             width, dim=-1, sorted=True,
         )
-        q_values = q_values / q_values.sum(-1, keepdim=True)
+        # Keep the actual top-R mass.  Renormalizing it to one makes every
+        # deeper prefix conditional on never leaving top-R and therefore
+        # systematically over-allocates the finite tree budget to depth.
         pool = self._sparse_probability_tree(
             candidate_ids, q_values, budget * pool_factor,
         )
@@ -235,7 +237,10 @@ class PrefixConditionalHead(nn.Module):
         candidate_keys = self.key(
             self.token_norm(candidate_embeddings.to(dtype))
         )
-        draft_values = draft_logits.gather(1, candidate_ids).to(dtype)
+        candidate_base_log = q_values.double().log()
+        tail_base_log = (1.0 - q_values.double().sum(-1)).clamp_min(
+            torch.finfo(torch.float64).tiny,
+        ).log()
         rank_by_token = [
             {token: rank for rank, token in enumerate(row)}
             for row in candidate_ids.tolist()
@@ -284,10 +289,14 @@ class PrefixConditionalHead(nn.Module):
                 self.correction_scale * corrections
                 + self.depth_bias[depth, :width][None]
             )
-            scores = draft_values[depth][None] + float(strength) * residual
-            log_probabilities = torch.log_softmax(
-                scores.double() / float(temperature), dim=-1,
+            adjusted = (
+                candidate_base_log[depth][None]
+                + float(strength) * residual.double() / float(temperature)
             )
+            denominator = torch.logaddexp(
+                tail_base_log[depth], torch.logsumexp(adjusted, dim=-1),
+            )
+            log_probabilities = adjusted - denominator[:, None]
             child_nodes, parent_nodes, parent_rows, child_ranks = [], [], [], []
             for row, parent in enumerate(parents_at_depth):
                 for child in pool_children[parent]:
@@ -371,6 +380,13 @@ class PrefixConditionalHead(nn.Module):
         values, candidate_ids = draft_logits.topk(
             width, dim=-1, sorted=True,
         )
+        full_log_probability = torch.log_softmax(
+            draft_logits.double() / float(temperature), dim=-1,
+        )
+        candidate_base_log = full_log_probability.gather(1, candidate_ids)
+        tail_base_log = (1.0 - candidate_base_log.exp().sum(-1)).clamp_min(
+            torch.finfo(torch.float64).tiny,
+        ).log()
         candidate_embeddings = F.embedding(candidate_ids, token_embeddings)
         candidate_keys = self.key(
             self.token_norm(candidate_embeddings.to(dtype))
@@ -415,10 +431,14 @@ class PrefixConditionalHead(nn.Module):
                 self.correction_scale * correction
                 + self.depth_bias[depth, :width][None]
             )
-            scores = values[depth][None].to(dtype) + float(strength) * residual
-            log_probabilities = torch.log_softmax(
-                scores.double() / float(temperature), dim=-1,
+            adjusted = (
+                candidate_base_log[depth][None]
+                + float(strength) * residual.double() / float(temperature)
             )
+            denominator = torch.logaddexp(
+                tail_base_log[depth], torch.logsumexp(adjusted, dim=-1),
+            )
+            log_probabilities = adjusted - denominator[:, None]
             cumulative = frontier_scores[:, None] + log_probabilities
             flat = cumulative.flatten()
             keep = min(budget, flat.numel())

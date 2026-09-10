@@ -12,6 +12,8 @@ candidate selection; none of these results belongs in the formal matrix.
 | Aligned 40 | larger aligned leaf prefetch | 0.8485x | [0.6754, 1.0040] | 1.3976x | reject |
 | Best static shape, L12/B45 | joint length/budget search over 18 shapes | 0.9281x | [0.8297, 0.9931] | 1.5489x | reject |
 | Tail-aware Markov B45 | parent-conditioned head trained with top-R plus exact tail KL | 0.8997x | [0.8170, 0.9784] | 1.4933x | reject |
+| Prefix head, old weights + true tail allocation | preserve actual top-R mass while building the tree | 0.8637x | [0.7293, 0.9540] | 1.4424x | reject |
+| Prefix head, coverage-KL pilot | recurrent full-prefix head retrained with top-R plus tail loss | 0.9325x | [0.8961, 0.9635] | 1.5424x | reject |
 
 The deferred-leaf candidate reduced mean Target rows per round from 46 to
 26.94, but increased mean decoding rounds from 10.33 to 11.67. On the profiled
@@ -31,6 +33,14 @@ tail event rather than renormalizing it away. It improved holdout coarse KL from
 1.2758 to 1.0599 without adding a Target or Draft forward at runtime. However,
 mean committed tokens fell from 7.00 to 6.56 and mean rounds rose from 10.33 to
 11.33, so the end-to-end candidate was rejected.
+
+The full recurrent prefix head had the same top-R renormalization flaw in both
+training and tree allocation. The corrected implementation retains actual
+candidate mass and represents the unselected vocabulary as an exit tail. A
+512-update successive-halving pilot improved holdout coverage KL from 1.6191
+to 1.4739. Nevertheless, its best end-to-end variant committed 6.91 tokens per
+round versus DDTree's 7.00 and reached only 0.9325x DDTree. It failed the 1.20x
+screen and was not expanded to the 2000-update training stage.
 
 The evidence implies that a large gain cannot honestly be claimed by changing
 only the verifier, deleting leaf rows, or statically retuning the existing

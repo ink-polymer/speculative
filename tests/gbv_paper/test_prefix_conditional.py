@@ -9,7 +9,9 @@ from gbv_experiments.prefix_conditional import (
     RankCalibratedHead,
     load_prefix_conditional_head,
 )
-from gbv_experiments.train_prefix_conditional import distillation_loss
+from gbv_experiments.train_prefix_conditional import (
+    coverage_distillation_loss, distillation_loss,
+)
 
 
 def test_remaining_kl_weights_early_prefix_errors_more():
@@ -27,6 +29,17 @@ def test_remaining_kl_weights_early_prefix_errors_more():
         distillation_loss(early_bad, teacher, "mean_kl"),
         distillation_loss(late_bad, teacher, "mean_kl"),
     )
+
+
+def test_coverage_kl_is_zero_for_unchanged_target_distribution():
+    torch.manual_seed(10)
+    logits = torch.randn(1, 3, 17)
+    candidates = logits.topk(5, dim=-1).indices
+    scores = logits.gather(2, candidates)
+    loss = coverage_distillation_loss(
+        scores, logits, logits.clone(), candidates,
+    )
+    torch.testing.assert_close(loss, torch.zeros_like(loss), atol=2e-7, rtol=0)
 
 
 def test_teacher_forcing_is_strictly_prefix_causal():
@@ -145,6 +158,24 @@ def test_rescored_tree_is_ancestry_closed_and_budgeted():
         for node, parent in enumerate(tree.parents[1:], 1)
     )
     assert len(set(zip(tree.parents[1:], tree.tokens))) == 9
+
+
+def test_zero_residual_tree_preserves_actual_topr_mass():
+    torch.manual_seed(19)
+    head = PrefixConditionalHead(10, rank=4, support_size=5, max_length=4)
+    hidden = torch.randn(1, 4, 10)
+    logits = torch.randn(4, 13)
+    embeddings = torch.randn(13, 10)
+    q = torch.softmax(logits.double() / .7, -1)
+    values, tokens = q.topk(5, dim=-1, sorted=True)
+    actual = head.build_tree(
+        hidden, logits, embeddings, q, budget=9, temperature=.7,
+    )
+    expected = head._sparse_probability_tree(tokens, values, budget=9)
+
+    assert actual.tokens == expected.tokens
+    assert actual.parents == expected.parents
+    assert actual.depths == expected.depths
 
 
 def test_conditional_beam_tree_is_ancestry_closed_and_budgeted():

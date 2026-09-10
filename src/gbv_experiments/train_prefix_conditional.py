@@ -60,9 +60,10 @@ def parser() -> argparse.ArgumentParser:
         help="Fraction of updates distilled on prefixes sampled by the head.",
     )
     result.add_argument(
-        "--objective", choices=("mean_kl", "remaining_kl"),
+        "--objective", choices=("mean_kl", "remaining_kl", "coverage_kl"),
         default="remaining_kl",
-        help="remaining_kl weights an error by the suffix it can invalidate.",
+        help=("coverage_kl additionally preserves actual top-R versus tail "
+              "mass, matching finite-tree allocation"),
     )
     result.add_argument("--seed", type=int, default=20260910)
     return result
@@ -84,6 +85,34 @@ def distillation_loss(log_scores: torch.Tensor, teacher: torch.Tensor,
     )
     weights = weights / weights.mean()
     return (per_depth * weights).mean()
+
+
+def coverage_distillation_loss(scores: torch.Tensor,
+                               draft_logits: torch.Tensor,
+                               target_logits: torch.Tensor,
+                               candidates: torch.Tensor) -> torch.Tensor:
+    """Suffix-weighted KL over top-R candidates plus one exact tail event."""
+    draft_log_probability = torch.log_softmax(draft_logits.float(), dim=-1)
+    selected_base_log = draft_log_probability.gather(2, candidates)
+    correction = scores.float() - draft_logits.float().gather(2, candidates)
+    selected_adjusted = selected_base_log + correction
+    tail_base_log = (1.0 - selected_base_log.exp().sum(-1)).clamp_min(
+        torch.finfo(torch.float32).tiny,
+    ).log()
+    normalizer = torch.logaddexp(
+        torch.logsumexp(selected_adjusted, dim=-1), tail_base_log,
+    )
+    student_log_probability = torch.cat((
+        selected_adjusted - normalizer[..., None],
+        (tail_base_log - normalizer)[..., None],
+    ), dim=-1)
+    target_probability = torch.softmax(target_logits.float(), dim=-1)
+    selected_target = target_probability.gather(2, candidates)
+    target_tail = (1.0 - selected_target.sum(-1)).clamp_min(0.0)
+    teacher = torch.cat((selected_target, target_tail[..., None]), dim=-1)
+    return distillation_loss(
+        student_log_probability, teacher, "remaining_kl",
+    )
 
 
 def main() -> None:
@@ -193,19 +222,29 @@ def main() -> None:
                 hidden, draft_logits, candidate_embedding, labels,
                 prefix_embeddings=prefix_embedding,
             )
-            with torch.no_grad():
-                teacher_selected = target_logits.gather(2, candidates).float()
-                teacher = torch.softmax(teacher_selected, dim=-1)
-                baseline = torch.log_softmax(
-                    draft_logits.gather(2, candidates).float(), dim=-1,
+            if args.objective == "coverage_kl":
+                loss = coverage_distillation_loss(
+                    scores, draft_logits, target_logits, candidates,
                 )
-                baseline_kl = distillation_loss(
-                    baseline, teacher, args.objective,
+                with torch.no_grad():
+                    baseline_kl = coverage_distillation_loss(
+                        draft_logits.gather(2, candidates), draft_logits,
+                        target_logits, candidates,
+                    )
+            else:
+                with torch.no_grad():
+                    teacher_selected = target_logits.gather(2, candidates).float()
+                    teacher = torch.softmax(teacher_selected, dim=-1)
+                    baseline = torch.log_softmax(
+                        draft_logits.gather(2, candidates).float(), dim=-1,
+                    )
+                    baseline_kl = distillation_loss(
+                        baseline, teacher, args.objective,
+                    )
+                loss = distillation_loss(
+                    torch.log_softmax(scores.float(), dim=-1), teacher,
+                    args.objective,
                 )
-            loss = distillation_loss(
-                torch.log_softmax(scores.float(), dim=-1), teacher,
-                args.objective,
-            )
             if not bool(torch.isfinite(loss)):
                 raise FloatingPointError("Nonfinite prefix-head loss")
             loss.backward()
@@ -238,18 +277,27 @@ def main() -> None:
                 hidden, draft_logits, candidate_embedding, labels,
                 prefix_embeddings=prefix_embedding,
             )
-            teacher = torch.softmax(
-                target_logits.gather(2, candidates).float(), dim=-1,
-            )
-            holdout_loss += float(distillation_loss(
-                torch.log_softmax(scores.float(), dim=-1), teacher,
-                args.objective,
-            ))
-            holdout_baseline += float(distillation_loss(
-                torch.log_softmax(
-                    draft_logits.gather(2, candidates).float(), dim=-1,
-                ), teacher, args.objective,
-            ))
+            if args.objective == "coverage_kl":
+                holdout_loss += float(coverage_distillation_loss(
+                    scores, draft_logits, target_logits, candidates,
+                ))
+                holdout_baseline += float(coverage_distillation_loss(
+                    draft_logits.gather(2, candidates), draft_logits,
+                    target_logits, candidates,
+                ))
+            else:
+                teacher = torch.softmax(
+                    target_logits.gather(2, candidates).float(), dim=-1,
+                )
+                holdout_loss += float(distillation_loss(
+                    torch.log_softmax(scores.float(), dim=-1), teacher,
+                    args.objective,
+                ))
+                holdout_baseline += float(distillation_loss(
+                    torch.log_softmax(
+                        draft_logits.gather(2, candidates).float(), dim=-1,
+                    ), teacher, args.objective,
+                ))
             holdout_updates += 1
     if holdout_updates < 1:
         raise RuntimeError("No prefix-head holdout examples")

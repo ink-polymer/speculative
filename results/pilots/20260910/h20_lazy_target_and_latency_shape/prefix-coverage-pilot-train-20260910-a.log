@@ -1,0 +1,53 @@
+`torch_dtype` is deprecated! Use `dtype` instead!
+Loading checkpoint shards:   0%|                         | 0/3 [00:00<?, ?it/s]Loading checkpoint shards: 100%|█████████████████| 3/3 [00:00<00:00, 83.62it/s]
+`torch_dtype` is deprecated! Use `dtype` instead!
+epoch=1/2 step=20/256 updates=20 mean_kl=1.358843 baseline_kl=1.374309
+epoch=1/2 step=40/256 updates=40 mean_kl=1.407653 baseline_kl=1.427147
+epoch=1/2 step=60/256 updates=60 mean_kl=1.548201 baseline_kl=1.544849
+epoch=1/2 step=80/256 updates=80 mean_kl=1.628029 baseline_kl=1.621209
+epoch=1/2 step=100/256 updates=100 mean_kl=1.550468 baseline_kl=1.542955
+epoch=1/2 step=120/256 updates=120 mean_kl=1.521155 baseline_kl=1.518808
+epoch=1/2 step=140/256 updates=140 mean_kl=1.521432 baseline_kl=1.518703
+epoch=1/2 step=160/256 updates=160 mean_kl=1.541677 baseline_kl=1.542366
+epoch=1/2 step=180/256 updates=180 mean_kl=1.535854 baseline_kl=1.542422
+epoch=1/2 step=200/256 updates=200 mean_kl=1.506182 baseline_kl=1.522398
+epoch=1/2 step=220/256 updates=220 mean_kl=1.492972 baseline_kl=1.508371
+epoch=1/2 step=240/256 updates=240 mean_kl=1.478652 baseline_kl=1.499958
+epoch=2/2 step=20/256 updates=276 mean_kl=1.464912 baseline_kl=1.495472
+epoch=2/2 step=40/256 updates=296 mean_kl=1.442342 baseline_kl=1.477463
+epoch=2/2 step=60/256 updates=316 mean_kl=1.438492 baseline_kl=1.478740
+epoch=2/2 step=80/256 updates=336 mean_kl=1.466504 baseline_kl=1.512074
+epoch=2/2 step=100/256 updates=356 mean_kl=1.460227 baseline_kl=1.511490
+epoch=2/2 step=120/256 updates=376 mean_kl=1.472634 baseline_kl=1.527289
+epoch=2/2 step=140/256 updates=396 mean_kl=1.466819 baseline_kl=1.522824
+epoch=2/2 step=160/256 updates=416 mean_kl=1.472297 baseline_kl=1.529128
+epoch=2/2 step=180/256 updates=436 mean_kl=1.472913 baseline_kl=1.530975
+epoch=2/2 step=200/256 updates=456 mean_kl=1.455848 baseline_kl=1.517636
+epoch=2/2 step=220/256 updates=476 mean_kl=1.458771 baseline_kl=1.523638
+epoch=2/2 step=240/256 updates=496 mean_kl=1.468182 baseline_kl=1.532522
+{
+  "saved": "/root/autodl-tmp/outputs/prefix-coverage-pilot-r128-e2-20260910-a.pt",
+  "architecture": "prefix_conditional_topr_v2_split_embeddings",
+  "hidden_size": 2560,
+  "rank": 128,
+  "support_size": 32,
+  "max_length": 15,
+  "updates": 512,
+  "epochs": 2,
+  "learning_rate": 0.0008,
+  "objective": "coverage_kl",
+  "rollout_probability": 0.5,
+  "max_context": 512,
+  "seed": 20260910,
+  "training_examples": 256,
+  "holdout_examples": 64,
+  "training_sha256": "66a1a2cfdb5713744886256d9ba073f100be97f5e3c02b13d2ee1f1701b454f5",
+  "target": "Qwen/Qwen3-4B",
+  "target_revision": "1cfa9a7208912126459214e8b04321603b3df60c",
+  "draft": "z-lab/Qwen3-4B-DFlash-b16",
+  "draft_revision": "b74e3a329c4d963783143b1e970d95b002be72bd",
+  "final_train_kl": 1.4595511657739433,
+  "baseline_train_kl": 1.5248156906902661,
+  "holdout_kl": 1.473915360659248,
+  "baseline_holdout_kl": 1.6191339626025183
+}
