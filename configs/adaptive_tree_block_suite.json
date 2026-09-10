@@ -8,7 +8,7 @@
     "greedy_audit_policy": "record-bf16-mismatches",
     "method_order_policy": "balanced-rotation",
     "primary_method": "adaptive_b128",
-    "method_schema_version": 3
+    "method_schema_version": 4
   },
   "positive_temperature": {
     "temperatures": [1.0],

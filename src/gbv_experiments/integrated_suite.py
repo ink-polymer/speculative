@@ -36,7 +36,7 @@ SAMPLING_METHODS = ("target", "dflash", "ddtree")
 TREE_BLOCK_STATUS = "deferred_not_run"
 FORMAL_MODEL_IDS = ("qwen3_4b", "qwen3_8b")
 ADAPTIVE_PRIMARY_METHOD = "adaptive_b128"
-ADAPTIVE_METHOD_SCHEMA_VERSION = 3
+ADAPTIVE_METHOD_SCHEMA_VERSION = 4
 T1_DATASET_COUNTS = {
     "gsm8k":128, "math500":128, "aime24":30, "aime25":30,
     "humaneval":164, "mbpp_sanitized":128, "livecodebench":128,
@@ -918,7 +918,7 @@ def load_integrated_suite(path: Path, model_ids=None) -> dict:
             or adaptive_spec["greedy_audit_policy"] != "record-bf16-mismatches"
             or adaptive_spec["method_order_policy"] != "balanced-rotation"):
         raise ValueError(
-            "Integrated AdaptiveTree requires dynamic adaptive_b128, method schema v3, "
+            "Integrated AdaptiveTree requires dynamic adaptive_b128, method schema v4, "
             "BF16 divergence recording, and balanced order"
         )
     sampling_spec = spec["positive_temperature"]

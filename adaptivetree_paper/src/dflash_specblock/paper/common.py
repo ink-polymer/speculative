@@ -13,7 +13,7 @@ ORIGINAL_COMMIT = "9dd67698ad828b8c3fca8659e3a388f0b2dfbdf7"
 # local legacy harness continue to reproduce the original B<=128 controller.
 VARIANTS = ("adaptive", "no_acceptance_calibration", "no_latency", "no_exploration", "frozen_after_warmup")
 
-# Canonical names for method-schema v3 runs.  The corrected dynamic B<=128
+# Canonical names for method-schema v4 runs.  The guarded raw-prefix B<=128
 # controller is the formal primary.  B<=256 is retained only as an explicitly
 # named budget-extension ablation; the historical method is never silently
 # reported under the primary name.

@@ -95,8 +95,8 @@ def audit(matrix_path: Path) -> dict:
                 matrix.get("adaptive_t0", {}).get("config"),
                 "formal matrix and integrated suite select different T=0 configs")
         require(suite.get("adaptive", {}).get("primary_method") == "adaptive_b128"
-                and suite.get("adaptive", {}).get("method_schema_version") == 3,
-                "integrated suite must register dynamic adaptive_b128 under method schema v3")
+                and suite.get("adaptive", {}).get("method_schema_version") == 4,
+                "integrated suite must register dynamic adaptive_b128 under method schema v4")
         require(suite.get("positive_temperature") == {
             "temperatures":[1.0], "methods":["target", "dflash", "ddtree"],
             "length":15, "tree_budget":45, "probability_dtype":"float64",
@@ -156,8 +156,8 @@ def audit(matrix_path: Path) -> dict:
                 "underlying T=0 config does not use all canonical AdaptiveTree keys")
         require(cfg.get("version") == 7
                 and cfg.get("primary_adaptive_method") == "adaptive_b128"
-                and cfg.get("method_schema_version") == 3,
-                "underlying T=0 config must register dynamic B128 schema v3")
+                and cfg.get("method_schema_version") == 4,
+                "underlying T=0 config must register dynamic B128 schema v4")
         require(cfg.get("adaptive", {}).get("budget_candidates") == [30, 45, 60, 80, 100, 128],
                 "dynamic B128 primary must use the original six candidates")
         selected_pairs = [cfg.get("models", [])[m["adaptive_model_index"]] for m in matrix.get("models", [])

@@ -47,7 +47,7 @@ bash scripts/run_integrated_fresh_server.sh plan
 ## 旧协议为何归档
 
 旧方案曾把 B256 方法占用含糊的 `adaptive` 名称，也曾把“原版 adaptive”描述为最大
-128 节点、六候选预算、每 64 次周期探索。schema v3 中主方法明确为动态
+128 节点、六候选预算、每 64 次周期探索。schema v4 中主方法明确为 guarded raw-prefix 动态
 `adaptive_b128`，B256 明确为 `adaptive_b256`，原版则仅是 `adaptive_legacy` 历史对照。
 
 旧 `run_paper_t0_full.sh`、`run_paper_t0_qwen3_8b.sh`、历史数据目录和历史结果目录仍可用于
