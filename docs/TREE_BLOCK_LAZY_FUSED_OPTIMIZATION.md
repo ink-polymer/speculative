@@ -42,6 +42,20 @@ python scripts/benchmark_lazy_softmax_fused_scan.py \
   --output /fresh/path/qwen3-4b-lazy-fused-dev
 ```
 
+Before that full development gate, a cheap implementation screen may use:
+
+```bash
+python scripts/benchmark_lazy_softmax_fused_scan.py \
+  --config configs/adaptive_block_qwen3_4b.json \
+  --output /fresh/path/qwen3-4b-lazy-fused-quick \
+  --prompt-count 3 --tokens 64 --repeats 5
+```
+
+The quick screen ranks the two candidates by their point-estimate speedup over
+DDTree and records `quick_selected_candidate`.  This only selects which
+implementation receives the larger development run; its three-prompt estimate
+is not a confidence-qualified result and cannot be used as formal evidence.
+
 The script uses synthetic development prompts, balanced five-method order, and
 within-method timing repeats.  It compares official DFlash, DDTree, the frozen
 fused scan, and both lazy-fused candidates.  An eligible candidate must satisfy:

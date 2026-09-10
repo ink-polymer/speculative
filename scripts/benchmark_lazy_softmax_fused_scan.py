@@ -150,9 +150,15 @@ def aggregate(rows: list[dict], name: str) -> dict:
 
 @torch.inference_mode()
 def run(config: Path, output: Path, device: str, tokens: int,
-        repeats: int) -> dict:
+        repeats: int, prompt_count: int | None = None) -> dict:
     if not 64 <= tokens <= 256 or repeats < 5 or repeats % 5:
         raise ValueError("tokens must be 64..256; repeats must be a multiple of five")
+    prompt_count = len(DEVELOPMENT_PROMPTS) if prompt_count is None else prompt_count
+    if not 1 <= prompt_count <= len(DEVELOPMENT_PROMPTS):
+        raise ValueError(
+            f"prompt-count must be in 1..{len(DEVELOPMENT_PROMPTS)}"
+        )
+    selected_prompts = DEVELOPMENT_PROMPTS[:prompt_count]
     cfg = load_config(config)
     expected_precision = {
         "dtype": "bfloat16", "target_attention": "sdpa",
@@ -191,12 +197,13 @@ def run(config: Path, output: Path, device: str, tokens: int,
             "temperature": 1.0,
             "tokens": tokens,
             "repeats": repeats,
+            "prompt_count": prompt_count,
             "variants": [value.to_dict() for value in declared],
             "official_precision": actual_precision,
             "fairness": fairness,
             "dflash_fairness": dflash_fairness,
             "prompt_policy": "synthetic development prompts; never formal or held out",
-            "prompt_sha256": [digest(prompt) for prompt in DEVELOPMENT_PROMPTS],
+            "prompt_sha256": [digest(prompt) for prompt in selected_prompts],
             "success_rule": (
                 "an eligible candidate must have DDTree CI low > 1.03, fused-scan "
                 "CI low > 1.01, DFlash CI low > 1, and fewer probability rows; "
@@ -219,7 +226,7 @@ def run(config: Path, output: Path, device: str, tokens: int,
         encoded = [encode_messages(
             tokenizer, [{"role": "user", "content": prompt}],
             cfg["model"], device,
-        ) for prompt in DEVELOPMENT_PROMPTS]
+        ) for prompt in selected_prompts]
         manifest["runtime"] = {
             "gpu": torch.cuda.get_device_name(device),
             "telemetry_start": telemetry(device),
@@ -310,6 +317,11 @@ def run(config: Path, output: Path, device: str, tokens: int,
             key=lambda name: comparisons[candidate_specs[name][0]]["ci95"][0],
             default=None,
         )
+        quick_ranking = sorted(
+            candidate_specs,
+            key=lambda name: comparisons[candidate_specs[name][0]]["speedup"],
+            reverse=True,
+        )
         report = {
             "gate_passed": bool(
                 repeat_equal
@@ -321,6 +333,10 @@ def run(config: Path, output: Path, device: str, tokens: int,
             "comparisons": comparisons,
             "candidate_gates": candidate_gates,
             "selected_candidate_for_fresh_confirmation": selected_candidate,
+            "quick_selection_metric": "point estimate versus DDTree",
+            "quick_candidate_ranking": quick_ranking,
+            "quick_selected_candidate": quick_ranking[0],
+            "quick_selection_is_formal_evidence": False,
             "aggregate": aggregates,
             "telemetry_end": telemetry(device),
             "next_step": "fresh disjoint confirmation run only if this gate passes",
@@ -337,9 +353,12 @@ def main() -> None:
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--tokens", type=int, default=128)
     parser.add_argument("--repeats", type=int, default=5)
+    parser.add_argument(
+        "--prompt-count", type=int, default=len(DEVELOPMENT_PROMPTS),
+    )
     args = parser.parse_args()
     run(args.config.resolve(), args.output.resolve(), args.device,
-        args.tokens, args.repeats)
+        args.tokens, args.repeats, args.prompt_count)
 
 
 if __name__ == "__main__":
