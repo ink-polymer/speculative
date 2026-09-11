@@ -88,6 +88,16 @@ def declared_variants(spurs: tuple[int, ...],
         *[
             replace(
                 base,
+                name=f"prefix_rescored_fused_p{pool}_x{strength:g}",
+                method="prefix_rescored_tree_fused_scan",
+                prefix_strength=strength, prefix_pool_factor=pool,
+                diffusion_support_size=max(supports),
+            )
+            for pool in (2, 6, 12) for strength in strengths
+        ],
+        *[
+            replace(
+                base,
                 name=f"prefix_hybrid_c{core}_p{pool}_x{strength:g}",
                 method="prefix_hybrid_tree", prefix_strength=strength,
                 prefix_pool_factor=pool, prefix_core_budget=core,

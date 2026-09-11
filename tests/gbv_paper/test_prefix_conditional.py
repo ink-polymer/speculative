@@ -349,7 +349,8 @@ def test_embedded_prefix_proposal_preserves_the_exact_ddtree_nodes():
 @pytest.mark.parametrize("method", [
     "prefix_core_spur_bv", "prefix_core_spur_bv_lazy",
     "prefix_core_spur_tree",
-    "prefix_sampled_spur_tree", "prefix_rescored_tree", "prefix_beam_tree",
+    "prefix_sampled_spur_tree", "prefix_rescored_tree",
+    "prefix_rescored_tree_fused_scan", "prefix_beam_tree",
 ])
 @pytest.mark.parametrize("temperature", [.3, 1.])
 def test_prefix_core_spur_engine_uses_one_draft_and_target_forward(
@@ -379,7 +380,10 @@ def test_prefix_core_spur_engine_uses_one_draft_and_target_forward(
             round_["prefix_conditioned_proposal"]
             and round_["tree_nodes"] <= 9
             and round_["core_spur_length"] == (
-                None if method in {"prefix_rescored_tree", "prefix_beam_tree"}
+                None if method in {
+                    "prefix_rescored_tree", "prefix_rescored_tree_fused_scan",
+                    "prefix_beam_tree",
+                }
                 else 2
             )
             and round_["joint_block_verification"] == (

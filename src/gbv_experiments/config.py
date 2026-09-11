@@ -30,7 +30,8 @@ PREFIX_CORE_SPUR_METHODS = frozenset({
     "prefix_sampled_spur_tree",
 })
 PREFIX_RESCORED_TREE_METHODS = frozenset({
-    "prefix_rescored_tree", "prefix_hybrid_tree", "prefix_beam_tree",
+    "prefix_rescored_tree", "prefix_rescored_tree_fused_scan",
+    "prefix_hybrid_tree", "prefix_beam_tree",
 })
 PREFIX_TREE_METHODS = PREFIX_CORE_SPUR_METHODS | PREFIX_RESCORED_TREE_METHODS
 

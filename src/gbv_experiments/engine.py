@@ -653,7 +653,9 @@ class Engine:
                         self.target.get_output_embeddings().weight,
                         **({"position_probabilities": q}
                            if variant.method in {
-                               "prefix_rescored_tree", "prefix_hybrid_tree",
+                               "prefix_rescored_tree",
+                               "prefix_rescored_tree_fused_scan",
+                               "prefix_hybrid_tree",
                            } else {}),
                         budget=variant.tree_budget,
                         temperature=draft_temp,
@@ -663,7 +665,10 @@ class Engine:
                         support_size=variant.diffusion_support_size,
                         strength=variant.prefix_strength,
                         **({"pool_factor": variant.prefix_pool_factor}
-                           if variant.method == "prefix_rescored_tree" else {}),
+                           if variant.method in {
+                               "prefix_rescored_tree",
+                               "prefix_rescored_tree_fused_scan",
+                           } else {}),
                         **({"pool_factor": variant.prefix_pool_factor,
                             "core_budget": variant.prefix_core_budget}
                            if variant.method == "prefix_hybrid_tree" else {}),
@@ -985,6 +990,27 @@ class Engine:
                                    else "internal"),
                     )
                     accepted = len(nodes)
+                elif variant.method == "prefix_rescored_tree_fused_scan":
+                    # The scan kernel is CUDA-only.  Keep CPU reference tests
+                    # exact by falling back to the batched verifier; production
+                    # GPU benchmarks still exercise the fused implementation.
+                    verifier = (
+                        tree_verify_ancestral_fused_scan
+                        if all_p.is_cuda
+                        else tree_verify_ancestral_batched
+                    )
+                    generator_before = (
+                        self._runtime_generator_identity(generator)
+                        if verifier_observer is not None and not verifier_observed
+                        else None
+                    )
+                    nodes, tokens, bonus = verifier(
+                        tree.parents, tree.tokens, all_p,
+                        generator, validate=False,
+                    )
+                    accepted = len(nodes)
+                    if generator_before is not None:
+                        executed_verifier = (verifier, generator_before)
                 elif variant.method in FUSED_TREE_METHODS:
                     verifier = {
                         "ddtree_fused": tree_verify_ancestral_fused,
