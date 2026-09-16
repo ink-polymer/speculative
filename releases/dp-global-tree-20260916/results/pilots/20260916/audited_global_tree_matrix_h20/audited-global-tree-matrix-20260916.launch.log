@@ -1,0 +1,5 @@
+start qwen3_4b
+complete qwen3_4b
+start qwen3_8b
+complete qwen3_8b
+audited matrix complete

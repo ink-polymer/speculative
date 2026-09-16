@@ -1,0 +1,458 @@
+{
+  "model": {
+    "target": "Qwen/Qwen3-8B",
+    "target_revision": "b968826d9c46dd6066d109eabc6255188de91218",
+    "draft": "z-lab/Qwen3-8B-DFlash-b16",
+    "draft_revision": "9b41424b7109f9c5413454f481b09a82b85333f4",
+    "dtype": "bfloat16",
+    "target_attention": "sdpa",
+    "draft_attention": "sdpa",
+    "enable_thinking": false,
+    "allow_tf32": false
+  },
+  "scope": "selected first divergences, teacher-forced identical prefix KV; not actual-history certification",
+  "cases": [
+    {
+      "identity": {
+        "dataset": "gsm8k",
+        "source_id": "264",
+        "prompt_sha256": "1ad102b2a6887ea979f0027a88dd4b70fcf997e5753e25ea1d544cd6b1c0bc44",
+        "prompt_tokens": 64
+      },
+      "concurrency": 1,
+      "position": 24,
+      "actual_ours_token": 34,
+      "actual_batched_ar_token": 1654,
+      "prefix_kv_byte_identical": true,
+      "forwards": {
+        "causal_root1": {
+          "argmax": 34,
+          "top_tokens": [
+            1654,
+            34,
+            3830,
+            22043,
+            2132
+          ],
+          "top_logits": [
+            39.5,
+            39.5,
+            32.75,
+            32.5,
+            32.5
+          ],
+          "top_margin": 0.0
+        },
+        "masked_tree1": {
+          "argmax": 1654,
+          "top_tokens": [
+            1654,
+            34,
+            3830,
+            22043,
+            2132
+          ],
+          "top_logits": [
+            39.75,
+            39.5,
+            33.0,
+            32.75,
+            32.75
+          ],
+          "top_margin": 0.25,
+          "max_absolute_error_vs_causal_root1": 0.375
+        },
+        "masked_tree12": {
+          "argmax": 34,
+          "top_tokens": [
+            1654,
+            34,
+            3830,
+            22043,
+            2132
+          ],
+          "top_logits": [
+            39.75,
+            39.75,
+            33.0,
+            32.75,
+            32.75
+          ],
+          "top_margin": 0.0,
+          "max_absolute_error_vs_causal_root1": 0.375
+        },
+        "masked_tree24": {
+          "argmax": 34,
+          "top_tokens": [
+            1654,
+            34,
+            3830,
+            22043,
+            2132
+          ],
+          "top_logits": [
+            39.5,
+            39.5,
+            32.75,
+            32.5,
+            32.5
+          ],
+          "top_margin": 0.0,
+          "max_absolute_error_vs_causal_root1": 0.3125
+        },
+        "masked_tree46": {
+          "argmax": 34,
+          "top_tokens": [
+            1654,
+            34,
+            2132,
+            3830,
+            22043
+          ],
+          "top_logits": [
+            39.75,
+            39.75,
+            33.0,
+            33.0,
+            32.75
+          ],
+          "top_margin": 0.0,
+          "max_absolute_error_vs_causal_root1": 0.5
+        }
+      },
+      "real_gpu_kv_compaction_checks": [
+        {
+          "query_rows": 1,
+          "kept_rows": [
+            0
+          ],
+          "all_layers_kv_byte_equal": true
+        },
+        {
+          "query_rows": 12,
+          "kept_rows": [
+            0,
+            1,
+            2,
+            3,
+            5
+          ],
+          "all_layers_kv_byte_equal": true
+        },
+        {
+          "query_rows": 24,
+          "kept_rows": [
+            0,
+            1,
+            2,
+            3,
+            5
+          ],
+          "all_layers_kv_byte_equal": true
+        },
+        {
+          "query_rows": 46,
+          "kept_rows": [
+            0,
+            1,
+            2,
+            3,
+            5
+          ],
+          "all_layers_kv_byte_equal": true
+        }
+      ],
+      "observed_query_mask_root_flip": true
+    },
+    {
+      "identity": {
+        "dataset": "gsm8k",
+        "source_id": "586",
+        "prompt_sha256": "b5a57631da29ac425fe738e000a3896c2420bb7dd12c300fb258f6979ab32536",
+        "prompt_tokens": 96
+      },
+      "concurrency": 1,
+      "position": 8,
+      "actual_ours_token": 382,
+      "actual_batched_ar_token": 1447,
+      "prefix_kv_byte_identical": true,
+      "forwards": {
+        "causal_root1": {
+          "argmax": 382,
+          "top_tokens": [
+            382,
+            1447,
+            311,
+            323,
+            13
+          ],
+          "top_logits": [
+            36.0,
+            36.0,
+            34.75,
+            27.0,
+            22.375
+          ],
+          "top_margin": 0.0
+        },
+        "masked_tree1": {
+          "argmax": 382,
+          "top_tokens": [
+            382,
+            1447,
+            311,
+            323,
+            13
+          ],
+          "top_logits": [
+            36.0,
+            36.0,
+            34.75,
+            27.0,
+            22.375
+          ],
+          "top_margin": 0.0,
+          "max_absolute_error_vs_causal_root1": 0.1875
+        },
+        "masked_tree12": {
+          "argmax": 382,
+          "top_tokens": [
+            382,
+            1447,
+            311,
+            323,
+            13
+          ],
+          "top_logits": [
+            36.0,
+            36.0,
+            35.0,
+            27.125,
+            22.5
+          ],
+          "top_margin": 0.0,
+          "max_absolute_error_vs_causal_root1": 0.25
+        },
+        "masked_tree24": {
+          "argmax": 382,
+          "top_tokens": [
+            382,
+            1447,
+            311,
+            323,
+            13
+          ],
+          "top_logits": [
+            36.0,
+            36.0,
+            34.75,
+            27.0,
+            22.375
+          ],
+          "top_margin": 0.0,
+          "max_absolute_error_vs_causal_root1": 0.1875
+        },
+        "masked_tree46": {
+          "argmax": 1447,
+          "top_tokens": [
+            1447,
+            382,
+            311,
+            323,
+            13
+          ],
+          "top_logits": [
+            36.0,
+            35.75,
+            34.75,
+            27.0,
+            22.25
+          ],
+          "top_margin": 0.25,
+          "max_absolute_error_vs_causal_root1": 0.25
+        }
+      },
+      "real_gpu_kv_compaction_checks": [
+        {
+          "query_rows": 1,
+          "kept_rows": [
+            0
+          ],
+          "all_layers_kv_byte_equal": true
+        },
+        {
+          "query_rows": 12,
+          "kept_rows": [
+            0,
+            1,
+            7
+          ],
+          "all_layers_kv_byte_equal": true
+        },
+        {
+          "query_rows": 24,
+          "kept_rows": [
+            0,
+            1,
+            7
+          ],
+          "all_layers_kv_byte_equal": true
+        },
+        {
+          "query_rows": 46,
+          "kept_rows": [
+            0,
+            4,
+            16
+          ],
+          "all_layers_kv_byte_equal": true
+        }
+      ],
+      "observed_query_mask_root_flip": true
+    },
+    {
+      "identity": {
+        "dataset": "gsm8k",
+        "source_id": "1010",
+        "prompt_sha256": "77fe269430979d7636382c9b62abf04ce6cce58f0e1182cf2b95014b7c297c53",
+        "prompt_tokens": 91
+      },
+      "concurrency": 8,
+      "position": 52,
+      "actual_ours_token": 92,
+      "actual_batched_ar_token": 594,
+      "prefix_kv_byte_identical": true,
+      "forwards": {
+        "causal_root1": {
+          "argmax": 594,
+          "top_tokens": [
+            594,
+            92,
+            25,
+            748,
+            49955
+          ],
+          "top_logits": [
+            37.5,
+            37.25,
+            33.5,
+            31.375,
+            29.0
+          ],
+          "top_margin": 0.25
+        },
+        "masked_tree1": {
+          "argmax": 92,
+          "top_tokens": [
+            92,
+            594,
+            25,
+            748,
+            49955
+          ],
+          "top_logits": [
+            37.5,
+            37.5,
+            33.5,
+            31.375,
+            28.875
+          ],
+          "top_margin": 0.0,
+          "max_absolute_error_vs_causal_root1": 0.25
+        },
+        "masked_tree12": {
+          "argmax": 92,
+          "top_tokens": [
+            92,
+            594,
+            25,
+            748,
+            49955
+          ],
+          "top_logits": [
+            37.5,
+            37.5,
+            33.75,
+            31.5,
+            29.0
+          ],
+          "top_margin": 0.0,
+          "max_absolute_error_vs_causal_root1": 0.25
+        },
+        "masked_tree24": {
+          "argmax": 92,
+          "top_tokens": [
+            92,
+            594,
+            25,
+            748,
+            49955
+          ],
+          "top_logits": [
+            37.5,
+            37.5,
+            33.5,
+            31.375,
+            29.0
+          ],
+          "top_margin": 0.0,
+          "max_absolute_error_vs_causal_root1": 0.25
+        },
+        "masked_tree46": {
+          "argmax": 92,
+          "top_tokens": [
+            92,
+            594,
+            25,
+            748,
+            49955
+          ],
+          "top_logits": [
+            37.5,
+            37.5,
+            33.75,
+            31.375,
+            28.875
+          ],
+          "top_margin": 0.0,
+          "max_absolute_error_vs_causal_root1": 0.25
+        }
+      },
+      "real_gpu_kv_compaction_checks": [
+        {
+          "query_rows": 1,
+          "kept_rows": [
+            0
+          ],
+          "all_layers_kv_byte_equal": true
+        },
+        {
+          "query_rows": 12,
+          "kept_rows": [
+            0
+          ],
+          "all_layers_kv_byte_equal": true
+        },
+        {
+          "query_rows": 24,
+          "kept_rows": [
+            0,
+            23
+          ],
+          "all_layers_kv_byte_equal": true
+        },
+        {
+          "query_rows": 46,
+          "kept_rows": [
+            0,
+            23
+          ],
+          "all_layers_kv_byte_equal": true
+        }
+      ],
+      "observed_query_mask_root_flip": true
+    }
+  ],
+  "task_quality_evaluated": false,
+  "warning": "A flip isolates finite-precision query/mask/forward effects in this context; no flip is inconclusive about the original mismatch."
+}

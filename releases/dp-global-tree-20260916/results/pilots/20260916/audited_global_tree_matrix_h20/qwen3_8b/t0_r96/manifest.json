@@ -1,0 +1,307 @@
+{
+  "kind": "matched_reference_global_tree_audit",
+  "model": {
+    "target": "Qwen/Qwen3-8B",
+    "target_revision": "b968826d9c46dd6066d109eabc6255188de91218",
+    "draft": "z-lab/Qwen3-8B-DFlash-b16",
+    "draft_revision": "9b41424b7109f9c5413454f481b09a82b85333f4",
+    "dtype": "bfloat16",
+    "target_attention": "sdpa",
+    "draft_attention": "sdpa",
+    "enable_thinking": false,
+    "allow_tf32": false
+  },
+  "temperature": 0,
+  "row_budget": 96,
+  "concurrencies": [
+    1,
+    4,
+    8,
+    16,
+    32
+  ],
+  "seeds": [
+    17,
+    29
+  ],
+  "repeats": 3,
+  "max_new_tokens": 64,
+  "dataset": "gsm8k",
+  "c1_independent_prompts": 4,
+  "actual_verifier": "greedy",
+  "verifier_entry_point": "tree_verify_ancestral_batched via common ancestral_reference branch",
+  "proposal_probability_dtype": "float32",
+  "target_probability_dtype": "float32",
+  "actual_draft_kv_cache": false,
+  "persistent_request_target_cache": true,
+  "layout": "packed_sequence",
+  "timing": "end_to_end_including_prefill_first_draft_and_sync",
+  "calibration": {
+    "curve": [
+      [
+        12,
+        27.019452303647995
+      ],
+      [
+        46,
+        27.019452303647995
+      ],
+      [
+        96,
+        27.019452303647995
+      ],
+      [
+        193,
+        43.492525815963745
+      ],
+      [
+        384,
+        75.38819313049316
+      ]
+    ],
+    "samples_ms": {
+      "12": [
+        27.92898193001747,
+        26.821374893188477,
+        26.452399790287018,
+        27.155626565217972,
+        28.01975980401039,
+        26.25288814306259,
+        26.91103145480156,
+        26.562385261058807,
+        29.685884714126587,
+        27.12787315249443
+      ],
+      "46": [
+        25.434263050556183,
+        25.97690373659134,
+        25.40024369955063,
+        25.39493516087532,
+        25.627929717302322,
+        25.423042476177216,
+        26.722796261310577,
+        25.81082656979561,
+        25.84046497941017,
+        25.420717895030975
+      ],
+      "96": [
+        25.284409523010254,
+        24.979356676340103,
+        25.455176830291748,
+        25.053709745407104,
+        25.252629071474075,
+        25.28316155076027,
+        25.290917605161667,
+        25.738060474395752,
+        26.087570935487747,
+        25.132350623607635
+      ],
+      "193": [
+        43.458230793476105,
+        43.52542385458946,
+        43.52685809135437,
+        43.47262904047966,
+        43.44608634710312,
+        43.491180986166,
+        43.5861200094223,
+        43.634701520204544,
+        43.47965121269226,
+        43.49387064576149
+      ],
+      "384": [
+        75.44374093413353,
+        75.30683651566505,
+        75.37336274981499,
+        75.4273310303688,
+        75.40302351117134,
+        75.34954324364662,
+        75.36427304148674,
+        75.41811838746071,
+        75.46596601605415,
+        75.35567134618759
+      ]
+    },
+    "scope": "independent synthetic 64-token prefixes, <=12-row chains; Target+head+FP32 softmax",
+    "warmup": 5,
+    "repeats": 10,
+    "warning": "row-only proxy; not a universal model for arbitrary history length/tree topology"
+  },
+  "source_hashes": {
+    "scripts/rerun_audited_global_tree_matrix_h20.py": "85b0c697b36d9eae9babaa92eaa888d2f2978bc671651f3fda66bbbb9509bc3f",
+    "src/gbv_experiments/continuous_tree_block_decode.py": "3f132a41b659d1306cbfc3fbb348c0f89284d097d69851f0f73d8a6e4518587f",
+    "src/gbv_experiments/sampling.py": "7fc043a9f8da67d5009f00be667835e97462b63fb302545bd9f8a72aba4f3c4a",
+    "src/gbv_experiments/tree.py": "0456c8675e56ac3fb06b842118dfa79faa746cb7f29dc1ec3d9c3af2243da88e",
+    "third_party/ddtree_pinned/ddtree.py": "8d0ecd9d07a7266d3825eefd176811502313a0da7cedfcdc8aec1a4971c3a99b",
+    "third_party/ddtree_pinned/dflash.py": "297e5126980ff7bad7650ce7ede9dea9b11b1b3485154ab5b9a2a3f899b33159"
+  },
+  "methods": {
+    "ddtree_full46": {
+      "variant": {
+        "name": "ddtree_full46",
+        "method": "ddtree",
+        "paths": 1,
+        "length": 15,
+        "temperature": 0,
+        "draft_temperature": 1.0,
+        "share_prefixes": true,
+        "reuse_draft_cache": false,
+        "draft_attention": "bidirectional",
+        "condition_features": "target",
+        "probability_dtype": "float32",
+        "tree_budget": 45,
+        "diffusion_support_size": 8,
+        "diffusion_spur_length": 4,
+        "prefix_strength": 1.0,
+        "prefix_pool_factor": 2,
+        "prefix_core_budget": 0,
+        "tree_proposal_temperature": null,
+        "tree_proposal_temperature_end": null,
+        "tree_proposal_temperature_schedule": null,
+        "tree_proposal_bias_path": null,
+        "tree_adaptive_confidence_threshold": null,
+        "tree_adaptive_min_budget": null,
+        "tree_spine_confidence_threshold": null,
+        "tree_depth_reward": 0.0,
+        "tree_depth_reward_schedule": null,
+        "tree_rank_caps": null,
+        "tree_online_ewma": 0.25,
+        "tree_online_clip": 1.0,
+        "tree_history_low_budget": 24,
+        "tree_history_warm_budget": 45,
+        "tree_history_threshold": 5.0,
+        "tree_history_ewma": 0.5,
+        "tree_history_low_depth": 15,
+        "tree_history_high_depth": 15
+      },
+      "decode": {
+        "row_cap": 46,
+        "verifier": "greedy",
+        "proposal_probability_dtype": "float32",
+        "reuse_request_draft_cache": false
+      }
+    },
+    "dflash_r16": {
+      "variant": {
+        "name": "dflash_r16",
+        "method": "dflash",
+        "paths": 1,
+        "length": 15,
+        "temperature": 0,
+        "draft_temperature": null,
+        "share_prefixes": true,
+        "reuse_draft_cache": false,
+        "draft_attention": "bidirectional",
+        "condition_features": "target",
+        "probability_dtype": "float32",
+        "tree_budget": 45,
+        "diffusion_support_size": 8,
+        "diffusion_spur_length": 4,
+        "prefix_strength": 1.0,
+        "prefix_pool_factor": 2,
+        "prefix_core_budget": 0,
+        "tree_proposal_temperature": null,
+        "tree_proposal_temperature_end": null,
+        "tree_proposal_temperature_schedule": null,
+        "tree_proposal_bias_path": null,
+        "tree_adaptive_confidence_threshold": null,
+        "tree_adaptive_min_budget": null,
+        "tree_spine_confidence_threshold": null,
+        "tree_depth_reward": 0.0,
+        "tree_depth_reward_schedule": null,
+        "tree_rank_caps": null,
+        "tree_online_ewma": 0.25,
+        "tree_online_clip": 1.0,
+        "tree_history_low_budget": 24,
+        "tree_history_warm_budget": 45,
+        "tree_history_threshold": 5.0,
+        "tree_history_ewma": 0.5,
+        "tree_history_low_depth": 15,
+        "tree_history_high_depth": 15
+      },
+      "decode": {
+        "row_cap": 16,
+        "verifier": "greedy",
+        "proposal_probability_dtype": "float32",
+        "reuse_request_draft_cache": false
+      }
+    },
+    "ours_global_hetero_11_23_45_h20_curve384_tierfit_a8_c1_propfp32": {
+      "variant": {
+        "name": "ours_global_hetero_11_23_45_h20_curve384_tierfit_a8_c1_propfp32",
+        "method": "ddtree",
+        "paths": 1,
+        "length": 15,
+        "temperature": 0,
+        "draft_temperature": 1.0,
+        "share_prefixes": true,
+        "reuse_draft_cache": false,
+        "draft_attention": "bidirectional",
+        "condition_features": "target",
+        "probability_dtype": "float32",
+        "tree_budget": 45,
+        "diffusion_support_size": 8,
+        "diffusion_spur_length": 4,
+        "prefix_strength": 1.0,
+        "prefix_pool_factor": 2,
+        "prefix_core_budget": 0,
+        "tree_proposal_temperature": null,
+        "tree_proposal_temperature_end": null,
+        "tree_proposal_temperature_schedule": null,
+        "tree_proposal_bias_path": null,
+        "tree_adaptive_confidence_threshold": null,
+        "tree_adaptive_min_budget": null,
+        "tree_spine_confidence_threshold": null,
+        "tree_depth_reward": 0.0,
+        "tree_depth_reward_schedule": null,
+        "tree_rank_caps": null,
+        "tree_online_ewma": 0.25,
+        "tree_online_clip": 1.0,
+        "tree_history_low_budget": 24,
+        "tree_history_warm_budget": 45,
+        "tree_history_threshold": 5.0,
+        "tree_history_ewma": 0.5,
+        "tree_history_low_depth": 15,
+        "tree_history_high_depth": 15
+      },
+      "decode": {
+        "row_cap": 12,
+        "global_tree_budget_options": [
+          11,
+          23,
+          45
+        ],
+        "global_tree_row_cost_curve": [
+          [
+            12,
+            27.019452303647995
+          ],
+          [
+            46,
+            27.019452303647995
+          ],
+          [
+            96,
+            27.019452303647995
+          ],
+          [
+            193,
+            43.492525815963745
+          ],
+          [
+            384,
+            75.38819313049316
+          ]
+        ],
+        "global_tree_require_tier_fit": true,
+        "global_tree_expansion_active_limit": 8,
+        "global_tree_criticality_weight": 1.0,
+        "proposal_probability_dtype": "float32",
+        "continuation_ready_threshold": 0,
+        "verifier": "greedy",
+        "reuse_request_draft_cache": false
+      }
+    }
+  },
+  "exact_token_certified": false,
+  "task_quality_evaluated": false
+}

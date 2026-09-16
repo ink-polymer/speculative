@@ -1,0 +1,42 @@
+...........................................F............................ [ 45%]
+........................................................................ [ 90%]
+...............                                                          [100%]
+=================================== FAILURES ===================================
+_ test_fused_tree_sampler_matches_inverse_cdf_paths[tree_verify_ancestral_fused] _
+
+function = <function tree_verify_ancestral_fused at 0x7fa332e844a0>
+
+    @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA extension test")
+    @pytest.mark.parametrize("function", [tree_verify_ancestral_fused,
+                                          tree_verify_ancestral_fused_parallel])
+    def test_fused_tree_sampler_matches_inverse_cdf_paths(function):
+>       _assert_fused_tree_sampler_matches_inverse_cdf_paths(function)
+
+tests/gbv_paper/test_terminal_mass.py:64: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/gbv_paper/test_terminal_mass.py:52: in _assert_fused_tree_sampler_matches_inverse_cdf_paths
+    result = function(parents, tokens, p, second, validate=True)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/gbv_experiments/fused_tree_sampling.py:2127: in tree_verify_ancestral_fused
+    packed = load_fused_tree_sampler().fused_tree_sample_cuda(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/gbv_experiments/fused_tree_sampling.py:2067: in load_fused_tree_sampler
+    return load_inline(
+../envs/speculative/lib/python3.11/site-packages/torch/utils/cpp_extension.py:2057: in load_inline
+    return _jit_compile(
+../envs/speculative/lib/python3.11/site-packages/torch/utils/cpp_extension.py:2138: in _jit_compile
+    _write_ninja_file_and_build_library(
+../envs/speculative/lib/python3.11/site-packages/torch/utils/cpp_extension.py:2248: in _write_ninja_file_and_build_library
+    verify_ninja_availability()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def verify_ninja_availability():
+        """Raise ``RuntimeError`` if `ninja <https://ninja-build.org/>`_ build system is not available on the system, does nothing otherwise."""
+        if not is_ninja_available():
+>           raise RuntimeError("Ninja is required to load C++ extensions (pip install ninja to get it)")
+E           RuntimeError: Ninja is required to load C++ extensions (pip install ninja to get it)
+
+../envs/speculative/lib/python3.11/site-packages/torch/utils/cpp_extension.py:2309: RuntimeError
+=========================== short test summary info ============================
+FAILED tests/gbv_paper/test_terminal_mass.py::test_fused_tree_sampler_matches_inverse_cdf_paths[tree_verify_ancestral_fused]
+1 failed, 158 passed in 40.47s

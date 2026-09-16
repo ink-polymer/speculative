@@ -1,0 +1,461 @@
+{
+  "model": {
+    "target": "Qwen/Qwen3-4B",
+    "target_revision": "1cfa9a7208912126459214e8b04321603b3df60c",
+    "draft": "z-lab/Qwen3-4B-DFlash-b16",
+    "draft_revision": "b74e3a329c4d963783143b1e970d95b002be72bd",
+    "dtype": "bfloat16",
+    "target_attention": "sdpa",
+    "draft_attention": "sdpa",
+    "enable_thinking": false,
+    "allow_tf32": false
+  },
+  "scope": "selected first divergences, teacher-forced identical prefix KV; not actual-history certification",
+  "cases": [
+    {
+      "identity": {
+        "dataset": "gsm8k",
+        "source_id": "264",
+        "prompt_sha256": "1ad102b2a6887ea979f0027a88dd4b70fcf997e5753e25ea1d544cd6b1c0bc44",
+        "prompt_tokens": 64
+      },
+      "concurrency": 1,
+      "position": 51,
+      "actual_ours_token": 1184,
+      "actual_batched_ar_token": 525,
+      "prefix_kv_byte_identical": true,
+      "forwards": {
+        "causal_root1": {
+          "argmax": 1184,
+          "top_tokens": [
+            1184,
+            525,
+            1366,
+            686,
+            2299
+          ],
+          "top_logits": [
+            37.75,
+            37.5,
+            33.0,
+            30.5,
+            28.25
+          ],
+          "top_margin": 0.25
+        },
+        "masked_tree1": {
+          "argmax": 1184,
+          "top_tokens": [
+            1184,
+            525,
+            1366,
+            686,
+            2299
+          ],
+          "top_logits": [
+            38.0,
+            37.75,
+            33.0,
+            30.625,
+            28.5
+          ],
+          "top_margin": 0.25,
+          "max_absolute_error_vs_causal_root1": 0.25
+        },
+        "masked_tree12": {
+          "argmax": 1184,
+          "top_tokens": [
+            1184,
+            525,
+            1366,
+            686,
+            2299
+          ],
+          "top_logits": [
+            38.0,
+            37.75,
+            33.0,
+            30.625,
+            28.5
+          ],
+          "top_margin": 0.25,
+          "max_absolute_error_vs_causal_root1": 0.25
+        },
+        "masked_tree24": {
+          "argmax": 1184,
+          "top_tokens": [
+            1184,
+            525,
+            1366,
+            686,
+            2299
+          ],
+          "top_logits": [
+            38.0,
+            37.75,
+            33.0,
+            30.625,
+            28.5
+          ],
+          "top_margin": 0.25,
+          "max_absolute_error_vs_causal_root1": 0.25
+        },
+        "masked_tree46": {
+          "argmax": 525,
+          "top_tokens": [
+            525,
+            1184,
+            1366,
+            686,
+            2299
+          ],
+          "top_logits": [
+            37.75,
+            37.75,
+            33.0,
+            30.625,
+            28.5
+          ],
+          "top_margin": 0.0,
+          "max_absolute_error_vs_causal_root1": 0.25
+        }
+      },
+      "real_gpu_kv_compaction_checks": [
+        {
+          "query_rows": 1,
+          "kept_rows": [
+            0
+          ],
+          "all_layers_kv_byte_equal": true
+        },
+        {
+          "query_rows": 12,
+          "kept_rows": [
+            0,
+            4,
+            6,
+            7,
+            8
+          ],
+          "all_layers_kv_byte_equal": true
+        },
+        {
+          "query_rows": 24,
+          "kept_rows": [
+            0,
+            4,
+            6,
+            7,
+            8,
+            14
+          ],
+          "all_layers_kv_byte_equal": true
+        },
+        {
+          "query_rows": 46,
+          "kept_rows": [
+            0,
+            1,
+            24
+          ],
+          "all_layers_kv_byte_equal": true
+        }
+      ],
+      "observed_query_mask_root_flip": true
+    },
+    {
+      "identity": {
+        "dataset": "gsm8k",
+        "source_id": "996",
+        "prompt_sha256": "20a060b4d2736e3acd0f6cbdf3d8ba7e75a966d948c58a8f5446b2fcb9ebef70",
+        "prompt_tokens": 96
+      },
+      "concurrency": 8,
+      "position": 14,
+      "actual_ours_token": 11,
+      "actual_batched_ar_token": 97219,
+      "prefix_kv_byte_identical": true,
+      "forwards": {
+        "causal_root1": {
+          "argmax": 97219,
+          "top_tokens": [
+            97219,
+            11,
+            320,
+            334,
+            12314
+          ],
+          "top_logits": [
+            39.0,
+            38.75,
+            32.5,
+            26.875,
+            22.5
+          ],
+          "top_margin": 0.25
+        },
+        "masked_tree1": {
+          "argmax": 97219,
+          "top_tokens": [
+            97219,
+            11,
+            320,
+            334,
+            12314
+          ],
+          "top_logits": [
+            39.0,
+            38.75,
+            32.5,
+            26.875,
+            22.5
+          ],
+          "top_margin": 0.25,
+          "max_absolute_error_vs_causal_root1": 0.1875
+        },
+        "masked_tree12": {
+          "argmax": 97219,
+          "top_tokens": [
+            97219,
+            11,
+            320,
+            334,
+            12314
+          ],
+          "top_logits": [
+            39.0,
+            38.75,
+            32.5,
+            26.875,
+            22.5
+          ],
+          "top_margin": 0.25,
+          "max_absolute_error_vs_causal_root1": 0.1875
+        },
+        "masked_tree24": {
+          "argmax": 97219,
+          "top_tokens": [
+            97219,
+            11,
+            320,
+            334,
+            12314
+          ],
+          "top_logits": [
+            39.0,
+            38.75,
+            32.5,
+            26.875,
+            22.5
+          ],
+          "top_margin": 0.25,
+          "max_absolute_error_vs_causal_root1": 0.1875
+        },
+        "masked_tree46": {
+          "argmax": 11,
+          "top_tokens": [
+            11,
+            97219,
+            320,
+            334,
+            12314
+          ],
+          "top_logits": [
+            39.0,
+            39.0,
+            32.5,
+            26.875,
+            22.5
+          ],
+          "top_margin": 0.0,
+          "max_absolute_error_vs_causal_root1": 0.25
+        }
+      },
+      "real_gpu_kv_compaction_checks": [
+        {
+          "query_rows": 1,
+          "kept_rows": [
+            0
+          ],
+          "all_layers_kv_byte_equal": true
+        },
+        {
+          "query_rows": 12,
+          "kept_rows": [
+            0,
+            1,
+            2,
+            4
+          ],
+          "all_layers_kv_byte_equal": true
+        },
+        {
+          "query_rows": 24,
+          "kept_rows": [
+            0,
+            1,
+            2,
+            4,
+            16,
+            20
+          ],
+          "all_layers_kv_byte_equal": true
+        },
+        {
+          "query_rows": 46,
+          "kept_rows": [
+            0,
+            3,
+            12
+          ],
+          "all_layers_kv_byte_equal": true
+        }
+      ],
+      "observed_query_mask_root_flip": true
+    },
+    {
+      "identity": {
+        "dataset": "gsm8k",
+        "source_id": "586",
+        "prompt_sha256": "b5a57631da29ac425fe738e000a3896c2420bb7dd12c300fb258f6979ab32536",
+        "prompt_tokens": 96
+      },
+      "concurrency": 32,
+      "position": 8,
+      "actual_ours_token": 3070,
+      "actual_batched_ar_token": 47261,
+      "prefix_kv_byte_identical": true,
+      "forwards": {
+        "causal_root1": {
+          "argmax": 47261,
+          "top_tokens": [
+            47261,
+            3070,
+            1752,
+            84763,
+            9959
+          ],
+          "top_logits": [
+            37.5,
+            37.25,
+            25.125,
+            21.0,
+            21.0
+          ],
+          "top_margin": 0.25
+        },
+        "masked_tree1": {
+          "argmax": 3070,
+          "top_tokens": [
+            3070,
+            47261,
+            1752,
+            9959,
+            84763
+          ],
+          "top_logits": [
+            37.25,
+            37.25,
+            25.0,
+            21.125,
+            20.875
+          ],
+          "top_margin": 0.0,
+          "max_absolute_error_vs_causal_root1": 0.25
+        },
+        "masked_tree12": {
+          "argmax": 3070,
+          "top_tokens": [
+            3070,
+            47261,
+            1752,
+            9959,
+            84763
+          ],
+          "top_logits": [
+            37.25,
+            37.25,
+            25.0,
+            21.125,
+            20.875
+          ],
+          "top_margin": 0.0,
+          "max_absolute_error_vs_causal_root1": 0.25
+        },
+        "masked_tree24": {
+          "argmax": 3070,
+          "top_tokens": [
+            3070,
+            47261,
+            1752,
+            9959,
+            84763
+          ],
+          "top_logits": [
+            37.25,
+            37.25,
+            25.0,
+            21.125,
+            20.875
+          ],
+          "top_margin": 0.0,
+          "max_absolute_error_vs_causal_root1": 0.25
+        },
+        "masked_tree46": {
+          "argmax": 3070,
+          "top_tokens": [
+            3070,
+            47261,
+            1752,
+            9959,
+            84763
+          ],
+          "top_logits": [
+            37.25,
+            37.25,
+            25.25,
+            21.125,
+            21.0
+          ],
+          "top_margin": 0.0,
+          "max_absolute_error_vs_causal_root1": 0.25
+        }
+      },
+      "real_gpu_kv_compaction_checks": [
+        {
+          "query_rows": 1,
+          "kept_rows": [
+            0
+          ],
+          "all_layers_kv_byte_equal": true
+        },
+        {
+          "query_rows": 12,
+          "kept_rows": [
+            0
+          ],
+          "all_layers_kv_byte_equal": true
+        },
+        {
+          "query_rows": 24,
+          "kept_rows": [
+            0,
+            22
+          ],
+          "all_layers_kv_byte_equal": true
+        },
+        {
+          "query_rows": 46,
+          "kept_rows": [
+            0,
+            22
+          ],
+          "all_layers_kv_byte_equal": true
+        }
+      ],
+      "observed_query_mask_root_flip": true
+    }
+  ],
+  "task_quality_evaluated": false,
+  "warning": "A flip isolates finite-precision query/mask/forward effects in this context; no flip is inconclusive about the original mismatch."
+}

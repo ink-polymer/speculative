@@ -1,0 +1,17 @@
+{
+  "rows": [
+    12,
+    24,
+    46,
+    12
+  ],
+  "prefix_lengths": [
+    64,
+    71,
+    78,
+    85
+  ],
+  "unaffected_max_absolute_error": 0.0,
+  "poisoned_max_absolute_change": 37.697265625,
+  "passed": true
+}

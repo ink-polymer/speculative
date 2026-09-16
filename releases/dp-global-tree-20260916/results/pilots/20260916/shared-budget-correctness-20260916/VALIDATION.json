@@ -1,0 +1,267 @@
+{
+  "regression_tests_passed": 217,
+  "finite_state_law_tests_passed": 37,
+  "instrumentation_tests_passed": 21,
+  "models": {
+    "qwen3_4b": {
+      "cases": 48,
+      "configuration_cells": 30,
+      "request_executions": 384,
+      "structural_stats": {
+        "waves": 782,
+        "request_blocks": 4588,
+        "masks_checked": 4588,
+        "packed_layers_checked": 28152,
+        "compacted_request_layers_checked": 165168,
+        "feature_histories_checked": 4588,
+        "rng_probe_checks": 317,
+        "forward_prefix_layers_checked": 28152
+      },
+      "strict_t0_exact_requests": 163,
+      "strict_t0_total_requests": 192,
+      "first_divergence_same_kv_replay_recovers_canonical_argmax": 13,
+      "first_divergence_replay_still_differs_from_canonical": 16,
+      "t1_same_actual_kv_gap": {
+        "count": 144,
+        "argmax_flips": 1,
+        "max_tv": 0.06217649893903739,
+        "mean_tv": 0.0051506551308094905,
+        "max_logit_error": 0.5
+      },
+      "t1_teacher_forced_gap": {
+        "count": 144,
+        "argmax_flips": 1,
+        "max_tv": 0.06217398197483137,
+        "mean_tv": 0.0036516025261393126,
+        "max_logit_error": 0.560546875
+      },
+      "prefill_byte_equal": 384,
+      "prefill_total": 384,
+      "sampler": {
+        "passed": true,
+        "draws": 100000,
+        "frequencies": [
+          0.0,
+          0.0,
+          0.12354,
+          0.12623,
+          0.14258,
+          0.42187,
+          0.13971,
+          0.04607
+        ],
+        "expected": [
+          0.0,
+          0.0,
+          0.125,
+          0.125,
+          0.140625,
+          0.421875,
+          0.140625,
+          0.046875
+        ],
+        "maximum_binomial_z": 1.7783782420276095,
+        "scope": "fixed seven-row binary tree; sampler smoke, not real-model sequence certification"
+      },
+      "production_sha256": "3f132a41b659d1306cbfc3fbb348c0f89284d097d69851f0f73d8a6e4518587f"
+    },
+    "qwen3_8b": {
+      "cases": 48,
+      "configuration_cells": 30,
+      "request_executions": 384,
+      "structural_stats": {
+        "waves": 756,
+        "request_blocks": 4705,
+        "masks_checked": 4705,
+        "packed_layers_checked": 27216,
+        "compacted_request_layers_checked": 169380,
+        "feature_histories_checked": 4705,
+        "rng_probe_checks": 341,
+        "forward_prefix_layers_checked": 27216
+      },
+      "strict_t0_exact_requests": 139,
+      "strict_t0_total_requests": 192,
+      "first_divergence_same_kv_replay_recovers_canonical_argmax": 39,
+      "first_divergence_replay_still_differs_from_canonical": 14,
+      "t1_same_actual_kv_gap": {
+        "count": 144,
+        "argmax_flips": 0,
+        "max_tv": 0.0621702080367394,
+        "mean_tv": 0.005531063902798818,
+        "max_logit_error": 0.5
+      },
+      "t1_teacher_forced_gap": {
+        "count": 144,
+        "argmax_flips": 0,
+        "max_tv": 0.06029726684428035,
+        "mean_tv": 0.005951747077005648,
+        "max_logit_error": 0.625
+      },
+      "prefill_byte_equal": 384,
+      "prefill_total": 384,
+      "sampler": {
+        "passed": true,
+        "draws": 100000,
+        "frequencies": [
+          0.0,
+          0.0,
+          0.12354,
+          0.12623,
+          0.14258,
+          0.42187,
+          0.13971,
+          0.04607
+        ],
+        "expected": [
+          0.0,
+          0.0,
+          0.125,
+          0.125,
+          0.140625,
+          0.421875,
+          0.140625,
+          0.046875
+        ],
+        "maximum_binomial_z": 1.7783782420276095,
+        "scope": "fixed seven-row binary tree; sampler smoke, not real-model sequence certification"
+      },
+      "production_sha256": "3f132a41b659d1306cbfc3fbb348c0f89284d097d69851f0f73d8a6e4518587f"
+    }
+  },
+  "formal_real_model_sequence_law_certified": false,
+  "real_model_t1_exact_distribution_certified": false,
+  "task_accuracy_evaluated": false,
+  "audit_timing_is_benchmark": false,
+  "structural_verified": true,
+  "source_hashes_verified": true,
+  "instrumentation_noninterference_verified": true,
+  "structural_stats": {
+    "waves": 1538,
+    "request_blocks": 9293,
+    "masks_checked": 9293,
+    "packed_layers_checked": 55368,
+    "compacted_request_layers_checked": 334548,
+    "feature_histories_checked": 9293,
+    "rng_probe_checks": 658,
+    "forward_prefix_layers_checked": 55368
+  },
+  "strict_t0_all_sequences_equal": false,
+  "example_first_divergence": {
+    "model": "qwen3_4b",
+    "request_id": 7,
+    "generated_tokens": 20,
+    "reason": "actual_first_divergence",
+    "local_node": 0,
+    "wave_query_rows": 96,
+    "block_rows": 12,
+    "path_tokens": [
+      4237
+    ],
+    "actual": {
+      "argmax": 3070,
+      "top_tokens": [
+        3070,
+        1948,
+        4221,
+        41047,
+        18308
+      ],
+      "top_logits": [
+        36.75,
+        36.5,
+        36.0,
+        30.75,
+        30.625
+      ],
+      "top_margin": 0.25
+    },
+    "same_actual_kv_sequential": {
+      "argmax": 1948,
+      "top_tokens": [
+        3070,
+        1948,
+        4221,
+        41047,
+        18308
+      ],
+      "top_logits": [
+        36.75,
+        36.75,
+        36.25,
+        31.0,
+        30.875
+      ],
+      "top_margin": 0.0
+    },
+    "gap_same_actual_kv": {
+      "total_variation": 0.06051900840884016,
+      "max_probability_error": 0.060518984738782755,
+      "max_logit_error": 0.25,
+      "argmax_equal": false,
+      "logits_byte_equal": false
+    },
+    "canonical_index": 20,
+    "canonical": {
+      "argmax": 1948,
+      "top_tokens": [
+        3070,
+        1948,
+        4221,
+        41047,
+        18308
+      ],
+      "top_logits": [
+        36.75,
+        36.75,
+        36.25,
+        30.875,
+        30.875
+      ],
+      "top_margin": 0.0
+    },
+    "gap_vs_canonical_ar": {
+      "total_variation": 0.060487841168487974,
+      "max_probability_error": 0.06046416244405284,
+      "max_logit_error": 0.25,
+      "argmax_equal": false,
+      "logits_byte_equal": false
+    },
+    "replay_vs_canonical_ar": {
+      "total_variation": 0.0001430708683841707,
+      "max_probability_error": 0.0001429622483015919,
+      "max_logit_error": 0.25,
+      "argmax_equal": true,
+      "logits_byte_equal": false
+    },
+    "teacher_forced_sequential": {
+      "argmax": 1948,
+      "top_tokens": [
+        3070,
+        1948,
+        4221,
+        41047,
+        18308
+      ],
+      "top_logits": [
+        36.75,
+        36.75,
+        36.25,
+        30.875,
+        30.875
+      ],
+      "top_margin": 0.0
+    },
+    "gap_vs_teacher_forced_sequential": {
+      "total_variation": 0.060487841168487974,
+      "max_probability_error": 0.06046416244405284,
+      "max_logit_error": 0.25,
+      "argmax_equal": false,
+      "logits_byte_equal": false
+    },
+    "actual_kv_vs_teacher": {
+      "byte_equal": false,
+      "max_key_error": 1.0,
+      "max_value_error": 0.53125
+    }
+  }
+}

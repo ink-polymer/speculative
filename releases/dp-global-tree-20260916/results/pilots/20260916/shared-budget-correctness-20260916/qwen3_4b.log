@@ -1,0 +1,84 @@
+`torch_dtype` is deprecated! Use `dtype` instead!
+Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 3/3 [00:00<00:00, 86.83it/s]
+`torch_dtype` is deprecated! Use `dtype` instead!
+canonical AR 1 /32
+canonical AR 2 /32
+canonical AR 3 /32
+canonical AR 4 /32
+canonical AR 5 /32
+canonical AR 6 /32
+canonical AR 7 /32
+canonical AR 8 /32
+canonical AR 9 /32
+canonical AR 10 /32
+canonical AR 11 /32
+canonical AR 12 /32
+canonical AR 13 /32
+canonical AR 14 /32
+canonical AR 15 /32
+canonical AR 16 /32
+canonical AR 17 /32
+canonical AR 18 /32
+canonical AR 19 /32
+canonical AR 20 /32
+canonical AR 21 /32
+canonical AR 22 /32
+canonical AR 23 /32
+canonical AR 24 /32
+canonical AR 25 /32
+canonical AR 26 /32
+canonical AR 27 /32
+canonical AR 28 /32
+canonical AR 29 /32
+canonical AR 30 /32
+canonical AR 31 /32
+canonical AR 32 /32
+audit T 0 R 96 C 1 case 1 /48 checks {'waves': 8, 'request_blocks': 8, 'masks_checked': 8, 'packed_layers_checked': 288, 'compacted_request_layers_checked': 288, 'feature_histories_checked': 8, 'rng_probe_checks': 4, 'forward_prefix_layers_checked': 288} probes 4
+audit T 0 R 96 C 1 case 2 /48 checks {'waves': 13, 'request_blocks': 13, 'masks_checked': 13, 'packed_layers_checked': 468, 'compacted_request_layers_checked': 468, 'feature_histories_checked': 13, 'rng_probe_checks': 4, 'forward_prefix_layers_checked': 468} probes 4
+audit T 0 R 96 C 1 case 3 /48 checks {'waves': 12, 'request_blocks': 12, 'masks_checked': 12, 'packed_layers_checked': 432, 'compacted_request_layers_checked': 432, 'feature_histories_checked': 12, 'rng_probe_checks': 4, 'forward_prefix_layers_checked': 432} probes 4
+audit T 0 R 96 C 1 case 4 /48 checks {'waves': 17, 'request_blocks': 17, 'masks_checked': 17, 'packed_layers_checked': 612, 'compacted_request_layers_checked': 612, 'feature_histories_checked': 17, 'rng_probe_checks': 4, 'forward_prefix_layers_checked': 612} probes 4
+audit T 0 R 96 C 4 case 5 /48 checks {'waves': 17, 'request_blocks': 51, 'masks_checked': 51, 'packed_layers_checked': 612, 'compacted_request_layers_checked': 1836, 'feature_histories_checked': 51, 'rng_probe_checks': 8, 'forward_prefix_layers_checked': 612} probes 8
+audit T 0 R 96 C 8 case 6 /48 checks {'waves': 18, 'request_blocks': 98, 'masks_checked': 98, 'packed_layers_checked': 648, 'compacted_request_layers_checked': 3528, 'feature_histories_checked': 98, 'rng_probe_checks': 9, 'forward_prefix_layers_checked': 648} probes 9
+audit T 0 R 96 C 16 case 7 /48 checks {'waves': 25, 'request_blocks': 198, 'masks_checked': 198, 'packed_layers_checked': 900, 'compacted_request_layers_checked': 7128, 'feature_histories_checked': 198, 'rng_probe_checks': 10, 'forward_prefix_layers_checked': 900} probes 10
+audit T 0 R 96 C 32 case 8 /48 checks {'waves': 47, 'request_blocks': 370, 'masks_checked': 370, 'packed_layers_checked': 1692, 'compacted_request_layers_checked': 13320, 'feature_histories_checked': 370, 'rng_probe_checks': 13, 'forward_prefix_layers_checked': 1692} probes 13
+audit T 0 R 193 C 1 case 9 /48 checks {'waves': 8, 'request_blocks': 8, 'masks_checked': 8, 'packed_layers_checked': 288, 'compacted_request_layers_checked': 288, 'feature_histories_checked': 8, 'rng_probe_checks': 4, 'forward_prefix_layers_checked': 288} probes 4
+audit T 0 R 193 C 1 case 10 /48 checks {'waves': 13, 'request_blocks': 13, 'masks_checked': 13, 'packed_layers_checked': 468, 'compacted_request_layers_checked': 468, 'feature_histories_checked': 13, 'rng_probe_checks': 4, 'forward_prefix_layers_checked': 468} probes 4
+audit T 0 R 193 C 1 case 11 /48 checks {'waves': 12, 'request_blocks': 12, 'masks_checked': 12, 'packed_layers_checked': 432, 'compacted_request_layers_checked': 432, 'feature_histories_checked': 12, 'rng_probe_checks': 4, 'forward_prefix_layers_checked': 432} probes 4
+audit T 0 R 193 C 1 case 12 /48 checks {'waves': 17, 'request_blocks': 17, 'masks_checked': 17, 'packed_layers_checked': 612, 'compacted_request_layers_checked': 612, 'feature_histories_checked': 17, 'rng_probe_checks': 4, 'forward_prefix_layers_checked': 612} probes 4
+audit T 0 R 193 C 4 case 13 /48 checks {'waves': 17, 'request_blocks': 50, 'masks_checked': 50, 'packed_layers_checked': 612, 'compacted_request_layers_checked': 1800, 'feature_histories_checked': 50, 'rng_probe_checks': 8, 'forward_prefix_layers_checked': 612} probes 8
+audit T 0 R 193 C 8 case 14 /48 checks {'waves': 18, 'request_blocks': 90, 'masks_checked': 90, 'packed_layers_checked': 648, 'compacted_request_layers_checked': 3240, 'feature_histories_checked': 90, 'rng_probe_checks': 9, 'forward_prefix_layers_checked': 648} probes 9
+audit T 0 R 193 C 16 case 15 /48 checks {'waves': 18, 'request_blocks': 196, 'masks_checked': 196, 'packed_layers_checked': 648, 'compacted_request_layers_checked': 7056, 'feature_histories_checked': 196, 'rng_probe_checks': 12, 'forward_prefix_layers_checked': 648} probes 12
+audit T 0 R 193 C 32 case 16 /48 checks {'waves': 24, 'request_blocks': 371, 'masks_checked': 371, 'packed_layers_checked': 864, 'compacted_request_layers_checked': 13356, 'feature_histories_checked': 371, 'rng_probe_checks': 13, 'forward_prefix_layers_checked': 864} probes 13
+audit T 0 R 384 C 1 case 17 /48 checks {'waves': 8, 'request_blocks': 8, 'masks_checked': 8, 'packed_layers_checked': 288, 'compacted_request_layers_checked': 288, 'feature_histories_checked': 8, 'rng_probe_checks': 4, 'forward_prefix_layers_checked': 288} probes 4
+audit T 0 R 384 C 1 case 18 /48 checks {'waves': 13, 'request_blocks': 13, 'masks_checked': 13, 'packed_layers_checked': 468, 'compacted_request_layers_checked': 468, 'feature_histories_checked': 13, 'rng_probe_checks': 4, 'forward_prefix_layers_checked': 468} probes 4
+audit T 0 R 384 C 1 case 19 /48 checks {'waves': 12, 'request_blocks': 12, 'masks_checked': 12, 'packed_layers_checked': 432, 'compacted_request_layers_checked': 432, 'feature_histories_checked': 12, 'rng_probe_checks': 4, 'forward_prefix_layers_checked': 432} probes 4
+audit T 0 R 384 C 1 case 20 /48 checks {'waves': 17, 'request_blocks': 17, 'masks_checked': 17, 'packed_layers_checked': 612, 'compacted_request_layers_checked': 612, 'feature_histories_checked': 17, 'rng_probe_checks': 4, 'forward_prefix_layers_checked': 612} probes 4
+audit T 0 R 384 C 4 case 21 /48 checks {'waves': 17, 'request_blocks': 50, 'masks_checked': 50, 'packed_layers_checked': 612, 'compacted_request_layers_checked': 1800, 'feature_histories_checked': 50, 'rng_probe_checks': 8, 'forward_prefix_layers_checked': 612} probes 8
+audit T 0 R 384 C 8 case 22 /48 checks {'waves': 18, 'request_blocks': 90, 'masks_checked': 90, 'packed_layers_checked': 648, 'compacted_request_layers_checked': 3240, 'feature_histories_checked': 90, 'rng_probe_checks': 10, 'forward_prefix_layers_checked': 648} probes 10
+audit T 0 R 384 C 16 case 23 /48 checks {'waves': 18, 'request_blocks': 196, 'masks_checked': 196, 'packed_layers_checked': 648, 'compacted_request_layers_checked': 7056, 'feature_histories_checked': 196, 'rng_probe_checks': 12, 'forward_prefix_layers_checked': 648} probes 12
+audit T 0 R 384 C 32 case 24 /48 checks {'waves': 18, 'request_blocks': 371, 'masks_checked': 371, 'packed_layers_checked': 648, 'compacted_request_layers_checked': 13356, 'feature_histories_checked': 371, 'rng_probe_checks': 13, 'forward_prefix_layers_checked': 648} probes 13
+audit T 1 R 96 C 1 case 25 /48 checks {'waves': 12, 'request_blocks': 12, 'masks_checked': 12, 'packed_layers_checked': 432, 'compacted_request_layers_checked': 432, 'feature_histories_checked': 12, 'rng_probe_checks': 4, 'forward_prefix_layers_checked': 432} probes 4
+audit T 1 R 96 C 1 case 26 /48 checks {'waves': 10, 'request_blocks': 10, 'masks_checked': 10, 'packed_layers_checked': 360, 'compacted_request_layers_checked': 360, 'feature_histories_checked': 10, 'rng_probe_checks': 4, 'forward_prefix_layers_checked': 360} probes 4
+audit T 1 R 96 C 1 case 27 /48 checks {'waves': 12, 'request_blocks': 12, 'masks_checked': 12, 'packed_layers_checked': 432, 'compacted_request_layers_checked': 432, 'feature_histories_checked': 12, 'rng_probe_checks': 4, 'forward_prefix_layers_checked': 432} probes 4
+audit T 1 R 96 C 1 case 28 /48 checks {'waves': 12, 'request_blocks': 12, 'masks_checked': 12, 'packed_layers_checked': 432, 'compacted_request_layers_checked': 432, 'feature_histories_checked': 12, 'rng_probe_checks': 4, 'forward_prefix_layers_checked': 432} probes 4
+audit T 1 R 96 C 4 case 29 /48 checks {'waves': 16, 'request_blocks': 52, 'masks_checked': 52, 'packed_layers_checked': 576, 'compacted_request_layers_checked': 1872, 'feature_histories_checked': 52, 'rng_probe_checks': 8, 'forward_prefix_layers_checked': 576} probes 8
+audit T 1 R 96 C 8 case 30 /48 checks {'waves': 19, 'request_blocks': 101, 'masks_checked': 101, 'packed_layers_checked': 684, 'compacted_request_layers_checked': 3636, 'feature_histories_checked': 101, 'rng_probe_checks': 8, 'forward_prefix_layers_checked': 684} probes 8
+audit T 1 R 96 C 16 case 31 /48 checks {'waves': 25, 'request_blocks': 195, 'masks_checked': 195, 'packed_layers_checked': 900, 'compacted_request_layers_checked': 7020, 'feature_histories_checked': 195, 'rng_probe_checks': 8, 'forward_prefix_layers_checked': 900} probes 8
+audit T 1 R 96 C 32 case 32 /48 checks {'waves': 48, 'request_blocks': 384, 'masks_checked': 384, 'packed_layers_checked': 1728, 'compacted_request_layers_checked': 13824, 'feature_histories_checked': 384, 'rng_probe_checks': 8, 'forward_prefix_layers_checked': 1728} probes 8
+audit T 1 R 193 C 1 case 33 /48 checks {'waves': 12, 'request_blocks': 12, 'masks_checked': 12, 'packed_layers_checked': 432, 'compacted_request_layers_checked': 432, 'feature_histories_checked': 12, 'rng_probe_checks': 4, 'forward_prefix_layers_checked': 432} probes 4
+audit T 1 R 193 C 1 case 34 /48 checks {'waves': 10, 'request_blocks': 10, 'masks_checked': 10, 'packed_layers_checked': 360, 'compacted_request_layers_checked': 360, 'feature_histories_checked': 10, 'rng_probe_checks': 4, 'forward_prefix_layers_checked': 360} probes 4
+audit T 1 R 193 C 1 case 35 /48 checks {'waves': 12, 'request_blocks': 12, 'masks_checked': 12, 'packed_layers_checked': 432, 'compacted_request_layers_checked': 432, 'feature_histories_checked': 12, 'rng_probe_checks': 4, 'forward_prefix_layers_checked': 432} probes 4
+audit T 1 R 193 C 1 case 36 /48 checks {'waves': 12, 'request_blocks': 12, 'masks_checked': 12, 'packed_layers_checked': 432, 'compacted_request_layers_checked': 432, 'feature_histories_checked': 12, 'rng_probe_checks': 4, 'forward_prefix_layers_checked': 432} probes 4
+audit T 1 R 193 C 4 case 37 /48 checks {'waves': 16, 'request_blocks': 53, 'masks_checked': 53, 'packed_layers_checked': 576, 'compacted_request_layers_checked': 1908, 'feature_histories_checked': 53, 'rng_probe_checks': 8, 'forward_prefix_layers_checked': 576} probes 8
+audit T 1 R 193 C 8 case 38 /48 checks {'waves': 14, 'request_blocks': 97, 'masks_checked': 97, 'packed_layers_checked': 504, 'compacted_request_layers_checked': 3492, 'feature_histories_checked': 97, 'rng_probe_checks': 8, 'forward_prefix_layers_checked': 504} probes 8
+audit T 1 R 193 C 16 case 39 /48 checks {'waves': 15, 'request_blocks': 188, 'masks_checked': 188, 'packed_layers_checked': 540, 'compacted_request_layers_checked': 6768, 'feature_histories_checked': 188, 'rng_probe_checks': 8, 'forward_prefix_layers_checked': 540} probes 8
+audit T 1 R 193 C 32 case 40 /48 checks {'waves': 25, 'request_blocks': 381, 'masks_checked': 381, 'packed_layers_checked': 900, 'compacted_request_layers_checked': 13716, 'feature_histories_checked': 381, 'rng_probe_checks': 8, 'forward_prefix_layers_checked': 900} probes 8
+audit T 1 R 384 C 1 case 41 /48 checks {'waves': 12, 'request_blocks': 12, 'masks_checked': 12, 'packed_layers_checked': 432, 'compacted_request_layers_checked': 432, 'feature_histories_checked': 12, 'rng_probe_checks': 4, 'forward_prefix_layers_checked': 432} probes 4
+audit T 1 R 384 C 1 case 42 /48 checks {'waves': 10, 'request_blocks': 10, 'masks_checked': 10, 'packed_layers_checked': 360, 'compacted_request_layers_checked': 360, 'feature_histories_checked': 10, 'rng_probe_checks': 4, 'forward_prefix_layers_checked': 360} probes 4
+audit T 1 R 384 C 1 case 43 /48 checks {'waves': 12, 'request_blocks': 12, 'masks_checked': 12, 'packed_layers_checked': 432, 'compacted_request_layers_checked': 432, 'feature_histories_checked': 12, 'rng_probe_checks': 4, 'forward_prefix_layers_checked': 432} probes 4
+audit T 1 R 384 C 1 case 44 /48 checks {'waves': 12, 'request_blocks': 12, 'masks_checked': 12, 'packed_layers_checked': 432, 'compacted_request_layers_checked': 432, 'feature_histories_checked': 12, 'rng_probe_checks': 4, 'forward_prefix_layers_checked': 432} probes 4
+audit T 1 R 384 C 4 case 45 /48 checks {'waves': 16, 'request_blocks': 53, 'masks_checked': 53, 'packed_layers_checked': 576, 'compacted_request_layers_checked': 1908, 'feature_histories_checked': 53, 'rng_probe_checks': 8, 'forward_prefix_layers_checked': 576} probes 8
+audit T 1 R 384 C 8 case 46 /48 checks {'waves': 15, 'request_blocks': 95, 'masks_checked': 95, 'packed_layers_checked': 540, 'compacted_request_layers_checked': 3420, 'feature_histories_checked': 95, 'rng_probe_checks': 8, 'forward_prefix_layers_checked': 540} probes 8
+audit T 1 R 384 C 16 case 47 /48 checks {'waves': 15, 'request_blocks': 188, 'masks_checked': 188, 'packed_layers_checked': 540, 'compacted_request_layers_checked': 6768, 'feature_histories_checked': 188, 'rng_probe_checks': 8, 'forward_prefix_layers_checked': 540} probes 8
+audit T 1 R 384 C 32 case 48 /48 checks {'waves': 15, 'request_blocks': 382, 'masks_checked': 382, 'packed_layers_checked': 540, 'compacted_request_layers_checked': 13752, 'feature_histories_checked': 382, 'rng_probe_checks': 8, 'forward_prefix_layers_checked': 540} probes 8
+actual-history audit complete

@@ -1,0 +1,4 @@
+GPU tests complete
+probe complete qwen3_4b
+probe complete qwen3_8b
+postchecks complete

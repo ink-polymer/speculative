@@ -1,0 +1,607 @@
+{
+  "aggregation": "unweighted geometric mean of per-cell matched throughput ratios; NOT pooled throughput",
+  "groups": {
+    "all_60": {
+      "cells": 60,
+      "dp_over_ddtree": {
+        "geometric_mean": 1.4374917983800861,
+        "min": 0.8587588856959066,
+        "max": 2.4025411139577035,
+        "wins_strict_gt1": 52
+      },
+      "dp_over_dflash": {
+        "geometric_mean": 1.2018814002085525,
+        "min": 0.9771741237227913,
+        "max": 1.4699189522191027,
+        "wins_strict_gt1": 59
+      }
+    },
+    "t1_30": {
+      "cells": 30,
+      "dp_over_ddtree": {
+        "geometric_mean": 1.43690678302305,
+        "min": 0.8587588856959066,
+        "max": 2.4024206942014534,
+        "wins_strict_gt1": 26
+      },
+      "dp_over_dflash": {
+        "geometric_mean": 1.2258225283788298,
+        "min": 1.0500785298397661,
+        "max": 1.4699189522191027,
+        "wins_strict_gt1": 30
+      }
+    },
+    "concurrency_ge4_48": {
+      "cells": 48,
+      "dp_over_ddtree": {
+        "geometric_mean": 1.5735477709588428,
+        "min": 0.8587588856959066,
+        "max": 2.4025411139577035,
+        "wins_strict_gt1": 46
+      },
+      "dp_over_dflash": {
+        "geometric_mean": 1.1925894628115377,
+        "min": 0.9771741237227913,
+        "max": 1.4699189522191027,
+        "wins_strict_gt1": 47
+      }
+    },
+    "t1_concurrency_ge4_24": {
+      "cells": 24,
+      "dp_over_ddtree": {
+        "geometric_mean": 1.5718124132615068,
+        "min": 0.8587588856959066,
+        "max": 2.4024206942014534,
+        "wins_strict_gt1": 22
+      },
+      "dp_over_dflash": {
+        "geometric_mean": 1.2119970952628412,
+        "min": 1.0500785298397661,
+        "max": 1.4699189522191027,
+        "wins_strict_gt1": 24
+      }
+    }
+  },
+  "cells": [
+    {
+      "model": "qwen3_4b",
+      "temperature": 0,
+      "budget": 96,
+      "concurrency": 1,
+      "dp_tok_s": 216.35992099540957,
+      "dp_over_ddtree": 1.0034387746396574,
+      "dp_over_dflash": 1.204774680757199
+    },
+    {
+      "model": "qwen3_4b",
+      "temperature": 0,
+      "budget": 96,
+      "concurrency": 4,
+      "dp_tok_s": 585.6798385335209,
+      "dp_over_ddtree": 1.5518139843146126,
+      "dp_over_dflash": 1.2183319287606245
+    },
+    {
+      "model": "qwen3_4b",
+      "temperature": 0,
+      "budget": 96,
+      "concurrency": 8,
+      "dp_tok_s": 737.9185050481938,
+      "dp_over_ddtree": 2.1883283275806904,
+      "dp_over_dflash": 1.326406368603038
+    },
+    {
+      "model": "qwen3_4b",
+      "temperature": 0,
+      "budget": 96,
+      "concurrency": 16,
+      "dp_tok_s": 732.2207073382343,
+      "dp_over_ddtree": 2.4025411139577035,
+      "dp_over_dflash": 1.3325990408269894
+    },
+    {
+      "model": "qwen3_4b",
+      "temperature": 0,
+      "budget": 96,
+      "concurrency": 32,
+      "dp_tok_s": 707.5690205130392,
+      "dp_over_ddtree": 2.3405098212228173,
+      "dp_over_dflash": 1.2467833658840064
+    },
+    {
+      "model": "qwen3_4b",
+      "temperature": 0,
+      "budget": 193,
+      "concurrency": 1,
+      "dp_tok_s": 205.85740996092068,
+      "dp_over_ddtree": 0.9922527496144312,
+      "dp_over_dflash": 1.1997535902189858
+    },
+    {
+      "model": "qwen3_4b",
+      "temperature": 0,
+      "budget": 193,
+      "concurrency": 4,
+      "dp_tok_s": 567.897529911629,
+      "dp_over_ddtree": 1.0035825789313229,
+      "dp_over_dflash": 1.1991907613442083
+    },
+    {
+      "model": "qwen3_4b",
+      "temperature": 0,
+      "budget": 193,
+      "concurrency": 8,
+      "dp_tok_s": 741.9813134275968,
+      "dp_over_ddtree": 1.359833085864881,
+      "dp_over_dflash": 1.0811307300427764
+    },
+    {
+      "model": "qwen3_4b",
+      "temperature": 0,
+      "budget": 193,
+      "concurrency": 16,
+      "dp_tok_s": 803.5170677095721,
+      "dp_over_ddtree": 1.5554081832086888,
+      "dp_over_dflash": 1.1324948844055032
+    },
+    {
+      "model": "qwen3_4b",
+      "temperature": 0,
+      "budget": 193,
+      "concurrency": 32,
+      "dp_tok_s": 874.5542547912243,
+      "dp_over_ddtree": 1.76083463447853,
+      "dp_over_dflash": 1.1458114253147829
+    },
+    {
+      "model": "qwen3_4b",
+      "temperature": 0,
+      "budget": 384,
+      "concurrency": 1,
+      "dp_tok_s": 215.26944736973724,
+      "dp_over_ddtree": 0.9972770087102654,
+      "dp_over_dflash": 1.2152930882324573
+    },
+    {
+      "model": "qwen3_4b",
+      "temperature": 0,
+      "budget": 384,
+      "concurrency": 4,
+      "dp_tok_s": 573.4545048590709,
+      "dp_over_ddtree": 1.0082925056819743,
+      "dp_over_dflash": 1.2177649105022799
+    },
+    {
+      "model": "qwen3_4b",
+      "temperature": 0,
+      "budget": 384,
+      "concurrency": 8,
+      "dp_tok_s": 718.406462349508,
+      "dp_over_ddtree": 1.1227168483674137,
+      "dp_over_dflash": 1.0846648959202936
+    },
+    {
+      "model": "qwen3_4b",
+      "temperature": 0,
+      "budget": 384,
+      "concurrency": 16,
+      "dp_tok_s": 807.2506643349412,
+      "dp_over_ddtree": 1.3257727547172908,
+      "dp_over_dflash": 1.0999543442354371
+    },
+    {
+      "model": "qwen3_4b",
+      "temperature": 0,
+      "budget": 384,
+      "concurrency": 32,
+      "dp_tok_s": 870.5812934181101,
+      "dp_over_ddtree": 1.42071421296923,
+      "dp_over_dflash": 1.1208408761008013
+    },
+    {
+      "model": "qwen3_4b",
+      "temperature": 1,
+      "budget": 96,
+      "concurrency": 1,
+      "dp_tok_s": 181.3700558059219,
+      "dp_over_ddtree": 0.9978076424053725,
+      "dp_over_dflash": 1.317392294583361
+    },
+    {
+      "model": "qwen3_4b",
+      "temperature": 1,
+      "budget": 96,
+      "concurrency": 4,
+      "dp_tok_s": 485.57010595970087,
+      "dp_over_ddtree": 1.5477602129297654,
+      "dp_over_dflash": 1.3190819259209465
+    },
+    {
+      "model": "qwen3_4b",
+      "temperature": 1,
+      "budget": 96,
+      "concurrency": 8,
+      "dp_tok_s": 632.192625978501,
+      "dp_over_ddtree": 2.2721643648946195,
+      "dp_over_dflash": 1.3088107860868494
+    },
+    {
+      "model": "qwen3_4b",
+      "temperature": 1,
+      "budget": 96,
+      "concurrency": 16,
+      "dp_tok_s": 626.6773853238651,
+      "dp_over_ddtree": 2.3661398209032085,
+      "dp_over_dflash": 1.3296552887579103
+    },
+    {
+      "model": "qwen3_4b",
+      "temperature": 1,
+      "budget": 96,
+      "concurrency": 32,
+      "dp_tok_s": 652.2796425347217,
+      "dp_over_ddtree": 2.4024206942014534,
+      "dp_over_dflash": 1.2749286091337328
+    },
+    {
+      "model": "qwen3_4b",
+      "temperature": 1,
+      "budget": 193,
+      "concurrency": 1,
+      "dp_tok_s": 181.71669165193245,
+      "dp_over_ddtree": 1.003624040702691,
+      "dp_over_dflash": 1.3333277423469547
+    },
+    {
+      "model": "qwen3_4b",
+      "temperature": 1,
+      "budget": 193,
+      "concurrency": 4,
+      "dp_tok_s": 478.3415850042892,
+      "dp_over_ddtree": 0.8587588856959066,
+      "dp_over_dflash": 1.2932021282213988
+    },
+    {
+      "model": "qwen3_4b",
+      "temperature": 1,
+      "budget": 193,
+      "concurrency": 8,
+      "dp_tok_s": 633.8972389958286,
+      "dp_over_ddtree": 1.3258069869862728,
+      "dp_over_dflash": 1.127615306089326
+    },
+    {
+      "model": "qwen3_4b",
+      "temperature": 1,
+      "budget": 193,
+      "concurrency": 16,
+      "dp_tok_s": 788.2261745573103,
+      "dp_over_ddtree": 1.7285493641046312,
+      "dp_over_dflash": 1.2270449419301386
+    },
+    {
+      "model": "qwen3_4b",
+      "temperature": 1,
+      "budget": 193,
+      "concurrency": 32,
+      "dp_tok_s": 814.9417262502778,
+      "dp_over_ddtree": 1.7538709217007074,
+      "dp_over_dflash": 1.170033261819068
+    },
+    {
+      "model": "qwen3_4b",
+      "temperature": 1,
+      "budget": 384,
+      "concurrency": 1,
+      "dp_tok_s": 184.78879160212875,
+      "dp_over_ddtree": 1.0027175708592666,
+      "dp_over_dflash": 1.3212194215396946
+    },
+    {
+      "model": "qwen3_4b",
+      "temperature": 1,
+      "budget": 384,
+      "concurrency": 4,
+      "dp_tok_s": 481.93877377109044,
+      "dp_over_ddtree": 0.8713910535759046,
+      "dp_over_dflash": 1.2996850030641427
+    },
+    {
+      "model": "qwen3_4b",
+      "temperature": 1,
+      "budget": 384,
+      "concurrency": 8,
+      "dp_tok_s": 623.8998796852305,
+      "dp_over_ddtree": 1.0782247167795165,
+      "dp_over_dflash": 1.1168168610916356
+    },
+    {
+      "model": "qwen3_4b",
+      "temperature": 1,
+      "budget": 384,
+      "concurrency": 16,
+      "dp_tok_s": 788.3708916921553,
+      "dp_over_ddtree": 1.48161866487805,
+      "dp_over_dflash": 1.1662651163446889
+    },
+    {
+      "model": "qwen3_4b",
+      "temperature": 1,
+      "budget": 384,
+      "concurrency": 32,
+      "dp_tok_s": 813.9850083936514,
+      "dp_over_ddtree": 1.4398303392454566,
+      "dp_over_dflash": 1.1447545936036339
+    },
+    {
+      "model": "qwen3_8b",
+      "temperature": 0,
+      "budget": 96,
+      "concurrency": 1,
+      "dp_tok_s": 181.36937607340502,
+      "dp_over_ddtree": 0.9975052349428014,
+      "dp_over_dflash": 1.1808149502247063
+    },
+    {
+      "model": "qwen3_8b",
+      "temperature": 0,
+      "budget": 96,
+      "concurrency": 4,
+      "dp_tok_s": 389.22154162118613,
+      "dp_over_ddtree": 1.3657306236443094,
+      "dp_over_dflash": 0.9771741237227913
+    },
+    {
+      "model": "qwen3_8b",
+      "temperature": 0,
+      "budget": 96,
+      "concurrency": 8,
+      "dp_tok_s": 625.6690706110935,
+      "dp_over_ddtree": 2.269798164513151,
+      "dp_over_dflash": 1.338247198424085
+    },
+    {
+      "model": "qwen3_8b",
+      "temperature": 0,
+      "budget": 96,
+      "concurrency": 16,
+      "dp_tok_s": 665.1960198963077,
+      "dp_over_ddtree": 2.3317496305856786,
+      "dp_over_dflash": 1.2850530238202633
+    },
+    {
+      "model": "qwen3_8b",
+      "temperature": 0,
+      "budget": 96,
+      "concurrency": 32,
+      "dp_tok_s": 674.1121473627438,
+      "dp_over_ddtree": 2.331555395806393,
+      "dp_over_dflash": 1.2654536907822393
+    },
+    {
+      "model": "qwen3_8b",
+      "temperature": 0,
+      "budget": 193,
+      "concurrency": 1,
+      "dp_tok_s": 185.6249289392405,
+      "dp_over_ddtree": 1.0057789961670456,
+      "dp_over_dflash": 1.197540268902717
+    },
+    {
+      "model": "qwen3_8b",
+      "temperature": 0,
+      "budget": 193,
+      "concurrency": 4,
+      "dp_tok_s": 456.81260444383133,
+      "dp_over_ddtree": 1.1165112942458484,
+      "dp_over_dflash": 1.1034602874330401
+    },
+    {
+      "model": "qwen3_8b",
+      "temperature": 0,
+      "budget": 193,
+      "concurrency": 8,
+      "dp_tok_s": 644.1987221576097,
+      "dp_over_ddtree": 1.5241196582927226,
+      "dp_over_dflash": 1.1282026948466384
+    },
+    {
+      "model": "qwen3_8b",
+      "temperature": 0,
+      "budget": 193,
+      "concurrency": 16,
+      "dp_tok_s": 711.3995317377759,
+      "dp_over_ddtree": 1.7556611366112311,
+      "dp_over_dflash": 1.187486038082629
+    },
+    {
+      "model": "qwen3_8b",
+      "temperature": 0,
+      "budget": 193,
+      "concurrency": 32,
+      "dp_tok_s": 734.8932429476561,
+      "dp_over_ddtree": 1.8159443378561595,
+      "dp_over_dflash": 1.2258372898733851
+    },
+    {
+      "model": "qwen3_8b",
+      "temperature": 0,
+      "budget": 384,
+      "concurrency": 1,
+      "dp_tok_s": 178.04081574808708,
+      "dp_over_ddtree": 0.996548276058356,
+      "dp_over_dflash": 1.1917617755018226
+    },
+    {
+      "model": "qwen3_8b",
+      "temperature": 0,
+      "budget": 384,
+      "concurrency": 4,
+      "dp_tok_s": 423.0009082216275,
+      "dp_over_ddtree": 1.0766185557126016,
+      "dp_over_dflash": 1.110667707401273
+    },
+    {
+      "model": "qwen3_8b",
+      "temperature": 0,
+      "budget": 384,
+      "concurrency": 8,
+      "dp_tok_s": 636.6565398888197,
+      "dp_over_ddtree": 1.3950581860402071,
+      "dp_over_dflash": 1.1190695763589855
+    },
+    {
+      "model": "qwen3_8b",
+      "temperature": 0,
+      "budget": 384,
+      "concurrency": 16,
+      "dp_tok_s": 716.806564429318,
+      "dp_over_ddtree": 1.6008503534660636,
+      "dp_over_dflash": 1.1285068286893405
+    },
+    {
+      "model": "qwen3_8b",
+      "temperature": 0,
+      "budget": 384,
+      "concurrency": 32,
+      "dp_tok_s": 723.2393556554738,
+      "dp_over_ddtree": 1.629827419450562,
+      "dp_over_dflash": 1.1697042888413125
+    },
+    {
+      "model": "qwen3_8b",
+      "temperature": 1,
+      "budget": 96,
+      "concurrency": 1,
+      "dp_tok_s": 171.1766741070757,
+      "dp_over_ddtree": 1.011212584725922,
+      "dp_over_dflash": 1.2351501270531298
+    },
+    {
+      "model": "qwen3_8b",
+      "temperature": 1,
+      "budget": 96,
+      "concurrency": 4,
+      "dp_tok_s": 437.11561932926503,
+      "dp_over_ddtree": 1.5331689063425775,
+      "dp_over_dflash": 1.1375193765599914
+    },
+    {
+      "model": "qwen3_8b",
+      "temperature": 1,
+      "budget": 96,
+      "concurrency": 8,
+      "dp_tok_s": 602.4825528739069,
+      "dp_over_ddtree": 2.2479503694554905,
+      "dp_over_dflash": 1.4699189522191027
+    },
+    {
+      "model": "qwen3_8b",
+      "temperature": 1,
+      "budget": 96,
+      "concurrency": 16,
+      "dp_tok_s": 636.6808729885875,
+      "dp_over_ddtree": 2.31839020774211,
+      "dp_over_dflash": 1.2946747706357524
+    },
+    {
+      "model": "qwen3_8b",
+      "temperature": 1,
+      "budget": 96,
+      "concurrency": 32,
+      "dp_tok_s": 610.3647381949553,
+      "dp_over_ddtree": 2.25608755530787,
+      "dp_over_dflash": 1.2855212155865152
+    },
+    {
+      "model": "qwen3_8b",
+      "temperature": 1,
+      "budget": 193,
+      "concurrency": 1,
+      "dp_tok_s": 164.137777726483,
+      "dp_over_ddtree": 1.0094965760961907,
+      "dp_over_dflash": 1.2478267916319439
+    },
+    {
+      "model": "qwen3_8b",
+      "temperature": 1,
+      "budget": 193,
+      "concurrency": 4,
+      "dp_tok_s": 412.8367564771874,
+      "dp_over_ddtree": 1.0690670939872027,
+      "dp_over_dflash": 1.1426673527066147
+    },
+    {
+      "model": "qwen3_8b",
+      "temperature": 1,
+      "budget": 193,
+      "concurrency": 8,
+      "dp_tok_s": 595.0335661817475,
+      "dp_over_ddtree": 1.5423077617868624,
+      "dp_over_dflash": 1.0623843067014422
+    },
+    {
+      "model": "qwen3_8b",
+      "temperature": 1,
+      "budget": 193,
+      "concurrency": 16,
+      "dp_tok_s": 666.2111457156593,
+      "dp_over_ddtree": 1.7413105835844547,
+      "dp_over_dflash": 1.226648076031703
+    },
+    {
+      "model": "qwen3_8b",
+      "temperature": 1,
+      "budget": 193,
+      "concurrency": 32,
+      "dp_tok_s": 694.9621394104136,
+      "dp_over_ddtree": 1.83030288336913,
+      "dp_over_dflash": 1.2442610560762049
+    },
+    {
+      "model": "qwen3_8b",
+      "temperature": 1,
+      "budget": 384,
+      "concurrency": 1,
+      "dp_tok_s": 167.09128118240926,
+      "dp_over_ddtree": 0.9965449250025122,
+      "dp_over_dflash": 1.2453431220845586
+    },
+    {
+      "model": "qwen3_8b",
+      "temperature": 1,
+      "budget": 384,
+      "concurrency": 4,
+      "dp_tok_s": 423.3828249321422,
+      "dp_over_ddtree": 1.076856153671934,
+      "dp_over_dflash": 1.1387344652145326
+    },
+    {
+      "model": "qwen3_8b",
+      "temperature": 1,
+      "budget": 384,
+      "concurrency": 8,
+      "dp_tok_s": 585.0863689542294,
+      "dp_over_ddtree": 1.4372149291934742,
+      "dp_over_dflash": 1.0500785298397661
+    },
+    {
+      "model": "qwen3_8b",
+      "temperature": 1,
+      "budget": 384,
+      "concurrency": 16,
+      "dp_tok_s": 673.9601462568402,
+      "dp_over_ddtree": 1.5829475766008994,
+      "dp_over_dflash": 1.1419576941687335
+    },
+    {
+      "model": "qwen3_8b",
+      "temperature": 1,
+      "budget": 384,
+      "concurrency": 32,
+      "dp_tok_s": 680.4050879120953,
+      "dp_over_ddtree": 1.6111752825920018,
+      "dp_over_dflash": 1.207338877485993
+    }
+  ]
+}

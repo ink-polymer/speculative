@@ -1,0 +1,106 @@
+`torch_dtype` is deprecated! Use `dtype` instead!
+Loading checkpoint shards:   0%|          | 0/5 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 5/5 [00:00<00:00, 178.85it/s]
+`torch_dtype` is deprecated! Use `dtype` instead!
+calibration [(12, 27.019452303647995), (46, 27.019452303647995), (96, 27.019452303647995), (193, 43.492525815963745), (384, 75.38819313049316)]
+t0_r96 C 1 seed 17 cell 1 /16
+t0_r96 C 1 seed 29 cell 2 /16
+t0_r96 C 1 seed 17 cell 3 /16
+t0_r96 C 1 seed 29 cell 4 /16
+t0_r96 C 1 seed 17 cell 5 /16
+t0_r96 C 1 seed 29 cell 6 /16
+t0_r96 C 1 seed 17 cell 7 /16
+t0_r96 C 1 seed 29 cell 8 /16
+t0_r96 C 4 seed 17 cell 9 /16
+t0_r96 C 4 seed 29 cell 10 /16
+t0_r96 C 8 seed 17 cell 11 /16
+t0_r96 C 8 seed 29 cell 12 /16
+t0_r96 C 16 seed 17 cell 13 /16
+t0_r96 C 16 seed 29 cell 14 /16
+t0_r96 C 32 seed 17 cell 15 /16
+t0_r96 C 32 seed 29 cell 16 /16
+complete t0_r96 1.987486368258268 1.2360719562288198
+t0_r193 C 1 seed 17 cell 1 /16
+t0_r193 C 1 seed 29 cell 2 /16
+t0_r193 C 1 seed 17 cell 3 /16
+t0_r193 C 1 seed 29 cell 4 /16
+t0_r193 C 1 seed 17 cell 5 /16
+t0_r193 C 1 seed 29 cell 6 /16
+t0_r193 C 1 seed 17 cell 7 /16
+t0_r193 C 1 seed 29 cell 8 /16
+t0_r193 C 4 seed 17 cell 9 /16
+t0_r193 C 4 seed 29 cell 10 /16
+t0_r193 C 8 seed 17 cell 11 /16
+t0_r193 C 8 seed 29 cell 12 /16
+t0_r193 C 16 seed 17 cell 13 /16
+t0_r193 C 16 seed 29 cell 14 /16
+t0_r193 C 32 seed 17 cell 15 /16
+t0_r193 C 32 seed 29 cell 16 /16
+complete t0_r193 1.5533213154186958 1.1912985756585015
+t0_r384 C 1 seed 17 cell 1 /16
+t0_r384 C 1 seed 29 cell 2 /16
+t0_r384 C 1 seed 17 cell 3 /16
+t0_r384 C 1 seed 29 cell 4 /16
+t0_r384 C 1 seed 17 cell 5 /16
+t0_r384 C 1 seed 29 cell 6 /16
+t0_r384 C 1 seed 17 cell 7 /16
+t0_r384 C 1 seed 29 cell 8 /16
+t0_r384 C 4 seed 17 cell 9 /16
+t0_r384 C 4 seed 29 cell 10 /16
+t0_r384 C 8 seed 17 cell 11 /16
+t0_r384 C 8 seed 29 cell 12 /16
+t0_r384 C 16 seed 17 cell 13 /16
+t0_r384 C 16 seed 29 cell 14 /16
+t0_r384 C 32 seed 17 cell 15 /16
+t0_r384 C 32 seed 29 cell 16 /16
+complete t0_r384 1.422220504587779 1.1551301047736884
+t1_r96 C 1 seed 17 cell 1 /16
+t1_r96 C 1 seed 29 cell 2 /16
+t1_r96 C 1 seed 17 cell 3 /16
+t1_r96 C 1 seed 29 cell 4 /16
+t1_r96 C 1 seed 17 cell 5 /16
+t1_r96 C 1 seed 29 cell 6 /16
+t1_r96 C 1 seed 17 cell 7 /16
+t1_r96 C 1 seed 29 cell 8 /16
+t1_r96 C 4 seed 17 cell 9 /16
+t1_r96 C 4 seed 29 cell 10 /16
+t1_r96 C 8 seed 17 cell 11 /16
+t1_r96 C 8 seed 29 cell 12 /16
+t1_r96 C 16 seed 17 cell 13 /16
+t1_r96 C 16 seed 29 cell 14 /16
+t1_r96 C 32 seed 17 cell 15 /16
+t1_r96 C 32 seed 29 cell 16 /16
+complete t1_r96 1.9784534438023753 1.286713975816938
+t1_r193 C 1 seed 17 cell 1 /16
+t1_r193 C 1 seed 29 cell 2 /16
+t1_r193 C 1 seed 17 cell 3 /16
+t1_r193 C 1 seed 29 cell 4 /16
+t1_r193 C 1 seed 17 cell 5 /16
+t1_r193 C 1 seed 29 cell 6 /16
+t1_r193 C 1 seed 17 cell 7 /16
+t1_r193 C 1 seed 29 cell 8 /16
+t1_r193 C 4 seed 17 cell 9 /16
+t1_r193 C 4 seed 29 cell 10 /16
+t1_r193 C 8 seed 17 cell 11 /16
+t1_r193 C 8 seed 29 cell 12 /16
+t1_r193 C 16 seed 17 cell 13 /16
+t1_r193 C 16 seed 29 cell 14 /16
+t1_r193 C 32 seed 17 cell 15 /16
+t1_r193 C 32 seed 29 cell 16 /16
+complete t1_r193 1.546309949038101 1.2122302775431106
+t1_r384 C 1 seed 17 cell 1 /16
+t1_r384 C 1 seed 29 cell 2 /16
+t1_r384 C 1 seed 17 cell 3 /16
+t1_r384 C 1 seed 29 cell 4 /16
+t1_r384 C 1 seed 17 cell 5 /16
+t1_r384 C 1 seed 29 cell 6 /16
+t1_r384 C 1 seed 17 cell 7 /16
+t1_r384 C 1 seed 29 cell 8 /16
+t1_r384 C 4 seed 17 cell 9 /16
+t1_r384 C 4 seed 29 cell 10 /16
+t1_r384 C 8 seed 17 cell 11 /16
+t1_r384 C 8 seed 29 cell 12 /16
+t1_r384 C 16 seed 17 cell 13 /16
+t1_r384 C 16 seed 29 cell 14 /16
+t1_r384 C 32 seed 17 cell 15 /16
+t1_r384 C 32 seed 29 cell 16 /16
+complete t1_r384 1.4175890094596473 1.1781378223613588

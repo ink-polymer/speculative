@@ -1,0 +1,8 @@
+{
+  "cases": 48,
+  "summary_cells": 30,
+  "structural_checks_passed": true,
+  "formal_real_model_sequence_law_certified": false,
+  "greedy_exact_requests": 139,
+  "greedy_total_requests": 192
+}

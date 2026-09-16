@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "paired_cells": 192,
+  "summary_cells": 60,
+  "validated": [
+    "source hashes",
+    "actual common verifier branch",
+    "precision/cache parity",
+    "raw repeats and outputs",
+    "median timings",
+    "ratio of summed tokens/time",
+    "native C1 completeness",
+    "request isolation",
+    "same-prefix Ours probes"
+  ]
+}

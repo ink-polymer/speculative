@@ -1,0 +1,27 @@
+{
+  "date": "2026-09-16",
+  "version": "frozen original DP fast release",
+  "new_gpu_experiments": false,
+  "core_sha256": "3f132a41b659d1306cbfc3fbb348c0f89284d097d69851f0f73d8a6e4518587f",
+  "original_six_source_hashes": "verified for both models",
+  "desktop_selected_table": "byte-identical to published table; sha256 b1b28c762906a9ce814b2d5a91fb3b7dd9bc4c058b6adc422e09d5e3b3b1fa5a",
+  "cpu_environment": "macOS; Python 3.13; PyTorch 2.7.1 CPU; pytest 9.0.2; diagnostic validation environment, not original H20 runtime",
+  "regression": {"passed": 89, "failed": 0, "wall_seconds": 5.74, "files": [
+    "tests/gbv_paper/test_continuous_tree_block_decode.py",
+    "tests/gbv_paper/test_tree_block_skip.py",
+    "tests/gbv_paper/test_audited_global_tree_matrix.py",
+    "tests/gbv_paper/test_shared_budget_sequence_law.py"
+  ]},
+  "mathematical_checks": {
+    "status": "passed",
+    "rational_dp_vs_exhaustive_instances": 1000,
+    "frozen_allocator_vs_rational_instances": 500,
+    "weight_sensitivity_checks": 1000,
+    "bounded_score_error_checks": 1000,
+    "explicit_counterexamples_checked": ["discrete bundle-density greedy", "tier-fit exclusion", "near-tie tolerance is not exact real optimum"],
+    "scope": "finite CPU enumeration, not machine-formal proof and not GPU evidence"
+  },
+  "publication_scan": "no unresolved credential-pattern matches; mixed-12-character matches were only upstream Qwen3RMSNorm class identifiers",
+  "known_unpassed": ["real BF16 strict AR numerical equivalence", "full real-model sequence-law certification", "task-quality evaluation", "production serving benchmark", "direct D-cut and Bastion comparison", "same-path DP-only causal ablation"],
+  "source_provenance": "historically recorded core/baseline hashes verified; support dependencies collected locally; packaging-only pyproject edit explicitly recorded"
+}
