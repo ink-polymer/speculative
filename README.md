@@ -1,5 +1,7 @@
 # DFlash-SpecBlock：面向昇腾 910B A2 的扩散块动态树推测解码实验
 
+> **最新H20研究归档（2026-09-19）**：Qwen3-4B/8B全局树预算DP的冻结源码、完整原始实验结果、校验清单和最终审计位于 [`releases/dp-paper-natural-once-20260919/`](releases/dp-paper-natural-once-20260919/README.md)。
+
 本工程把两篇论文的核心思路组合为一个可审计的实验实现：
 
 - **DFlash** 负责草稿生成：目标模型多层隐藏状态持续注入每个 draft layer 的 KV，未来

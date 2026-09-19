@@ -1,0 +1,6939 @@
+{
+  "version": 2,
+  "datasets": [
+    "gsm8k",
+    "math500",
+    "humaneval",
+    "mbpp_sanitized"
+  ],
+  "model_targets": [
+    "qwen3_4b",
+    "qwen3_8b"
+  ],
+  "repeat_policy": "One timing execution per method/seed/group; seed sets, workloads, and quality five-seed protocol unchanged",
+  "reuse_policy": "Compatible completed old groups reuse only prespecified repeat0; original results and source hashes retained with provenance",
+  "data_policy": "First128 prepared natural tasks per dataset for formal timing/quality; no filler/truncation/length filtering. Correctness diagnostic uses32.",
+  "previous32_pilot_in_progress": "/root/dp-main-natural-cache-20260917",
+  "phases": {
+    "main128": [
+      {
+        "phase": "main128",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "main128",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "main128",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "main128",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "main128",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "main128",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "main128",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "main128",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "main128",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "main128",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "main128",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "main128",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "main128",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "main128",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "main128",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "main128",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "main128",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "main128",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "main128",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "main128",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "main128",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "main128",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "main128",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "main128",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "main128",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "main128",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "main128",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "main128",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "main128",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "main128",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "main128",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "main128",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "main128",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "main128",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "main128",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "main128",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "main128",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "main128",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "main128",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "main128",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "main128",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "main128",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "main128",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "main128",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "main128",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "main128",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "main128",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "main128",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      }
+    ],
+    "quality": [
+      {
+        "phase": "quality",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "quality",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "quality",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "quality",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 67,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "quality",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 101,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "quality",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "quality",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "quality",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "quality",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 67,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "quality",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 101,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "quality",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "quality",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "quality",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "quality",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 67,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "quality",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 101,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "quality",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "quality",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "quality",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "quality",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 67,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "quality",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 101,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      }
+    ],
+    "correctness": [
+      {
+        "phase": "correctness",
+        "dataset": "gsm8k",
+        "budget": 96,
+        "concurrency": 1,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "gsm8k",
+        "budget": 96,
+        "concurrency": 1,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "gsm8k",
+        "budget": 96,
+        "concurrency": 4,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "gsm8k",
+        "budget": 96,
+        "concurrency": 4,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "gsm8k",
+        "budget": 96,
+        "concurrency": 8,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "gsm8k",
+        "budget": 96,
+        "concurrency": 8,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 16,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 16,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "gsm8k",
+        "budget": 384,
+        "concurrency": 1,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "gsm8k",
+        "budget": 384,
+        "concurrency": 1,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "gsm8k",
+        "budget": 384,
+        "concurrency": 4,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "gsm8k",
+        "budget": 384,
+        "concurrency": 4,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "gsm8k",
+        "budget": 384,
+        "concurrency": 8,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "gsm8k",
+        "budget": 384,
+        "concurrency": 8,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "gsm8k",
+        "budget": 384,
+        "concurrency": 16,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "gsm8k",
+        "budget": 384,
+        "concurrency": 16,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "gsm8k",
+        "budget": 384,
+        "concurrency": 32,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "gsm8k",
+        "budget": 384,
+        "concurrency": 32,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "math500",
+        "budget": 96,
+        "concurrency": 1,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "math500",
+        "budget": 96,
+        "concurrency": 1,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "math500",
+        "budget": 96,
+        "concurrency": 4,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "math500",
+        "budget": 96,
+        "concurrency": 4,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "math500",
+        "budget": 96,
+        "concurrency": 8,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "math500",
+        "budget": 96,
+        "concurrency": 8,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 16,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 16,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "math500",
+        "budget": 384,
+        "concurrency": 1,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "math500",
+        "budget": 384,
+        "concurrency": 1,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "math500",
+        "budget": 384,
+        "concurrency": 4,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "math500",
+        "budget": 384,
+        "concurrency": 4,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "math500",
+        "budget": 384,
+        "concurrency": 8,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "math500",
+        "budget": 384,
+        "concurrency": 8,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "math500",
+        "budget": 384,
+        "concurrency": 16,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "math500",
+        "budget": 384,
+        "concurrency": 16,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "math500",
+        "budget": 384,
+        "concurrency": 32,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "math500",
+        "budget": 384,
+        "concurrency": 32,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "humaneval",
+        "budget": 96,
+        "concurrency": 1,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "humaneval",
+        "budget": 96,
+        "concurrency": 1,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "humaneval",
+        "budget": 96,
+        "concurrency": 4,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "humaneval",
+        "budget": 96,
+        "concurrency": 4,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "humaneval",
+        "budget": 96,
+        "concurrency": 8,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "humaneval",
+        "budget": 96,
+        "concurrency": 8,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 16,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 16,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "humaneval",
+        "budget": 384,
+        "concurrency": 1,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "humaneval",
+        "budget": 384,
+        "concurrency": 1,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "humaneval",
+        "budget": 384,
+        "concurrency": 4,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "humaneval",
+        "budget": 384,
+        "concurrency": 4,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "humaneval",
+        "budget": 384,
+        "concurrency": 8,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "humaneval",
+        "budget": 384,
+        "concurrency": 8,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "humaneval",
+        "budget": 384,
+        "concurrency": 16,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "humaneval",
+        "budget": 384,
+        "concurrency": 16,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "humaneval",
+        "budget": 384,
+        "concurrency": 32,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "humaneval",
+        "budget": 384,
+        "concurrency": 32,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "mbpp_sanitized",
+        "budget": 96,
+        "concurrency": 1,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "mbpp_sanitized",
+        "budget": 96,
+        "concurrency": 1,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "mbpp_sanitized",
+        "budget": 96,
+        "concurrency": 4,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "mbpp_sanitized",
+        "budget": 96,
+        "concurrency": 4,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "mbpp_sanitized",
+        "budget": 96,
+        "concurrency": 8,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "mbpp_sanitized",
+        "budget": 96,
+        "concurrency": 8,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 16,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 16,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "mbpp_sanitized",
+        "budget": 384,
+        "concurrency": 1,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "mbpp_sanitized",
+        "budget": 384,
+        "concurrency": 1,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "mbpp_sanitized",
+        "budget": 384,
+        "concurrency": 4,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "mbpp_sanitized",
+        "budget": 384,
+        "concurrency": 4,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "mbpp_sanitized",
+        "budget": 384,
+        "concurrency": 8,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "mbpp_sanitized",
+        "budget": 384,
+        "concurrency": 8,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "correctness",
+        "dataset": "mbpp_sanitized",
+        "budget": 384,
+        "concurrency": 16,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "mbpp_sanitized",
+        "budget": 384,
+        "concurrency": 16,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "mbpp_sanitized",
+        "budget": 384,
+        "concurrency": 32,
+        "max_new_tokens": 64,
+        "temperature": 0,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "correctness",
+        "dataset": "mbpp_sanitized",
+        "budget": 384,
+        "concurrency": 32,
+        "max_new_tokens": 64,
+        "temperature": 1,
+        "seed": 911,
+        "requests": 32,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      }
+    ],
+    "native_c1": [
+      {
+        "phase": "native_c1",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "native_dflash",
+          "native_ddtree",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "native_c1",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "native_dflash",
+          "native_ddtree",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "native_c1",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "native_dflash",
+          "native_ddtree",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "native_c1",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "native_dflash",
+          "native_ddtree",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "native_c1",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "native_dflash",
+          "native_ddtree",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "native_c1",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "native_dflash",
+          "native_ddtree",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "native_c1",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "native_dflash",
+          "native_ddtree",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "native_c1",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "native_dflash",
+          "native_ddtree",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      }
+    ],
+    "budget": [
+      {
+        "phase": "budget",
+        "dataset": "gsm8k",
+        "budget": 96,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "gsm8k",
+        "budget": 96,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "gsm8k",
+        "budget": 96,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "gsm8k",
+        "budget": 96,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "gsm8k",
+        "budget": 96,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "gsm8k",
+        "budget": 96,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "gsm8k",
+        "budget": 96,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "gsm8k",
+        "budget": 96,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "gsm8k",
+        "budget": 96,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "gsm8k",
+        "budget": 384,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "gsm8k",
+        "budget": 384,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "gsm8k",
+        "budget": 384,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "gsm8k",
+        "budget": 384,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "gsm8k",
+        "budget": 384,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "gsm8k",
+        "budget": 384,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "gsm8k",
+        "budget": 384,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "gsm8k",
+        "budget": 384,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "gsm8k",
+        "budget": 384,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "gsm8k",
+        "budget": 384,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "gsm8k",
+        "budget": 384,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "gsm8k",
+        "budget": 384,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "gsm8k",
+        "budget": 384,
+        "concurrency": 32,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "gsm8k",
+        "budget": 384,
+        "concurrency": 32,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "gsm8k",
+        "budget": 384,
+        "concurrency": 32,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "math500",
+        "budget": 96,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "math500",
+        "budget": 96,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "math500",
+        "budget": 96,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "math500",
+        "budget": 96,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "math500",
+        "budget": 96,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "math500",
+        "budget": 96,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "math500",
+        "budget": 96,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "math500",
+        "budget": 96,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "math500",
+        "budget": 96,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "math500",
+        "budget": 384,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "math500",
+        "budget": 384,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "math500",
+        "budget": 384,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "math500",
+        "budget": 384,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "math500",
+        "budget": 384,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "math500",
+        "budget": 384,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "math500",
+        "budget": 384,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "math500",
+        "budget": 384,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "math500",
+        "budget": 384,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "math500",
+        "budget": 384,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "math500",
+        "budget": 384,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "math500",
+        "budget": 384,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "math500",
+        "budget": 384,
+        "concurrency": 32,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "math500",
+        "budget": 384,
+        "concurrency": 32,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "math500",
+        "budget": 384,
+        "concurrency": 32,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "humaneval",
+        "budget": 96,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "humaneval",
+        "budget": 96,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "humaneval",
+        "budget": 96,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "humaneval",
+        "budget": 96,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "humaneval",
+        "budget": 96,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "humaneval",
+        "budget": 96,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "humaneval",
+        "budget": 96,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "humaneval",
+        "budget": 96,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "humaneval",
+        "budget": 96,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "humaneval",
+        "budget": 384,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "humaneval",
+        "budget": 384,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "humaneval",
+        "budget": 384,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "humaneval",
+        "budget": 384,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "humaneval",
+        "budget": 384,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "humaneval",
+        "budget": 384,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "humaneval",
+        "budget": 384,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "humaneval",
+        "budget": 384,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "humaneval",
+        "budget": 384,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "humaneval",
+        "budget": 384,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "humaneval",
+        "budget": 384,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "humaneval",
+        "budget": 384,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "humaneval",
+        "budget": 384,
+        "concurrency": 32,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "humaneval",
+        "budget": 384,
+        "concurrency": 32,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "humaneval",
+        "budget": 384,
+        "concurrency": 32,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "mbpp_sanitized",
+        "budget": 96,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "mbpp_sanitized",
+        "budget": 96,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "mbpp_sanitized",
+        "budget": 96,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "mbpp_sanitized",
+        "budget": 96,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "mbpp_sanitized",
+        "budget": 96,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "mbpp_sanitized",
+        "budget": 96,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "mbpp_sanitized",
+        "budget": 96,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "mbpp_sanitized",
+        "budget": 96,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "mbpp_sanitized",
+        "budget": 96,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "mbpp_sanitized",
+        "budget": 384,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "mbpp_sanitized",
+        "budget": 384,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "mbpp_sanitized",
+        "budget": 384,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "mbpp_sanitized",
+        "budget": 384,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "mbpp_sanitized",
+        "budget": 384,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "mbpp_sanitized",
+        "budget": 384,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "mbpp_sanitized",
+        "budget": 384,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "mbpp_sanitized",
+        "budget": 384,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "mbpp_sanitized",
+        "budget": 384,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "budget",
+        "dataset": "mbpp_sanitized",
+        "budget": 384,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "mbpp_sanitized",
+        "budget": 384,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "mbpp_sanitized",
+        "budget": 384,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "mbpp_sanitized",
+        "budget": 384,
+        "concurrency": 32,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "mbpp_sanitized",
+        "budget": 384,
+        "concurrency": 32,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "budget",
+        "dataset": "mbpp_sanitized",
+        "budget": 384,
+        "concurrency": 32,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      }
+    ],
+    "ablation": [
+      {
+        "phase": "ablation",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp",
+          "equal",
+          "greedy",
+          "random",
+          "fixed_small",
+          "fixed_large",
+          "no_weight",
+          "constant_cost",
+          "linear_cost",
+          "no_active_gate",
+          "no_tier_fit",
+          "age_admission"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "ablation",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp",
+          "equal",
+          "greedy",
+          "random",
+          "fixed_small",
+          "fixed_large",
+          "no_weight",
+          "constant_cost",
+          "linear_cost",
+          "no_active_gate",
+          "no_tier_fit",
+          "age_admission"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "ablation",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp",
+          "equal",
+          "greedy",
+          "random",
+          "fixed_small",
+          "fixed_large",
+          "no_weight",
+          "constant_cost",
+          "linear_cost",
+          "no_active_gate",
+          "no_tier_fit",
+          "age_admission"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "ablation",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp",
+          "equal",
+          "greedy",
+          "random",
+          "fixed_small",
+          "fixed_large",
+          "no_weight",
+          "constant_cost",
+          "linear_cost",
+          "no_active_gate",
+          "no_tier_fit",
+          "age_admission"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "ablation",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp",
+          "equal",
+          "greedy",
+          "random",
+          "fixed_small",
+          "fixed_large",
+          "no_weight",
+          "constant_cost",
+          "linear_cost",
+          "no_active_gate",
+          "no_tier_fit",
+          "age_admission"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "ablation",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp",
+          "equal",
+          "greedy",
+          "random",
+          "fixed_small",
+          "fixed_large",
+          "no_weight",
+          "constant_cost",
+          "linear_cost",
+          "no_active_gate",
+          "no_tier_fit",
+          "age_admission"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "ablation",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp",
+          "equal",
+          "greedy",
+          "random",
+          "fixed_small",
+          "no_weight",
+          "constant_cost",
+          "linear_cost",
+          "no_active_gate",
+          "no_tier_fit",
+          "age_admission"
+        ],
+        "excluded_methods": [
+          "fixed_large"
+        ]
+      },
+      {
+        "phase": "ablation",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp",
+          "equal",
+          "greedy",
+          "random",
+          "fixed_small",
+          "no_weight",
+          "constant_cost",
+          "linear_cost",
+          "no_active_gate",
+          "no_tier_fit",
+          "age_admission"
+        ],
+        "excluded_methods": [
+          "fixed_large"
+        ]
+      },
+      {
+        "phase": "ablation",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp",
+          "equal",
+          "greedy",
+          "random",
+          "fixed_small",
+          "no_weight",
+          "constant_cost",
+          "linear_cost",
+          "no_active_gate",
+          "no_tier_fit",
+          "age_admission"
+        ],
+        "excluded_methods": [
+          "fixed_large"
+        ]
+      },
+      {
+        "phase": "ablation",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp",
+          "equal",
+          "greedy",
+          "random",
+          "fixed_small",
+          "no_weight",
+          "constant_cost",
+          "linear_cost",
+          "no_active_gate",
+          "no_tier_fit",
+          "age_admission"
+        ],
+        "excluded_methods": [
+          "fixed_large"
+        ]
+      },
+      {
+        "phase": "ablation",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp",
+          "equal",
+          "greedy",
+          "random",
+          "fixed_small",
+          "no_weight",
+          "constant_cost",
+          "linear_cost",
+          "no_active_gate",
+          "no_tier_fit",
+          "age_admission"
+        ],
+        "excluded_methods": [
+          "fixed_large"
+        ]
+      },
+      {
+        "phase": "ablation",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp",
+          "equal",
+          "greedy",
+          "random",
+          "fixed_small",
+          "no_weight",
+          "constant_cost",
+          "linear_cost",
+          "no_active_gate",
+          "no_tier_fit",
+          "age_admission"
+        ],
+        "excluded_methods": [
+          "fixed_large"
+        ]
+      },
+      {
+        "phase": "ablation",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp",
+          "equal",
+          "greedy",
+          "random",
+          "fixed_small",
+          "fixed_large",
+          "no_weight",
+          "constant_cost",
+          "linear_cost",
+          "no_active_gate",
+          "no_tier_fit",
+          "age_admission"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "ablation",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp",
+          "equal",
+          "greedy",
+          "random",
+          "fixed_small",
+          "fixed_large",
+          "no_weight",
+          "constant_cost",
+          "linear_cost",
+          "no_active_gate",
+          "no_tier_fit",
+          "age_admission"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "ablation",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp",
+          "equal",
+          "greedy",
+          "random",
+          "fixed_small",
+          "fixed_large",
+          "no_weight",
+          "constant_cost",
+          "linear_cost",
+          "no_active_gate",
+          "no_tier_fit",
+          "age_admission"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "ablation",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp",
+          "equal",
+          "greedy",
+          "random",
+          "fixed_small",
+          "fixed_large",
+          "no_weight",
+          "constant_cost",
+          "linear_cost",
+          "no_active_gate",
+          "no_tier_fit",
+          "age_admission"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "ablation",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp",
+          "equal",
+          "greedy",
+          "random",
+          "fixed_small",
+          "fixed_large",
+          "no_weight",
+          "constant_cost",
+          "linear_cost",
+          "no_active_gate",
+          "no_tier_fit",
+          "age_admission"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "ablation",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp",
+          "equal",
+          "greedy",
+          "random",
+          "fixed_small",
+          "fixed_large",
+          "no_weight",
+          "constant_cost",
+          "linear_cost",
+          "no_active_gate",
+          "no_tier_fit",
+          "age_admission"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "ablation",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp",
+          "equal",
+          "greedy",
+          "random",
+          "fixed_small",
+          "no_weight",
+          "constant_cost",
+          "linear_cost",
+          "no_active_gate",
+          "no_tier_fit",
+          "age_admission"
+        ],
+        "excluded_methods": [
+          "fixed_large"
+        ]
+      },
+      {
+        "phase": "ablation",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp",
+          "equal",
+          "greedy",
+          "random",
+          "fixed_small",
+          "no_weight",
+          "constant_cost",
+          "linear_cost",
+          "no_active_gate",
+          "no_tier_fit",
+          "age_admission"
+        ],
+        "excluded_methods": [
+          "fixed_large"
+        ]
+      },
+      {
+        "phase": "ablation",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp",
+          "equal",
+          "greedy",
+          "random",
+          "fixed_small",
+          "no_weight",
+          "constant_cost",
+          "linear_cost",
+          "no_active_gate",
+          "no_tier_fit",
+          "age_admission"
+        ],
+        "excluded_methods": [
+          "fixed_large"
+        ]
+      },
+      {
+        "phase": "ablation",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp",
+          "equal",
+          "greedy",
+          "random",
+          "fixed_small",
+          "no_weight",
+          "constant_cost",
+          "linear_cost",
+          "no_active_gate",
+          "no_tier_fit",
+          "age_admission"
+        ],
+        "excluded_methods": [
+          "fixed_large"
+        ]
+      },
+      {
+        "phase": "ablation",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp",
+          "equal",
+          "greedy",
+          "random",
+          "fixed_small",
+          "no_weight",
+          "constant_cost",
+          "linear_cost",
+          "no_active_gate",
+          "no_tier_fit",
+          "age_admission"
+        ],
+        "excluded_methods": [
+          "fixed_large"
+        ]
+      },
+      {
+        "phase": "ablation",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp",
+          "equal",
+          "greedy",
+          "random",
+          "fixed_small",
+          "no_weight",
+          "constant_cost",
+          "linear_cost",
+          "no_active_gate",
+          "no_tier_fit",
+          "age_admission"
+        ],
+        "excluded_methods": [
+          "fixed_large"
+        ]
+      }
+    ],
+    "long_output": [
+      {
+        "phase": "long_output",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 512,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "long_output",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 512,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "long_output",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "long_output",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "long_output",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 512,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "long_output",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 512,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "long_output",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "long_output",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "long_output",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 512,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "long_output",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 512,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "long_output",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "long_output",
+        "dataset": "gsm8k",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "long_output",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 512,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "long_output",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 512,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "long_output",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "long_output",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "long_output",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 512,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "long_output",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 512,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "long_output",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "long_output",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "long_output",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 512,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "long_output",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 512,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "long_output",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "long_output",
+        "dataset": "math500",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "long_output",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 512,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "long_output",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 512,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "long_output",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "long_output",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "long_output",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 512,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "long_output",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 512,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "long_output",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "long_output",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "long_output",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 512,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "long_output",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 512,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "long_output",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "long_output",
+        "dataset": "humaneval",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "long_output",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 512,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "long_output",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 512,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "long_output",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "long_output",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 1,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "long_output",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 512,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "long_output",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 512,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "long_output",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "long_output",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "long_output",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 512,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "long_output",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 512,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "long_output",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "long_output",
+        "dataset": "mbpp_sanitized",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 1024,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      }
+    ],
+    "heterogeneous": [
+      {
+        "phase": "heterogeneous",
+        "dataset": "mixed_natural",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "heterogeneous",
+        "dataset": "mixed_natural",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "heterogeneous",
+        "dataset": "mixed_natural",
+        "budget": 193,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "heterogeneous",
+        "dataset": "mixed_natural",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "heterogeneous",
+        "dataset": "mixed_natural",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "heterogeneous",
+        "dataset": "mixed_natural",
+        "budget": 193,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "heterogeneous",
+        "dataset": "mixed_natural",
+        "budget": 193,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "heterogeneous",
+        "dataset": "mixed_natural",
+        "budget": 193,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "heterogeneous",
+        "dataset": "mixed_natural",
+        "budget": 193,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "heterogeneous",
+        "dataset": "mixed_natural",
+        "budget": 384,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "heterogeneous",
+        "dataset": "mixed_natural",
+        "budget": 384,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "heterogeneous",
+        "dataset": "mixed_natural",
+        "budget": 384,
+        "concurrency": 4,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "heterogeneous",
+        "dataset": "mixed_natural",
+        "budget": 384,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "heterogeneous",
+        "dataset": "mixed_natural",
+        "budget": 384,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "heterogeneous",
+        "dataset": "mixed_natural",
+        "budget": 384,
+        "concurrency": 8,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "ddtree",
+          "dp"
+        ],
+        "excluded_methods": []
+      },
+      {
+        "phase": "heterogeneous",
+        "dataset": "mixed_natural",
+        "budget": 384,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "heterogeneous",
+        "dataset": "mixed_natural",
+        "budget": 384,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "heterogeneous",
+        "dataset": "mixed_natural",
+        "budget": 384,
+        "concurrency": 16,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dflash",
+          "dp"
+        ],
+        "excluded_methods": [
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "heterogeneous",
+        "dataset": "mixed_natural",
+        "budget": 384,
+        "concurrency": 32,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 17,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "heterogeneous",
+        "dataset": "mixed_natural",
+        "budget": 384,
+        "concurrency": 32,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 29,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      },
+      {
+        "phase": "heterogeneous",
+        "dataset": "mixed_natural",
+        "budget": 384,
+        "concurrency": 32,
+        "max_new_tokens": 256,
+        "temperature": 1,
+        "seed": 43,
+        "requests": 128,
+        "repeats": 1,
+        "methods": [
+          "ar",
+          "dp"
+        ],
+        "excluded_methods": [
+          "dflash",
+          "ddtree"
+        ]
+      }
+    ]
+  },
+  "temperature_policy": "T=1 performance and quality; T=0 only diagnostic correctness checks",
+  "native_policy": "Pinned official code C=1; not an assertion of native high-concurrency serving results",
+  "quality_policy": "math_verify and safely isolated code tests; paired prompt-cluster confidence intervals, prespecified2pp margin",
+  "sampling_policy": "Existing prepared subsets, previously used in this project; not certified unseen data",
+  "hardware_scope": "Two H20s, one per target model; no cross-hardware generalization",
+  "measurement_policy": "Matched synchronized full decode wall including prefill; separate boundary maintenance metric; speedups versus matched AR",
+  "statistical_policy": "Resample independent request-identity groups; timing repeats/seeds are not independent prompts; no guarantee of positive outcomes",
+  "serving_scope": "Closed request batches only, logical token-ready latency; no network/open-loop SLO claim",
+  "not_yet_certified": [
+    "Strict BF16 AR sequence-law equality",
+    "Native optimized high-concurrency service comparison",
+    "Task noninferiority before scoring",
+    "Generalization beyond the two available models/H20 hardware"
+  ]
+}

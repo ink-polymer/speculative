@@ -1,0 +1,200 @@
+{
+  "partial": false,
+  "observations": 10240,
+  "cells": [
+    {
+      "dataset": "gsm8k",
+      "complete_prompt_clusters": 128,
+      "rates": {
+        "ar": 0.9296875,
+        "dflash": 0.921875,
+        "ddtree": 0.934375,
+        "dp": 0.925
+      },
+      "dp_vs": {
+        "ar": {
+          "mean_difference": -0.004687500000000001,
+          "two_sided95": [
+            -0.025,
+            0.0171875
+          ],
+          "one_sided95_lower": -0.021875000000000002,
+          "prompt_clusters": 128,
+          "noninferiority_2pp_supported": false
+        },
+        "dflash": {
+          "mean_difference": 0.0031250000000000028,
+          "two_sided95": [
+            -0.0171875,
+            0.028124999999999997
+          ],
+          "one_sided95_lower": -0.014062500000000002,
+          "prompt_clusters": 128,
+          "noninferiority_2pp_supported": true
+        },
+        "ddtree": {
+          "mean_difference": -0.009375000000000001,
+          "two_sided95": [
+            -0.0328125,
+            0.010937500000000001
+          ],
+          "one_sided95_lower": -0.0296875,
+          "prompt_clusters": 128,
+          "noninferiority_2pp_supported": false
+        }
+      },
+      "cap_reached_fraction": {
+        "ar": 0.0015625,
+        "dflash": 0.0015625,
+        "ddtree": 0.003125,
+        "dp": 0.0
+      }
+    },
+    {
+      "dataset": "math500",
+      "complete_prompt_clusters": 128,
+      "rates": {
+        "ar": 0.7296875,
+        "dflash": 0.74375,
+        "ddtree": 0.75,
+        "dp": 0.7390625
+      },
+      "dp_vs": {
+        "ar": {
+          "mean_difference": 0.009375000000000001,
+          "two_sided95": [
+            -0.015625,
+            0.0359375
+          ],
+          "one_sided95_lower": -0.010937500000000003,
+          "prompt_clusters": 128,
+          "noninferiority_2pp_supported": true
+        },
+        "dflash": {
+          "mean_difference": -0.004687500000000001,
+          "two_sided95": [
+            -0.03125,
+            0.020312500000000004
+          ],
+          "one_sided95_lower": -0.026562500000000003,
+          "prompt_clusters": 128,
+          "noninferiority_2pp_supported": false
+        },
+        "ddtree": {
+          "mean_difference": -0.0109375,
+          "two_sided95": [
+            -0.035937500000000004,
+            0.014062500000000002
+          ],
+          "one_sided95_lower": -0.0328125,
+          "prompt_clusters": 128,
+          "noninferiority_2pp_supported": false
+        }
+      },
+      "cap_reached_fraction": {
+        "ar": 0.2328125,
+        "dflash": 0.2359375,
+        "ddtree": 0.225,
+        "dp": 0.2265625
+      }
+    },
+    {
+      "dataset": "humaneval",
+      "complete_prompt_clusters": 128,
+      "rates": {
+        "ar": 0.8703125,
+        "dflash": 0.8625,
+        "ddtree": 0.859375,
+        "dp": 0.859375
+      },
+      "dp_vs": {
+        "ar": {
+          "mean_difference": -0.010937500000000001,
+          "two_sided95": [
+            -0.040625,
+            0.018750000000000003
+          ],
+          "one_sided95_lower": -0.0359375,
+          "prompt_clusters": 128,
+          "noninferiority_2pp_supported": false
+        },
+        "dflash": {
+          "mean_difference": -0.003124999999999996,
+          "two_sided95": [
+            -0.0390625,
+            0.0328125
+          ],
+          "one_sided95_lower": -0.0328125,
+          "prompt_clusters": 128,
+          "noninferiority_2pp_supported": false
+        },
+        "ddtree": {
+          "mean_difference": 4.336808689942018e-19,
+          "two_sided95": [
+            -0.025000000000000005,
+            0.02503906249999944
+          ],
+          "one_sided95_lower": -0.021875,
+          "prompt_clusters": 128,
+          "noninferiority_2pp_supported": false
+        }
+      },
+      "cap_reached_fraction": {
+        "ar": 0.0046875,
+        "dflash": 0.003125,
+        "ddtree": 0.003125,
+        "dp": 0.003125
+      }
+    },
+    {
+      "dataset": "mbpp_sanitized",
+      "complete_prompt_clusters": 128,
+      "rates": {
+        "ar": 0.70625,
+        "dflash": 0.703125,
+        "ddtree": 0.6953125,
+        "dp": 0.703125
+      },
+      "dp_vs": {
+        "ar": {
+          "mean_difference": -0.003125,
+          "two_sided95": [
+            -0.021875,
+            0.0171875
+          ],
+          "one_sided95_lower": -0.018750000000000003,
+          "prompt_clusters": 128,
+          "noninferiority_2pp_supported": true
+        },
+        "dflash": {
+          "mean_difference": 0.0,
+          "two_sided95": [
+            -0.018750000000000003,
+            0.018750000000000003
+          ],
+          "one_sided95_lower": -0.015625,
+          "prompt_clusters": 128,
+          "noninferiority_2pp_supported": true
+        },
+        "ddtree": {
+          "mean_difference": 0.0078125,
+          "two_sided95": [
+            -0.014062499999999999,
+            0.029687500000000006
+          ],
+          "one_sided95_lower": -0.010937499999999998,
+          "prompt_clusters": 128,
+          "noninferiority_2pp_supported": true
+        }
+      },
+      "cap_reached_fraction": {
+        "ar": 0.0,
+        "dflash": 0.0,
+        "ddtree": 0.0,
+        "dp": 0.0
+      }
+    }
+  ],
+  "strict_sequence_law_certified": false,
+  "statistical_caveat": "Prespecified per-dataset/comparator one-sided intervals, not a simultaneous familywise guarantee"
+}

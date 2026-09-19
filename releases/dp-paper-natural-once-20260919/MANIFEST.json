@@ -1,0 +1,2439 @@
+{
+  "release": "dp-paper-natural-once-20260919",
+  "created_beijing": "2026-09-19",
+  "final_raw_uncompressed_files": 42198,
+  "final_raw_uncompressed_bytes_approx": 1870659584,
+  "supporting_history_included": true,
+  "source_validation": {
+    "qwen3_4b": {
+      "source_files": 67,
+      "mismatches": []
+    },
+    "qwen3_8b": {
+      "source_files": 67,
+      "mismatches": []
+    }
+  },
+  "files": [
+    {
+      "path": "FINAL_STATUS.json",
+      "bytes": 26804,
+      "sha256": "10f840269de76d2acf106d13c73208f3138dd9901c35c3eb4a3bba4d8e5088a0"
+    },
+    {
+      "path": "FINAL_STATUS.md",
+      "bytes": 1714,
+      "sha256": "14a350d828f548c62e67fbdbdb43127a48c70263150e209114641aeae0a4069e"
+    },
+    {
+      "path": "README.md",
+      "bytes": 3154,
+      "sha256": "52876a38606ef68b25e00aae668b1e92b5050b27269472111e159303b268eae0"
+    },
+    {
+      "path": "code/EXPERIMENT_PLAN.md",
+      "bytes": 3651,
+      "sha256": "93bf405718c057f0e93db4bf22f0104591d37d615fcda2b3e8d955298a4150f7"
+    },
+    {
+      "path": "code/configs/adaptive_block_qwen3_4b.json",
+      "bytes": 1872,
+      "sha256": "b8e0043d0866289aefd8155dc5e5e496689315db7add78ff4a34fa0c85616641"
+    },
+    {
+      "path": "code/configs/adaptive_block_qwen3_8b.json",
+      "bytes": 1872,
+      "sha256": "13a4345952fab0acd0d8e14263ad1281f2944c44f27fa626965749011b1dfd04"
+    },
+    {
+      "path": "code/effective_queue.json",
+      "bytes": 1616,
+      "sha256": "b2398ae496de612f1f107716752758c305d1b8f9ce7d48ca1959b87cc1bc7584"
+    },
+    {
+      "path": "code/scripts/__pycache__/benchmark_continuous_tree_block_e2e.cpython-313.pyc",
+      "bytes": 16051,
+      "sha256": "c36f73b50e91580d51948dc9f96e561cf0424ed87eef97cde77a6ac95b5104db"
+    },
+    {
+      "path": "code/scripts/__pycache__/benchmark_draft_cache_reuse.cpython-313.pyc",
+      "bytes": 21838,
+      "sha256": "9d20920b51f1eda5ad6f2129e6b5ec69039c6afc102f10e7865288bbc0894a23"
+    },
+    {
+      "path": "code/scripts/__pycache__/grade_natural_paper_quality.cpython-313.pyc",
+      "bytes": 14561,
+      "sha256": "1284566b6891b019199a6a7ea84b7f241f13218a552fc4b86401f084b91ba396"
+    },
+    {
+      "path": "code/scripts/__pycache__/paper_dp_allocators.cpython-313.pyc",
+      "bytes": 8813,
+      "sha256": "903153556bd3654d67f60d6be52d212577feba25dbe806e75adf20ff48b9fc89"
+    },
+    {
+      "path": "code/scripts/__pycache__/paper_input256.cpython-313.pyc",
+      "bytes": 4946,
+      "sha256": "d53e08185cdc364b0a6651793772b83a7864d20676627f051993808e42d842bd"
+    },
+    {
+      "path": "code/scripts/__pycache__/paper_memory_lifecycle.cpython-313.pyc",
+      "bytes": 5232,
+      "sha256": "90b69081439ebc44a0fe1304ec89186000655ed196d6eafc0f6ae2d1f1f34fb5"
+    },
+    {
+      "path": "code/scripts/__pycache__/paper_natural_plan.cpython-313.pyc",
+      "bytes": 6080,
+      "sha256": "f01f7a18eeba38ebadf3a08ee2000ceb5b55fb4f888b890610dbc4f746550f25"
+    },
+    {
+      "path": "code/scripts/__pycache__/paper_once_migration.cpython-313.pyc",
+      "bytes": 12548,
+      "sha256": "be43c35a1a148f236343e9df79746bb28e0aa25b2ddaa4483db05311fc57add0"
+    },
+    {
+      "path": "code/scripts/__pycache__/paper_safe_code.cpython-313.pyc",
+      "bytes": 19027,
+      "sha256": "2264a49f0963e93499254627d6e6ae6aea57a2e5cc1bc3bcaea441138f6925f8"
+    },
+    {
+      "path": "code/scripts/__pycache__/paper_single_wave_policy.cpython-313.pyc",
+      "bytes": 3974,
+      "sha256": "907d733372e82c8d51ffd4ca354085c37ef5744e6d078ed320036d56db3f1f7e"
+    },
+    {
+      "path": "code/scripts/__pycache__/rerun_audited_global_tree_matrix_h20.cpython-313.pyc",
+      "bytes": 25544,
+      "sha256": "913157c806e31fb3d379d64c306aeecadfcecef5635ece9c9fe7219adc84d99b"
+    },
+    {
+      "path": "code/scripts/__pycache__/run_dp_paper_single_wave.cpython-313.pyc",
+      "bytes": 28614,
+      "sha256": "be9db0a4c06cff80e981324b65bdeef67eace45bf6b6798637775ac2c0a9cf16"
+    },
+    {
+      "path": "code/scripts/__pycache__/run_dp_paper_study.cpython-313.pyc",
+      "bytes": 23245,
+      "sha256": "9c365e1b37dac4a5ce3e74b82a2c4adc59c18a21298bdec90e0ae33c4c40cc3d"
+    },
+    {
+      "path": "code/scripts/__pycache__/run_natural_paper_phase.cpython-313.pyc",
+      "bytes": 24407,
+      "sha256": "b7b93401640c6d2754045bb83f7fc4ba0552921d885858d032574e539f0f7f78"
+    },
+    {
+      "path": "code/scripts/__pycache__/summarize_dp_paper_single_wave.cpython-313.pyc",
+      "bytes": 26432,
+      "sha256": "9628a9f4c0fd72e1218f453fff3c6c7b9ce3e888cd62635600d3f7c568c64252"
+    },
+    {
+      "path": "code/scripts/__pycache__/summarize_dp_paper_study.cpython-313.pyc",
+      "bytes": 24439,
+      "sha256": "254316ab3f6f505050fb2874fbc01358263754248539cb183d4493c9ef25991c"
+    },
+    {
+      "path": "code/scripts/__pycache__/tune_cross_request_architectures.cpython-313.pyc",
+      "bytes": 38107,
+      "sha256": "edf4a27b782822a5a9608fce85a63f04cc84a8d4ea68e700524c8d99ce6e2823"
+    },
+    {
+      "path": "code/scripts/audit_ours_greedy_same_prefix_h20.py",
+      "bytes": 7911,
+      "sha256": "cfbb11c8715b109c11dd77b5fc2c9c1a122d2722624c559e47f87bc7945a965a"
+    },
+    {
+      "path": "code/scripts/benchmark_continuous_tree_block_e2e.py",
+      "bytes": 12408,
+      "sha256": "5b7cfdb20f041958461892e6fc91f59ad9107c3458046be24efd8dc81ea9648e"
+    },
+    {
+      "path": "code/scripts/benchmark_draft_cache_reuse.py",
+      "bytes": 13554,
+      "sha256": "e9cc4df235b647c9498c5116af1bf186b47a9808220074f4b593bcbab29b1d03"
+    },
+    {
+      "path": "code/scripts/benchmark_main_input256.py",
+      "bytes": 12699,
+      "sha256": "e8be5ce9fb2fa945141187242bf0e76392e8d57d8faa1e0e12504e5c17c3d25a"
+    },
+    {
+      "path": "code/scripts/benchmark_main_natural.py",
+      "bytes": 13723,
+      "sha256": "b0a63925f21aa59a77cdee44c0203ce49a8976004a64eb5149d091fdd1ad2998"
+    },
+    {
+      "path": "code/scripts/check_dp_journal_theorems.py",
+      "bytes": 13235,
+      "sha256": "63778114e0f44a97f51193555912ba535c6d8b32f9223b765df575c42f8ca3b2"
+    },
+    {
+      "path": "code/scripts/check_dp_theorems.py",
+      "bytes": 6619,
+      "sha256": "ad7509ba73edbf5269071ca90b52fa372b70b94c2fb5a284f420eae24520da53"
+    },
+    {
+      "path": "code/scripts/correctness_trace_shared_budget_h20.py",
+      "bytes": 23233,
+      "sha256": "aed5ffe5a7927ef2ee70646ec96768a6e098c08dd24356b011abd875c38da266"
+    },
+    {
+      "path": "code/scripts/deploy_dp_second_h20.sh",
+      "bytes": 1812,
+      "sha256": "eae2918fba403796dc98f941dcbc532e4798031ad26a38319074d72ba01b52a5"
+    },
+    {
+      "path": "code/scripts/estimate_dp_paper_time.py",
+      "bytes": 6044,
+      "sha256": "7a0a50029172fc6957c1524c3f5e33657dd0c899bcdbbae30776751e4a27cfad"
+    },
+    {
+      "path": "code/scripts/grade_natural_paper_quality.py",
+      "bytes": 8582,
+      "sha256": "62719d0ac51218d2511a0aca06e0a3bcbb691ee01b3b1b98a0b27b86bb949c6c"
+    },
+    {
+      "path": "code/scripts/handoff_natural_paper.py",
+      "bytes": 2096,
+      "sha256": "46c077ae16b38eb1402f620dd8a433d31dc2b6d15ba80862f28b8548f443ab1f"
+    },
+    {
+      "path": "code/scripts/paper_dp_allocators.py",
+      "bytes": 3764,
+      "sha256": "afd049d54e444c9a0dd17209fec4e4243a8bda2f1b14fe5f7e792794e4fc82e1"
+    },
+    {
+      "path": "code/scripts/paper_input256.py",
+      "bytes": 3127,
+      "sha256": "b84962e43da7aae5180fac11cb8a45c94e4f5f0c9920e4f2da218033aa2f5ae3"
+    },
+    {
+      "path": "code/scripts/paper_memory_lifecycle.py",
+      "bytes": 2739,
+      "sha256": "63c56e5e25e0c7543fa13934720f36b4530c7e7f43d25a9f4d9193fe0973194d"
+    },
+    {
+      "path": "code/scripts/paper_natural_plan.py",
+      "bytes": 5122,
+      "sha256": "4531f769a686422ee6a0f2b17897a810071f23e572fefb496768bab977d8c793"
+    },
+    {
+      "path": "code/scripts/paper_once_migration.py",
+      "bytes": 7154,
+      "sha256": "65d9e993f2fefb2790694f95f8fd5c4df64fb52257504cd5af66044be755a66b"
+    },
+    {
+      "path": "code/scripts/paper_safe_code.py",
+      "bytes": 12116,
+      "sha256": "77d4f437a8260175c647d75c9c27f0a1edb253221bfc970899d45a8e70597e63"
+    },
+    {
+      "path": "code/scripts/paper_single_wave_policy.py",
+      "bytes": 2848,
+      "sha256": "bdbfd05c734ddd1fd09c550fee78fe2d8ab4b18baffbde7f549e1a604a54f670"
+    },
+    {
+      "path": "code/scripts/report_natural_paper.py",
+      "bytes": 5598,
+      "sha256": "c88f9c714aec23dc023cf1d8d11e93d61d2c17974f88d9150159a8c8240581aa"
+    },
+    {
+      "path": "code/scripts/rerun_audited_global_tree_matrix_h20.py",
+      "bytes": 18050,
+      "sha256": "85b0c697b36d9eae9babaa92eaa888d2f2978bc671651f3fda66bbbb9509bc3f"
+    },
+    {
+      "path": "code/scripts/resume_without_long_output.sh",
+      "bytes": 953,
+      "sha256": "5c17b39f2c0440a2d2c8e483dd287749966fe50532754005e199461ef57957c5"
+    },
+    {
+      "path": "code/scripts/run_cache_validation_256.sh",
+      "bytes": 1494,
+      "sha256": "5fe2eb95c3358294936d1a60c382d445d9dd5a64fdca2cee7a91bb25918d7977"
+    },
+    {
+      "path": "code/scripts/run_cache_validation_4b.sh",
+      "bytes": 1287,
+      "sha256": "9155d2eb2cafa54acf5043aa7e3d8985d5ef035d7cdc7aec12bed013170df0fa"
+    },
+    {
+      "path": "code/scripts/run_cache_validation_8b.sh",
+      "bytes": 1197,
+      "sha256": "18c0134c5c0ca5a135e487fc45538815a8d72adc2f592a8041e828e78f203420"
+    },
+    {
+      "path": "code/scripts/run_dp_paper_memory_safe.py",
+      "bytes": 20452,
+      "sha256": "95038482564bf8c924be6aebee10b21c76096b3f6acf65de6f35a4290b7282a9"
+    },
+    {
+      "path": "code/scripts/run_dp_paper_memory_safe_shard.sh",
+      "bytes": 978,
+      "sha256": "214aaef09da834bc769a65086ebae92655a5ff564733bc2f871cafd8b608786a"
+    },
+    {
+      "path": "code/scripts/run_dp_paper_queue.sh",
+      "bytes": 1066,
+      "sha256": "652fa8fd86d803533869195b26ab7fe6ff0f2c05de0242882adf7f2bb4085102"
+    },
+    {
+      "path": "code/scripts/run_dp_paper_shard.sh",
+      "bytes": 956,
+      "sha256": "8b8d42d3ec50e8594c83d0551b317e75f5882062e6ecd3a8e9dd747123da7a60"
+    },
+    {
+      "path": "code/scripts/run_dp_paper_single_wave.py",
+      "bytes": 18603,
+      "sha256": "750cdae8a4bf375e99fdee16a18e0f7fcf397b7f26266a64600442b0a90a0468"
+    },
+    {
+      "path": "code/scripts/run_dp_paper_single_wave_shard.sh",
+      "bytes": 1018,
+      "sha256": "16a1cb38054ca88b111e992d537b9e0b845c93dcde1acfa59c1fb3d5d8c1717a"
+    },
+    {
+      "path": "code/scripts/run_dp_paper_study.py",
+      "bytes": 14810,
+      "sha256": "02f9f422293f09e7a1ff0cbc38a61b52365cd9cea6c74ac8f6da7b83683325a3"
+    },
+    {
+      "path": "code/scripts/run_main_input256.sh",
+      "bytes": 1680,
+      "sha256": "38dc5a43d793de5fabdf92061b7b280394fa5f9d5028a9471bc6c83a1436e67c"
+    },
+    {
+      "path": "code/scripts/run_main_natural.sh",
+      "bytes": 1683,
+      "sha256": "03fdb0cd8e5edf1d3fee86fa0126f82401b9c81aaab42c2e09b428aacade7d19"
+    },
+    {
+      "path": "code/scripts/run_natural_paper_phase.py",
+      "bytes": 14989,
+      "sha256": "003624857f0b1dcdeecf7ffb2bd2a9c391d5c47388f141541dcdcf7088655e93"
+    },
+    {
+      "path": "code/scripts/run_natural_paper_suite.sh",
+      "bytes": 2438,
+      "sha256": "24bef452f85e34aa6537168505a8cf0e3c57316f8ab93be03569de43d7a869ef"
+    },
+    {
+      "path": "code/scripts/run_natural_paper_suite.sh.before-drop-long-output",
+      "bytes": 2401,
+      "sha256": "e2a4dce427001a0ca8bb760ce437ee7c1a486283279977b4772510a1b0e124c1"
+    },
+    {
+      "path": "code/scripts/summarize_audited_global_tree_matrix.py",
+      "bytes": 18820,
+      "sha256": "8c88096e9931e78a9ef707fed7b0575f41021cb149ad6897d5e03e5f098c746a"
+    },
+    {
+      "path": "code/scripts/summarize_dp_paper_single_wave.py",
+      "bytes": 16418,
+      "sha256": "ca6716521de5d8173977f40bd38905ff8c65923f1e33368e42c1f0cf1bf5442d"
+    },
+    {
+      "path": "code/scripts/summarize_dp_paper_study.py",
+      "bytes": 14664,
+      "sha256": "d104a6ac5464acc4edd21622b903a109e8aa83058fa48355b76a3552c39dfb41"
+    },
+    {
+      "path": "code/scripts/summarize_shared_budget_correctness.py",
+      "bytes": 14785,
+      "sha256": "c459a7138b3157b4c18f43c524eb6c0051b0569e7166df2162f256a871f735f1"
+    },
+    {
+      "path": "code/scripts/switch_natural_paper_once.py",
+      "bytes": 2408,
+      "sha256": "f76324a8e3eea71037b8e27246cc54b0021ee3ed3a5698ccc6295ca9df34930c"
+    },
+    {
+      "path": "code/scripts/tune_cross_request_architectures.py",
+      "bytes": 41025,
+      "sha256": "eb5951a92f200b6978bd10c0242d1a45c8af3031aa58734e06a6ebb1d67de14f"
+    },
+    {
+      "path": "code/scripts/verify_dp_second_h20.py",
+      "bytes": 3149,
+      "sha256": "7ac71e4d079114fb88d03120a6a8f5d2b7fd156a046a702ebc8fbb3669bdb840"
+    },
+    {
+      "path": "code/scripts/verify_release.py",
+      "bytes": 7187,
+      "sha256": "3640b11fb0ca9fa76c8f7f5face2e9961cc06dd48eff65c147f7b5a30b1a363c"
+    },
+    {
+      "path": "code/src/gbv_experiments/__init__.py",
+      "bytes": 93,
+      "sha256": "d63f17eaab0836b94a78c0db02511df46aeaef34ed1511b43cacac14d9d4c1c7"
+    },
+    {
+      "path": "code/src/gbv_experiments/__pycache__/__init__.cpython-313.pyc",
+      "bytes": 385,
+      "sha256": "c196757c4d9b32a551ee1d53d89c71a515cb48a1112cbb817548dcb1f60c5998"
+    },
+    {
+      "path": "code/src/gbv_experiments/__pycache__/atom_tree_bv.cpython-313.pyc",
+      "bytes": 25292,
+      "sha256": "cea148d7b280fd704fff5ebdf01afd39c94b75dcbc6d4554718f013f4dea5f44"
+    },
+    {
+      "path": "code/src/gbv_experiments/__pycache__/coalesced_block_skip.cpython-313.pyc",
+      "bytes": 22345,
+      "sha256": "8db35a4c016a7b9740ea3e419eb0be52bba0ff04db51eba17c13cd508025c60c"
+    },
+    {
+      "path": "code/src/gbv_experiments/__pycache__/common.cpython-313.pyc",
+      "bytes": 4330,
+      "sha256": "c14a209ebbe7cba304fd13659905c0df7fac894d8d9b595edcc445332ee1d3b3"
+    },
+    {
+      "path": "code/src/gbv_experiments/__pycache__/config.cpython-313.pyc",
+      "bytes": 28317,
+      "sha256": "bdaa93bbfb883b41be8134a41ed5300e53afe7228ddf94fbf5b88a30e1264b7d"
+    },
+    {
+      "path": "code/src/gbv_experiments/__pycache__/continuous_tree_block_decode.cpython-313.pyc",
+      "bytes": 108546,
+      "sha256": "0e06a811da9e06a679100a4e290d70ded61d409729b65f2e75515b2285fca5bd"
+    },
+    {
+      "path": "code/src/gbv_experiments/__pycache__/conversation.cpython-313.pyc",
+      "bytes": 6991,
+      "sha256": "6d57b2c97bc5b5d7c08184e7e28875874fb51c8a4b21b1242ae7d089700ff916"
+    },
+    {
+      "path": "code/src/gbv_experiments/__pycache__/data.cpython-313.pyc",
+      "bytes": 25038,
+      "sha256": "e6a9a492ed6fd1cdcb67f5e73a4cb1f4d3c0c698d98f63cb414bbc2c3fd0269d"
+    },
+    {
+      "path": "code/src/gbv_experiments/__pycache__/diffusion_tree_bv.cpython-313.pyc",
+      "bytes": 52185,
+      "sha256": "154beb1c362cb0165c464c2b25c923fc7f5953cd7f9a5b96a5882bce1b36f812"
+    },
+    {
+      "path": "code/src/gbv_experiments/__pycache__/engine.cpython-313.pyc",
+      "bytes": 94582,
+      "sha256": "5e30c64fa8ade4ac3c6056fcb98b8fb8737b70778c77a3a72d25f79d26e16cf0"
+    },
+    {
+      "path": "code/src/gbv_experiments/__pycache__/fairness.cpython-313.pyc",
+      "bytes": 7730,
+      "sha256": "50093f119b36cf998c0d7f41692a537d8f7f3ff0fda71d4c77afa02b54449b3c"
+    },
+    {
+      "path": "code/src/gbv_experiments/__pycache__/fused_tree_sampling.cpython-313.pyc",
+      "bytes": 134752,
+      "sha256": "01e9763b0e1720ca697a46eb959db1834aefcc6a94e137129b56534c0ab833c2"
+    },
+    {
+      "path": "code/src/gbv_experiments/__pycache__/protected_tree_bv.cpython-313.pyc",
+      "bytes": 7153,
+      "sha256": "c18ea2aa32f9d5576f27bd234bdf79ed9a504978181222c8353bfa7559491f7d"
+    },
+    {
+      "path": "code/src/gbv_experiments/__pycache__/root_marginalized_bv.cpython-313.pyc",
+      "bytes": 15822,
+      "sha256": "c943517b4a80e656e658387416b33e5c6f940664b0c6eab1715a159d8ad14603"
+    },
+    {
+      "path": "code/src/gbv_experiments/__pycache__/runner.cpython-313.pyc",
+      "bytes": 23246,
+      "sha256": "27081acf9c1ea0fafe590528b7adfddcd9e007ae01d28932ec436a4b9f4eb8e3"
+    },
+    {
+      "path": "code/src/gbv_experiments/__pycache__/runtime_model.cpython-313.pyc",
+      "bytes": 44548,
+      "sha256": "cad19ea252be545892ca392ec66f934cb41fc826cee6d196f7c8e16cd89e0d12"
+    },
+    {
+      "path": "code/src/gbv_experiments/__pycache__/sampling.cpython-313.pyc",
+      "bytes": 68268,
+      "sha256": "b63199ee96f3e9f2bc3ad53d12c07d1d7c6098f8b8ce04df26a4305fc1bc7b26"
+    },
+    {
+      "path": "code/src/gbv_experiments/__pycache__/terminal_formal.cpython-313.pyc",
+      "bytes": 57887,
+      "sha256": "e6461d4f9b74d7405182a3d71eee8c8e7cb971315b388a4d6c0929e604b2aae2"
+    },
+    {
+      "path": "code/src/gbv_experiments/__pycache__/terminal_protocol.cpython-313.pyc",
+      "bytes": 23997,
+      "sha256": "f71f0e40ec627891a7cd36a9e446d38216d3a0420aba675f2c94953bde0344ae"
+    },
+    {
+      "path": "code/src/gbv_experiments/__pycache__/tree.cpython-313.pyc",
+      "bytes": 42344,
+      "sha256": "4f216f5e2709f2cb7224a765027d57b2bf273dbce38a0c64ffc22d3bba4c1742"
+    },
+    {
+      "path": "code/src/gbv_experiments/__pycache__/tree_block_skip.cpython-313.pyc",
+      "bytes": 21827,
+      "sha256": "81f324d3df4e53a62abd95f53966e69ea5a677909f36d322c6f52aed2590a0dd"
+    },
+    {
+      "path": "code/src/gbv_experiments/atom_tree_bv.py",
+      "bytes": 14477,
+      "sha256": "2356b91e8a25264d8ef6b98078511112cd508cf1aa1ed56be9154e2898a9eaf8"
+    },
+    {
+      "path": "code/src/gbv_experiments/audit.py",
+      "bytes": 3681,
+      "sha256": "3f324a52e3c691333f62ec809c40cc4629f44d88b85107ee526116f85a0954a7"
+    },
+    {
+      "path": "code/src/gbv_experiments/coalesced_block_skip.py",
+      "bytes": 15370,
+      "sha256": "b05ea6e7b07334c1e613c965906f940881313fe69dc9ce7735c6ae594d3256c5"
+    },
+    {
+      "path": "code/src/gbv_experiments/common.py",
+      "bytes": 1748,
+      "sha256": "e77efcf774fec88186f5276d3e26224d6c9b70f9253a6ebe498567ab331d04a3"
+    },
+    {
+      "path": "code/src/gbv_experiments/config.py",
+      "bytes": 26185,
+      "sha256": "433399b7d40a8103682780482a2b6d4885341beab2f4a328ea4a841e61e3e86f"
+    },
+    {
+      "path": "code/src/gbv_experiments/continuous_tree_block_decode.py",
+      "bytes": 95654,
+      "sha256": "a7cd86d6c6835e65ea9f6dbc7b2801efcf0a28df601160ec4e75cc2bcffcec20"
+    },
+    {
+      "path": "code/src/gbv_experiments/conversation.py",
+      "bytes": 4731,
+      "sha256": "79e89e3f6039cf1bc96412a6c2989551cf5c192c64f3d864ca275c3d2d9ccc52"
+    },
+    {
+      "path": "code/src/gbv_experiments/data.py",
+      "bytes": 17566,
+      "sha256": "0d93c185d5f92e22d28379faacffe73970983761e86121b33b01c4c40bec4093"
+    },
+    {
+      "path": "code/src/gbv_experiments/diffusion_preflight.py",
+      "bytes": 17574,
+      "sha256": "e98300aa48a4df2d4b649a3739e2c665f5cf1431021fb6e39746ec0dae9e62c6"
+    },
+    {
+      "path": "code/src/gbv_experiments/diffusion_tree_bv.py",
+      "bytes": 34195,
+      "sha256": "1e8f735ccddae8e6421138bdc9eaee3eb796bc801c267f927997e6421cf148d7"
+    },
+    {
+      "path": "code/src/gbv_experiments/engine.py",
+      "bytes": 116226,
+      "sha256": "ad0e99a5d37bdb4dbe104e50e69cddea668c015beb65d1f4d73960d97b74820a"
+    },
+    {
+      "path": "code/src/gbv_experiments/fairness.py",
+      "bytes": 6863,
+      "sha256": "e1e1511c7949d8c32ae903f47bd41ba3c5bf9745b70c64e51db10a27b34cc859"
+    },
+    {
+      "path": "code/src/gbv_experiments/fused_tree_sampling.py",
+      "bytes": 122406,
+      "sha256": "a2177b7e2392e025be0d1236f371ad0325daa0bccc9196b8701e40975b3cf9b1"
+    },
+    {
+      "path": "code/src/gbv_experiments/lcb.py",
+      "bytes": 3089,
+      "sha256": "3d599802b738bc64e96632b672f7484b386febd2f59b957c7abe8731cf9cb5ce"
+    },
+    {
+      "path": "code/src/gbv_experiments/preflight.py",
+      "bytes": 27537,
+      "sha256": "500767cfcbe678071339e8f5fd9115067616f9fa2c037d064d8046f19a856371"
+    },
+    {
+      "path": "code/src/gbv_experiments/protected_tree_bv.py",
+      "bytes": 4673,
+      "sha256": "2c6fc7e4ae12f882430314e7e7475ba2ea5aa369389e00fdcd21ca3726b6e7e6"
+    },
+    {
+      "path": "code/src/gbv_experiments/report.py",
+      "bytes": 17124,
+      "sha256": "aff745d5b6ba0efb35790285690a0b42fd60c6d2db060ad9d6ac597d0ed53652"
+    },
+    {
+      "path": "code/src/gbv_experiments/root_marginalized_bv.py",
+      "bytes": 10839,
+      "sha256": "2705d24410cf7894e098ac8cb016e9950716231f8c6689fff4fcdf810850c563"
+    },
+    {
+      "path": "code/src/gbv_experiments/runner.py",
+      "bytes": 17707,
+      "sha256": "261fb87cd8e1769491ecaed0a9eb16b2c4889468450cc83a5908ac79bdf2853b"
+    },
+    {
+      "path": "code/src/gbv_experiments/runtime_model.py",
+      "bytes": 38938,
+      "sha256": "8783e8aa95cdc179bb968d7bf01d927c0859b1ff1d5803d4ce4fe7a7653bf370"
+    },
+    {
+      "path": "code/src/gbv_experiments/sampling.py",
+      "bytes": 56301,
+      "sha256": "7fc043a9f8da67d5009f00be667835e97462b63fb302545bd9f8a72aba4f3c4a"
+    },
+    {
+      "path": "code/src/gbv_experiments/scoring.py",
+      "bytes": 15745,
+      "sha256": "63a76c500e49e7f0cddae0742619dbbd792538f9bf887075f19faf6f840450ec"
+    },
+    {
+      "path": "code/src/gbv_experiments/terminal_formal.py",
+      "bytes": 45805,
+      "sha256": "b24dadfd06ea471d3d39bf477497fff05322d924b4d404a0fb9654d3eeb4f539"
+    },
+    {
+      "path": "code/src/gbv_experiments/terminal_protocol.py",
+      "bytes": 17415,
+      "sha256": "04ac0c38bdc7a169fa67e12110de8fab3291f026661bb6ac5cbd99d3f294d246"
+    },
+    {
+      "path": "code/src/gbv_experiments/tree.py",
+      "bytes": 28890,
+      "sha256": "0456c8675e56ac3fb06b842118dfa79faa746cb7f29dc1ec3d9c3af2243da88e"
+    },
+    {
+      "path": "code/src/gbv_experiments/tree_block_skip.py",
+      "bytes": 14195,
+      "sha256": "55f2b05493ae31562ee47f4785030b184457ba6d4aed6868fd305b8ec9367fc4"
+    },
+    {
+      "path": "code/tests/__pycache__/test_paper_memory_lifecycle.cpython-313-pytest-9.0.2.pyc",
+      "bytes": 20476,
+      "sha256": "b270bd6ef15f112bfac724374ecbf7c040bc1ef975a635cb7ab9453e51ef1021"
+    },
+    {
+      "path": "code/tests/__pycache__/test_paper_single_wave.cpython-313-pytest-9.0.2.pyc",
+      "bytes": 35270,
+      "sha256": "b3a229644b5bc35bd80e0acd50b21dc0a9ea910873ef917b5b2bec46dfd7a5b8"
+    },
+    {
+      "path": "code/tests/__pycache__/test_paper_study.cpython-313-pytest-9.0.2.pyc",
+      "bytes": 34829,
+      "sha256": "02ce032abd39e5ce9a7fa9ece6e66546622b8c0a1b033fbccf915f435044868d"
+    },
+    {
+      "path": "code/tests/gbv_paper/__pycache__/test_audited_global_tree_matrix.cpython-313-pytest-9.0.2.pyc",
+      "bytes": 38005,
+      "sha256": "5f7f3c5ff930d990dfc479ec03f9764c30d6adbfdced2487c477c14e319cf657"
+    },
+    {
+      "path": "code/tests/gbv_paper/__pycache__/test_continuous_tree_block_decode.cpython-313-pytest-9.0.2.pyc",
+      "bytes": 109368,
+      "sha256": "dd550fb9e3fbe79acea4bd6236f99a96fb9b9c48e303bf92f829f7b8665465da"
+    },
+    {
+      "path": "code/tests/gbv_paper/__pycache__/test_draft_cache_reuse.cpython-313-pytest-9.0.2.pyc",
+      "bytes": 20607,
+      "sha256": "56002cd0c064dab7790525e3e3e66636684fe45ad1a78b687a538056ccc4d3a8"
+    },
+    {
+      "path": "code/tests/gbv_paper/__pycache__/test_input256.cpython-313-pytest-9.0.2.pyc",
+      "bytes": 4866,
+      "sha256": "f4d4033b18693feb66123d87ce47d683d577f89d2d923f6d890d4f8eee44e9d3"
+    },
+    {
+      "path": "code/tests/gbv_paper/__pycache__/test_natural_paper_plan.cpython-313-pytest-9.0.2.pyc",
+      "bytes": 11130,
+      "sha256": "134403f7c33beea892b9f670cbcaf1734f099a33d83bca0310e1c1a4211d91a0"
+    },
+    {
+      "path": "code/tests/gbv_paper/__pycache__/test_natural_paper_scoring.cpython-313-pytest-9.0.2.pyc",
+      "bytes": 9682,
+      "sha256": "ec25cbabb067c946f3991c95096d3f1b988167856d30e4a2f6a1d761a4766c42"
+    },
+    {
+      "path": "code/tests/gbv_paper/__pycache__/test_once_protocol.cpython-313-pytest-9.0.2.pyc",
+      "bytes": 11453,
+      "sha256": "c22efe2983c9c71c0b94e6dd16977251e33b8b6c3edc9506dff2239e2aba628d"
+    },
+    {
+      "path": "code/tests/gbv_paper/__pycache__/test_shared_budget_sequence_law.cpython-313-pytest-9.0.2.pyc",
+      "bytes": 16366,
+      "sha256": "db33d43832f82da93f1646d492f6153abaae3d5e3076e3ec1dbd27df31ffc1ca"
+    },
+    {
+      "path": "code/tests/gbv_paper/__pycache__/test_tree_block_skip.cpython-313-pytest-9.0.2.pyc",
+      "bytes": 26251,
+      "sha256": "cdcb1fbb9e16b23a440215e9e0006c201ef9a265ea7722a6079e7aa910cf258d"
+    },
+    {
+      "path": "code/tests/gbv_paper/test_audited_global_tree_matrix.py",
+      "bytes": 10891,
+      "sha256": "6fbf9da06086581acc6f0978167487830750aca8860db0c1133fa5a623b2a5bd"
+    },
+    {
+      "path": "code/tests/gbv_paper/test_continuous_tree_block_decode.py",
+      "bytes": 17901,
+      "sha256": "69b8d7ec12a8fc5850421aff81600b9eddca54c490affa85d688288f9eab73b1"
+    },
+    {
+      "path": "code/tests/gbv_paper/test_draft_cache_reuse.py",
+      "bytes": 5022,
+      "sha256": "d95cf02e57e13195645ac4c034c52d668f47afad36175428c273fa35e55eaa47"
+    },
+    {
+      "path": "code/tests/gbv_paper/test_input256.py",
+      "bytes": 890,
+      "sha256": "da1be6bad9261a5c52870edd40d1018b96d90a0420ef402fae136e969fd922cc"
+    },
+    {
+      "path": "code/tests/gbv_paper/test_natural_paper_plan.py",
+      "bytes": 1535,
+      "sha256": "56a1d4974709cbccc076bf066e42a8bd226d6c7c4f2b9aca1f17884ed636963b"
+    },
+    {
+      "path": "code/tests/gbv_paper/test_natural_paper_scoring.py",
+      "bytes": 1890,
+      "sha256": "62e7210519339292126d9571469b66ea84387b16b1d6894aafba14f24f47be17"
+    },
+    {
+      "path": "code/tests/gbv_paper/test_once_protocol.py",
+      "bytes": 2583,
+      "sha256": "4a1e39ee6300e001fd05cec1001ed02522b71b412fa21dfc4a412e36d998d4e3"
+    },
+    {
+      "path": "code/tests/gbv_paper/test_shared_budget_sequence_law.py",
+      "bytes": 6988,
+      "sha256": "ac11f9459c220bbe71f736e65b19856c610531c25e50e8bec3cc148d032a9e71"
+    },
+    {
+      "path": "code/tests/gbv_paper/test_tree_block_skip.py",
+      "bytes": 4574,
+      "sha256": "24f831bc3dca85d98aa3d0039e57d4aa9eb96bb5befde2988a22b98e334b7b96"
+    },
+    {
+      "path": "code/tests/test_paper_memory_lifecycle.py",
+      "bytes": 3965,
+      "sha256": "8121bb730eba8fc110230e53ae5b892d1d357eca68e0bfc82cf21f86294e28d9"
+    },
+    {
+      "path": "code/tests/test_paper_single_wave.py",
+      "bytes": 5268,
+      "sha256": "b095414609742fcac1acc18ea91956baaf1edbde9f2f6dd95b01aa2ce668c8ac"
+    },
+    {
+      "path": "code/tests/test_paper_study.py",
+      "bytes": 6405,
+      "sha256": "416b20fe297348895ea57c209f1ec613ba13fb0201157c3bcb0af00092d28af6"
+    },
+    {
+      "path": "code/third_party/ddtree_official/.gitattributes",
+      "bytes": 42,
+      "sha256": "cfb3584253dd614c8b1528a3888ed504df5f02fa046f69d658c37fcba04ea726"
+    },
+    {
+      "path": "code/third_party/ddtree_official/.gitignore",
+      "bytes": 38,
+      "sha256": "eb6f5e92269bbb43167866173840755c2ced98ad42a3e4f8d50fde174c02e330"
+    },
+    {
+      "path": "code/third_party/ddtree_official/LICENSE",
+      "bytes": 1069,
+      "sha256": "6355c7a7042a1f75a011d616446386d19fac37ea3f03560425f7f225ba9ae1d3"
+    },
+    {
+      "path": "code/third_party/ddtree_official/README.md",
+      "bytes": 1079,
+      "sha256": "c21ccf50b6984f4ee134c8e366df9932cb74bee07e77d33b301accbac7e63d2c"
+    },
+    {
+      "path": "code/third_party/ddtree_official/benchmark.py",
+      "bytes": 8403,
+      "sha256": "6dbffd0d61c173c0a622e8a669fa18e5159c7ec83073649db9ac8bcd39c9471b"
+    },
+    {
+      "path": "code/third_party/ddtree_official/block_verification.py",
+      "bytes": 6590,
+      "sha256": "cd430234885271239573773b69f1b367f278174c5b1032546908ad414b4acab2"
+    },
+    {
+      "path": "code/third_party/ddtree_official/ddtree.py",
+      "bytes": 19526,
+      "sha256": "8d0ecd9d07a7266d3825eefd176811502313a0da7cedfcdc8aec1a4971c3a99b"
+    },
+    {
+      "path": "code/third_party/ddtree_official/dflash.py",
+      "bytes": 6999,
+      "sha256": "a43b855d2c2c27fc5116bc6dc67ea5fca5d91648278cb3e0a1c09cbbbcdbbc49"
+    },
+    {
+      "path": "code/third_party/ddtree_official/distributed.py",
+      "bytes": 1559,
+      "sha256": "e2d7d3252c78b83befd0d1a59d089084547a0f52ae6299bb1a4a6355d40c9468"
+    },
+    {
+      "path": "code/third_party/ddtree_official/gbv.py",
+      "bytes": 9215,
+      "sha256": "3f314a55e0616cadd4df9049bc588e6bf9ad1346ca588737038dd494fea35ffd"
+    },
+    {
+      "path": "code/third_party/ddtree_official/make_latex_table.py",
+      "bytes": 9470,
+      "sha256": "818476772658c5de65ce00e2e3d29ec40f81e0cd12ac5ebd477b20367929f655"
+    },
+    {
+      "path": "code/third_party/ddtree_official/model/__init__.py",
+      "bytes": 114,
+      "sha256": "fc48c47ac9ea989c7875ec6b916912f4f3841148ed78e4a876e54d7546cfcb35"
+    },
+    {
+      "path": "code/third_party/ddtree_official/model/dflash.py",
+      "bytes": 12340,
+      "sha256": "17ab761ba665a41965b27bdc3a1c6795d1b07b285ec1f0789ad146f2ee9c1cc5"
+    },
+    {
+      "path": "code/third_party/ddtree_official/model/utils.py",
+      "bytes": 5731,
+      "sha256": "00b91431932c94b87443d9e2c0cf4d743846bd6c9666c9c736008df7bbd0faf1"
+    },
+    {
+      "path": "code/third_party/ddtree_official/plot_results.py",
+      "bytes": 22280,
+      "sha256": "26f3cf6f410adb0a10116415e2e087b47115aa5c3e85134a55f3527b97e148e1"
+    },
+    {
+      "path": "code/third_party/ddtree_official/requirements.txt",
+      "bytes": 92,
+      "sha256": "c24e5e4a9bf25902b69e86c05e832f960a142b1c80cd08b7d8456d07bf776640"
+    },
+    {
+      "path": "code/third_party/ddtree_official/run_benchmark.sh",
+      "bytes": 2847,
+      "sha256": "c7c36e4b92b2db42c301b358cdea910db399cefb1903e5b7fdfc8b3a306a1bcc"
+    },
+    {
+      "path": "code/third_party/ddtree_pinned/LICENSE",
+      "bytes": 1069,
+      "sha256": "6355c7a7042a1f75a011d616446386d19fac37ea3f03560425f7f225ba9ae1d3"
+    },
+    {
+      "path": "code/third_party/ddtree_pinned/SOURCE_SHA256.json",
+      "bytes": 1144,
+      "sha256": "05631122868a9ec06a10bbd2860cff8f63050a13ff6ed59f9001b0e80796c4b9"
+    },
+    {
+      "path": "code/third_party/ddtree_pinned/benchmark.py",
+      "bytes": 8403,
+      "sha256": "6dbffd0d61c173c0a622e8a669fa18e5159c7ec83073649db9ac8bcd39c9471b"
+    },
+    {
+      "path": "code/third_party/ddtree_pinned/ddtree.py",
+      "bytes": 19526,
+      "sha256": "8d0ecd9d07a7266d3825eefd176811502313a0da7cedfcdc8aec1a4971c3a99b"
+    },
+    {
+      "path": "code/third_party/ddtree_pinned/dflash.py",
+      "bytes": 5678,
+      "sha256": "297e5126980ff7bad7650ce7ede9dea9b11b1b3485154ab5b9a2a3f899b33159"
+    },
+    {
+      "path": "code/third_party/ddtree_pinned/distributed.py",
+      "bytes": 1559,
+      "sha256": "e2d7d3252c78b83befd0d1a59d089084547a0f52ae6299bb1a4a6355d40c9468"
+    },
+    {
+      "path": "code/third_party/ddtree_pinned/make_latex_table.py",
+      "bytes": 9470,
+      "sha256": "818476772658c5de65ce00e2e3d29ec40f81e0cd12ac5ebd477b20367929f655"
+    },
+    {
+      "path": "code/third_party/ddtree_pinned/model/__init__.py",
+      "bytes": 115,
+      "sha256": "6bc5dc94f340a3bec1b38e2fb1ff7a684fba98ebb11eb8e54a95fb8c167511c4"
+    },
+    {
+      "path": "code/third_party/ddtree_pinned/model/dflash.py",
+      "bytes": 12340,
+      "sha256": "17ab761ba665a41965b27bdc3a1c6795d1b07b285ec1f0789ad146f2ee9c1cc5"
+    },
+    {
+      "path": "code/third_party/ddtree_pinned/model/utils.py",
+      "bytes": 5732,
+      "sha256": "a3c75cc8de132fb8803368d5720b62879a0c63e6860c37af745dd6debbfb367f"
+    },
+    {
+      "path": "code/third_party/ddtree_pinned/requirements.txt",
+      "bytes": 92,
+      "sha256": "c24e5e4a9bf25902b69e86c05e832f960a142b1c80cd08b7d8456d07bf776640"
+    },
+    {
+      "path": "code/third_party/ddtree_pinned/run_benchmark.sh",
+      "bytes": 2847,
+      "sha256": "c7c36e4b92b2db42c301b358cdea910db399cefb1903e5b7fdfc8b3a306a1bcc"
+    },
+    {
+      "path": "code/third_party/dflash_official/.github/workflows/package.yml",
+      "bytes": 1023,
+      "sha256": "90f642086ab81390c4cf704f6699ca5bb05af054cc66f757e0ea2c7d48c289f7"
+    },
+    {
+      "path": "code/third_party/dflash_official/.github/workflows/publish-pypi.yml",
+      "bytes": 1690,
+      "sha256": "7109f31fcee892918698ad6147fada881ccf65fbad6bf77c2fc212a5c6530b95"
+    },
+    {
+      "path": "code/third_party/dflash_official/.gitignore",
+      "bytes": 85,
+      "sha256": "5f21b0a919fbb2f1fbfcddb68ad2f5301a94980155e7c8d5a1d7d6e3dd266fa1"
+    },
+    {
+      "path": "code/third_party/dflash_official/LICENSE",
+      "bytes": 1062,
+      "sha256": "6fd2aebd899c0b48ea9abb845aef043c6dadff00a6726a10a1bc32db528a5422"
+    },
+    {
+      "path": "code/third_party/dflash_official/README.md",
+      "bytes": 6005,
+      "sha256": "e39074de245d5893f1812b18755fd3a232fedeb38ed2608d9dfd0b5b4db8780b"
+    },
+    {
+      "path": "code/third_party/dflash_official/dflash/__init__.py",
+      "bytes": 864,
+      "sha256": "75a274bfb4d5339bb559f88608538b555563f2a70e909c4ceda237fc29bda46d"
+    },
+    {
+      "path": "code/third_party/dflash_official/dflash/benchmark.py",
+      "bytes": 15023,
+      "sha256": "d19d3c1688768e13783150ce23178fcf2ed4c94d9ad7960e96f50c99d8a9d48f"
+    },
+    {
+      "path": "code/third_party/dflash_official/dflash/cli.py",
+      "bytes": 4690,
+      "sha256": "5f628ed7f460247dcca3655b583452aa7eb3df798e2fbc06db93175e2894fd14"
+    },
+    {
+      "path": "code/third_party/dflash_official/dflash/model.py",
+      "bytes": 25722,
+      "sha256": "f55b7fe0a4c0b3073e0f9cdce547cce29f4b8e2168c4d2818760007c43b7651e"
+    },
+    {
+      "path": "code/third_party/dflash_official/dflash/model_mlx.py",
+      "bytes": 35272,
+      "sha256": "2f8598eaca4cb814e63ea69e791c1bdf55ba82280bfd299f9141906356b7cb87"
+    },
+    {
+      "path": "code/third_party/dflash_official/pyproject.toml",
+      "bytes": 1782,
+      "sha256": "639e088fcc98a1ecc45e45dc53282d0ee4af8a1c29847ff6c059bcde4b537ef3"
+    },
+    {
+      "path": "code/third_party/livecodebench_official/LICENSE",
+      "bytes": 1070,
+      "sha256": "104099948b78ebc36f2e951b3a7973b956adfa7d39aaec0d1512f97a2686d15d"
+    },
+    {
+      "path": "code/third_party/livecodebench_official/testing_util.py",
+      "bytes": 18276,
+      "sha256": "b7cb6a8a69807bb868150a61742e25d7bb5328bbe01d514471b6ec43c9fa9ed2"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/.pytest_cache/.gitignore",
+      "bytes": 37,
+      "sha256": "3ed731b65d06150c138e2dadb0be0697550888a6b47eb8c45ecc9adba8b8e9bd"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/.pytest_cache/CACHEDIR.TAG",
+      "bytes": 191,
+      "sha256": "37dc88ef9a0abeddbe81053a6dd8fdfb13afb613045ea1eb4a5c815a74a3bde4"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/.pytest_cache/README.md",
+      "bytes": 302,
+      "sha256": "73fd6fccdd802c419a6b2d983d6c3173b7da97558ac4b589edec2dfe443db9ad"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/.pytest_cache/v/cache/nodeids",
+      "bytes": 13451,
+      "sha256": "cde0b8ce7c07828f844eb06715f53c6af2f4c639b0c21d92d65d47c8b0208ac8"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/EXPERIMENT_PLAN.md",
+      "bytes": 6635,
+      "sha256": "4cd2989ec6843bf931dca66065a89bd34a3dbdf9e374761b0e7c16d43f3fbb7b"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/configs/adaptive_block_qwen3_4b.json",
+      "bytes": 1872,
+      "sha256": "b8e0043d0866289aefd8155dc5e5e496689315db7add78ff4a34fa0c85616641"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/configs/adaptive_block_qwen3_8b.json",
+      "bytes": 1872,
+      "sha256": "13a4345952fab0acd0d8e14263ad1281f2944c44f27fa626965749011b1dfd04"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/audit_ours_greedy_same_prefix_h20.cpython-311.pyc",
+      "bytes": 14407,
+      "sha256": "7e2b38639e434a941c5334f663d5581978720c0d2cb225f5c3c63c2269762901"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/benchmark_continuous_tree_block_e2e.cpython-311.pyc",
+      "bytes": 18014,
+      "sha256": "8696db9f6f15f4eaa9902ff92b450805683293a47232ebe67d3df845a52985f2"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/benchmark_continuous_tree_block_e2e.cpython-313.pyc",
+      "bytes": 16016,
+      "sha256": "1fe9121156bb49505ad35e4cb889bf812a19163df6ca8eddb454de62e42cc770"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/benchmark_draft_cache_reuse.cpython-311.pyc",
+      "bytes": 26195,
+      "sha256": "8546a986349aedf2903b0c62eebf6c45d6d48660d6323f774407d04dcefd07cb"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/benchmark_draft_cache_reuse.cpython-313.pyc",
+      "bytes": 21719,
+      "sha256": "fd7e55664f493967c0d8e37f7989934afc0109f8847c9e3576abe58bf2c209d4"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/benchmark_main_input256.cpython-313.pyc",
+      "bytes": 20960,
+      "sha256": "c0e77f5ac7271fb07e779ca7078d062cbb2ee74d5e9b650f036c99a653d2aec7"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/benchmark_main_natural.cpython-313.pyc",
+      "bytes": 22476,
+      "sha256": "e492c6476b088a7b3aa66eec0f91fc8250d884fb9e8f391c14e878a661d5bf8c"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/check_dp_journal_theorems.cpython-313.pyc",
+      "bytes": 24896,
+      "sha256": "f3d23dc708017de54470554aa84053313adfc822d303938da17aa82610088941"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/correctness_trace_shared_budget_h20.cpython-311.pyc",
+      "bytes": 45006,
+      "sha256": "6f6621027878f464b256698505aa6ba62b0d147683746fcbfa30ce763bfb76ed"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/estimate_dp_paper_time.cpython-313.pyc",
+      "bytes": 9121,
+      "sha256": "8bb4f5a87d99047534eaaa989f139a2f2639a6d6ebaf45986c37eade42e68eda"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/grade_natural_paper_quality.cpython-311.pyc",
+      "bytes": 17304,
+      "sha256": "594a8dc84de12ea0dc405de2d043b4c100e8ac69959cc9898a2524bc7cec4294"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/grade_natural_paper_quality.cpython-313.pyc",
+      "bytes": 14450,
+      "sha256": "c5be517c1f9a21b035f818a1d4328293ef9e6dfb93f37e2eec44b4018e4eedc9"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/handoff_natural_paper.cpython-313.pyc",
+      "bytes": 3658,
+      "sha256": "effffa70e9fc40e3b05593a872f61823a0302f4c5b7d13f529dd58db49ae7609"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/paper_dp_allocators.cpython-311.pyc",
+      "bytes": 10853,
+      "sha256": "85a8187ddbde32318c7b38e8cc0e8c56edbdae8f716106a24747c315b0b9bd09"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/paper_dp_allocators.cpython-313.pyc",
+      "bytes": 8770,
+      "sha256": "1166393e62bf7edadaf50327a7fdcf2e8d224d63c9eaf60b242c96127f3ae780"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/paper_input256.cpython-311.pyc",
+      "bytes": 5475,
+      "sha256": "c6ff7c83023f116125bfd679bf08d6224bdf5ae191a679c4d2c56a4c993dcb59"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/paper_input256.cpython-313.pyc",
+      "bytes": 4911,
+      "sha256": "7ed5f0cb246ec6afb10b099ec174c2cd2e8774b73f91dbe5a4b12ab63402a8c9"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/paper_memory_lifecycle.cpython-311.pyc",
+      "bytes": 5953,
+      "sha256": "c0c3e490b7f4f1a2d03333344275dd3f9b92af9d953e0a67c4fa145bd296bb31"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/paper_memory_lifecycle.cpython-313.pyc",
+      "bytes": 5189,
+      "sha256": "f7a18c3d8795f5f6c7bc6011c92c22f45ef7ea301694fe8865f6ad193feaf1b8"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/paper_natural_plan.cpython-311.pyc",
+      "bytes": 6300,
+      "sha256": "d547772e929bd1a8d8fc3800bfbdf4f97e4a207184953ba06603253371a5e258"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/paper_natural_plan.cpython-313.pyc",
+      "bytes": 5531,
+      "sha256": "8be0e3ee892a59d09fc5fc3cc94cf48ea7a9c27377c01358ca33fd5fb230533c"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/paper_safe_code.cpython-311.pyc",
+      "bytes": 20187,
+      "sha256": "cb0eb98e5d9847c2c6f1129beb1d37f2ccd724a8c7db4cecc4616450fdaaafc2"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/paper_safe_code.cpython-313.pyc",
+      "bytes": 16801,
+      "sha256": "ad8078f9aafec4f935e8e3a156d1d300fdb83458150f58fe90dbf1dee615fb08"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/paper_single_wave_policy.cpython-311.pyc",
+      "bytes": 4878,
+      "sha256": "a5331589c8064e276253c5c4bbb54c91a0226159a133b7fbc16cb47b0408be6e"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/paper_single_wave_policy.cpython-313.pyc",
+      "bytes": 3931,
+      "sha256": "64d1a7fc11709cb6f2436c7b843ca43d0692d6a7fb8668c28c0fe69b7d96b5b5"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/report_natural_paper.cpython-313.pyc",
+      "bytes": 6750,
+      "sha256": "1d22e843e455f78ab9247e1fb0b2484aad193fc797df7f581af1ce3328c4e774"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/rerun_audited_global_tree_matrix_h20.cpython-311.pyc",
+      "bytes": 31105,
+      "sha256": "d0eb584e8bc97427af23fb0c8737f0af01644adbf20b7a46b7905eed49d3d431"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/rerun_audited_global_tree_matrix_h20.cpython-313.pyc",
+      "bytes": 25509,
+      "sha256": "59355e036df2eb9c5761bc0a7291884767d67a95782c0658262ef5580eb8ab5c"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/run_dp_paper_memory_safe.cpython-313.pyc",
+      "bytes": 30254,
+      "sha256": "63ec939908c4675782c72fc4bb8bf23ed0b737be7f84606056826e2061aed3c7"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/run_dp_paper_single_wave.cpython-311.pyc",
+      "bytes": 34637,
+      "sha256": "b64bdac2ba9ee2d9d0a45c8c3fe3d3d43ed74a1cbaed878bc67bd67c9044c054"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/run_dp_paper_single_wave.cpython-313.pyc",
+      "bytes": 28571,
+      "sha256": "3a3bb76f51477bed470fb0b94a2263cebfead1239ba39781fe72332b09e30136"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/run_dp_paper_study.cpython-311.pyc",
+      "bytes": 27930,
+      "sha256": "b07dfe219a7c2a9b960f272bc8fb4f3145410018bd095cf3fd8a6b0f661c6f42"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/run_dp_paper_study.cpython-313.pyc",
+      "bytes": 23202,
+      "sha256": "8ee5e925cd3f5572d589dda7861fa0b70dd5e53fe575f085e1745fbf9c6012b8"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/run_natural_paper_phase.cpython-311.pyc",
+      "bytes": 29414,
+      "sha256": "0e64599f854b0c97225228204ab352b3fb7a9548a852e075decaec234e80000c"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/run_natural_paper_phase.cpython-313.pyc",
+      "bytes": 23487,
+      "sha256": "21ab19791be45c9491ce56d5cbd95e0cabe0b39907bd2c202a17548ee1b2a3ae"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/summarize_dp_paper_single_wave.cpython-313.pyc",
+      "bytes": 26389,
+      "sha256": "50f9a73ab134339258dd3659730ef2f64161e096953adcf3acb9a6c4c70b2b49"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/summarize_dp_paper_study.cpython-313.pyc",
+      "bytes": 24396,
+      "sha256": "ad905148ae61cb0d109434b6b392debaa90fee0d6ec4dcbbce5886c3e08aacc5"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/tune_cross_request_architectures.cpython-311.pyc",
+      "bytes": 46817,
+      "sha256": "2a784182859dec1b904bbb8d3ed4e0cdd69f37f031140e4eedb33c79f0f3c52a"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/tune_cross_request_architectures.cpython-313.pyc",
+      "bytes": 38072,
+      "sha256": "025284187aefcdcd3a09f890fc65191aeb0b5ffa71cfc1df61c8562fb4b7ade6"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/__pycache__/verify_dp_second_h20.cpython-313.pyc",
+      "bytes": 6320,
+      "sha256": "6e347b1556e358c7199d0d1ba65eec75435aa6316d94f987a644557c68b8a0f7"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/audit_ours_greedy_same_prefix_h20.py",
+      "bytes": 7911,
+      "sha256": "cfbb11c8715b109c11dd77b5fc2c9c1a122d2722624c559e47f87bc7945a965a"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/benchmark_continuous_tree_block_e2e.py",
+      "bytes": 12408,
+      "sha256": "5b7cfdb20f041958461892e6fc91f59ad9107c3458046be24efd8dc81ea9648e"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/benchmark_draft_cache_reuse.py",
+      "bytes": 13554,
+      "sha256": "e9cc4df235b647c9498c5116af1bf186b47a9808220074f4b593bcbab29b1d03"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/benchmark_main_input256.py",
+      "bytes": 12699,
+      "sha256": "e8be5ce9fb2fa945141187242bf0e76392e8d57d8faa1e0e12504e5c17c3d25a"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/benchmark_main_natural.py",
+      "bytes": 13723,
+      "sha256": "b0a63925f21aa59a77cdee44c0203ce49a8976004a64eb5149d091fdd1ad2998"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/check_dp_journal_theorems.py",
+      "bytes": 13235,
+      "sha256": "63778114e0f44a97f51193555912ba535c6d8b32f9223b765df575c42f8ca3b2"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/check_dp_theorems.py",
+      "bytes": 6619,
+      "sha256": "ad7509ba73edbf5269071ca90b52fa372b70b94c2fb5a284f420eae24520da53"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/correctness_trace_shared_budget_h20.py",
+      "bytes": 23233,
+      "sha256": "aed5ffe5a7927ef2ee70646ec96768a6e098c08dd24356b011abd875c38da266"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/deploy_dp_second_h20.sh",
+      "bytes": 1812,
+      "sha256": "eae2918fba403796dc98f941dcbc532e4798031ad26a38319074d72ba01b52a5"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/estimate_dp_paper_time.py",
+      "bytes": 6044,
+      "sha256": "7a0a50029172fc6957c1524c3f5e33657dd0c899bcdbbae30776751e4a27cfad"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/grade_natural_paper_quality.py",
+      "bytes": 8582,
+      "sha256": "62719d0ac51218d2511a0aca06e0a3bcbb691ee01b3b1b98a0b27b86bb949c6c"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/handoff_natural_paper.py",
+      "bytes": 2096,
+      "sha256": "46c077ae16b38eb1402f620dd8a433d31dc2b6d15ba80862f28b8548f443ab1f"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/paper_dp_allocators.py",
+      "bytes": 3764,
+      "sha256": "afd049d54e444c9a0dd17209fec4e4243a8bda2f1b14fe5f7e792794e4fc82e1"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/paper_input256.py",
+      "bytes": 3127,
+      "sha256": "b84962e43da7aae5180fac11cb8a45c94e4f5f0c9920e4f2da218033aa2f5ae3"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/paper_memory_lifecycle.py",
+      "bytes": 2739,
+      "sha256": "63c56e5e25e0c7543fa13934720f36b4530c7e7f43d25a9f4d9193fe0973194d"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/paper_natural_plan.py",
+      "bytes": 4835,
+      "sha256": "bfb802be34f1168eb7311f253b71a34c6a11d6f1ffd4fac9d6bbf50ee562ecf6"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/paper_safe_code.py",
+      "bytes": 12116,
+      "sha256": "77d4f437a8260175c647d75c9c27f0a1edb253221bfc970899d45a8e70597e63"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/paper_single_wave_policy.py",
+      "bytes": 2848,
+      "sha256": "bdbfd05c734ddd1fd09c550fee78fe2d8ab4b18baffbde7f549e1a604a54f670"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/report_natural_paper.py",
+      "bytes": 5598,
+      "sha256": "c88f9c714aec23dc023cf1d8d11e93d61d2c17974f88d9150159a8c8240581aa"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/rerun_audited_global_tree_matrix_h20.py",
+      "bytes": 18050,
+      "sha256": "85b0c697b36d9eae9babaa92eaa888d2f2978bc671651f3fda66bbbb9509bc3f"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/run_cache_validation_256.sh",
+      "bytes": 1494,
+      "sha256": "5fe2eb95c3358294936d1a60c382d445d9dd5a64fdca2cee7a91bb25918d7977"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/run_cache_validation_4b.sh",
+      "bytes": 1287,
+      "sha256": "9155d2eb2cafa54acf5043aa7e3d8985d5ef035d7cdc7aec12bed013170df0fa"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/run_cache_validation_8b.sh",
+      "bytes": 1197,
+      "sha256": "18c0134c5c0ca5a135e487fc45538815a8d72adc2f592a8041e828e78f203420"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/run_dp_paper_memory_safe.py",
+      "bytes": 20452,
+      "sha256": "95038482564bf8c924be6aebee10b21c76096b3f6acf65de6f35a4290b7282a9"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/run_dp_paper_memory_safe_shard.sh",
+      "bytes": 978,
+      "sha256": "214aaef09da834bc769a65086ebae92655a5ff564733bc2f871cafd8b608786a"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/run_dp_paper_queue.sh",
+      "bytes": 1066,
+      "sha256": "652fa8fd86d803533869195b26ab7fe6ff0f2c05de0242882adf7f2bb4085102"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/run_dp_paper_shard.sh",
+      "bytes": 956,
+      "sha256": "8b8d42d3ec50e8594c83d0551b317e75f5882062e6ecd3a8e9dd747123da7a60"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/run_dp_paper_single_wave.py",
+      "bytes": 18603,
+      "sha256": "750cdae8a4bf375e99fdee16a18e0f7fcf397b7f26266a64600442b0a90a0468"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/run_dp_paper_single_wave_shard.sh",
+      "bytes": 1018,
+      "sha256": "16a1cb38054ca88b111e992d537b9e0b845c93dcde1acfa59c1fb3d5d8c1717a"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/run_dp_paper_study.py",
+      "bytes": 14810,
+      "sha256": "02f9f422293f09e7a1ff0cbc38a61b52365cd9cea6c74ac8f6da7b83683325a3"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/run_main_input256.sh",
+      "bytes": 1680,
+      "sha256": "38dc5a43d793de5fabdf92061b7b280394fa5f9d5028a9471bc6c83a1436e67c"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/run_main_natural.sh",
+      "bytes": 1683,
+      "sha256": "03fdb0cd8e5edf1d3fee86fa0126f82401b9c81aaab42c2e09b428aacade7d19"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/run_natural_paper_phase.py",
+      "bytes": 14458,
+      "sha256": "54a48e14e950d63d64d3633d599343ffcd55dfb2f6081c5f72dc42a58fcb12b6"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/run_natural_paper_suite.sh",
+      "bytes": 2226,
+      "sha256": "e6e7b1ab240015f155e8455d5253c1613f829d0357436ebf5b2c313094b789b7"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/summarize_audited_global_tree_matrix.py",
+      "bytes": 18820,
+      "sha256": "8c88096e9931e78a9ef707fed7b0575f41021cb149ad6897d5e03e5f098c746a"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/summarize_dp_paper_single_wave.py",
+      "bytes": 16418,
+      "sha256": "ca6716521de5d8173977f40bd38905ff8c65923f1e33368e42c1f0cf1bf5442d"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/summarize_dp_paper_study.py",
+      "bytes": 14664,
+      "sha256": "d104a6ac5464acc4edd21622b903a109e8aa83058fa48355b76a3552c39dfb41"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/summarize_shared_budget_correctness.py",
+      "bytes": 14785,
+      "sha256": "c459a7138b3157b4c18f43c524eb6c0051b0569e7166df2162f256a871f735f1"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/tune_cross_request_architectures.py",
+      "bytes": 41025,
+      "sha256": "eb5951a92f200b6978bd10c0242d1a45c8af3031aa58734e06a6ebb1d67de14f"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/verify_dp_second_h20.py",
+      "bytes": 3149,
+      "sha256": "7ac71e4d079114fb88d03120a6a8f5d2b7fd156a046a702ebc8fbb3669bdb840"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/scripts/verify_release.py",
+      "bytes": 7187,
+      "sha256": "3640b11fb0ca9fa76c8f7f5face2e9961cc06dd48eff65c147f7b5a30b1a363c"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__init__.py",
+      "bytes": 93,
+      "sha256": "d63f17eaab0836b94a78c0db02511df46aeaef34ed1511b43cacac14d9d4c1c7"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/__init__.cpython-311.pyc",
+      "bytes": 282,
+      "sha256": "cb0a98d8d89afa0766b4b7b9e233c94c0e4c03758ccead01e457b04c2894be37"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/__init__.cpython-313.pyc",
+      "bytes": 350,
+      "sha256": "bab30fed16697a99f8b0ce53b35449fb807c6b5a1ae09dcab13f1771f746f485"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/atom_tree_bv.cpython-311.pyc",
+      "bytes": 26547,
+      "sha256": "287ff004e04510f21b26ac8fa535a32bfa33d8136795c3ac0af97a577e52706d"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/atom_tree_bv.cpython-313.pyc",
+      "bytes": 25257,
+      "sha256": "483c442e44018d7082cabdc887f91b8c0a63faf9269c002240838bea0c2040fd"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/coalesced_block_skip.cpython-311.pyc",
+      "bytes": 23403,
+      "sha256": "61f914403a92102d267d726a50b129bf2f54edf4faa9c527d3c4a7e313e897b0"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/coalesced_block_skip.cpython-313.pyc",
+      "bytes": 22310,
+      "sha256": "1f10c7300a65af3fc8dc62ee1867750d9a1a84abf6158f5e7bafeb59622e9d94"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/common.cpython-311.pyc",
+      "bytes": 5044,
+      "sha256": "2136dc57089b881c993cc3a2577985a98137c8a9c4827870c6bfc659817f7fa4"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/common.cpython-313.pyc",
+      "bytes": 4295,
+      "sha256": "0654909c4e78dc70d8f9d8d4e445b3443b61171f94f92b2ee18acc2585441f2b"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/config.cpython-311.pyc",
+      "bytes": 30738,
+      "sha256": "52bfbfdecdf4e9b92de9f420497fcd0934e46ff39c9d6cd88d58ecd10b64b786"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/config.cpython-313.pyc",
+      "bytes": 28282,
+      "sha256": "5f1421bdd810cdf165a80771141f053a6b4033d4b10274fc639de6ffb80d9419"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/continuous_tree_block_decode.cpython-311.pyc",
+      "bytes": 122027,
+      "sha256": "cf7a26a2be146c481424b48b43206e5a6802c2ffe92a7d5385d03f2c762dccea"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/continuous_tree_block_decode.cpython-313.pyc",
+      "bytes": 108511,
+      "sha256": "25be0ac3a701c3bcb4d40f269460950a861739d6068edff3c6936bd9311397d7"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/conversation.cpython-311.pyc",
+      "bytes": 8757,
+      "sha256": "9785018a44c28d218a2cb0dfa6cbf7675e1af6be284f6534605f5c081b3f0c71"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/conversation.cpython-313.pyc",
+      "bytes": 6956,
+      "sha256": "69b0ed42e0d6d4082b505aa90c463cf93dab085440d988e0b19ebe8a66699c3d"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/data.cpython-311.pyc",
+      "bytes": 29528,
+      "sha256": "c3c2271bc433f1bce3eb24038bcf3290726b3f5332d62d85f3d203933568aab4"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/data.cpython-313.pyc",
+      "bytes": 25003,
+      "sha256": "2b8439d804a6e7c96dde65ba73d58a3d7b094d42218f5ada77d1b540019d2dff"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/diffusion_tree_bv.cpython-311.pyc",
+      "bytes": 55835,
+      "sha256": "66a7ba911360d830ed2124a94ae209a4487eb85293c6b68b46660ef7e8b9d833"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/diffusion_tree_bv.cpython-313.pyc",
+      "bytes": 52150,
+      "sha256": "560b71e3ebe52aabb237b5c9a4122f9530b4aed968106ad6550b587f6994ee6f"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/engine.cpython-311.pyc",
+      "bytes": 101518,
+      "sha256": "c8ad59ed562da3aa8a13232446aa8f8c11ce2fff104e68290697e368b909062a"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/engine.cpython-313.pyc",
+      "bytes": 94547,
+      "sha256": "56dab7447a154474caf87109a455faabf0c5de85a7f364bee6dc451942df9982"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/fairness.cpython-311.pyc",
+      "bytes": 9275,
+      "sha256": "2bf30d0edca64e155cd8416b267fdc99b643ae20c70e458ecbad4aa961dec442"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/fairness.cpython-313.pyc",
+      "bytes": 7695,
+      "sha256": "3e42fcdcdf0452d45107664a18eb15af3e4aea51348b54b3f1e16fdb44bd7888"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/fused_tree_sampling.cpython-311.pyc",
+      "bytes": 148245,
+      "sha256": "8f19eb6ba8b778084062eb4edfa70833dba54e6ba1d42f303e2eb62ebebdff4e"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/fused_tree_sampling.cpython-313.pyc",
+      "bytes": 134717,
+      "sha256": "da0a5394ab9fdc614163b82dc7906daeea3536f3bd573c980a21da69b18ed365"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/protected_tree_bv.cpython-311.pyc",
+      "bytes": 7980,
+      "sha256": "4601f9828801623064bdc91d6e386ace9cfe58ba5d68dd161aaef29bcc0d3cd5"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/protected_tree_bv.cpython-313.pyc",
+      "bytes": 7118,
+      "sha256": "f33d6d5711156f7072b01c9c03f23fb141a1c9fe5a186ced4075e7b7ba2abc6f"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/root_marginalized_bv.cpython-311.pyc",
+      "bytes": 17540,
+      "sha256": "bc92ae505b04ca52d95e32e0d31477f3dd6c17cd8bb58892afd40c873cc6e2d5"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/root_marginalized_bv.cpython-313.pyc",
+      "bytes": 15787,
+      "sha256": "b6a41ba6fd045c8df2f29fb057582d85482c29f1b7a43d7868f596d9ebfc8f58"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/runner.cpython-311.pyc",
+      "bytes": 28448,
+      "sha256": "257d6d875b74cb1c4153065339884deb55fc32cec4580b132b5f338e0e852511"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/runner.cpython-313.pyc",
+      "bytes": 23211,
+      "sha256": "009d5ba4755abd4a7d24c1657c8d20569e1163f67afcbac9380f01731959f8e7"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/runtime_model.cpython-311.pyc",
+      "bytes": 51195,
+      "sha256": "b247161b2baffd7b1f864c1bdd1b9f71f9d61c7d4b83929c800ebfc964d6e63d"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/runtime_model.cpython-313.pyc",
+      "bytes": 44513,
+      "sha256": "5cdcb467c6d2156aa5d5642b6626610a51d7c73401ddcad29f81011243fad037"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/sampling.cpython-311.pyc",
+      "bytes": 77993,
+      "sha256": "525875a0b8257da3fcba9cc1a46429ed0283a17e7f681cc6d88c23a1cd9bac8e"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/sampling.cpython-313.pyc",
+      "bytes": 68233,
+      "sha256": "962f936b4a0f63ad128266f61c69fafe242b85a7deaee5be378a20b746e849f6"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/terminal_formal.cpython-311.pyc",
+      "bytes": 70343,
+      "sha256": "50330374fff4aaadcd391b311a9da9c239d46a17d0e5315ea8457e10275f5753"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/terminal_formal.cpython-313.pyc",
+      "bytes": 57852,
+      "sha256": "62346bf321d2ff725ef2479261998adbeec69d02f43dea1eb5b40baf5fc30755"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/terminal_protocol.cpython-311.pyc",
+      "bytes": 29466,
+      "sha256": "366d3224eadacf4a6d3cf6c38c509cefd1a8773757f37679a46c14c7c042174c"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/terminal_protocol.cpython-313.pyc",
+      "bytes": 23962,
+      "sha256": "5cff6aa5c63a1121eadb0419453c2ae445abdde64e77fbc283a37922bc622cf3"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/tree.cpython-311.pyc",
+      "bytes": 48278,
+      "sha256": "d91c79ad1b54e994e7e7135ec0ae00c189aabc50f998c6dbaeb746e8078e4463"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/tree.cpython-313.pyc",
+      "bytes": 42309,
+      "sha256": "863f2abc5faeb1cae720b5cb2f149c761f862795f255c2caba449d98b9fdca7d"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/tree_block_skip.cpython-311.pyc",
+      "bytes": 25883,
+      "sha256": "34960f605c4171b24377e5f1d00fd70376a4dd123e0d1c7da73fd2df05674097"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/__pycache__/tree_block_skip.cpython-313.pyc",
+      "bytes": 21792,
+      "sha256": "acf976f2bb4a7207fd1216f31eaf9bb8e0154e26541cdc3fb801196feb9b0ee9"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/atom_tree_bv.py",
+      "bytes": 14477,
+      "sha256": "2356b91e8a25264d8ef6b98078511112cd508cf1aa1ed56be9154e2898a9eaf8"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/audit.py",
+      "bytes": 3681,
+      "sha256": "3f324a52e3c691333f62ec809c40cc4629f44d88b85107ee526116f85a0954a7"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/coalesced_block_skip.py",
+      "bytes": 15370,
+      "sha256": "b05ea6e7b07334c1e613c965906f940881313fe69dc9ce7735c6ae594d3256c5"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/common.py",
+      "bytes": 1748,
+      "sha256": "e77efcf774fec88186f5276d3e26224d6c9b70f9253a6ebe498567ab331d04a3"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/config.py",
+      "bytes": 26185,
+      "sha256": "433399b7d40a8103682780482a2b6d4885341beab2f4a328ea4a841e61e3e86f"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/continuous_tree_block_decode.py",
+      "bytes": 95654,
+      "sha256": "a7cd86d6c6835e65ea9f6dbc7b2801efcf0a28df601160ec4e75cc2bcffcec20"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/conversation.py",
+      "bytes": 4731,
+      "sha256": "79e89e3f6039cf1bc96412a6c2989551cf5c192c64f3d864ca275c3d2d9ccc52"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/data.py",
+      "bytes": 17566,
+      "sha256": "0d93c185d5f92e22d28379faacffe73970983761e86121b33b01c4c40bec4093"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/diffusion_preflight.py",
+      "bytes": 17574,
+      "sha256": "e98300aa48a4df2d4b649a3739e2c665f5cf1431021fb6e39746ec0dae9e62c6"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/diffusion_tree_bv.py",
+      "bytes": 34195,
+      "sha256": "1e8f735ccddae8e6421138bdc9eaee3eb796bc801c267f927997e6421cf148d7"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/engine.py",
+      "bytes": 116226,
+      "sha256": "ad0e99a5d37bdb4dbe104e50e69cddea668c015beb65d1f4d73960d97b74820a"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/fairness.py",
+      "bytes": 6863,
+      "sha256": "e1e1511c7949d8c32ae903f47bd41ba3c5bf9745b70c64e51db10a27b34cc859"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/fused_tree_sampling.py",
+      "bytes": 122406,
+      "sha256": "a2177b7e2392e025be0d1236f371ad0325daa0bccc9196b8701e40975b3cf9b1"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/lcb.py",
+      "bytes": 3089,
+      "sha256": "3d599802b738bc64e96632b672f7484b386febd2f59b957c7abe8731cf9cb5ce"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/preflight.py",
+      "bytes": 27537,
+      "sha256": "500767cfcbe678071339e8f5fd9115067616f9fa2c037d064d8046f19a856371"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/protected_tree_bv.py",
+      "bytes": 4673,
+      "sha256": "2c6fc7e4ae12f882430314e7e7475ba2ea5aa369389e00fdcd21ca3726b6e7e6"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/report.py",
+      "bytes": 17124,
+      "sha256": "aff745d5b6ba0efb35790285690a0b42fd60c6d2db060ad9d6ac597d0ed53652"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/root_marginalized_bv.py",
+      "bytes": 10839,
+      "sha256": "2705d24410cf7894e098ac8cb016e9950716231f8c6689fff4fcdf810850c563"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/runner.py",
+      "bytes": 17707,
+      "sha256": "261fb87cd8e1769491ecaed0a9eb16b2c4889468450cc83a5908ac79bdf2853b"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/runtime_model.py",
+      "bytes": 38938,
+      "sha256": "8783e8aa95cdc179bb968d7bf01d927c0859b1ff1d5803d4ce4fe7a7653bf370"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/sampling.py",
+      "bytes": 56301,
+      "sha256": "7fc043a9f8da67d5009f00be667835e97462b63fb302545bd9f8a72aba4f3c4a"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/scoring.py",
+      "bytes": 15745,
+      "sha256": "63a76c500e49e7f0cddae0742619dbbd792538f9bf887075f19faf6f840450ec"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/terminal_formal.py",
+      "bytes": 45805,
+      "sha256": "b24dadfd06ea471d3d39bf477497fff05322d924b4d404a0fb9654d3eeb4f539"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/terminal_protocol.py",
+      "bytes": 17415,
+      "sha256": "04ac0c38bdc7a169fa67e12110de8fab3291f026661bb6ac5cbd99d3f294d246"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/tree.py",
+      "bytes": 28890,
+      "sha256": "0456c8675e56ac3fb06b842118dfa79faa746cb7f29dc1ec3d9c3af2243da88e"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/src/gbv_experiments/tree_block_skip.py",
+      "bytes": 14195,
+      "sha256": "55f2b05493ae31562ee47f4785030b184457ba6d4aed6868fd305b8ec9367fc4"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/tests/__pycache__/test_paper_memory_lifecycle.cpython-313-pytest-9.0.2.pyc",
+      "bytes": 20433,
+      "sha256": "a84dd5891c8583ac9fb355456892f4de5e4638b464b7d775b4d579a0681903e8"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/tests/__pycache__/test_paper_single_wave.cpython-313-pytest-9.0.2.pyc",
+      "bytes": 35227,
+      "sha256": "7bb9d63abbc8f2f9a4e3cc47a4f450b207834d9a91606a2541c22e0f9c46e6e2"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/tests/__pycache__/test_paper_study.cpython-313-pytest-9.0.2.pyc",
+      "bytes": 34786,
+      "sha256": "fe2cd670e8d8dfa6175f2f7d60b41c42ebc490dfcbecb3721b1d1aeebc5b00f0"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/tests/gbv_paper/__pycache__/test_audited_global_tree_matrix.cpython-311-pytest-8.4.2.pyc",
+      "bytes": 42932,
+      "sha256": "3acdbf9272f6ad84666088453f0f8bf0eaad08b3a964699ba13b9f118e7490ad"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/tests/gbv_paper/__pycache__/test_audited_global_tree_matrix.cpython-313-pytest-9.0.2.pyc",
+      "bytes": 37970,
+      "sha256": "5ff9c4fbffa8612e5f258a8c9667b230df4ee1632656d1b31df303a56adaad8e"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/tests/gbv_paper/__pycache__/test_continuous_tree_block_decode.cpython-311-pytest-8.4.2.pyc",
+      "bytes": 121636,
+      "sha256": "d6e039523be6422a328d961cc14b089fd7ffe56c1416d6e36fd4eaa5388ac835"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/tests/gbv_paper/__pycache__/test_continuous_tree_block_decode.cpython-313-pytest-9.0.2.pyc",
+      "bytes": 109333,
+      "sha256": "fde75a3d4793e42d52cf049c33c211a38a5a50a3e16a3496559cf67d6588c5a8"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/tests/gbv_paper/__pycache__/test_draft_cache_reuse.cpython-311-pytest-8.4.2.pyc",
+      "bytes": 22994,
+      "sha256": "c22a04c7d6bac67bdd79c26d072622704a75f0577807997dd8feac03886aa928"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/tests/gbv_paper/__pycache__/test_draft_cache_reuse.cpython-313-pytest-9.0.2.pyc",
+      "bytes": 20572,
+      "sha256": "c2aa3457ad56c2674c693fcaf207cf14143e604ee30daf6db893c9f8f4b278e2"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/tests/gbv_paper/__pycache__/test_input256.cpython-311-pytest-8.4.2.pyc",
+      "bytes": 5386,
+      "sha256": "7848b455c8921162fb77ab265071a15f68e69c5f11d73fa8e475ae11bde25ea5"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/tests/gbv_paper/__pycache__/test_input256.cpython-313-pytest-9.0.2.pyc",
+      "bytes": 4831,
+      "sha256": "1681b0ed66c1f221038c48cbac3f79cd8976c535ae5d8cda964fb4d1e3313fbd"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/tests/gbv_paper/__pycache__/test_natural_paper_plan.cpython-311-pytest-8.4.2.pyc",
+      "bytes": 12507,
+      "sha256": "05bd4b70807fb26dd8bda34e47a72cbf3d3d8b638d39cf65433d0afd73c7292b"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/tests/gbv_paper/__pycache__/test_natural_paper_plan.cpython-313-pytest-9.0.2.pyc",
+      "bytes": 10008,
+      "sha256": "ad75d112422802a84456833a649101a635e4914b8580d96d4a90f009adc76f7c"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/tests/gbv_paper/__pycache__/test_natural_paper_scoring.cpython-311-pytest-8.4.2.pyc",
+      "bytes": 10989,
+      "sha256": "5ab77e7189502ebf687f1afbef8210112d78ac4d8787b6a9c745769f89ee85d1"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/tests/gbv_paper/__pycache__/test_shared_budget_sequence_law.cpython-311-pytest-8.4.2.pyc",
+      "bytes": 19831,
+      "sha256": "757125ecda462de7fc563c6bdefd341439b01bf71f334cbcc3478bafbe5372bd"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/tests/gbv_paper/__pycache__/test_shared_budget_sequence_law.cpython-313-pytest-9.0.2.pyc",
+      "bytes": 16331,
+      "sha256": "7a09626cb1cba5d0e8e4fb7d388fcf44bae8886f7475cd551425651c6496fa22"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/tests/gbv_paper/__pycache__/test_tree_block_skip.cpython-311-pytest-8.4.2.pyc",
+      "bytes": 29100,
+      "sha256": "0c20d36c66ae8c189fe6278a18c1ab60b83dd474db4bc0947b74e34c9ba20a37"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/tests/gbv_paper/__pycache__/test_tree_block_skip.cpython-313-pytest-9.0.2.pyc",
+      "bytes": 26216,
+      "sha256": "bc0026b66715904ede7f70a565eb9bebab05eee4ae37a710f4ff7dbde4191025"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/tests/gbv_paper/test_audited_global_tree_matrix.py",
+      "bytes": 10891,
+      "sha256": "6fbf9da06086581acc6f0978167487830750aca8860db0c1133fa5a623b2a5bd"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/tests/gbv_paper/test_continuous_tree_block_decode.py",
+      "bytes": 17901,
+      "sha256": "69b8d7ec12a8fc5850421aff81600b9eddca54c490affa85d688288f9eab73b1"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/tests/gbv_paper/test_draft_cache_reuse.py",
+      "bytes": 5022,
+      "sha256": "d95cf02e57e13195645ac4c034c52d668f47afad36175428c273fa35e55eaa47"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/tests/gbv_paper/test_input256.py",
+      "bytes": 890,
+      "sha256": "da1be6bad9261a5c52870edd40d1018b96d90a0420ef402fae136e969fd922cc"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/tests/gbv_paper/test_natural_paper_plan.py",
+      "bytes": 1535,
+      "sha256": "56a1d4974709cbccc076bf066e42a8bd226d6c7c4f2b9aca1f17884ed636963b"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/tests/gbv_paper/test_natural_paper_scoring.py",
+      "bytes": 1890,
+      "sha256": "62e7210519339292126d9571469b66ea84387b16b1d6894aafba14f24f47be17"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/tests/gbv_paper/test_shared_budget_sequence_law.py",
+      "bytes": 6988,
+      "sha256": "ac11f9459c220bbe71f736e65b19856c610531c25e50e8bec3cc148d032a9e71"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/tests/gbv_paper/test_tree_block_skip.py",
+      "bytes": 4574,
+      "sha256": "24f831bc3dca85d98aa3d0039e57d4aa9eb96bb5befde2988a22b98e334b7b96"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/tests/test_paper_memory_lifecycle.py",
+      "bytes": 3965,
+      "sha256": "8121bb730eba8fc110230e53ae5b892d1d357eca68e0bfc82cf21f86294e28d9"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/tests/test_paper_single_wave.py",
+      "bytes": 5268,
+      "sha256": "b095414609742fcac1acc18ea91956baaf1edbde9f2f6dd95b01aa2ce668c8ac"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/tests/test_paper_study.py",
+      "bytes": 6405,
+      "sha256": "416b20fe297348895ea57c209f1ec613ba13fb0201157c3bcb0af00092d28af6"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_official/.gitattributes",
+      "bytes": 42,
+      "sha256": "cfb3584253dd614c8b1528a3888ed504df5f02fa046f69d658c37fcba04ea726"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_official/.gitignore",
+      "bytes": 38,
+      "sha256": "eb6f5e92269bbb43167866173840755c2ced98ad42a3e4f8d50fde174c02e330"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_official/LICENSE",
+      "bytes": 1069,
+      "sha256": "6355c7a7042a1f75a011d616446386d19fac37ea3f03560425f7f225ba9ae1d3"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_official/README.md",
+      "bytes": 1079,
+      "sha256": "c21ccf50b6984f4ee134c8e366df9932cb74bee07e77d33b301accbac7e63d2c"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_official/benchmark.py",
+      "bytes": 8403,
+      "sha256": "6dbffd0d61c173c0a622e8a669fa18e5159c7ec83073649db9ac8bcd39c9471b"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_official/block_verification.py",
+      "bytes": 6590,
+      "sha256": "cd430234885271239573773b69f1b367f278174c5b1032546908ad414b4acab2"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_official/ddtree.py",
+      "bytes": 19526,
+      "sha256": "8d0ecd9d07a7266d3825eefd176811502313a0da7cedfcdc8aec1a4971c3a99b"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_official/dflash.py",
+      "bytes": 6999,
+      "sha256": "a43b855d2c2c27fc5116bc6dc67ea5fca5d91648278cb3e0a1c09cbbbcdbbc49"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_official/distributed.py",
+      "bytes": 1559,
+      "sha256": "e2d7d3252c78b83befd0d1a59d089084547a0f52ae6299bb1a4a6355d40c9468"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_official/gbv.py",
+      "bytes": 9215,
+      "sha256": "3f314a55e0616cadd4df9049bc588e6bf9ad1346ca588737038dd494fea35ffd"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_official/make_latex_table.py",
+      "bytes": 9470,
+      "sha256": "818476772658c5de65ce00e2e3d29ec40f81e0cd12ac5ebd477b20367929f655"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_official/model/__init__.py",
+      "bytes": 114,
+      "sha256": "fc48c47ac9ea989c7875ec6b916912f4f3841148ed78e4a876e54d7546cfcb35"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_official/model/__pycache__/__init__.cpython-311.pyc",
+      "bytes": 386,
+      "sha256": "cb035bca5c8ca1d5b5d5de9dc841ee7a45cbf17a0366b41f37423db6a85039f5"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_official/model/__pycache__/dflash.cpython-311.pyc",
+      "bytes": 17199,
+      "sha256": "3161426fe316517f2391a92814866941e723bddbb3ff8af7b19df0bbe74d6490"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_official/model/__pycache__/utils.cpython-311.pyc",
+      "bytes": 9369,
+      "sha256": "8d8c48a6cf75138b2278a510274a1823743699ace987e3eda38746cf2702acd0"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_official/model/dflash.py",
+      "bytes": 12340,
+      "sha256": "17ab761ba665a41965b27bdc3a1c6795d1b07b285ec1f0789ad146f2ee9c1cc5"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_official/model/utils.py",
+      "bytes": 5731,
+      "sha256": "00b91431932c94b87443d9e2c0cf4d743846bd6c9666c9c736008df7bbd0faf1"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_official/plot_results.py",
+      "bytes": 22280,
+      "sha256": "26f3cf6f410adb0a10116415e2e087b47115aa5c3e85134a55f3527b97e148e1"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_official/requirements.txt",
+      "bytes": 92,
+      "sha256": "c24e5e4a9bf25902b69e86c05e832f960a142b1c80cd08b7d8456d07bf776640"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_official/run_benchmark.sh",
+      "bytes": 2847,
+      "sha256": "c7c36e4b92b2db42c301b358cdea910db399cefb1903e5b7fdfc8b3a306a1bcc"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_pinned/LICENSE",
+      "bytes": 1069,
+      "sha256": "6355c7a7042a1f75a011d616446386d19fac37ea3f03560425f7f225ba9ae1d3"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_pinned/SOURCE_SHA256.json",
+      "bytes": 1144,
+      "sha256": "05631122868a9ec06a10bbd2860cff8f63050a13ff6ed59f9001b0e80796c4b9"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_pinned/__pycache__/ddtree.cpython-311.pyc",
+      "bytes": 24431,
+      "sha256": "0916dc47c35e945bbd3a7dd6e4f0cdb3d15ece1dd0e67e85542b456b8c67fc33"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_pinned/__pycache__/dflash.cpython-311.pyc",
+      "bytes": 7653,
+      "sha256": "28789f0dbc226981b0cf0f6256953a637c94e5309950f54a1830bb7a41a3817c"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_pinned/benchmark.py",
+      "bytes": 8403,
+      "sha256": "6dbffd0d61c173c0a622e8a669fa18e5159c7ec83073649db9ac8bcd39c9471b"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_pinned/ddtree.py",
+      "bytes": 19526,
+      "sha256": "8d0ecd9d07a7266d3825eefd176811502313a0da7cedfcdc8aec1a4971c3a99b"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_pinned/dflash.py",
+      "bytes": 5678,
+      "sha256": "297e5126980ff7bad7650ce7ede9dea9b11b1b3485154ab5b9a2a3f899b33159"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_pinned/distributed.py",
+      "bytes": 1559,
+      "sha256": "e2d7d3252c78b83befd0d1a59d089084547a0f52ae6299bb1a4a6355d40c9468"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_pinned/make_latex_table.py",
+      "bytes": 9470,
+      "sha256": "818476772658c5de65ce00e2e3d29ec40f81e0cd12ac5ebd477b20367929f655"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_pinned/model/__init__.py",
+      "bytes": 115,
+      "sha256": "6bc5dc94f340a3bec1b38e2fb1ff7a684fba98ebb11eb8e54a95fb8c167511c4"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_pinned/model/__pycache__/__init__.cpython-311.pyc",
+      "bytes": 384,
+      "sha256": "0595174fc8437bf31e1e08dca3d45614ee131361eea733dbaf83e69ff686418a"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_pinned/model/__pycache__/dflash.cpython-311.pyc",
+      "bytes": 17197,
+      "sha256": "8418011ba01fb2117232028810714e9cee5a5a30e6a135b30b36713eebd1a1cf"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_pinned/model/__pycache__/utils.cpython-311.pyc",
+      "bytes": 9367,
+      "sha256": "674d471cea38e2ed68f8a8306a9f99bc5a3b07dc820140fdf18a144c84292a85"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_pinned/model/dflash.py",
+      "bytes": 12340,
+      "sha256": "17ab761ba665a41965b27bdc3a1c6795d1b07b285ec1f0789ad146f2ee9c1cc5"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_pinned/model/utils.py",
+      "bytes": 5732,
+      "sha256": "a3c75cc8de132fb8803368d5720b62879a0c63e6860c37af745dd6debbfb367f"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_pinned/requirements.txt",
+      "bytes": 92,
+      "sha256": "c24e5e4a9bf25902b69e86c05e832f960a142b1c80cd08b7d8456d07bf776640"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/ddtree_pinned/run_benchmark.sh",
+      "bytes": 2847,
+      "sha256": "c7c36e4b92b2db42c301b358cdea910db399cefb1903e5b7fdfc8b3a306a1bcc"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/dflash_official/.github/workflows/package.yml",
+      "bytes": 1023,
+      "sha256": "90f642086ab81390c4cf704f6699ca5bb05af054cc66f757e0ea2c7d48c289f7"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/dflash_official/.github/workflows/publish-pypi.yml",
+      "bytes": 1690,
+      "sha256": "7109f31fcee892918698ad6147fada881ccf65fbad6bf77c2fc212a5c6530b95"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/dflash_official/.gitignore",
+      "bytes": 85,
+      "sha256": "5f21b0a919fbb2f1fbfcddb68ad2f5301a94980155e7c8d5a1d7d6e3dd266fa1"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/dflash_official/LICENSE",
+      "bytes": 1062,
+      "sha256": "6fd2aebd899c0b48ea9abb845aef043c6dadff00a6726a10a1bc32db528a5422"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/dflash_official/README.md",
+      "bytes": 6005,
+      "sha256": "e39074de245d5893f1812b18755fd3a232fedeb38ed2608d9dfd0b5b4db8780b"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/dflash_official/dflash/__init__.py",
+      "bytes": 864,
+      "sha256": "75a274bfb4d5339bb559f88608538b555563f2a70e909c4ceda237fc29bda46d"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/dflash_official/dflash/benchmark.py",
+      "bytes": 15023,
+      "sha256": "d19d3c1688768e13783150ce23178fcf2ed4c94d9ad7960e96f50c99d8a9d48f"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/dflash_official/dflash/cli.py",
+      "bytes": 4690,
+      "sha256": "5f628ed7f460247dcca3655b583452aa7eb3df798e2fbc06db93175e2894fd14"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/dflash_official/dflash/model.py",
+      "bytes": 25722,
+      "sha256": "f55b7fe0a4c0b3073e0f9cdce547cce29f4b8e2168c4d2818760007c43b7651e"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/dflash_official/dflash/model_mlx.py",
+      "bytes": 35272,
+      "sha256": "2f8598eaca4cb814e63ea69e791c1bdf55ba82280bfd299f9141906356b7cb87"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/dflash_official/pyproject.toml",
+      "bytes": 1782,
+      "sha256": "639e088fcc98a1ecc45e45dc53282d0ee4af8a1c29847ff6c059bcde4b537ef3"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/livecodebench_official/LICENSE",
+      "bytes": 1070,
+      "sha256": "104099948b78ebc36f2e951b3a7973b956adfa7d39aaec0d1512f97a2686d15d"
+    },
+    {
+      "path": "dp-paper-natural-suite-20260917/third_party/livecodebench_official/testing_util.py",
+      "bytes": 18276,
+      "sha256": "b7cb6a8a69807bb868150a61742e25d7bb5328bbe01d514471b6ec43c9fa9ed2"
+    },
+    {
+      "path": "raw/qwen3_4b/SHA256SUMS",
+      "bytes": 1054,
+      "sha256": "cd674449de58ef5b25675254f7c52225cd19ae2e0b08fe0fd8cf5281d94bbcda"
+    },
+    {
+      "path": "raw/qwen3_4b/ablation.tar.gz",
+      "bytes": 29078204,
+      "sha256": "53c95c62b6434d485c243869126643a5dc97fd3548fac3978a411bcd3366b167"
+    },
+    {
+      "path": "raw/qwen3_4b/budget.tar.gz",
+      "bytes": 37118828,
+      "sha256": "929d2ef7f81698944c408758cf0a0459cdbcf321172197fe4224deb5f7f106e3"
+    },
+    {
+      "path": "raw/qwen3_4b/correctness.tar.gz",
+      "bytes": 3709853,
+      "sha256": "0eb003ac5c0bc64b06361d3cb366a76677096fdeb75fd7144b873eaf6acbdb09"
+    },
+    {
+      "path": "raw/qwen3_4b/heterogeneous.tar.gz",
+      "bytes": 6306129,
+      "sha256": "f08f706d909f8363e957671dc85014b63248dc42031f58447c89df0fd7d7f65a"
+    },
+    {
+      "path": "raw/qwen3_4b/main128.tar.gz",
+      "bytes": 18781025,
+      "sha256": "5fedf73c26cc263c383e06ac40b4fb68b05088f402fe5ecd2602e34932b20b2e"
+    },
+    {
+      "path": "raw/qwen3_4b/model-metadata.tar.gz",
+      "bytes": 223999,
+      "sha256": "94de42f57968821cbc789e69e8ac3438cec950a24d164b9719f3278606d4a154"
+    },
+    {
+      "path": "raw/qwen3_4b/native_c1.tar.gz",
+      "bytes": 6305337,
+      "sha256": "c6a18b7751fa88f678e9a0c2aaac068f6b204ccc8aea81d8c032de01ef6bb42e"
+    },
+    {
+      "path": "raw/qwen3_4b/nonformal-smoke-ablation.tar.gz",
+      "bytes": 13384,
+      "sha256": "703423878b7cdd55d54b438ee7e453cc20503bc3b490acb3d1e1ca2ab3e2599b"
+    },
+    {
+      "path": "raw/qwen3_4b/nonformal-smoke-correctness.tar.gz",
+      "bytes": 9305,
+      "sha256": "3727da7db721f0997ff62ea77858e9d89374852d60b3ec8698669aa35d28f841"
+    },
+    {
+      "path": "raw/qwen3_4b/nonformal-smoke-native_c1.tar.gz",
+      "bytes": 8934,
+      "sha256": "2e528c90d31be6ca562c27cdec8b7225da00f77e8d9ae4985685e70c7d484e52"
+    },
+    {
+      "path": "raw/qwen3_4b/quality.tar.gz",
+      "bytes": 12714042,
+      "sha256": "0755403e690e3bed6dc3a94148773dca2868e8acfb77f88d582bee3272a8b37c"
+    },
+    {
+      "path": "raw/qwen3_4b/report-metadata.tar.gz",
+      "bytes": 46963,
+      "sha256": "84d3b53143311d87240889a5c2542bafeaa62b6158bb4150acbfbdc8488808ed"
+    },
+    {
+      "path": "raw/qwen3_4b/supporting-history/SHA256SUMS",
+      "bytes": 1257,
+      "sha256": "163fe4c3e0171a4e74447d33907c97915944397e11ec4f839b63e6b87f11d52e"
+    },
+    {
+      "path": "raw/qwen3_4b/supporting-history/dp-cache-results-20260917.tar.gz",
+      "bytes": 140792,
+      "sha256": "2fbffd0954dcbddfbde4b87a73b6e00a6aef3bb33c2915b816a72ab9e38d789c"
+    },
+    {
+      "path": "raw/qwen3_4b/supporting-history/dp-cache-results-short256-20260917.tar.gz",
+      "bytes": 88123,
+      "sha256": "1bbbaf503c04d1886e87d54135e6a7e2c8ac0d2b93c1daf4f41e21bd61dfa12b"
+    },
+    {
+      "path": "raw/qwen3_4b/supporting-history/dp-cache-reuse-20260917.tar.gz",
+      "bytes": 1401393,
+      "sha256": "f45f8b1a391a859abb22c4b68a1495139990c9fbbac6f3676c4c3c1a68123fe2"
+    },
+    {
+      "path": "raw/qwen3_4b/supporting-history/dp-main-input256-20260917.tar.gz",
+      "bytes": 375671,
+      "sha256": "7be28c02460b96b1080ab82cbfc1bd789354f0ef1159d4faed041b236946cf5e"
+    },
+    {
+      "path": "raw/qwen3_4b/supporting-history/dp-main-natural-cache-20260917.tar.gz",
+      "bytes": 370556,
+      "sha256": "4363402546d079eaa19611e44c8ff26c61dee2cd0ceb5d6fd64c17b11304392c"
+    },
+    {
+      "path": "raw/qwen3_4b/supporting-history/dp-paper-natural-results-20260917-preflight-v1.tar.gz",
+      "bytes": 34528,
+      "sha256": "72ffa50a294487a19a0cb17eebad5b05681965aa409e6c3813df40d4998fac6a"
+    },
+    {
+      "path": "raw/qwen3_4b/supporting-history/dp-paper-natural-results-20260917.tar.gz",
+      "bytes": 380985,
+      "sha256": "5d4dd5550835fa199e73167dc123bcba2b953466b7534c38404db2b5254efa15"
+    },
+    {
+      "path": "raw/qwen3_4b/supporting-history/dp-paper-natural-suite-20260917.tar.gz",
+      "bytes": 1597986,
+      "sha256": "c349211185dff30e6e3ca265430b339fa2e049454b45b000ddc519cd653a9be3"
+    },
+    {
+      "path": "raw/qwen3_4b/supporting-history/dp-paper-results-20260916.tar.gz",
+      "bytes": 4967471,
+      "sha256": "2fb18ac3eefcacc4a088986a4a184f824556e0883bceac676cefa79ac2ff1bec"
+    },
+    {
+      "path": "raw/qwen3_4b/supporting-history/dp-paper-results-memory-safe-20260917.tar.gz",
+      "bytes": 3075901,
+      "sha256": "fd603051338f339e6aa289211080806d8ffeac48973aec2e73bf837541451657"
+    },
+    {
+      "path": "raw/qwen3_4b/supporting-history/dp-paper-results-single-wave-20260917.tar.gz",
+      "bytes": 25885585,
+      "sha256": "f761d2aa43c3ef3e9aa3f0c998d1832e564755e55e37783f9b26978ad988aeb8"
+    },
+    {
+      "path": "raw/qwen3_4b/supporting-history/dp-paper-study-20260916.tar.gz",
+      "bytes": 3693136,
+      "sha256": "70f8354609d7e413fe7bb233061b816910fbe56c12c0de4dcbf1749ebc8f3afa"
+    },
+    {
+      "path": "raw/qwen3_8b/SHA256SUMS",
+      "bytes": 1054,
+      "sha256": "cca31e264e1fddaaad1f75208d721bb327bd1314d2d61b1fa20c35304baea13c"
+    },
+    {
+      "path": "raw/qwen3_8b/ablation.tar.gz",
+      "bytes": 29397682,
+      "sha256": "0dda1df4b3e34f4a4082252724444245c672fb97b5d7861229379ebc3e215cea"
+    },
+    {
+      "path": "raw/qwen3_8b/budget.tar.gz",
+      "bytes": 37166015,
+      "sha256": "7fc044a4b02b6f0f078e7a731b63dd0ab0c45447da067bfae5f74ba832c7a39b"
+    },
+    {
+      "path": "raw/qwen3_8b/correctness.tar.gz",
+      "bytes": 3782797,
+      "sha256": "9aad771832669c424765c277cce784a9e364605bd718cc645044ce76a865112a"
+    },
+    {
+      "path": "raw/qwen3_8b/heterogeneous.tar.gz",
+      "bytes": 6398476,
+      "sha256": "223e5c22f3fbf2fcf490fd5fe219e9289fc203cd0c15bdcbf5a5ee0437d4cf9d"
+    },
+    {
+      "path": "raw/qwen3_8b/main128.tar.gz",
+      "bytes": 18808994,
+      "sha256": "b5be1d1f1c040362fe5bbeb95edeb84bf550d041d366c4e354ae5ef6d99eda47"
+    },
+    {
+      "path": "raw/qwen3_8b/model-metadata.tar.gz",
+      "bytes": 223857,
+      "sha256": "f27dc68a0db37bf83fedc2700f97dab1c78146bb8d957536ed64cfe7f570ce8f"
+    },
+    {
+      "path": "raw/qwen3_8b/native_c1.tar.gz",
+      "bytes": 6326581,
+      "sha256": "feee8529f00559da630d961f55e1fad3bba0241e6b34bab0f87febd307564589"
+    },
+    {
+      "path": "raw/qwen3_8b/nonformal-smoke-ablation.tar.gz",
+      "bytes": 13344,
+      "sha256": "4b80412966926e22c8d8c157f723a056decc04a29db39e375db806c394de91f5"
+    },
+    {
+      "path": "raw/qwen3_8b/nonformal-smoke-correctness.tar.gz",
+      "bytes": 9284,
+      "sha256": "5acf32403de7f93d67c5dcd0dfa3521600ac9a4d50cdd0bf8c5e28b8833edb9c"
+    },
+    {
+      "path": "raw/qwen3_8b/nonformal-smoke-native_c1.tar.gz",
+      "bytes": 8960,
+      "sha256": "d9d0d5a2c0815843c2b63b846e33a5a9e0882e23bc1168ee3640e52a68a7fe54"
+    },
+    {
+      "path": "raw/qwen3_8b/quality.tar.gz",
+      "bytes": 13178564,
+      "sha256": "f80b4d83e091a7bbcd9555a247b25ccb089e2ff540782fcd8f6351f0216386a7"
+    },
+    {
+      "path": "raw/qwen3_8b/report-metadata.tar.gz",
+      "bytes": 46798,
+      "sha256": "c474edd133d364797e017c3207940ea561cd4e24bbe8a48fc78338d19c549045"
+    },
+    {
+      "path": "raw/qwen3_8b/supporting-history/SHA256SUMS",
+      "bytes": 1366,
+      "sha256": "7c41641d7e0e83c47a24d284588fd365893a613ae80c3aa14ef837b93bfcf2ce"
+    },
+    {
+      "path": "raw/qwen3_8b/supporting-history/dp-cache-results-20260917.tar.gz",
+      "bytes": 165,
+      "sha256": "78a36366eac95ac282ea75632987fac6e23732deb96b14518cc52fa1601453c4"
+    },
+    {
+      "path": "raw/qwen3_8b/supporting-history/dp-cache-results-short256-20260917.tar.gz",
+      "bytes": 98451,
+      "sha256": "a7bbabdaa3a1c0d15d028d591df375d21dc5b9465ca3a1345d9ac1b95abe6d41"
+    },
+    {
+      "path": "raw/qwen3_8b/supporting-history/dp-cache-reuse-20260917.tar.gz",
+      "bytes": 1404455,
+      "sha256": "f0c71faea55442e122afdd20d82cc5d084e2fe16b8e48cdc9fc707bd51399a7e"
+    },
+    {
+      "path": "raw/qwen3_8b/supporting-history/dp-main-input256-20260917.tar.gz",
+      "bytes": 335054,
+      "sha256": "3ef02e5b5f71bfb30b6226b6e04a66880c7f2ac540252519dcb50ea2ff36ee51"
+    },
+    {
+      "path": "raw/qwen3_8b/supporting-history/dp-main-natural-cache-20260917.tar.gz",
+      "bytes": 336967,
+      "sha256": "c8b6054e01f35f3dc2e65545cfd9288daaf1cdc452b05388b6eab3629f1ec02d"
+    },
+    {
+      "path": "raw/qwen3_8b/supporting-history/dp-paper-natural-results-20260917-preflight-v1.tar.gz",
+      "bytes": 34462,
+      "sha256": "ea574306fd8be0148de9792a9137538e12f2a61c2e836fc3929a427e241c1914"
+    },
+    {
+      "path": "raw/qwen3_8b/supporting-history/dp-paper-natural-results-20260917.tar.gz",
+      "bytes": 372332,
+      "sha256": "af936a088311aa7f02f3ac87cdba8cff0208529b140e1a9a4059e60486adea33"
+    },
+    {
+      "path": "raw/qwen3_8b/supporting-history/dp-paper-natural-suite-20260917.tar.gz",
+      "bytes": 1597959,
+      "sha256": "9b26dfc4ab1ad9b4d7da66c84fc6e20fdaab99ac802858e236c24aba3912da6c"
+    },
+    {
+      "path": "raw/qwen3_8b/supporting-history/dp-paper-results-20260916.tar.gz",
+      "bytes": 2375306,
+      "sha256": "4581e99105f496738066c92db1491440e40abac9fab49c087a1daf68f3bebb57"
+    },
+    {
+      "path": "raw/qwen3_8b/supporting-history/dp-paper-results-memory-safe-20260917.tar.gz",
+      "bytes": 2007479,
+      "sha256": "9b2921434dad14b8fe4a2de9337b9d1ba99e284aac099949d4d4d70dc765b26f"
+    },
+    {
+      "path": "raw/qwen3_8b/supporting-history/dp-paper-results-single-wave-20260917.tar.gz",
+      "bytes": 25196818,
+      "sha256": "f9e5ddbeae6669c1bcb8ae0be719f8a7458195b1ba2924464369166d9c98a8d1"
+    },
+    {
+      "path": "raw/qwen3_8b/supporting-history/dp-paper-study-20260916.tar.gz",
+      "bytes": 3819729,
+      "sha256": "4c41c4f54d6a5b4b07ae8f68b7f33ddc80bb56376850a5fa1b7c8bdc12479f26"
+    },
+    {
+      "path": "raw/qwen3_8b/supporting-history/dp-upload-metadata-archive-20260916.tar.gz",
+      "bytes": 857,
+      "sha256": "28930a66d23c0af86bd72b3ba6f3fa0dcc10863d68816eede1de21376cb82da4"
+    },
+    {
+      "path": "summaries/qwen3_4b/EXPERIMENT_PLAN.json",
+      "bytes": 148343,
+      "sha256": "e07cfbb9586d49afaa102b3d98355282e7665756e3b32892f0ca1f0612118d3c"
+    },
+    {
+      "path": "summaries/qwen3_4b/OBSERVED_CELLS.json",
+      "bytes": 240630,
+      "sha256": "55b9f3c0badaa8d2aa80848eef282ad90fbf7b5a0c9cdac3f67a83f898c6052a"
+    },
+    {
+      "path": "summaries/qwen3_4b/QUALITY.json",
+      "bytes": 5355,
+      "sha256": "f74f1421874ee152e715d3e74389123eef62d0d8d5d35774612d354175ea0290"
+    },
+    {
+      "path": "summaries/qwen3_4b/T1_B193.md",
+      "bytes": 17440,
+      "sha256": "2ffeabd2aaa885ef4b94d98dc2a1201f9dceeb18e2454bf4d0c59e0c6c9a0253"
+    },
+    {
+      "path": "summaries/qwen3_4b/T1_B384.md",
+      "bytes": 7090,
+      "sha256": "86a5a4a5932956e67b9c490133d627d1e248b871c7057d861b273bfa8a5daa24"
+    },
+    {
+      "path": "summaries/qwen3_4b/T1_B96.md",
+      "bytes": 3335,
+      "sha256": "7e0c65875f4056b3f837481d328c87f059764eb5ad13d0ffede24418f3d559f8"
+    },
+    {
+      "path": "summaries/qwen3_8b/EXPERIMENT_PLAN.json",
+      "bytes": 148343,
+      "sha256": "e07cfbb9586d49afaa102b3d98355282e7665756e3b32892f0ca1f0612118d3c"
+    },
+    {
+      "path": "summaries/qwen3_8b/OBSERVED_CELLS.json",
+      "bytes": 240796,
+      "sha256": "610b76573a49223d2b3929baa03927a8af4cb6afc487a9589f58973c9d766b73"
+    },
+    {
+      "path": "summaries/qwen3_8b/QUALITY.json",
+      "bytes": 5357,
+      "sha256": "4ce37100e024180175a8b94f173a133f8e1feaa34dd7c05f3f568c64d35f3dae"
+    },
+    {
+      "path": "summaries/qwen3_8b/T1_B193.md",
+      "bytes": 17442,
+      "sha256": "3bfb2fd1d4423a3454035bb9f8d0f51bc17bbed7aa135d0fd235113064a9a30f"
+    },
+    {
+      "path": "summaries/qwen3_8b/T1_B384.md",
+      "bytes": 7087,
+      "sha256": "b7a65154e2ebaebd000126f1dadfb60689cfca92adc030dd2d2c5002ca91ab4d"
+    },
+    {
+      "path": "summaries/qwen3_8b/T1_B96.md",
+      "bytes": 3335,
+      "sha256": "cc4832e08b2af4be6834325cb9f5b70e5399b9b2bcb92174e662d0d6dff48b50"
+    }
+  ]
+}
