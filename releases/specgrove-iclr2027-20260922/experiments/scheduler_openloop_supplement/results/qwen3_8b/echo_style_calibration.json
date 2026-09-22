@@ -1,0 +1,17 @@
+{
+  "dataset": "gsm8k",
+  "prompt_slice": [
+    96,
+    112
+  ],
+  "target_labels_used": false,
+  "rule": "median draft-only marginal covered mass per added row",
+  "thresholds": [
+    0.0508737116057519,
+    0.021580318681794806
+  ],
+  "samples_per_gate": [
+    185,
+    19
+  ]
+}

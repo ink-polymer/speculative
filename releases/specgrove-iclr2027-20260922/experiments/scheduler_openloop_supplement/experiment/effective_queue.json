@@ -1,0 +1,39 @@
+{
+  "revision": "20260917-drop-long-output",
+  "utc": "2026-09-17T06:58:04.792320+00:00",
+  "reason": "User requested no long-output experiments",
+  "active_phases": [
+    "main128",
+    "quality",
+    "correctness",
+    "native_c1",
+    "budget",
+    "ablation",
+    "heterogeneous"
+  ],
+  "excluded_phases": [
+    "long_output"
+  ],
+  "groups_per_model": 10788,
+  "executions_per_model": 53280,
+  "removed_groups_per_model": 2816,
+  "removed_executions_per_model": 11008,
+  "quality_output_cap_unchanged": 1024,
+  "python_measurement_sources_unchanged": true,
+  "current_worker": {
+    "pid": 502008,
+    "state": "R",
+    "ppid": 501989,
+    "start": "2582752154",
+    "cmd": "/root/autodl-tmp/envs/speculative/bin/python scripts/run_natural_paper_phase.py --model qwen3_4b --phase main128 --output /root/dp-paper-natural-once-results-20260917/qwen3_4b/main128 --data-dir /root/autodl-tmp/data/sampling-t1-formal-16c0e91 --calibration /root/autodl-tmp/outputs/audited-global-tree-matrix-20260916/qwen3_4b/calibration.json --reuse-directory /root/dp-paper-natural-results-20260917/qwen3_4b/main128"
+  },
+  "old_queue_parent": {
+    "pid": 501989,
+    "state": "S",
+    "ppid": 501988,
+    "start": "2582749168",
+    "cmd": "bash /root/dp-paper-natural-once-20260917/scripts/run_natural_paper_suite.sh qwen3_4b"
+  },
+  "continuation_screen": "paper-natural-no-long-qwen3_4b-20260917",
+  "handoff_policy": "Current main128 worker continues unchanged; stopped old queue cannot start further phases. New persistent supervisor resumes the amended queue only after current worker exits, with strict resume contracts."
+}

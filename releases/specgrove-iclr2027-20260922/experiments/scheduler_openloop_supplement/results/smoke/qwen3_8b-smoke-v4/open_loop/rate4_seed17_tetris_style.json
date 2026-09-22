@@ -1,0 +1,5146 @@
+{
+  "method": "tetris_style",
+  "seed": 17,
+  "arrival_process": "Poisson",
+  "offered_rate_rps": 4.0,
+  "arrival_times_s": [
+    0.0,
+    0.2171560946673404,
+    0.5321137334029269,
+    0.7134121914705184,
+    0.7452882895295243,
+    0.9131421668147799,
+    1.2675160392840539,
+    1.3028226285942466,
+    1.4429340921751028,
+    1.521607241727094,
+    1.5818311375832312,
+    1.5964157184787806,
+    1.9963307754325506,
+    2.0870677720956072,
+    2.18002595546573,
+    2.4038972225602553,
+    2.4609948572210207,
+    2.63275808475729,
+    2.7902316849035658,
+    2.830804841074837,
+    2.8595730912427033,
+    2.9780054593434824,
+    3.3693016327081815,
+    3.4395928958475905,
+    3.502218382755889,
+    4.182040070380662,
+    4.459505114344882,
+    5.166380345406147,
+    6.222803015665576,
+    6.976989259224496,
+    7.101419011102163,
+    7.333957323863108,
+    7.434107499986601,
+    7.577698150174377,
+    7.682395906360745,
+    7.77070739548632,
+    7.843737654572473,
+    8.746029873796434,
+    8.949637667738713,
+    9.05433977984582,
+    9.2719307865793,
+    9.36260743567899,
+    9.522707314070603,
+    9.609154112920477,
+    9.688561203615427,
+    9.896102227593296,
+    10.387516952302049,
+    11.365883509270427,
+    11.534066695668706,
+    11.688856379084783,
+    11.992787437701072,
+    12.765691712664879,
+    13.270794962647717,
+    13.322087130083291,
+    13.322206544261178,
+    13.41798841018265,
+    14.123874665820933,
+    14.132693333754409,
+    14.281685841291191,
+    14.587906230441742,
+    14.777421071012009,
+    15.03714302943938,
+    15.037171186711365,
+    15.064796601592844
+  ],
+  "source_ids": [
+    "264",
+    "221",
+    "HumanEval/0",
+    "475",
+    "725",
+    "434",
+    "HumanEval/1",
+    "168",
+    "996",
+    "109",
+    "HumanEval/2",
+    "468",
+    "586",
+    "334",
+    "HumanEval/3",
+    "108",
+    "1010",
+    "375",
+    "HumanEval/4",
+    "421",
+    "12",
+    "71",
+    "HumanEval/5",
+    "284",
+    "904",
+    "378",
+    "HumanEval/6",
+    "247",
+    "130",
+    "205",
+    "HumanEval/7",
+    "127",
+    "209",
+    "290",
+    "HumanEval/8",
+    "145",
+    "244",
+    "181",
+    "HumanEval/9",
+    "462",
+    "237",
+    "182",
+    "HumanEval/10",
+    "11",
+    "689",
+    "227",
+    "HumanEval/11",
+    "89",
+    "601",
+    "371",
+    "HumanEval/12",
+    "259",
+    "98",
+    "41",
+    "HumanEval/13",
+    "133",
+    "1284",
+    "55",
+    "HumanEval/14",
+    "450",
+    "1131",
+    "408",
+    "HumanEval/15",
+    "171"
+  ],
+  "summary": {
+    "requests": 64,
+    "offered_rate_rps": 4.0,
+    "wall_ms": 15423.262968659401,
+    "completed_rps": 4.149575879633914,
+    "tokens_per_second": 126.82141282131148,
+    "output_tokens": 1956,
+    "jain_request_service_rate": 0.8696983464757301,
+    "planning": {
+      "waves": 191,
+      "total_ms": 3.8643255829811096,
+      "mean_ms": 0.020232071115084342,
+      "p95_ms": 0.026710331439971924,
+      "max_ms": 0.04515796899795532
+    },
+    "queue_ms": {
+      "mean": 18.05667361487158,
+      "p50": 15.358846130644643,
+      "p95": 46.91456465212273,
+      "p99": 59.045312611988535
+    },
+    "ttft_ms": {
+      "mean": 50.83286532909133,
+      "p50": 45.21179841354872,
+      "p95": 95.71076737081916,
+      "p99": 116.97371362457895
+    },
+    "tpot_ms": {
+      "mean": 8.870967815212321,
+      "p50": 8.748299772700957,
+      "p95": 15.09691173991849,
+      "p99": 16.508328385891453
+    },
+    "e2e_ms": {
+      "mean": 316.04976792596733,
+      "p50": 304.32984582004497,
+      "p95": 514.2745816019806,
+      "p99": 561.9213871256021
+    }
+  },
+  "request_metrics": [
+    {
+      "request_id": 0,
+      "arrival_ms": 0.0,
+      "admitted_ms": 0.17521530389785767,
+      "first_token_ms": 29.900409281253815,
+      "completed_ms": 301.0656461119652,
+      "queue_ms": 0.17521530389785767,
+      "ttft_ms": 29.900409281253815,
+      "e2e_ms": 301.0656461119652,
+      "service_ms": 300.8904308080673,
+      "tpot_ms": 8.747265704216495,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 1,
+      "arrival_ms": 217.1560946673404,
+      "admitted_ms": 228.50410640239716,
+      "first_token_ms": 254.35373187065125,
+      "completed_ms": 457.2399780154228,
+      "queue_ms": 11.348011735056756,
+      "ttft_ms": 37.19763720331085,
+      "e2e_ms": 240.08388334808242,
+      "service_ms": 228.73587161302567,
+      "tpot_ms": 6.544717617573276,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 2,
+      "arrival_ms": 532.1137334029269,
+      "admitted_ms": 532.2640836238861,
+      "first_token_ms": 563.1603896617889,
+      "completed_ms": 806.1255514621735,
+      "queue_ms": 0.15035022095921668,
+      "ttft_ms": 31.04665625886205,
+      "e2e_ms": 274.0118180592466,
+      "service_ms": 273.86146783828735,
+      "tpot_ms": 7.837585864528533,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 3,
+      "arrival_ms": 713.4121914705183,
+      "admitted_ms": 730.6823134422302,
+      "first_token_ms": 757.3038265109062,
+      "completed_ms": 989.6916374564171,
+      "queue_ms": 17.27012197171185,
+      "ttft_ms": 43.89163504038785,
+      "e2e_ms": 276.2794459858987,
+      "service_ms": 259.00932401418686,
+      "tpot_ms": 8.937992728673494,
+      "output_tokens": 27
+    },
+    {
+      "request_id": 4,
+      "arrival_ms": 745.2882895295243,
+      "admitted_ms": 806.1540797352791,
+      "first_token_ms": 831.4142003655434,
+      "completed_ms": 1126.8139407038689,
+      "queue_ms": 60.86579020575478,
+      "ttft_ms": 86.12591083601906,
+      "e2e_ms": 381.52565117434455,
+      "service_ms": 320.6598609685898,
+      "tpot_ms": 9.529023881881468,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 5,
+      "arrival_ms": 913.1421668147799,
+      "admitted_ms": 916.3096025586128,
+      "first_token_ms": 943.3738216757774,
+      "completed_ms": 1350.1111343502998,
+      "queue_ms": 3.167435743832936,
+      "ttft_ms": 30.231654860997548,
+      "e2e_ms": 436.96896753551994,
+      "service_ms": 433.801531791687,
+      "tpot_ms": 13.120558473371691,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 6,
+      "arrival_ms": 1267.516039284054,
+      "admitted_ms": 1279.6623036265373,
+      "first_token_ms": 1307.8052252531052,
+      "completed_ms": 1815.5114203691483,
+      "queue_ms": 12.146264342483448,
+      "ttft_ms": 40.28918596905129,
+      "e2e_ms": 547.9953810850943,
+      "service_ms": 535.8491167426109,
+      "tpot_ms": 16.37761919729171,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 7,
+      "arrival_ms": 1302.8226285942467,
+      "admitted_ms": 1350.1401618123055,
+      "first_token_ms": 1377.4833008646965,
+      "completed_ms": 1474.2372930049896,
+      "queue_ms": 47.31753321805887,
+      "ttft_ms": 74.66067227044992,
+      "e2e_ms": 171.41466441074306,
+      "service_ms": 124.09713119268417,
+      "tpot_ms": 6.04712450876832,
+      "output_tokens": 17
+    },
+    {
+      "request_id": 8,
+      "arrival_ms": 1442.934092175103,
+      "admitted_ms": 1474.2621928453445,
+      "first_token_ms": 1502.0434483885765,
+      "completed_ms": 1815.5114203691483,
+      "queue_ms": 31.32810067024172,
+      "ttft_ms": 59.10935621347369,
+      "e2e_ms": 372.57732819404544,
+      "service_ms": 341.2492275238037,
+      "tpot_ms": 10.11187006388941,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 9,
+      "arrival_ms": 1521.607241727094,
+      "admitted_ms": 1548.5124737024307,
+      "first_token_ms": 1578.9104625582695,
+      "completed_ms": 1815.5114203691483,
+      "queue_ms": 26.905231975336676,
+      "ttft_ms": 57.30322083117545,
+      "e2e_ms": 293.9041786420542,
+      "service_ms": 266.99894666671753,
+      "tpot_ms": 7.63228896164125,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 10,
+      "arrival_ms": 1581.8311375832313,
+      "admitted_ms": 1626.4622136950493,
+      "first_token_ms": 1678.6665320396423,
+      "completed_ms": 2097.679488360882,
+      "queue_ms": 44.63107611181805,
+      "ttft_ms": 96.8353944564111,
+      "e2e_ms": 515.8483507776506,
+      "service_ms": 471.2172746658325,
+      "tpot_ms": 13.516546978104499,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 11,
+      "arrival_ms": 1596.4157184787807,
+      "admitted_ms": 1626.4622136950493,
+      "first_token_ms": 1678.6665320396423,
+      "completed_ms": 1862.1665462851524,
+      "queue_ms": 30.046495216268674,
+      "ttft_ms": 82.25081356086173,
+      "e2e_ms": 265.75082780637183,
+      "service_ms": 235.70433259010315,
+      "tpot_ms": 5.9193552982422615,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 12,
+      "arrival_ms": 1996.3307754325506,
+      "admitted_ms": 2023.7537920475006,
+      "first_token_ms": 2051.3263270258904,
+      "completed_ms": 2389.6099030971527,
+      "queue_ms": 27.423016614950058,
+      "ttft_ms": 54.9955515933398,
+      "e2e_ms": 393.27912766460213,
+      "service_ms": 365.8561110496521,
+      "tpot_ms": 10.912373421653625,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 13,
+      "arrival_ms": 2087.0677720956073,
+      "admitted_ms": 2097.7060422301292,
+      "first_token_ms": 2125.603549182415,
+      "completed_ms": 2344.5090651512146,
+      "queue_ms": 10.63827013452201,
+      "ttft_ms": 38.53577708680778,
+      "e2e_ms": 257.4412930556074,
+      "service_ms": 246.80302292108536,
+      "tpot_ms": 7.061468257058051,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 14,
+      "arrival_ms": 2180.02595546573,
+      "admitted_ms": 2216.6981250047684,
+      "first_token_ms": 2247.0016852021217,
+      "completed_ms": 2765.6591907143593,
+      "queue_ms": 36.67216953903818,
+      "ttft_ms": 66.97572973639154,
+      "e2e_ms": 585.633235248629,
+      "service_ms": 548.9610657095909,
+      "tpot_ms": 16.73088727458831,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 15,
+      "arrival_ms": 2403.897222560255,
+      "admitted_ms": 2429.105058312416,
+      "first_token_ms": 2461.019590497017,
+      "completed_ms": 2718.503177165985,
+      "queue_ms": 25.20783575216079,
+      "ttft_ms": 57.12236793676162,
+      "e2e_ms": 314.60595460572983,
+      "service_ms": 289.39811885356903,
+      "tpot_ms": 8.878744367895456,
+      "output_tokens": 30
+    },
+    {
+      "request_id": 16,
+      "arrival_ms": 2460.9948572210205,
+      "admitted_ms": 2504.6875178813934,
+      "first_token_ms": 2531.4784049987793,
+      "completed_ms": 3001.619942486286,
+      "queue_ms": 43.692660660372695,
+      "ttft_ms": 70.48354777775856,
+      "e2e_ms": 540.6250852652654,
+      "service_ms": 496.93242460489273,
+      "tpot_ms": 15.165856047984093,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 17,
+      "arrival_ms": 2632.75808475729,
+      "admitted_ms": 2637.0001658797264,
+      "first_token_ms": 2664.15723413229,
+      "completed_ms": 3001.619942486286,
+      "queue_ms": 4.242081122436403,
+      "ttft_ms": 31.39914937499988,
+      "e2e_ms": 368.86185772899614,
+      "service_ms": 364.61977660655975,
+      "tpot_ms": 10.885893817870848,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 18,
+      "arrival_ms": 2790.2316849035656,
+      "admitted_ms": 2806.83346837759,
+      "first_token_ms": 2834.96917784214,
+      "completed_ms": 3188.1112307310104,
+      "queue_ms": 16.601783474024412,
+      "ttft_ms": 44.737492938574434,
+      "e2e_ms": 397.87954582744464,
+      "service_ms": 381.27776235342026,
+      "tpot_ms": 11.391679125447427,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 19,
+      "arrival_ms": 2830.804841074837,
+      "admitted_ms": 2881.807565689087,
+      "first_token_ms": 2935.5113059282303,
+      "completed_ms": 3237.015351653099,
+      "queue_ms": 51.00272461424993,
+      "ttft_ms": 104.7064648533933,
+      "e2e_ms": 406.2105105782621,
+      "service_ms": 355.20778596401215,
+      "tpot_ms": 13.704729351130398,
+      "output_tokens": 23
+    },
+    {
+      "request_id": 20,
+      "arrival_ms": 2859.5730912427034,
+      "admitted_ms": 2881.807565689087,
+      "first_token_ms": 2935.5113059282303,
+      "completed_ms": 3322.1408501267433,
+      "queue_ms": 22.2344744463836,
+      "ttft_ms": 75.93821468552697,
+      "e2e_ms": 462.56775888404,
+      "service_ms": 440.3332844376564,
+      "tpot_ms": 12.471920780597195,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 21,
+      "arrival_ms": 2978.0054593434825,
+      "admitted_ms": 3001.6549080610275,
+      "first_token_ms": 3028.9718359708786,
+      "completed_ms": 3281.995676457882,
+      "queue_ms": 23.64944871754515,
+      "ttft_ms": 50.96637662739623,
+      "e2e_ms": 303.99021711439957,
+      "service_ms": 280.3407683968544,
+      "tpot_ms": 8.162059370548494,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 22,
+      "arrival_ms": 3369.3016327081814,
+      "admitted_ms": 3369.406208395958,
+      "first_token_ms": 3397.0514833927155,
+      "completed_ms": 3668.690375983715,
+      "queue_ms": 0.10457568777644255,
+      "ttft_ms": 27.74985068453395,
+      "e2e_ms": 299.38874327553356,
+      "service_ms": 299.2841675877571,
+      "tpot_ms": 8.76254492229031,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 23,
+      "arrival_ms": 3439.5928958475906,
+      "admitted_ms": 3477.5327518582344,
+      "first_token_ms": 3504.648558795452,
+      "completed_ms": 3621.931180357933,
+      "queue_ms": 37.939856010643865,
+      "ttft_ms": 65.05566294786158,
+      "e2e_ms": 182.3382845103425,
+      "service_ms": 144.39842849969864,
+      "tpot_ms": 5.331028252840042,
+      "output_tokens": 23
+    },
+    {
+      "request_id": 24,
+      "arrival_ms": 3502.218382755889,
+      "admitted_ms": 3546.0693687200546,
+      "first_token_ms": 3571.6939121484756,
+      "completed_ms": 3822.802670300007,
+      "queue_ms": 43.850985964165815,
+      "ttft_ms": 69.47552939258684,
+      "e2e_ms": 320.58428754411807,
+      "service_ms": 276.73330157995224,
+      "tpot_ms": 8.100282521017137,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 25,
+      "arrival_ms": 4182.040070380662,
+      "admitted_ms": 4182.173281908035,
+      "first_token_ms": 4210.1796194911,
+      "completed_ms": 4368.401251733303,
+      "queue_ms": 0.13321152737333364,
+      "ttft_ms": 28.139549110438367,
+      "e2e_ms": 186.36118135264113,
+      "service_ms": 186.2279698252678,
+      "tpot_ms": 5.103923620716218,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 26,
+      "arrival_ms": 4459.505114344882,
+      "admitted_ms": 4459.644392132759,
+      "first_token_ms": 4488.927096128464,
+      "completed_ms": 4718.372173607349,
+      "queue_ms": 0.1392777878770346,
+      "ttft_ms": 29.421981783581685,
+      "e2e_ms": 258.86705926246736,
+      "service_ms": 258.7277814745903,
+      "tpot_ms": 7.401454112222118,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 27,
+      "arrival_ms": 5166.380345406147,
+      "admitted_ms": 5166.5168851614,
+      "first_token_ms": 5194.127455353737,
+      "completed_ms": 5350.440107285976,
+      "queue_ms": 0.13653975525240725,
+      "ttft_ms": 27.747109947589443,
+      "e2e_ms": 184.05976187982898,
+      "service_ms": 183.92322212457657,
+      "tpot_ms": 5.0423436107174044,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 28,
+      "arrival_ms": 6222.803015665576,
+      "admitted_ms": 6222.951456904411,
+      "first_token_ms": 6251.833118498325,
+      "completed_ms": 6518.874488770962,
+      "queue_ms": 0.148441238835062,
+      "ttft_ms": 29.030102832749094,
+      "e2e_ms": 296.0714731053855,
+      "service_ms": 295.92303186655045,
+      "tpot_ms": 8.614237750730206,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 29,
+      "arrival_ms": 6976.989259224496,
+      "admitted_ms": 6977.148726582527,
+      "first_token_ms": 7010.795600712299,
+      "completed_ms": 7134.455546736717,
+      "queue_ms": 0.15946735803140655,
+      "ttft_ms": 33.80634148780359,
+      "e2e_ms": 157.46628751222147,
+      "service_ms": 157.30682015419006,
+      "tpot_ms": 3.9890305169167055,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 30,
+      "arrival_ms": 7101.419011102163,
+      "admitted_ms": 7134.4903111457825,
+      "first_token_ms": 7162.798687815666,
+      "completed_ms": 7473.778448998928,
+      "queue_ms": 33.0713000436198,
+      "ttft_ms": 61.37967671350353,
+      "e2e_ms": 372.35943789676537,
+      "service_ms": 339.2881378531456,
+      "tpot_ms": 10.03160519946006,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 31,
+      "arrival_ms": 7333.957323863107,
+      "admitted_ms": 7353.542476892471,
+      "first_token_ms": 7380.843937397003,
+      "completed_ms": 7473.778448998928,
+      "queue_ms": 19.58515302936359,
+      "ttft_ms": 46.88661353389545,
+      "e2e_ms": 139.82112513582035,
+      "service_ms": 120.23597210645676,
+      "tpot_ms": 5.466735976583817,
+      "output_tokens": 18
+    },
+    {
+      "request_id": 32,
+      "arrival_ms": 7434.1074999866005,
+      "admitted_ms": 7473.8094210624695,
+      "first_token_ms": 7501.885265111923,
+      "completed_ms": 7810.486763715744,
+      "queue_ms": 39.701921075868896,
+      "ttft_ms": 67.77776512532263,
+      "e2e_ms": 376.3792637291434,
+      "service_ms": 336.67734265327454,
+      "tpot_ms": 9.954887051736154,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 33,
+      "arrival_ms": 7577.698150174377,
+      "admitted_ms": 7578.192368149757,
+      "first_token_ms": 7604.814894497395,
+      "completed_ms": 7689.042180776596,
+      "queue_ms": 0.4942179753806286,
+      "ttft_ms": 27.116744323017805,
+      "e2e_ms": 111.3440306022193,
+      "service_ms": 110.84981262683868,
+      "tpot_ms": 2.7170092348129518,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 34,
+      "arrival_ms": 7682.395906360745,
+      "admitted_ms": 7689.074419438839,
+      "first_token_ms": 7717.302180826664,
+      "completed_ms": 8107.399694621563,
+      "queue_ms": 6.678513078093751,
+      "ttft_ms": 34.90627446591876,
+      "e2e_ms": 425.00378826081777,
+      "service_ms": 418.325275182724,
+      "tpot_ms": 12.583790767577387,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 35,
+      "arrival_ms": 7770.70739548632,
+      "admitted_ms": 7810.5200454592705,
+      "first_token_ms": 7837.216667830944,
+      "completed_ms": 8045.873694121838,
+      "queue_ms": 39.81264997295053,
+      "ttft_ms": 66.50927234462412,
+      "e2e_ms": 275.16629863551765,
+      "service_ms": 235.35364866256714,
+      "tpot_ms": 6.730871815835276,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 36,
+      "arrival_ms": 7843.737654572473,
+      "admitted_ms": 7878.354288637638,
+      "first_token_ms": 7905.591353774071,
+      "completed_ms": 8191.099464893341,
+      "queue_ms": 34.616634065165464,
+      "ttft_ms": 61.85369920159811,
+      "e2e_ms": 347.3618103208684,
+      "service_ms": 312.745176255703,
+      "tpot_ms": 9.209939068363559,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 37,
+      "arrival_ms": 8746.029873796435,
+      "admitted_ms": 8746.181912720203,
+      "first_token_ms": 8774.976380169392,
+      "completed_ms": 8888.498097658157,
+      "queue_ms": 0.15203892376902672,
+      "ttft_ms": 28.94650637295726,
+      "e2e_ms": 142.46822386172298,
+      "service_ms": 142.31618493795395,
+      "tpot_ms": 3.661990886734378,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 38,
+      "arrival_ms": 8949.637667738712,
+      "admitted_ms": 8949.75409656763,
+      "first_token_ms": 8977.078065276146,
+      "completed_ms": 9454.994224011898,
+      "queue_ms": 0.11642882891749196,
+      "ttft_ms": 27.44039753743266,
+      "e2e_ms": 505.35655627318476,
+      "service_ms": 505.2401274442673,
+      "tpot_ms": 15.416650281798455,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 39,
+      "arrival_ms": 9054.33977984582,
+      "admitted_ms": 9055.636070668697,
+      "first_token_ms": 9085.933566093445,
+      "completed_ms": 9380.679197609425,
+      "queue_ms": 1.2962908228768555,
+      "ttft_ms": 31.593786247624323,
+      "e2e_ms": 326.3394177636041,
+      "service_ms": 325.04312694072723,
+      "tpot_ms": 9.50792359728967,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 40,
+      "arrival_ms": 9271.9307865793,
+      "admitted_ms": 9305.803157389164,
+      "first_token_ms": 9333.194941282272,
+      "completed_ms": 9776.057854294777,
+      "queue_ms": 33.872370809863384,
+      "ttft_ms": 61.26415470297175,
+      "e2e_ms": 504.1270677154763,
+      "service_ms": 470.25469690561295,
+      "tpot_ms": 14.285900419758212,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 41,
+      "arrival_ms": 9362.60743567899,
+      "admitted_ms": 9380.711533129215,
+      "first_token_ms": 9407.52199292183,
+      "completed_ms": 9695.976488292217,
+      "queue_ms": 18.1040974502249,
+      "ttft_ms": 44.91455724283888,
+      "e2e_ms": 333.3690526132269,
+      "service_ms": 315.264955163002,
+      "tpot_ms": 9.30498372162542,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 42,
+      "arrival_ms": 9522.707314070603,
+      "admitted_ms": 9537.597246468067,
+      "first_token_ms": 9568.216353654861,
+      "completed_ms": 9993.230678141117,
+      "queue_ms": 14.889932397464278,
+      "ttft_ms": 45.50903958425856,
+      "e2e_ms": 470.5233640705142,
+      "service_ms": 455.6334316730499,
+      "tpot_ms": 13.710139499556634,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 43,
+      "arrival_ms": 9609.154112920476,
+      "admitted_ms": 9615.002028644085,
+      "first_token_ms": 9642.23488420248,
+      "completed_ms": 9918.029770255089,
+      "queue_ms": 5.84791572360821,
+      "ttft_ms": 33.080771282003596,
+      "e2e_ms": 308.8756573346121,
+      "service_ms": 303.0277416110039,
+      "tpot_ms": 8.8966092275035,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 44,
+      "arrival_ms": 9688.561203615427,
+      "admitted_ms": 9696.009874343872,
+      "first_token_ms": 9722.00132906437,
+      "completed_ms": 9993.230678141117,
+      "queue_ms": 7.44867072844535,
+      "ttft_ms": 33.44012544894248,
+      "e2e_ms": 304.66947452569036,
+      "service_ms": 297.220803797245,
+      "tpot_ms": 8.749333841185416,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 45,
+      "arrival_ms": 9896.102227593296,
+      "admitted_ms": 9918.0603697896,
+      "first_token_ms": 9944.619379937649,
+      "completed_ms": 10107.39018023014,
+      "queue_ms": 21.95814219630421,
+      "ttft_ms": 48.51715234435261,
+      "e2e_ms": 211.28795263684452,
+      "service_ms": 189.3298104405403,
+      "tpot_ms": 5.250670977177158,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 46,
+      "arrival_ms": 10387.516952302049,
+      "admitted_ms": 10387.73114234209,
+      "first_token_ms": 10415.491238236427,
+      "completed_ms": 10645.856410264969,
+      "queue_ms": 0.21419004004208375,
+      "ttft_ms": 27.974285934378784,
+      "e2e_ms": 258.33945796292033,
+      "service_ms": 258.12526792287827,
+      "tpot_ms": 7.431134581565857,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 47,
+      "arrival_ms": 11365.883509270427,
+      "admitted_ms": 11366.061240434647,
+      "first_token_ms": 11393.790930509567,
+      "completed_ms": 11471.20825946331,
+      "queue_ms": 0.1777311642197077,
+      "ttft_ms": 27.907421239140362,
+      "e2e_ms": 105.32475019288334,
+      "service_ms": 105.14701902866364,
+      "tpot_ms": 4.838583059608936,
+      "output_tokens": 17
+    },
+    {
+      "request_id": 48,
+      "arrival_ms": 11534.066695668706,
+      "admitted_ms": 11534.190528094769,
+      "first_token_ms": 11563.580878078938,
+      "completed_ms": 11886.813625693321,
+      "queue_ms": 0.12383242606262002,
+      "ttft_ms": 29.514182410231626,
+      "e2e_ms": 352.7469300246153,
+      "service_ms": 352.6230975985527,
+      "tpot_ms": 10.426862826270442,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 49,
+      "arrival_ms": 11688.856379084782,
+      "admitted_ms": 11715.32428264618,
+      "first_token_ms": 11743.981309235096,
+      "completed_ms": 11886.813625693321,
+      "queue_ms": 26.46790356139661,
+      "ttft_ms": 55.12493015031339,
+      "e2e_ms": 197.95724660853864,
+      "service_ms": 171.48934304714203,
+      "tpot_ms": 4.607494079297589,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 50,
+      "arrival_ms": 11992.787437701072,
+      "admitted_ms": 11993.220187723637,
+      "first_token_ms": 12021.588422358036,
+      "completed_ms": 12211.81821078062,
+      "queue_ms": 0.43275002256493167,
+      "ttft_ms": 28.800984656964346,
+      "e2e_ms": 219.03077307954888,
+      "service_ms": 218.59802305698395,
+      "tpot_ms": 6.136444787825307,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 51,
+      "arrival_ms": 12765.691712664879,
+      "admitted_ms": 12765.84704220295,
+      "first_token_ms": 12794.530525803566,
+      "completed_ms": 13022.756956517696,
+      "queue_ms": 0.1553295380709585,
+      "ttft_ms": 28.838813138687414,
+      "e2e_ms": 257.06524385281784,
+      "service_ms": 256.90991431474686,
+      "tpot_ms": 7.86987692117691,
+      "output_tokens": 30
+    },
+    {
+      "request_id": 52,
+      "arrival_ms": 13270.794962647717,
+      "admitted_ms": 13270.943753421307,
+      "first_token_ms": 13299.321368336678,
+      "completed_ms": 13627.382695674896,
+      "queue_ms": 0.1487907735899796,
+      "ttft_ms": 28.52640568896092,
+      "e2e_ms": 356.58773302717964,
+      "service_ms": 356.43894225358963,
+      "tpot_ms": 10.582623462523184,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 53,
+      "arrival_ms": 13322.087130083291,
+      "admitted_ms": 13337.50568330288,
+      "first_token_ms": 13389.949224889278,
+      "completed_ms": 13668.200053274632,
+      "queue_ms": 15.41855321958785,
+      "ttft_ms": 67.86209480598693,
+      "e2e_ms": 346.11292319134003,
+      "service_ms": 330.69436997175217,
+      "tpot_ms": 8.975833173721067,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 54,
+      "arrival_ms": 13322.206544261178,
+      "admitted_ms": 13337.50568330288,
+      "first_token_ms": 13389.949224889278,
+      "completed_ms": 13706.131309270859,
+      "queue_ms": 15.299139041701437,
+      "ttft_ms": 67.74268062810052,
+      "e2e_ms": 383.92476500968087,
+      "service_ms": 368.62562596797943,
+      "tpot_ms": 10.199422076825172,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 55,
+      "arrival_ms": 13417.98841018265,
+      "admitted_ms": 13438.026085495949,
+      "first_token_ms": 13465.414591133595,
+      "completed_ms": 13627.382695674896,
+      "queue_ms": 20.03767531329892,
+      "ttft_ms": 47.42618095094464,
+      "e2e_ms": 209.39428549224635,
+      "service_ms": 189.35661017894745,
+      "tpot_ms": 6.2295424823577585,
+      "output_tokens": 27
+    },
+    {
+      "request_id": 56,
+      "arrival_ms": 14123.874665820933,
+      "admitted_ms": 14124.03167784214,
+      "first_token_ms": 14152.996093034744,
+      "completed_ms": 14513.00410181284,
+      "queue_ms": 0.1570120212068815,
+      "ttft_ms": 29.121427213810946,
+      "e2e_ms": 389.1294359919062,
+      "service_ms": 388.9724239706993,
+      "tpot_ms": 11.613161573486943,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 57,
+      "arrival_ms": 14132.693333754409,
+      "admitted_ms": 14190.669476985931,
+      "first_token_ms": 14216.748356819153,
+      "completed_ms": 14381.777852773666,
+      "queue_ms": 57.97614323152267,
+      "ttft_ms": 84.0550230647441,
+      "e2e_ms": 249.08451901925764,
+      "service_ms": 191.10837578773499,
+      "tpot_ms": 5.323532127564953,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 58,
+      "arrival_ms": 14281.685841291192,
+      "admitted_ms": 14309.147335588932,
+      "first_token_ms": 14336.24043315649,
+      "completed_ms": 14513.00410181284,
+      "queue_ms": 27.46149429774114,
+      "ttft_ms": 54.55459186529943,
+      "e2e_ms": 231.3182605216486,
+      "service_ms": 203.85676622390747,
+      "tpot_ms": 5.702053827624167,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 59,
+      "arrival_ms": 14587.906230441742,
+      "admitted_ms": 14588.038213551044,
+      "first_token_ms": 14616.863131523132,
+      "completed_ms": 14730.972073972225,
+      "queue_ms": 0.13198310930206958,
+      "ttft_ms": 28.95690108138993,
+      "e2e_ms": 143.0658435304828,
+      "service_ms": 142.93386042118073,
+      "tpot_ms": 4.388805478811264,
+      "output_tokens": 27
+    },
+    {
+      "request_id": 60,
+      "arrival_ms": 14777.42107101201,
+      "admitted_ms": 14777.547344565392,
+      "first_token_ms": 14804.76001650095,
+      "completed_ms": 15260.6530636549,
+      "queue_ms": 0.12627355338246105,
+      "ttft_ms": 27.33894548894078,
+      "e2e_ms": 483.23199264289053,
+      "service_ms": 483.10571908950806,
+      "tpot_ms": 14.706227327546765,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 61,
+      "arrival_ms": 15037.14302943938,
+      "admitted_ms": 15074.478134512901,
+      "first_token_ms": 15154.13448214531,
+      "completed_ms": 15306.31211400032,
+      "queue_ms": 37.335105073522,
+      "ttft_ms": 116.99145270593014,
+      "e2e_ms": 269.16908456094114,
+      "service_ms": 231.83397948741913,
+      "tpot_ms": 4.908955866290677,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 62,
+      "arrival_ms": 15037.171186711364,
+      "admitted_ms": 15074.478134512901,
+      "first_token_ms": 15154.13448214531,
+      "completed_ms": 15423.247247934341,
+      "queue_ms": 37.30694780153598,
+      "ttft_ms": 116.96329543394413,
+      "e2e_ms": 386.07606122297614,
+      "service_ms": 348.7691134214401,
+      "tpot_ms": 8.681056960936516,
+      "output_tokens": 32
+    },
+    {
+      "request_id": 63,
+      "arrival_ms": 15064.796601592845,
+      "admitted_ms": 15074.478134512901,
+      "first_token_ms": 15154.13448214531,
+      "completed_ms": 15306.31211400032,
+      "queue_ms": 9.681532920057023,
+      "ttft_ms": 89.33788055246517,
+      "e2e_ms": 241.51551240747614,
+      "service_ms": 231.83397948741913,
+      "tpot_ms": 7.608881592750549,
+      "output_tokens": 21
+    }
+  ],
+  "allocator_trace": [
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.17633891608226285,
+      "policy": "tetris_style",
+      "planning_ms": 0.02177804708480835
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.2729488660447674,
+      "policy": "tetris_style",
+      "planning_ms": 0.016927719116210938
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.2874693627412432,
+      "policy": "tetris_style",
+      "planning_ms": 0.018231570720672607
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.1662556821996768,
+      "policy": "tetris_style",
+      "planning_ms": 0.018656253814697266
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.1723210134955311,
+      "policy": "tetris_style",
+      "planning_ms": 0.01675635576248169
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.765864901145079,
+      "policy": "tetris_style",
+      "planning_ms": 0.021412968635559082
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.17161152704865235,
+      "policy": "tetris_style",
+      "planning_ms": 0.017367303371429443
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.3587477298230947,
+      "policy": "tetris_style",
+      "planning_ms": 0.01605600118637085
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.41722373081191505,
+      "policy": "tetris_style",
+      "planning_ms": 0.016480684280395508
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.5220228281900072,
+      "policy": "tetris_style",
+      "planning_ms": 0.018358230590820312
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.29960297773463473,
+      "policy": "tetris_style",
+      "planning_ms": 0.022687017917633057
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.18276948232366602,
+      "policy": "tetris_style",
+      "planning_ms": 0.019215047359466553
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.21250580645025857,
+      "policy": "tetris_style",
+      "planning_ms": 0.020362436771392822
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.135903563707088,
+      "policy": "tetris_style",
+      "planning_ms": 0.019781291484832764
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.5326040263798403,
+      "policy": "tetris_style",
+      "planning_ms": 0.02158433198928833
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.4407756071069263,
+      "policy": "tetris_style",
+      "planning_ms": 0.023290514945983887
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.6402544140306725,
+      "policy": "tetris_style",
+      "planning_ms": 0.020615756511688232
+    },
+    {
+      "requests": 3,
+      "rows": 138,
+      "allocation": [
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.8946848253997465,
+      "policy": "tetris_style",
+      "planning_ms": 0.023886561393737793
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.4851399862011804,
+      "policy": "tetris_style",
+      "planning_ms": 0.02165883779525757
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.5840644780161806,
+      "policy": "tetris_style",
+      "planning_ms": 0.020265579223632812
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.9099538056752322,
+      "policy": "tetris_style",
+      "planning_ms": 0.02119690179824829
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.2674702859526876,
+      "policy": "tetris_style",
+      "planning_ms": 0.017546117305755615
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.12601491405038917,
+      "policy": "tetris_style",
+      "planning_ms": 0.01914799213409424
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.1697460927246928,
+      "policy": "tetris_style",
+      "planning_ms": 0.01800060272216797
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.15948876485565114,
+      "policy": "tetris_style",
+      "planning_ms": 0.018090009689331055
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.8182762674524606,
+      "policy": "tetris_style",
+      "planning_ms": 0.022061169147491455
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.4194028112967651,
+      "policy": "tetris_style",
+      "planning_ms": 0.021047890186309814
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.6800978548408692,
+      "policy": "tetris_style",
+      "planning_ms": 0.021651387214660645
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.44588869746513465,
+      "policy": "tetris_style",
+      "planning_ms": 0.02693384885787964
+    },
+    {
+      "requests": 3,
+      "rows": 138,
+      "allocation": [
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.5456472082888025,
+      "policy": "tetris_style",
+      "planning_ms": 0.022493302822113037
+    },
+    {
+      "requests": 5,
+      "rows": 230,
+      "allocation": [
+        45,
+        45,
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 1.0510151608351102,
+      "policy": "tetris_style",
+      "planning_ms": 0.027373433113098145
+    },
+    {
+      "requests": 5,
+      "rows": 230,
+      "allocation": [
+        45,
+        45,
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 1.3384292331365375,
+      "policy": "tetris_style",
+      "planning_ms": 0.027567148208618164
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.9984590714230801,
+      "policy": "tetris_style",
+      "planning_ms": 0.021442770957946777
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.1358404176785405,
+      "policy": "tetris_style",
+      "planning_ms": 0.017508864402770996
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.25964048575386417,
+      "policy": "tetris_style",
+      "planning_ms": 0.018775463104248047
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.29830521356453454,
+      "policy": "tetris_style",
+      "planning_ms": 0.01681596040725708
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.14746501947431617,
+      "policy": "tetris_style",
+      "planning_ms": 0.01843273639678955
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.45608415584085815,
+      "policy": "tetris_style",
+      "planning_ms": 0.020056962966918945
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.7164434932395394,
+      "policy": "tetris_style",
+      "planning_ms": 0.02164393663406372
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.7754586546215396,
+      "policy": "tetris_style",
+      "planning_ms": 0.020332634449005127
+    },
+    {
+      "requests": 3,
+      "rows": 138,
+      "allocation": [
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.8380379341910728,
+      "policy": "tetris_style",
+      "planning_ms": 0.029101967811584473
+    },
+    {
+      "requests": 3,
+      "rows": 138,
+      "allocation": [
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 1.008807444355998,
+      "policy": "tetris_style",
+      "planning_ms": 0.02092123031616211
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.33479935668199157,
+      "policy": "tetris_style",
+      "planning_ms": 0.020794570446014404
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.1181397003658648,
+      "policy": "tetris_style",
+      "planning_ms": 0.017255544662475586
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.5870764836356662,
+      "policy": "tetris_style",
+      "planning_ms": 0.029034912586212158
+    },
+    {
+      "requests": 3,
+      "rows": 138,
+      "allocation": [
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.6138373301897401,
+      "policy": "tetris_style",
+      "planning_ms": 0.04515796899795532
+    },
+    {
+      "requests": 3,
+      "rows": 138,
+      "allocation": [
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.7275607975957874,
+      "policy": "tetris_style",
+      "planning_ms": 0.023826956748962402
+    },
+    {
+      "requests": 4,
+      "rows": 184,
+      "allocation": [
+        45,
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.8909051520547823,
+      "policy": "tetris_style",
+      "planning_ms": 0.02397596836090088
+    },
+    {
+      "requests": 3,
+      "rows": 138,
+      "allocation": [
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.9226780531714764,
+      "policy": "tetris_style",
+      "planning_ms": 0.024899840354919434
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.41248991155266207,
+      "policy": "tetris_style",
+      "planning_ms": 0.02358853816986084
+    },
+    {
+      "requests": 3,
+      "rows": 138,
+      "allocation": [
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.8231529423245882,
+      "policy": "tetris_style",
+      "planning_ms": 0.021733343601226807
+    },
+    {
+      "requests": 5,
+      "rows": 230,
+      "allocation": [
+        45,
+        45,
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 1.2313271422232042,
+      "policy": "tetris_style",
+      "planning_ms": 0.027708709239959717
+    },
+    {
+      "requests": 4,
+      "rows": 184,
+      "allocation": [
+        45,
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.5088339591410164,
+      "policy": "tetris_style",
+      "planning_ms": 0.02648681402206421
+    },
+    {
+      "requests": 4,
+      "rows": 184,
+      "allocation": [
+        45,
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.8586279943179598,
+      "policy": "tetris_style",
+      "planning_ms": 0.023134052753448486
+    },
+    {
+      "requests": 4,
+      "rows": 184,
+      "allocation": [
+        45,
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 1.128506388778706,
+      "policy": "tetris_style",
+      "planning_ms": 0.02451986074447632
+    },
+    {
+      "requests": 3,
+      "rows": 138,
+      "allocation": [
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.9450961726493003,
+      "policy": "tetris_style",
+      "planning_ms": 0.02282857894897461
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.4594276277237445,
+      "policy": "tetris_style",
+      "planning_ms": 0.02037733793258667
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.24145797158651053,
+      "policy": "tetris_style",
+      "planning_ms": 0.01903623342514038
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.17853597550834396,
+      "policy": "tetris_style",
+      "planning_ms": 0.0208243727684021
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.16325766204888137,
+      "policy": "tetris_style",
+      "planning_ms": 0.019058585166931152
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.7554627802512102,
+      "policy": "tetris_style",
+      "planning_ms": 0.02133101224899292
+    },
+    {
+      "requests": 3,
+      "rows": 138,
+      "allocation": [
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 1.0200523377308723,
+      "policy": "tetris_style",
+      "planning_ms": 0.026285648345947266
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.8783575716001127,
+      "policy": "tetris_style",
+      "planning_ms": 0.022977590560913086
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.16610536970296058,
+      "policy": "tetris_style",
+      "planning_ms": 0.023655593395233154
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.2638444802865495,
+      "policy": "tetris_style",
+      "planning_ms": 0.018075108528137207
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.157376793301751,
+      "policy": "tetris_style",
+      "planning_ms": 0.016301870346069336
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.22107649374776528,
+      "policy": "tetris_style",
+      "planning_ms": 0.016413629055023193
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.26562301504179897,
+      "policy": "tetris_style",
+      "planning_ms": 0.02139061689376831
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.3191468385385003,
+      "policy": "tetris_style",
+      "planning_ms": 0.019475817680358887
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.30438011526904,
+      "policy": "tetris_style",
+      "planning_ms": 0.01913309097290039
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.390513715114172,
+      "policy": "tetris_style",
+      "planning_ms": 0.01644343137741089
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.1816281595133312,
+      "policy": "tetris_style",
+      "planning_ms": 0.021375715732574463
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.2117237131391839,
+      "policy": "tetris_style",
+      "planning_ms": 0.019691884517669678
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.19854663915040832,
+      "policy": "tetris_style",
+      "planning_ms": 0.021345913410186768
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.2912464008540276,
+      "policy": "tetris_style",
+      "planning_ms": 0.036016106605529785
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.11876597951545323,
+      "policy": "tetris_style",
+      "planning_ms": 0.017389655113220215
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.13762352436847042,
+      "policy": "tetris_style",
+      "planning_ms": 0.0173225998878479
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.3257053608668411,
+      "policy": "tetris_style",
+      "planning_ms": 0.018909573554992676
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.4319859481285525,
+      "policy": "tetris_style",
+      "planning_ms": 0.016674399375915527
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.2902694936903696,
+      "policy": "tetris_style",
+      "planning_ms": 0.017404556274414062
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.38461415822762035,
+      "policy": "tetris_style",
+      "planning_ms": 0.017039477825164795
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.17744340075179477,
+      "policy": "tetris_style",
+      "planning_ms": 0.020191073417663574
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.23870404283403207,
+      "policy": "tetris_style",
+      "planning_ms": 0.018365681171417236
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.22102726773886852,
+      "policy": "tetris_style",
+      "planning_ms": 0.017911195755004883
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.19058263801478406,
+      "policy": "tetris_style",
+      "planning_ms": 0.020019710063934326
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.139242813634463,
+      "policy": "tetris_style",
+      "planning_ms": 0.016883015632629395
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.24460773948133654,
+      "policy": "tetris_style",
+      "planning_ms": 0.019550323486328125
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.18397847904160133,
+      "policy": "tetris_style",
+      "planning_ms": 0.017851591110229492
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.17987065212128547,
+      "policy": "tetris_style",
+      "planning_ms": 0.020809471607208252
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.5488570890768989,
+      "policy": "tetris_style",
+      "planning_ms": 0.020600855350494385
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.5900959449627154,
+      "policy": "tetris_style",
+      "planning_ms": 0.01911073923110962
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.1805629998595085,
+      "policy": "tetris_style",
+      "planning_ms": 0.019647181034088135
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.2050886472334448,
+      "policy": "tetris_style",
+      "planning_ms": 0.01823902130126953
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.15126068459803865,
+      "policy": "tetris_style",
+      "planning_ms": 0.01817941665649414
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.15325176878054175,
+      "policy": "tetris_style",
+      "planning_ms": 0.018171966075897217
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.38446991834465666,
+      "policy": "tetris_style",
+      "planning_ms": 0.017814338207244873
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.8121760356977025,
+      "policy": "tetris_style",
+      "planning_ms": 0.020936131477355957
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 1.0989098961801236,
+      "policy": "tetris_style",
+      "planning_ms": 0.02012401819229126
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.20257115564298908,
+      "policy": "tetris_style",
+      "planning_ms": 0.018753111362457275
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.19735094854915938,
+      "policy": "tetris_style",
+      "planning_ms": 0.017628073692321777
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 1.0717558189603875,
+      "policy": "tetris_style",
+      "planning_ms": 0.020936131477355957
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.9071514647097692,
+      "policy": "tetris_style",
+      "planning_ms": 0.020913779735565186
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.5308361324672832,
+      "policy": "tetris_style",
+      "planning_ms": 0.02183765172958374
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.850301697621262,
+      "policy": "tetris_style",
+      "planning_ms": 0.019632279872894287
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.5497463057070096,
+      "policy": "tetris_style",
+      "planning_ms": 0.02487003803253174
+    },
+    {
+      "requests": 3,
+      "rows": 138,
+      "allocation": [
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.7623454850121032,
+      "policy": "tetris_style",
+      "planning_ms": 0.02276897430419922
+    },
+    {
+      "requests": 3,
+      "rows": 138,
+      "allocation": [
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.9176297944898505,
+      "policy": "tetris_style",
+      "planning_ms": 0.021889805793762207
+    },
+    {
+      "requests": 3,
+      "rows": 138,
+      "allocation": [
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.7841127721449433,
+      "policy": "tetris_style",
+      "planning_ms": 0.022254884243011475
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.9836420367039657,
+      "policy": "tetris_style",
+      "planning_ms": 0.020965933799743652
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.15787365402093992,
+      "policy": "tetris_style",
+      "planning_ms": 0.017993152141571045
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.16211837638980567,
+      "policy": "tetris_style",
+      "planning_ms": 0.017344951629638672
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.2454552378344228,
+      "policy": "tetris_style",
+      "planning_ms": 0.02008676528930664
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.5850497993636723,
+      "policy": "tetris_style",
+      "planning_ms": 0.016957521438598633
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.3633241445124803,
+      "policy": "tetris_style",
+      "planning_ms": 0.016517937183380127
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.17611952274085915,
+      "policy": "tetris_style",
+      "planning_ms": 0.020526349544525146
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.3037321343725902,
+      "policy": "tetris_style",
+      "planning_ms": 0.019006431102752686
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.4938226213188887,
+      "policy": "tetris_style",
+      "planning_ms": 0.020459294319152832
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.41540990690132806,
+      "policy": "tetris_style",
+      "planning_ms": 0.020973384380340576
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.5223681381683901,
+      "policy": "tetris_style",
+      "planning_ms": 0.020138919353485107
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.35348341877278777,
+      "policy": "tetris_style",
+      "planning_ms": 0.020205974578857422
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.4093462993741865,
+      "policy": "tetris_style",
+      "planning_ms": 0.018961727619171143
+    },
+    {
+      "requests": 3,
+      "rows": 138,
+      "allocation": [
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.6640042106562721,
+      "policy": "tetris_style",
+      "planning_ms": 0.02276897430419922
+    },
+    {
+      "requests": 3,
+      "rows": 138,
+      "allocation": [
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.9058365165499068,
+      "policy": "tetris_style",
+      "planning_ms": 0.024750828742980957
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.5215074417472627,
+      "policy": "tetris_style",
+      "planning_ms": 0.02059340476989746
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.31889488046176456,
+      "policy": "tetris_style",
+      "planning_ms": 0.02053380012512207
+    },
+    {
+      "requests": 3,
+      "rows": 138,
+      "allocation": [
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.5653321703211999,
+      "policy": "tetris_style",
+      "planning_ms": 0.023052096366882324
+    },
+    {
+      "requests": 4,
+      "rows": 184,
+      "allocation": [
+        45,
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 1.0373264236705584,
+      "policy": "tetris_style",
+      "planning_ms": 0.025779008865356445
+    },
+    {
+      "requests": 4,
+      "rows": 184,
+      "allocation": [
+        45,
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.8780086714431984,
+      "policy": "tetris_style",
+      "planning_ms": 0.027664005756378174
+    },
+    {
+      "requests": 3,
+      "rows": 138,
+      "allocation": [
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.6598359301238138,
+      "policy": "tetris_style",
+      "planning_ms": 0.019572675228118896
+    },
+    {
+      "requests": 3,
+      "rows": 138,
+      "allocation": [
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.7805991168692242,
+      "policy": "tetris_style",
+      "planning_ms": 0.022098422050476074
+    },
+    {
+      "requests": 3,
+      "rows": 138,
+      "allocation": [
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.4999758652551045,
+      "policy": "tetris_style",
+      "planning_ms": 0.020928680896759033
+    },
+    {
+      "requests": 3,
+      "rows": 138,
+      "allocation": [
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 1.0139340021344347,
+      "policy": "tetris_style",
+      "planning_ms": 0.02247840166091919
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.42077929363379457,
+      "policy": "tetris_style",
+      "planning_ms": 0.015683472156524658
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.3217253846690771,
+      "policy": "tetris_style",
+      "planning_ms": 0.01535564661026001
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.15341882358605047,
+      "policy": "tetris_style",
+      "planning_ms": 0.017464160919189453
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.17960824951928073,
+      "policy": "tetris_style",
+      "planning_ms": 0.019632279872894287
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.2973073772436567,
+      "policy": "tetris_style",
+      "planning_ms": 0.016480684280395508
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.2067084006633577,
+      "policy": "tetris_style",
+      "planning_ms": 0.015184283256530762
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.22866359857072877,
+      "policy": "tetris_style",
+      "planning_ms": 0.016205012798309326
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.17168841711126265,
+      "policy": "tetris_style",
+      "planning_ms": 0.01644343137741089
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.19997577839152675,
+      "policy": "tetris_style",
+      "planning_ms": 0.015653669834136963
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.3477706059052784,
+      "policy": "tetris_style",
+      "planning_ms": 0.02146512269973755
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.278740680402697,
+      "policy": "tetris_style",
+      "planning_ms": 0.015206634998321533
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.18715188073133515,
+      "policy": "tetris_style",
+      "planning_ms": 0.019006431102752686
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.23765461184824743,
+      "policy": "tetris_style",
+      "planning_ms": 0.015377998352050781
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.16666008859879494,
+      "policy": "tetris_style",
+      "planning_ms": 0.0189170241355896
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.17044228982014767,
+      "policy": "tetris_style",
+      "planning_ms": 0.017195940017700195
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.4460721911950608,
+      "policy": "tetris_style",
+      "planning_ms": 0.020988285541534424
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.9631041398435372,
+      "policy": "tetris_style",
+      "planning_ms": 0.021927058696746826
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.8039442059821994,
+      "policy": "tetris_style",
+      "planning_ms": 0.019975006580352783
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.17781809214942118,
+      "policy": "tetris_style",
+      "planning_ms": 0.020675361156463623
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.15065890808543553,
+      "policy": "tetris_style",
+      "planning_ms": 0.01928955316543579
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.1914302421095676,
+      "policy": "tetris_style",
+      "planning_ms": 0.017426908016204834
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.1261352045866888,
+      "policy": "tetris_style",
+      "planning_ms": 0.016517937183380127
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.19082521956745646,
+      "policy": "tetris_style",
+      "planning_ms": 0.016130506992340088
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.2846699373737462,
+      "policy": "tetris_style",
+      "planning_ms": 0.020675361156463623
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.2559928306688299,
+      "policy": "tetris_style",
+      "planning_ms": 0.01623481512069702
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.11929632066513846,
+      "policy": "tetris_style",
+      "planning_ms": 0.0165402889251709
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.1320422290502646,
+      "policy": "tetris_style",
+      "planning_ms": 0.01613795757293701
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.14274277364294036,
+      "policy": "tetris_style",
+      "planning_ms": 0.01630932092666626
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.3626168224836414,
+      "policy": "tetris_style",
+      "planning_ms": 0.016316771507263184
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.1943478125508385,
+      "policy": "tetris_style",
+      "planning_ms": 0.019371509552001953
+    },
+    {
+      "requests": 3,
+      "rows": 138,
+      "allocation": [
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.7153238724020797,
+      "policy": "tetris_style",
+      "planning_ms": 0.025406479835510254
+    },
+    {
+      "requests": 4,
+      "rows": 184,
+      "allocation": [
+        45,
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.9307041916614746,
+      "policy": "tetris_style",
+      "planning_ms": 0.023253262042999268
+    },
+    {
+      "requests": 4,
+      "rows": 184,
+      "allocation": [
+        45,
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 1.140729479410194,
+      "policy": "tetris_style",
+      "planning_ms": 0.023171305656433105
+    },
+    {
+      "requests": 4,
+      "rows": 184,
+      "allocation": [
+        45,
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.6430727774806287,
+      "policy": "tetris_style",
+      "planning_ms": 0.022485852241516113
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 1.059732395221191,
+      "policy": "tetris_style",
+      "planning_ms": 0.01868605613708496
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.13840358653836307,
+      "policy": "tetris_style",
+      "planning_ms": 0.017233192920684814
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.20238804856697498,
+      "policy": "tetris_style",
+      "planning_ms": 0.020876526832580566
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.4573907663630237,
+      "policy": "tetris_style",
+      "planning_ms": 0.020384788513183594
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.6604218473866775,
+      "policy": "tetris_style",
+      "planning_ms": 0.020071864128112793
+    },
+    {
+      "requests": 3,
+      "rows": 138,
+      "allocation": [
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.8228194250869935,
+      "policy": "tetris_style",
+      "planning_ms": 0.024788081645965576
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.5308826155487621,
+      "policy": "tetris_style",
+      "planning_ms": 0.016771256923675537
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.5980137745820189,
+      "policy": "tetris_style",
+      "planning_ms": 0.01934915781021118
+    },
+    {
+      "requests": 2,
+      "rows": 92,
+      "allocation": [
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.4948861751885143,
+      "policy": "tetris_style",
+      "planning_ms": 0.017695128917694092
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.2644047376119713,
+      "policy": "tetris_style",
+      "planning_ms": 0.02065300941467285
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.3845635437842868,
+      "policy": "tetris_style",
+      "planning_ms": 0.01704692840576172
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.4059702387477238,
+      "policy": "tetris_style",
+      "planning_ms": 0.014625489711761475
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.19120973754052126,
+      "policy": "tetris_style",
+      "planning_ms": 0.03670156002044678
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.23817100920982281,
+      "policy": "tetris_style",
+      "planning_ms": 0.017277896404266357
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.1902001293407451,
+      "policy": "tetris_style",
+      "planning_ms": 0.015050172805786133
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.19605386895264088,
+      "policy": "tetris_style",
+      "planning_ms": 0.016942620277404785
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.13174835802484564,
+      "policy": "tetris_style",
+      "planning_ms": 0.014990568161010742
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.15356288810419008,
+      "policy": "tetris_style",
+      "planning_ms": 0.018246471881866455
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.14699909564263783,
+      "policy": "tetris_style",
+      "planning_ms": 0.01681596040725708
+    },
+    {
+      "requests": 4,
+      "rows": 184,
+      "allocation": [
+        45,
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 1.0789367989581127,
+      "policy": "tetris_style",
+      "planning_ms": 0.024981796741485596
+    },
+    {
+      "requests": 4,
+      "rows": 184,
+      "allocation": [
+        45,
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 0.8583138671798275,
+      "policy": "tetris_style",
+      "planning_ms": 0.022433698177337646
+    },
+    {
+      "requests": 3,
+      "rows": 138,
+      "allocation": [
+        45,
+        45,
+        45
+      ],
+      "weighted_proxy_ratio": 1.0131647780511175,
+      "policy": "tetris_style",
+      "planning_ms": 0.022076070308685303
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.14996579066189697,
+      "policy": "tetris_style",
+      "planning_ms": 0.01611560583114624
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.1391390602237583,
+      "policy": "tetris_style",
+      "planning_ms": 0.016905367374420166
+    },
+    {
+      "requests": 1,
+      "rows": 46,
+      "allocation": [
+        45
+      ],
+      "weighted_proxy_ratio": 0.5623942224776952,
+      "policy": "tetris_style",
+      "planning_ms": 0.014841556549072266
+    }
+  ],
+  "outputs": [
+    [
+      10061,
+      594,
+      11625,
+      279,
+      3491,
+      3019,
+      553,
+      3019,
+      382,
+      44364,
+      14374,
+      14822,
+      220,
+      16,
+      25,
+      29901,
+      1246,
+      1753,
+      62808,
+      702,
+      198,
+      34,
+      2178,
+      268,
+      702,
+      400,
+      16,
+      15,
+      15,
+      382,
+      50,
+      12715
+    ],
+    [
+      1654,
+      525,
+      2661,
+      429,
+      279,
+      1985,
+      315,
+      1378,
+      25780,
+      11,
+      3070,
+      17,
+      19,
+      15,
+      334,
+      323,
+      3070,
+      3,
+      595,
+      400,
+      97219,
+      374,
+      264,
+      3070,
+      63085,
+      23739,
+      334,
+      13,
+      5633,
+      5795,
+      374,
+      311
+    ],
+    [
+      1249,
+      11625,
+      279,
+      3491,
+      11,
+      582,
+      1184,
+      311,
+      1779,
+      3425,
+      3070,
+      3767,
+      1378,
+      5109,
+      304,
+      279,
+      1140,
+      334,
+      525,
+      12128,
+      311,
+      1817,
+      1008,
+      1091,
+      264,
+      2661,
+      12171,
+      382,
+      8420,
+      594,
+      279,
+      8282
+    ],
+    [
+      73594,
+      12669,
+      198,
+      750,
+      3378,
+      15730,
+      1500,
+      982,
+      262,
+      470,
+      10615,
+      1500,
+      9615,
+      1507,
+      1376,
+      27504,
+      1509,
+      25,
+      1509,
+      58,
+      16,
+      1125,
+      9931,
+      3618,
+      340,
+      73594,
+      151645
+    ],
+    [
+      10061,
+      594,
+      1438,
+      279,
+      3491,
+      1495,
+      3019,
+      553,
+      3019,
+      382,
+      44364,
+      14374,
+      3070,
+      8304,
+      220,
+      16,
+      25,
+      70894,
+      279,
+      2661,
+      1995,
+      56177,
+      12,
+      3070,
+      26801,
+      66963,
+      2303,
+      220,
+      481,
+      468,
+      1862,
+      3070
+    ],
+    [
+      1654,
+      525,
+      2661,
+      1447,
+      12,
+      362,
+      21495,
+      374,
+      3070,
+      69304,
+      346,
+      642,
+      323,
+      1290,
+      97219,
+      773,
+      432,
+      374,
+      264,
+      3070,
+      19,
+      20,
+      11616,
+      12,
+      19,
+      20,
+      11616,
+      12,
+      24,
+      15,
+      11616,
+      21495
+    ],
+    [
+      8420,
+      594,
+      264,
+      6291,
+      311,
+      279,
+      1565,
+      325,
+      67598,
+      620,
+      9151,
+      21148,
+      63,
+      729,
+      429,
+      12440,
+      13469,
+      279,
+      7481,
+      16982,
+      1447,
+      73594,
+      12669,
+      198,
+      1499,
+      19496,
+      1159,
+      1759,
+      1406,
+      750,
+      8651,
+      620
+    ],
+    [
+      73594,
+      12669,
+      198,
+      750,
+      11639,
+      46046,
+      11,
+      1629,
+      982,
+      262,
+      470,
+      18845,
+      6501,
+      8068,
+      340,
+      73594,
+      151645
+    ],
+    [
+      1654,
+      525,
+      2661,
+      279,
+      2701,
+      1995,
+      911,
+      3040,
+      2841,
+      1447,
+      12,
+      15044,
+      25,
+      3070,
+      55802,
+      2257,
+      97219,
+      3070,
+      32,
+      1717,
+      41724,
+      97219,
+      3070,
+      32713,
+      1952,
+      97219,
+      323,
+      3070,
+      52377,
+      27993,
+      334,
+      2303
+    ],
+    [
+      1654,
+      525,
+      2661,
+      1447,
+      14085,
+      198,
+      4955,
+      276,
+      1124,
+      15976,
+      284,
+      1124,
+      37018,
+      35702,
+      9407,
+      220,
+      20,
+      24884,
+      43298,
+      1124,
+      9407,
+      220,
+      17,
+      15,
+      24884,
+      43298,
+      488,
+      1124,
+      9407,
+      220,
+      18,
+      20
+    ],
+    [
+      8420,
+      594,
+      264,
+      4396,
+      8129,
+      315,
+      279,
+      1565,
+      66054,
+      5500,
+      63,
+      729,
+      13,
+      1096,
+      729,
+      4990,
+      264,
+      6785,
+      19057,
+      16574,
+      1372,
+      323,
+      4675,
+      1181,
+      12122,
+      949,
+      13,
+      1205,
+      646,
+      11075,
+      419,
+      553
+    ],
+    [
+      73594,
+      12669,
+      198,
+      750,
+      1932,
+      9840,
+      21096,
+      982,
+      262,
+      421,
+      537,
+      10307,
+      510,
+      286,
+      470,
+      220,
+      15,
+      7213,
+      262,
+      308,
+      284,
+      2422,
+      21096,
+      340,
+      262,
+      11329,
+      284,
+      508,
+      16,
+      60,
+      353,
+      308
+    ],
+    [
+      1654,
+      525,
+      2661,
+      429,
+      47261,
+      3880,
+      311,
+      7027,
+      3070,
+      16,
+      15,
+      15,
+      15739,
+      315,
+      3015,
+      369,
+      1449,
+      220,
+      17,
+      15,
+      15,
+      24262,
+      1340,
+      43054,
+      334,
+      382,
+      5338,
+      11,
+      1077,
+      594,
+      1477,
+      279
+    ],
+    [
+      1654,
+      525,
+      2661,
+      279,
+      2701,
+      1849,
+      315,
+      37906,
+      1447,
+      14085,
+      198,
+      59,
+      7265,
+      90,
+      47142,
+      532,
+      7,
+      16,
+      8,
+      1124,
+      31610,
+      609,
+      264,
+      488,
+      293,
+      284,
+      220,
+      23,
+      90155,
+      7,
+      17,
+      8
+    ],
+    [
+      8420,
+      594,
+      264,
+      4583,
+      6291,
+      311,
+      279,
+      3491,
+      11,
+      892,
+      12440,
+      5169,
+      279,
+      12218,
+      311,
+      8253,
+      3425,
+      279,
+      2692,
+      8172,
+      3512,
+      17066,
+      3685,
+      7168,
+      2337,
+      264,
+      8500,
+      315,
+      7525,
+      13,
+      576,
+      729
+    ],
+    [
+      73594,
+      12669,
+      198,
+      750,
+      10880,
+      41277,
+      2019,
+      7307,
+      16,
+      11,
+      1140,
+      17,
+      11,
+      1140,
+      18,
+      982,
+      262,
+      470,
+      10615,
+      7307,
+      16,
+      488,
+      1140,
+      17,
+      488,
+      1140,
+      18,
+      340,
+      73594,
+      151645
+    ],
+    [
+      10061,
+      594,
+      11625,
+      419,
+      3019,
+      553,
+      3019,
+      382,
+      44364,
+      14374,
+      14822,
+      220,
+      16,
+      25,
+      29901,
+      1246,
+      1657,
+      49955,
+      28003,
+      3767,
+      646,
+      1598,
+      304,
+      825,
+      6460,
+      271,
+      29,
+      28003,
+      3767,
+      646,
+      1598,
+      3070
+    ],
+    [
+      1654,
+      525,
+      2661,
+      429,
+      400,
+      362,
+      400,
+      374,
+      279,
+      3070,
+      1242,
+      315,
+      279,
+      6785,
+      3429,
+      41214,
+      334,
+      315,
+      400,
+      220,
+      20,
+      15,
+      15,
+      400,
+      11,
+      323,
+      582,
+      525,
+      4588,
+      311,
+      1477,
+      279
+    ],
+    [
+      8420,
+      594,
+      264,
+      4583,
+      6291,
+      311,
+      279,
+      1565,
+      14287,
+      50874,
+      10433,
+      7101,
+      63,
+      729,
+      13,
+      1096,
+      729,
+      47417,
+      279,
+      3070,
+      18783,
+      48881,
+      6040,
+      7101,
+      320,
+      44,
+      1808,
+      32295,
+      11,
+      892,
+      374,
+      279
+    ],
+    [
+      73594,
+      12669,
+      198,
+      750,
+      77784,
+      21773,
+      1155,
+      454,
+      11,
+      29020,
+      93993,
+      11043,
+      262,
+      470,
+      29020,
+      5446,
+      9147,
+      4199,
+      11,
+      57385,
+      1171,
+      73594,
+      151645
+    ],
+    [
+      1654,
+      525,
+      2661,
+      279,
+      2701,
+      3565,
+      911,
+      29297,
+      47014,
+      264,
+      29464,
+      4916,
+      1447,
+      12,
+      3070,
+      6341,
+      2783,
+      311,
+      6008,
+      279,
+      4916,
+      95518,
+      400,
+      24,
+      15,
+      2303,
+      12,
+      3070,
+      80496,
+      6513,
+      95518,
+      220
+    ],
+    [
+      1654,
+      525,
+      2661,
+      264,
+      3070,
+      25891,
+      1372,
+      95518,
+      2303,
+      3,
+      220,
+      16,
+      15,
+      16,
+      15,
+      16,
+      15,
+      15,
+      16,
+      16,
+      16,
+      15,
+      62,
+      17,
+      84500,
+      1654,
+      525,
+      311,
+      5508,
+      432,
+      311,
+      3070
+    ],
+    [
+      8420,
+      594,
+      264,
+      4396,
+      323,
+      4583,
+      6291,
+      311,
+      279,
+      1565,
+      49940,
+      81244,
+      63,
+      729,
+      1447,
+      73594,
+      12669,
+      198,
+      1499,
+      19496,
+      1159,
+      1759,
+      1406,
+      750,
+      80919,
+      81244,
+      47207,
+      25,
+      1759,
+      18640,
+      1125,
+      29020
+    ],
+    [
+      73594,
+      12669,
+      198,
+      750,
+      1779,
+      7894,
+      46046,
+      11,
+      2392,
+      982,
+      262,
+      470,
+      678,
+      5393,
+      621,
+      2392,
+      369,
+      1509,
+      304,
+      18845,
+      340,
+      73594,
+      151645
+    ],
+    [
+      1654,
+      525,
+      2661,
+      1447,
+      12,
+      18183,
+      64,
+      702,
+      3884,
+      3070,
+      24,
+      334,
+      17288,
+      323,
+      279,
+      92331,
+      9508,
+      624,
+      12,
+      2932,
+      702,
+      3884,
+      3070,
+      9547,
+      825,
+      220,
+      18,
+      3039,
+      334,
+      624,
+      12,
+      2932
+    ],
+    [
+      1654,
+      525,
+      4588,
+      311,
+      1477,
+      279,
+      1372,
+      315,
+      3070,
+      19789,
+      48342,
+      49433,
+      334,
+      1741,
+      429,
+      279,
+      3070,
+      1242,
+      315,
+      862,
+      18509,
+      374,
+      220,
+      23,
+      334,
+      382,
+      44364,
+      14374,
+      14822,
+      220,
+      16,
+      25
+    ],
+    [
+      8420,
+      594,
+      264,
+      4583,
+      323,
+      12510,
+      6291,
+      369,
+      279,
+      3491,
+      13,
+      576,
+      729,
+      1565,
+      6400,
+      66279,
+      620,
+      546,
+      4412,
+      63,
+      4990,
+      264,
+      914,
+      315,
+      5203,
+      315,
+      24034,
+      73975,
+      18663,
+      553,
+      12621,
+      323
+    ],
+    [
+      73594,
+      12669,
+      198,
+      750,
+      326,
+      1690,
+      1141,
+      982,
+      262,
+      308,
+      284,
+      2422,
+      1141,
+      340,
+      262,
+      11329,
+      284,
+      4318,
+      15,
+      60,
+      353,
+      308,
+      369,
+      716,
+      304,
+      2088,
+      1445,
+      5563,
+      1066,
+      262,
+      369,
+      600
+    ],
+    [
+      10061,
+      594,
+      1438,
+      279,
+      3491,
+      1495,
+      3019,
+      553,
+      3019,
+      382,
+      44364,
+      14374,
+      3070,
+      8304,
+      220,
+      16,
+      25,
+      5145,
+      448,
+      279,
+      2856,
+      1372,
+      315,
+      76792,
+      56177,
+      45,
+      21429,
+      71941,
+      3070,
+      21,
+      15,
+      334
+    ],
+    [
+      1654,
+      525,
+      2661,
+      1447,
+      14085,
+      198,
+      59,
+      10374,
+      13233,
+      90,
+      32,
+      92,
+      1124,
+      7265,
+      90,
+      5187,
+      2555,
+      92,
+      220,
+      18,
+      24984,
+      220,
+      16,
+      24984,
+      220,
+      15,
+      1124,
+      408,
+      90,
+      5187,
+      2555,
+      92
+    ],
+    [
+      8420,
+      594,
+      264,
+      4583,
+      323,
+      4396,
+      8129,
+      315,
+      279,
+      1565,
+      5315,
+      3710,
+      5228,
+      917,
+      63,
+      729,
+      429,
+      67901,
+      279,
+      4629,
+      917,
+      323,
+      16211,
+      678,
+      1273,
+      5048,
+      11,
+      2670,
+      6821,
+      5048,
+      382,
+      73594
+    ],
+    [
+      73594,
+      12669,
+      198,
+      750,
+      30270,
+      4042,
+      2877,
+      11,
+      293,
+      982,
+      262,
+      470,
+      264,
+      353,
+      293,
+      198,
+      73594,
+      151645
+    ],
+    [
+      1654,
+      525,
+      2661,
+      1447,
+      12,
+      3070,
+      75796,
+      20403,
+      25374,
+      2783,
+      400,
+      16,
+      17,
+      15,
+      15,
+      2686,
+      1091,
+      334,
+      279,
+      2790,
+      2783,
+      315,
+      3070,
+      37006,
+      264,
+      20403,
+      24477,
+      6088,
+      518,
+      400,
+      21,
+      15
+    ],
+    [
+      1654,
+      525,
+      2661,
+      279,
+      23606,
+      1447,
+      14085,
+      198,
+      59,
+      37018,
+      90,
+      21,
+      81,
+      61,
+      17,
+      481,
+      220,
+      16,
+      24,
+      81,
+      481,
+      220,
+      22,
+      15170,
+      17,
+      81,
+      481,
+      220,
+      22,
+      92,
+      284,
+      220
+    ],
+    [
+      8420,
+      594,
+      264,
+      4583,
+      323,
+      4396,
+      8129,
+      315,
+      279,
+      1565,
+      1242,
+      9840,
+      63,
+      729,
+      429,
+      20027,
+      279,
+      3491,
+      4008,
+      323,
+      16211,
+      678,
+      279,
+      3897,
+      1273,
+      5048,
+      382,
+      73594,
+      12669,
+      198,
+      1499,
+      19496
+    ],
+    [
+      73594,
+      12669,
+      198,
+      750,
+      1932,
+      1566,
+      1279,
+      1557,
+      3092,
+      10939,
+      982,
+      262,
+      421,
+      2422,
+      10939,
+      8,
+      366,
+      220,
+      17,
+      510,
+      286,
+      470,
+      220,
+      15,
+      198,
+      262,
+      1308,
+      6189,
+      284,
+      1308,
+      10939,
+      340
+    ],
+    [
+      10061,
+      594,
+      1438,
+      1495,
+      279,
+      3491,
+      3019,
+      553,
+      3019,
+      311,
+      8253,
+      1246,
+      1657,
+      51931,
+      67294,
+      6551,
+      40396,
+      382,
+      44364,
+      14374,
+      14822,
+      220,
+      16,
+      25,
+      4127,
+      3311,
+      315,
+      51931,
+      40396,
+      1030,
+      198,
+      6464
+    ],
+    [
+      1654,
+      525,
+      4588,
+      311,
+      39721,
+      279,
+      7493,
+      1447,
+      14085,
+      198,
+      59,
+      26888,
+      35702,
+      26888,
+      58,
+      18,
+      15370,
+      59,
+      26888,
+      35702,
+      37018,
+      90,
+      16,
+      15170,
+      22,
+      17,
+      24,
+      3417,
+      11248,
+      14085,
+      271,
+      437
+    ],
+    [
+      8420,
+      594,
+      264,
+      4583,
+      6291,
+      311,
+      279,
+      3491,
+      429,
+      12440,
+      57203,
+      279,
+      3070,
+      16210,
+      7192,
+      334,
+      315,
+      264,
+      1140,
+      315,
+      25780,
+      13,
+      576,
+      729,
+      686,
+      470,
+      264,
+      501,
+      1140,
+      1380,
+      1817,
+      2392
+    ],
+    [
+      73594,
+      12669,
+      198,
+      1499,
+      41331,
+      1159,
+      27459,
+      271,
+      750,
+      27459,
+      2019,
+      46046,
+      982,
+      262,
+      1102,
+      284,
+      84507,
+      921,
+      262,
+      369,
+      600,
+      304,
+      2088,
+      7,
+      16,
+      11,
+      2422,
+      46046,
+      8,
+      488,
+      220,
+      16
+    ],
+    [
+      10061,
+      594,
+      1438,
+      279,
+      3491,
+      1495,
+      3019,
+      553,
+      3019,
+      1447,
+      16,
+      13,
+      3070,
+      87860,
+      594,
+      4024,
+      40358,
+      66963,
+      2303,
+      256,
+      1260,
+      3855,
+      448,
+      3070,
+      3,
+      17,
+      15,
+      334,
+      382,
+      17,
+      13,
+      3070
+    ],
+    [
+      1654,
+      525,
+      3229,
+      1447,
+      12,
+      9043,
+      44626,
+      315,
+      279,
+      4143,
+      518,
+      28392,
+      12592,
+      6022,
+      1896,
+      4627,
+      624,
+      12,
+      576,
+      1372,
+      315,
+      4143,
+      879,
+      1896,
+      4627,
+      374,
+      3070,
+      23,
+      18,
+      19,
+      334,
+      624
+    ],
+    [
+      1249,
+      11625,
+      279,
+      3491,
+      315,
+      9271,
+      279,
+      3070,
+      8676,
+      477,
+      73097,
+      334,
+      429,
+      12033,
+      448,
+      264,
+      2661,
+      914,
+      11,
+      582,
+      646,
+      1795,
+      1493,
+      7354,
+      1447,
+      14374,
+      25521,
+      227,
+      40325,
+      51001,
+      510,
+      16
+    ],
+    [
+      73594,
+      12669,
+      198,
+      750,
+      4057,
+      2232,
+      638,
+      1141,
+      11,
+      1161,
+      982,
+      262,
+      1156,
+      284,
+      274,
+      2658,
+      6933,
+      340,
+      262,
+      421,
+      1156,
+      621,
+      481,
+      16,
+      510,
+      286,
+      470,
+      274,
+      198,
+      262,
+      1537,
+      284
+    ],
+    [
+      1654,
+      525,
+      2661,
+      279,
+      2701,
+      1995,
+      1447,
+      12,
+      2363,
+      10011,
+      10788,
+      3070,
+      20,
+      326,
+      965,
+      573,
+      3721,
+      334,
+      323,
+      3070,
+      19,
+      97397,
+      334,
+      369,
+      264,
+      2790,
+      2783,
+      315,
+      3070,
+      3,
+      18,
+      13
+    ],
+    [
+      1654,
+      525,
+      2661,
+      279,
+      23606,
+      1447,
+      14085,
+      198,
+      89,
+      284,
+      272,
+      198,
+      14085,
+      271,
+      258,
+      3070,
+      66,
+      3923,
+      62406,
+      13934,
+      334,
+      4930,
+      81,
+      11,
+      1124,
+      15976,
+      11,
+      1147,
+      8,
+      12947,
+      6771,
+      594
+    ],
+    [
+      8420,
+      594,
+      264,
+      4583,
+      323,
+      4396,
+      8129,
+      315,
+      279,
+      1565,
+      917,
+      76462,
+      63,
+      729,
+      429,
+      26674,
+      264,
+      97970,
+      69887,
+      389,
+      1378,
+      7868,
+      9069,
+      323,
+      4675,
+      279,
+      1102,
+      438,
+      264,
+      7868,
+      914,
+      1447
+    ],
+    [
+      73594,
+      12669,
+      198,
+      750,
+      18093,
+      4273,
+      1445,
+      982,
+      262,
+      470,
+      308,
+      481,
+      220,
+      16,
+      198,
+      73594,
+      151645
+    ],
+    [
+      10061,
+      594,
+      1438,
+      419,
+      1495,
+      3019,
+      553,
+      3019,
+      382,
+      44364,
+      14374,
+      3070,
+      9490,
+      220,
+      16,
+      25,
+      1019,
+      12,
+      1260,
+      21189,
+      3070,
+      20,
+      3868,
+      334,
+      369,
+      806,
+      15198,
+      624,
+      12,
+      1260,
+      49531,
+      3070
+    ],
+    [
+      1654,
+      525,
+      2661,
+      429,
+      1447,
+      14085,
+      198,
+      91,
+      706,
+      61,
+      17,
+      488,
+      44241,
+      488,
+      272,
+      91,
+      1124,
+      273,
+      220,
+      16,
+      1124,
+      31610,
+      1124,
+      1318,
+      90,
+      1958,
+      678,
+      335,
+      856,
+      1124,
+      258,
+      508
+    ],
+    [
+      8420,
+      374,
+      264,
+      4396,
+      323,
+      4583,
+      8129,
+      315,
+      279,
+      1565,
+      4825,
+      477,
+      63,
+      729,
+      429,
+      67901,
+      279,
+      25128,
+      323,
+      16211,
+      678,
+      279,
+      7032,
+      1447,
+      73594,
+      12669,
+      198,
+      1499,
+      19496,
+      1159,
+      1759,
+      11
+    ],
+    [
+      73594,
+      12669,
+      198,
+      750,
+      34508,
+      22801,
+      1155,
+      16,
+      11,
+      259,
+      17,
+      982,
+      262,
+      470,
+      14405,
+      8739,
+      39144,
+      8,
+      369,
+      6716,
+      304,
+      10308,
+      1155,
+      16,
+      11,
+      259,
+      17,
+      1171,
+      73594,
+      151645
+    ],
+    [
+      10061,
+      594,
+      1438,
+      1495,
+      279,
+      3491,
+      3019,
+      553,
+      3019,
+      382,
+      44364,
+      14374,
+      3070,
+      22043,
+      25,
+      56177,
+      12,
+      3070,
+      7595,
+      1372,
+      315,
+      9331,
+      13214,
+      389,
+      279,
+      8872,
+      3117,
+      66963,
+      220,
+      18,
+      15,
+      198
+    ],
+    [
+      1654,
+      525,
+      2661,
+      279,
+      13934,
+      315,
+      2326,
+      315,
+      279,
+      17228,
+      315,
+      264,
+      3070,
+      64761,
+      839,
+      2396,
+      95518,
+      2303,
+      8525,
+      20,
+      11,
+      220,
+      18,
+      15087,
+      11,
+      4930,
+      21,
+      11,
+      220,
+      23,
+      15087,
+      11
+    ],
+    [
+      1249,
+      11625,
+      279,
+      3491,
+      315,
+      9271,
+      279,
+      3070,
+      70,
+      11175,
+      4185,
+      49109,
+      320,
+      38,
+      6484,
+      32295,
+      315,
+      1378,
+      25780,
+      1565,
+      64,
+      63,
+      323,
+      1565,
+      65,
+      63,
+      304,
+      13027,
+      11,
+      279,
+      1429,
+      11050
+    ],
+    [
+      73594,
+      12669,
+      198,
+      750,
+      2629,
+      28209,
+      266,
+      2071,
+      372,
+      47207,
+      982,
+      262,
+      470,
+      2629,
+      8068,
+      369,
+      1629,
+      304,
+      5109,
+      421,
+      1629,
+      366,
+      220,
+      15,
+      340,
+      73594,
+      151645
+    ],
+    [
+      10061,
+      594,
+      1438,
+      279,
+      3491,
+      3019,
+      553,
+      3019,
+      382,
+      44364,
+      14374,
+      3070,
+      8304,
+      220,
+      16,
+      25,
+      5145,
+      315,
+      279,
+      1156,
+      8592,
+      56177,
+      12,
+      2619,
+      525,
+      3070,
+      20,
+      2841,
+      334,
+      42831,
+      279,
+      10855
+    ],
+    [
+      1654,
+      525,
+      2661,
+      279,
+      23606,
+      1447,
+      14085,
+      198,
+      2075,
+      481,
+      220,
+      16,
+      8,
+      1124,
+      50853,
+      282,
+      2075,
+      8,
+      284,
+      220,
+      18,
+      87,
+      61,
+      19,
+      488,
+      856,
+      61,
+      18,
+      481,
+      220,
+      17,
+      20
+    ],
+    [
+      8420,
+      594,
+      264,
+      13027,
+      6291,
+      311,
+      279,
+      1565,
+      541,
+      13974,
+      288,
+      63,
+      729,
+      429,
+      4675,
+      264,
+      1140,
+      315,
+      678,
+      62576,
+      315,
+      264,
+      2661,
+      914,
+      11,
+      504,
+      39143,
+      311,
+      22032,
+      1447,
+      73594,
+      12669
+    ],
+    [
+      73594,
+      12669,
+      198,
+      750,
+      8649,
+      3904,
+      51442,
+      11,
+      1379,
+      982,
+      262,
+      470,
+      508,
+      82,
+      369,
+      274,
+      304,
+      9069,
+      421,
+      2422,
+      1141,
+      8,
+      621,
+      1379,
+      921,
+      73594,
+      151645
+    ],
+    [
+      10061,
+      594,
+      11625,
+      279,
+      3491,
+      3019,
+      553,
+      3019,
+      311,
+      1477,
+      700,
+      1246,
+      1753,
+      3070,
+      13079,
+      3643,
+      334,
+      504,
+      14376,
+      1495,
+      323,
+      11236,
+      279,
+      4916,
+      382,
+      44364,
+      14374,
+      14822,
+      220,
+      16,
+      25,
+      70894
+    ],
+    [
+      1654,
+      525,
+      2661,
+      429,
+      264,
+      3070,
+      76998,
+      334,
+      4990,
+      279,
+      4621,
+      2303,
+      14085,
+      198,
+      59,
+      7265,
+      90,
+      5187,
+      2555,
+      92,
+      220,
+      20,
+      24984,
+      220,
+      15,
+      1124,
+      408,
+      90,
+      5187,
+      2555,
+      532,
+      14085
+    ],
+    [
+      8420,
+      594,
+      264,
+      4396,
+      323,
+      63594,
+      8129,
+      315,
+      279,
+      1565,
+      917,
+      23735,
+      63,
+      729,
+      429,
+      20027,
+      279,
+      2661,
+      25128,
+      323,
+      16211,
+      279,
+      1273,
+      5048,
+      1447,
+      73594,
+      12669,
+      198,
+      750,
+      914,
+      23735,
+      1445
+    ],
+    [
+      73594,
+      12669,
+      198,
+      750,
+      46342,
+      620,
+      306,
+      6113,
+      43002,
+      5118,
+      982,
+      262,
+      470,
+      220,
+      20,
+      353,
+      3108,
+      5118,
+      198,
+      73594,
+      151645
+    ]
+  ]
+}

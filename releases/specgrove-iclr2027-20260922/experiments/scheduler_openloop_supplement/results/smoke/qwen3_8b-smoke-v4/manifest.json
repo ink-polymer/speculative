@@ -1,0 +1,71 @@
+{
+  "kind": "matched_scheduler_and_real_poisson_open_loop_serving",
+  "model": {
+    "target": "Qwen/Qwen3-8B",
+    "target_revision": "b968826d9c46dd6066d109eabc6255188de91218",
+    "draft": "z-lab/Qwen3-8B-DFlash-b16",
+    "draft_revision": "9b41424b7109f9c5413454f481b09a82b85333f4",
+    "dtype": "bfloat16",
+    "target_attention": "sdpa",
+    "draft_attention": "sdpa",
+    "enable_thinking": false,
+    "allow_tf32": false
+  },
+  "gpu": "NVIDIA H20",
+  "torch": "2.8.0+cu128",
+  "source_hashes": {
+    "scripts/run_openloop_scheduler_supplement.py": "ecfaf2f379c5939b09f167135c593ccdc73c53fc191db0e88c823bf7b3028a74",
+    "scripts/paper_dp_allocators.py": "004b353a576703ba57b8a6cda5471cb9f022b75df643c83f1b14d0a103cc6c7d",
+    "src/gbv_experiments/continuous_tree_block_decode.py": "afe4bf6fd9968d57dfad9321de84b45dca3ed4731e6e14baecc32094a74a6e26",
+    "src/gbv_experiments/tree.py": "0456c8675e56ac3fb06b842118dfa79faa746cb7f29dc1ec3d9c3af2243da88e",
+    "src/gbv_experiments/sampling.py": "7fc043a9f8da67d5009f00be667835e97462b63fb302545bd9f8a72aba4f3c4a"
+  },
+  "methods": [
+    "dp",
+    "tetris_style",
+    "echo_style"
+  ],
+  "scheduler_cells": [
+    [
+      193,
+      8
+    ],
+    [
+      193,
+      16
+    ],
+    [
+      384,
+      16
+    ],
+    [
+      384,
+      32
+    ]
+  ],
+  "arrival_rates_rps": [
+    1.0,
+    2.0,
+    4.0
+  ],
+  "echo_style_calibration": {
+    "dataset": "gsm8k",
+    "prompt_slice": [
+      96,
+      112
+    ],
+    "target_labels_used": false,
+    "rule": "median draft-only marginal covered mass per added row",
+    "thresholds": [
+      0.0508737116057519,
+      0.021580318681794806
+    ],
+    "samples_per_gate": [
+      185,
+      19
+    ]
+  },
+  "matched_backend": "DFlash proposal + nested DDTree tiers + packed eager BF16/SDPA; FP32 proposal/posterior; no CUDA graph",
+  "baseline_scope": "TETRIS/ECHO-style adaptations over identical DDTree tiers; not original vLLM/SGLang system reproductions",
+  "open_loop_cache": "request-local cache repacking at each wave for every method; dynamic arrivals do not use the closed-batch persistent arena"
+}
